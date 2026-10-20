@@ -18,8 +18,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_SCALE = 1.6;
-const PROP_POOL = ['hay', 'hay', 'well', 'mill', 'cart', 'flag'];
+const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 const WEAP = {
   staff: { name: '棍', dur: [.14, .1, .16], reach: 34, dy: 12, multi: true, kb: 70 },
@@ -48,7 +47,7 @@ function reset() {
   zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: (k === 'flag' ? 4 : pw * .75) * PROP_SCALE, h: ph });
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
   say('村子被黄巾贼烧了！往右走 →');
 }
@@ -361,9 +360,10 @@ function draw() {
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
-  const [, baseW, baseH] = ASSETS.props[p.g], w = baseW * PROP_SCALE, h = baseH * PROP_SCALE;
+  const [, w, h] = ASSETS.props[p.g];
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
-  ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true;
+  if (p.g !== 'flag') { ctx.fillStyle = 'rgba(60,36,16,.32)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .5, w * .12, 0, 0, 7); ctx.fill(); }   // 接地阴影
+  ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
 }

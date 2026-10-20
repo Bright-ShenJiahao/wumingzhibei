@@ -13,7 +13,9 @@ def uri(path):
 atlas = json.load(open(P('art', 'sprites', 'atlas.json'), encoding='utf-8'))
 assets = {'chars': {ch: {f: [uri(P('art', 'sprites', ch, f + '.png'))] + v for f, v in fr.items()} for ch, fr in atlas.items()}}
 pm = json.load(open(P('art', 'props', 'meta.json')))
-assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items()}
+_src = open(P('game.js'), encoding='utf-8').read()
+# 只打包 game.js 里实际用到的道具（按名字出现与否判断），减小网页体积
+assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items() if f"'{k}'" in _src}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
 # js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用
