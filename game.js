@@ -4,6 +4,8 @@ const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; }
 load('hero', ASSETS.hero); load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd); load('z1', ASSETS.z1); load('z2', ASSETS.z2); load('tree', ASSETS.tree);
 ASSETS.houses.forEach((h, i) => load('h' + i, h[0]));
+Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
+const PROP_POOL = ['hay', 'hay', 'well', 'mill', 'cart', 'fence', 'flag'];
 
 const FW = 56, FH = 44, AX = 28, AY = 40;
 const F = { idle: [0, 1], walk: [2, 3, 4, 5], roll: [6, 7, 8, 9, 10], hurt: [11], down: [12], staff: [13, 14, 15], knife: [16, 17, 18], stone: [19, 20, 21] };
@@ -27,8 +29,8 @@ function reset(m) {
   zs = []; shots = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; spawnT = 0; over = false;
   if (mode === 'A') {
     for (let x = 160; x < M.W - 100; x += rnd(130, 220)) {
-      const k = Math.random() < .6 ? 'hay' : 'well';
-      props.push({ g: k, x, y: rnd(M.top + 30, M.bot - 10), solid: true, w: k === 'hay' ? 20 : 26 });
+      const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
+      props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 4 : pw * .75, h: ph });
     }
     say('往右走 → 进入区域会有僵尸出现');
   } else if (mode === 'B') {
@@ -283,24 +285,13 @@ function draw() {
   if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(W / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, W / 2, 130); ctx.textAlign = 'left'; }
 }
 function drawGround(p) {
-  const x = Math.round(p.x), y = Math.round(p.y);
-  shadow(x, y, p.w * .6);
-  if (p.g === 'hay') {
-    ctx.fillStyle = '#18101e'; ctx.beginPath(); ctx.ellipse(x, y - 9, 12, 11, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#d7a948'; ctx.beginPath(); ctx.ellipse(x, y - 9, 11, 10, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#b8862e'; for (let k = -8; k <= 8; k += 3) ctx.fillRect(x + k, y - 14 + Math.abs(k) / 2, 1, 9);
-    ctx.fillStyle = '#efc866'; ctx.fillRect(x - 5, y - 17, 7, 2);
-  } else {
-    ctx.fillStyle = '#18101e'; ctx.fillRect(x - 13, y - 13, 26, 14);
-    ctx.fillStyle = '#8e8a96'; ctx.fillRect(x - 12, y - 12, 24, 12);
-    ctx.fillStyle = '#6c6876'; for (let k = -12; k < 12; k += 6) ctx.fillRect(x + k, y - 6, 1, 6); ctx.fillRect(x - 12, y - 7, 24, 1);
-    ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 10, y - 12, 20, 3);
-    ctx.fillStyle = '#18101e'; ctx.fillRect(x - 11, y - 26, 2, 14); ctx.fillRect(x + 9, y - 26, 2, 14); ctx.fillRect(x - 13, y - 27, 26, 2);
-    ctx.fillStyle = '#7a5838'; ctx.fillRect(x - 1, y - 25, 2, 6);
-  }
+  const im = IMG['p_' + p.g], [, w, h] = ASSETS.props[p.g];
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(im, Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
+  ctx.imageSmoothingEnabled = false;
 }
 function propAlpha(p) {
-  if (p.g) return (hero.y < p.y && hero.y > p.y - 26 && Math.abs(hero.x - p.x) < p.w / 2 + 8) ? .5 : 1;
+  if (p.g) { const [, w, h] = ASSETS.props[p.g]; return (hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4) ? .5 : 1; }
   if (p.tree) return (hero.y < p.y && hero.y > p.y - 40 && Math.abs(hero.x - p.x) < 14) ? .45 : 1;
   return (hero.y < p.y - 2 && hero.y > p.y - 70 && hero.x > p.x - 10 && hero.x < p.x + p.w + 10) ? .45 : 1;
 }

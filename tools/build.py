@@ -18,6 +18,8 @@ assets = {
     'tree': uri(os.path.join(ph, 'tree.png')),
     'houses': [[uri(os.path.join(ph, f'house{i}.png'))] + m for i, m in enumerate(meta['houses'])],
 }
+pm = json.load(open(P('art', 'props', 'meta.json')))
+assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items()}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
 h = open(P('index.src.html'), encoding='utf-8').read()
