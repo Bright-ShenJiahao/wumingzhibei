@@ -208,6 +208,8 @@
   }
   window.SFX = {
     voice,
+    // 只读：当前是否静音（js/bgm.js 用它同步背景音乐）
+    isMuted: () => muted,
     // name：音效名；pan：-1（左）到 1（右）
     play(name, pan = 0) {
       if (muted || !S[name]) return;
