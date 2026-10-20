@@ -982,17 +982,18 @@ const WAVES = [
   { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
 const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 2040, 2620], token: 2 };
-let hero, zs, shots, eshots, fires, props, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
+let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 6 : pw * .75, h: ph });
+    // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
   say('村子被黄巾贼烧了！往右走 →');
 }
@@ -1116,6 +1117,41 @@ function heroUpdate(dt) {
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
 function set(e, st) { e.st = st; e.t = 0; }
+// ---------- 可破坏的道具（草垛、推车） ----------
+// 每被打中一次掉 1 点耐久；打坏后取消碰撞（p.solid = false）并从画面消失，水井/旗子 hp 为 0 不受影响
+function hitProp(p, dir) {
+  if (p.broken || !(p.g === 'hay' || p.g === 'cart')) return;
+  p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
+  const hay = p.g === 'hay', broken = p.hp <= 0;
+  sfx(broken ? 'land' : 'hit_staff', p.x);
+  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const n = broken ? 22 : 7;
+  for (let i = 0; i < n; i++) {
+    const life = broken ? rnd(.42, .65) : rnd(.32, .55);
+    // 草垛掉细条状的稻草，推车掉方块状的木片；带一点朝被打飞的方向
+    const w = hay ? rnd(2.8, 4.6) : rnd(1.8, 3.2), hh = hay ? 1.2 : w;
+    propFx.push({ x: p.x + rnd(-p.w * .35, p.w * .35), y: p.y - rnd(4, p.h * .7),
+      vx: rnd(-70, 70) + (dir || 0) * 35, vy: rnd(-130, -45), w, h: hh, life, max: life,
+      c: cols[Math.floor(Math.random() * cols.length)] });
+  }
+  if (broken) { p.broken = true; p.solid = false; }
+}
+function updatePropFx(dt) {
+  for (const p of props) if (p.hitT > 0) p.hitT = Math.max(0, p.hitT - dt);
+  for (const f of propFx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 260 * dt; f.life -= dt; }
+  propFx = propFx.filter(f => f.life > 0);
+}
+function drawPropFx() {
+  for (const f of propFx) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, f.life / f.max * 1.8));
+    // 先画一圈深色描边，否则黄稻草落在黄土地上根本看不见（和像素角色的描边风格一致）
+    ctx.fillStyle = '#2a1c0c';
+    ctx.fillRect(f.x - f.w / 2 - .5, f.y - f.h / 2 - .5, f.w + 1, f.h + 1);
+    ctx.fillStyle = f.c;
+    ctx.fillRect(f.x - f.w / 2, f.y - f.h / 2, f.w, f.h);
+  }
+  ctx.globalAlpha = 1;
+}
 function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
@@ -1129,20 +1165,30 @@ function strike() {
     shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd, life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
     return;
   }
-  let landed = false;
+  let landed = false, hitEnemy = false;
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
     const bw = z.T.w || 0, inRange = C.both ? Math.abs(dx) < W.reach + bw : dx > -4 - bw && dx < W.reach + bw;
     if (inRange && Math.abs(z.y - h.y) < W.dy) {
-      landed = true;
+      landed = hitEnemy = true;
       hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
       if (!C.multi) break;
     }
   }
+  // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
+  for (const p of props) {
+    if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+    const dx = (p.x - h.x) * h.f;
+    const inRange = C.both ? Math.abs(dx) < W.reach + p.w / 2 : dx > -4 - p.w / 2 && dx < W.reach + p.w / 2;
+    if (inRange && Math.abs(p.y - h.y) < W.dy) {
+      landed = true; h.lastHit = gameT; h.lastHitC = c;
+      hitProp(p, Math.sign(p.x - h.x) || h.f);
+    }
+  }
   const snd = W.snd || weapon;   // 音效名（锤子借用木棍那一套闷响）
-  if (landed) { sfx('hit_' + snd, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
-  else sfx('swing_' + snd, h.x);
+  if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
+  else if (!landed) sfx('swing_' + snd, h.x);   // 只打中道具时，音效由 hitProp 自己播
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
@@ -1204,6 +1250,14 @@ function zUpdate(z, dt) {
 function updateShots(dt) {
   for (const s of shots) {
     s.x += s.vx * dt; s.life -= dt;
+    // 石子碰到草垛/推车：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
+    if (s.life > 0) for (const p of props) {
+      if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+      if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
+        hero.lastHit = gameT; hero.lastHitC = s.c;
+        hitProp(p, Math.sign(s.vx)); s.life = 0; break;
+      }
+    }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15); hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
@@ -1234,7 +1288,7 @@ function update(dt) {
   heroUpdate(dt); waves();
   zs.forEach(z => zUpdate(z, dt));
   zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
-  updateShots(dt); Boss.updateFx(dt);
+  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -1324,6 +1378,7 @@ function draw() {
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
+  drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   // HUD
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
@@ -1340,10 +1395,12 @@ function draw() {
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
+  if (p.broken) return;   // 打坏的草垛/推车不再画
   const [, w, h] = ASSETS.props[p.g];
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
+  const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
+  ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2 + sh), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
 }
 function drawHero() {
