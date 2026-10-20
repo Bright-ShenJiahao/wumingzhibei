@@ -378,7 +378,7 @@
     S.mode = 'game';
     document.body.classList.remove('wzb-title');   // 这时候才把游戏 UI（摇杆/攻击/血条）露出来
     document.body.classList.remove('wzb-intro');
-    if (typeof reset === 'function') reset();
+    if (window.ROOM) ROOM.begin(); else if (typeof reset === 'function') reset();
     if (dom.flash) {
       dom.flash.style.transition = 'none'; dom.flash.style.opacity = 1;
       requestAnimationFrame(() => { dom.flash.style.transition = 'opacity .32s ease-out'; dom.flash.style.opacity = 0; });

@@ -376,6 +376,7 @@ function updateShots(dt) {
 
 let gameT = 0;
 function update(dt) {
+  if (window.ROOM && ROOM.blocks()) { ROOM.update(dt); return; }   // 开场农房：游戏不推进，由 room.js 自己走
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   gameT += dt;
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
@@ -450,6 +451,7 @@ function zFrame(z) {
 }
 function draw() {
   if (window.TITLE && TITLE.draw()) return;   // 标题界面自己接管整屏
+  if (window.ROOM && ROOM.draw()) return;     // 开场农房
   const W = cv.width, H = cv.height; SC = H / M.viewH;
   const sk = shake > 0 ? rnd(-2, 2) : 0;
   OXs = Math.round(-cam.x * SC + sk);
