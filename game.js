@@ -22,17 +22,17 @@ const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直�
 
 // 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
-// 平衡：柴刀距离最短、伤害最高；木棍距离长、能打晕、第三下横扫多人；石子安全但伤害最低，击退一点点。
+// 平衡：锤子距离最短、伤害最高；木棍距离长、能打晕、第三下横扫多人；石子安全但伤害最低，击退一点点。
 const WEAP = {
   staff: { name: '棍', reach: 36, dy: 12, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.16, .24], dmg: 1, kb: 35, daze: .15 },                    // 下劈
     { f: ['staff_2a', 'staff_2b'], d: [.12, .24], dmg: 1, kb: 30, daze: .3 },                     // 上挑
     { f: ['staff_3a', 'staff_3b'], d: [.18, .3], dmg: 1.5, kb: 110, daze: .4, multi: true, knock: true },   // 横扫
   ] },
-  knife: { name: '柴刀', reach: 25, dy: 10, combo: [
-    { f: ['knife_1a', 'knife_1b'], d: [.08, .18], dmg: 1.3, kb: 30 },                             // 斜劈
-    { f: ['knife_2a', 'knife_2b'], d: [.07, .18], dmg: 1.3, kb: 30 },                             // 反手横砍
-    { f: ['knife_3a', 'knife_3b', 'knife_3c'], d: [.1, .08, .26], dmg: 2, kb: 70, multi: true, both: true, knock: true },   // 转身回旋斩（前后都砍）
+  hammer: { name: '锤子', reach: 25, dy: 10, snd: 'staff', combo: [   // snd：借用木棍那套「闷响 + 木头」的音效
+    { f: ['hammer_1a', 'hammer_1b'], d: [.08, .18], dmg: 1.3, kb: 30 },                           // 举锤下砸
+    { f: ['hammer_2a', 'hammer_2b'], d: [.07, .18], dmg: 1.3, kb: 30 },                           // 反手横抡
+    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.1, .08, .26], dmg: 2, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
   stone: { name: '石子', proj: true, combo: [
     { f: ['stone_1a', 'stone_1b'], d: [.08, .18], dmg: .6, kb: 40, spd: 240 },                    // 左手扔
@@ -55,7 +55,7 @@ const WAVES = [
   { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
 const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 2040, 2620], token: 2 };
-let hero, zs, shots, eshots, fires, props, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'knife', over, won;
+let hero, zs, shots, eshots, fires, props, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
@@ -77,7 +77,7 @@ addEventListener('keydown', e => {
   key[e.code] = 1;
   if (e.code === 'KeyJ') pressAtk = true;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
-  if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('knife'); if (e.code === 'Digit3') setW('stone');
+  if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
 });
@@ -209,8 +209,9 @@ function strike() {
       if (!C.multi) break;
     }
   }
-  if (landed) { sfx('hit_' + weapon, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
-  else sfx('swing_' + weapon, h.x);
+  const snd = W.snd || weapon;   // 音效名（锤子借用木棍那一套闷响）
+  if (landed) { sfx('hit_' + snd, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
+  else sfx('swing_' + snd, h.x);
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
