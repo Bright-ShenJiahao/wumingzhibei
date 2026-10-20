@@ -35,6 +35,8 @@ const Boss = (() => {
   // ---------- 受击 ----------
   function hit(z, dmg, dir) {
     if (z.dead || z.st === 'fall' || z.st === 'roar' || z.st === 'intro') return;
+    // 掷戟后的空手窗口：只吃一半伤害（完全不能攻击，是玩家该抓的破绽）
+    if (z.st === 'bare' || z.st === 'leap' || z.st === 'pickup') dmg *= .5;
     z.hp -= dmg; z.flash = .1; freeze = .04; shake = .08;
     hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (z.phase === 2) {
@@ -61,6 +63,14 @@ const Boss = (() => {
   // ---------- 行为 ----------
   function update(z, dt) {
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
+    if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - dt; z.throwCd = (z.throwCd || 0) - dt; }
+    // 掷出去的长戟：飞 → 落地 → 等他去捡
+    if (z.spear && !z.spear.land) {
+      const p = z.spear; p.x += p.vx * dt;
+      if (heroIn(p.x, z.y, 16, 14)) { dmgHero(2, { x: p.x }); p.land = 1; shake = .2; }
+      else if (Math.abs(p.x - z.x) > 420) p.land = 1;
+      if (p.land) { p.y = z.y; z.pickX = p.x; }
+    }
     if (horse) { horse.t += dt; horse.x += horse.f * 160 * dt; if (horse.t > 2.5) horse = null; }
     if (z.dead) {
       // 跪倒 → 倒地，然后就一直躺着：通关结算时大将要留在场上，不再转 gone 消失
@@ -145,12 +155,53 @@ const Boss = (() => {
     if (S === 'idle' || S === 'walk') {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
+        if (z.throwCd <= 0 && ad > 150 && ady < 30) { set(z, 'throw_a'); z.throwCd = 10; sfx('bladeAlert', z.x); return; }
+        if (z.dashCd <= 0 && ad > 85) { set(z, 'dash_a'); z.dashCd = 5.5; sfx('bladeAlert', z.x); return; }
         if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); return; }
         if (ad < 62 && ady < 14) { set(z, 'chop_a'); return; }
         if (ad > 58 && ad < 96 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
       const walking = ad > 52 || ady > 8;
       if (walking) { moveTo(z, hero.x - z.f * 48, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
+      return;
+    }
+    // 突进刺：举戟后撤（前摇）→ 冲 90 单位 → 收招硬直（可被打）
+    if (S === 'dash_a') {
+      z.f = Math.sign(dx) || z.f;
+      if (z.t > .5 / sp) { set(z, 'dash_b'); sfx('enemySwing', z.x); z.hitDone = false; fx.push({ k: 'dust', x: z.x, y: z.y, t: 0, T: .4 }); }
+      return;
+    }
+    if (S === 'dash_b') {
+      z.x = Math.max(L + 16, Math.min(Rr - 16, z.x + z.f * 300 * dt));
+      if (!z.hitDone && heroIn(z.x + z.f * 18, z.y, 28, 15)) { z.hitDone = true; dmgHero(2, { x: z.x + z.f * 18 }); shake = .22; freeze = .05; }
+      if (z.t > .35) { set(z, 'dash_end'); z.cd = 1.3; }
+      return;
+    }
+    if (S === 'dash_end') { if (z.t > .5) set(z, 'idle'); return; }
+    // 掷戟：举戟投出 → 空手（免伤 50%、不能攻击）→ 跳到武器边上捡回来
+    if (S === 'throw_a') {
+      z.f = Math.sign(dx) || z.f;
+      if (z.t > .45) {
+        z.spear = { x: z.x + z.f * 22, y: z.y, vx: z.f * 560, land: 0 };
+        set(z, 'bare'); z.bareT = 1.05;
+        sfx('enemySwing', z.x); shake = .12;
+      }
+      return;
+    }
+    if (S === 'bare') {
+      if (z.t > (z.bareT || 1.05)) { set(z, 'leap'); z.pickX = z.spear ? z.spear.x : z.x; }
+      return;
+    }
+    if (S === 'leap') {
+      const tx = z.pickX == null ? z.x : z.pickX, d = tx - z.x;
+      if (Math.abs(d) > 10 && z.t < 1.2) {
+        z.x += Math.sign(d) * Math.min(Math.abs(d), 340 * dt); z.f = Math.sign(d) || z.f;
+        z.z = Math.sin(Math.min(1, z.t / .55) * Math.PI) * 30;
+      } else { z.z = 0; set(z, 'pickup'); }
+      return;
+    }
+    if (S === 'pickup') {
+      if (z.t > .35) { z.spear = null; z.z = 0; z.throwCd = 10; set(z, 'idle'); z.cd = .4; sfx('land', z.x); }
       return;
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
@@ -190,6 +241,11 @@ const Boss = (() => {
     if (S === 'walk') return Math.floor(z.t * 5) % 2 ? 'walk1' : 'walk2';
     if (S === 'spin') return 'spin' + (1 + Math.floor(z.t * 18) % 6);   // 6 帧：长戟在头顶水平转一圈
     if (S === 'gone') return 'down';
+    if (S === 'bare' || S === 'pickup') return 'bare_idle';     // 空手
+    if (S === 'leap') return 'fly';                              // 扑向兵器
+    if (S === 'dash_a') return 'thrust_a';
+    if (S === 'dash_b' || S === 'dash_end') return 'thrust_b';
+    if (S === 'throw_a') return 'chop_a';
     return { idle: 'idle', roar: 'roar', stagger: 'stagger', dizzy: 'dizzy', chop_a: 'chop_a', chop_b: 'chop_b', thrust_a: 'thrust_a', thrust_b: 'thrust_b', kneel: 'kneel', down: 'down' }[S] || 'idle';
   }
   function draw(z) {
@@ -199,6 +255,12 @@ const Boss = (() => {
     const jitter = z.st === 'charge_prep' ? Math.sin(z.t * 60) * .8 : 0;
     drawChar(z.type, frame(z), z.x + jitter, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
     if (z.phase === 2 && !z.dead && z.hp <= HP * .25 && Math.floor(performance.now() / 150) % 2) drawChar(z.type, frame(z), z.x, z.y, z.f < 0, .25, true);
+    // 飞出去的长戟 / 掉在地上的长戟
+    if (z.spear) {
+      const p = z.spear, yy = p.land ? p.y + 3 : p.y - 14;
+      if (p.land) { ctx.fillStyle = 'rgba(255,216,110,.16)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 3, 26, 5, 0, 0, 7); ctx.fill(); }
+      drawChar('guanhai', 'halberd', p.x, yy, (p.vx || 1) < 0);
+    }
     if (z.st === 'dizzy') {
       const t = performance.now() / 260, top = z.y - 58;
       for (let k = 0; k < 3; k++) { const an = t + k * 2.094, sx = z.x + Math.cos(an) * 10, sy = top + Math.sin(an) * 3;
@@ -218,6 +280,8 @@ const Boss = (() => {
         ctx.fillStyle = `rgba(255,80,60,${.5 * p})`; ctx.fillRect(a, e.y - 1, b - a, 2); }
       if (e.k === 'ring') { const p = Math.min(1, e.t / e.T); ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.ellipse(e.x, e.y, 40 * (1.3 - .3 * p), 14 * (1.3 - .3 * p), 0, 0, 7); ctx.stroke(); }
+      if (e.k === 'dust') { const p = e.t / e.T; ctx.fillStyle = 'rgba(196,164,112,' + (.45 * (1 - p)) + ')';
+        ctx.beginPath(); ctx.ellipse(e.x, e.y, 10 + 24 * p, 4 + 9 * p, 0, 0, 7); ctx.fill(); }
       if (e.k === 'quake') { const p = e.t / e.T; ctx.strokeStyle = `rgba(120,80,40,${.6 * (1 - p)})`; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.ellipse(e.x, e.y, 20 + 40 * p, 7 + 12 * p, 0, 0, 7); ctx.stroke(); }
       if (e.k === 'wave') {   // 地面裂开往前跑的冲击波：几块翻起的土

@@ -59,6 +59,11 @@ SHEETS = [
     dict(char='guanhai', file='管亥_空手_状态.png', ref='prev', r=20, frames=[
         ('fly', None), ('kneel', dict(ground=True)), ('down', dict(ground=True)),
     ]),
+    # 空手（掷戟后 / 捡戟前用）：同一张「步战上」原图，跳过长戟合成，只出人物本身
+    dict(char='guanhai', file='管亥_空手_步战上.png', ref=('bare_walk1', 103), r=20, frames=[
+        ('bare_idle', None), ('bare_walk1', None), ('bare_walk2', None),
+        ('bare_chop_a', None), ('bare_chop_b', None), ('bare_spin', None),
+    ]),
 ]
 
 
@@ -202,7 +207,7 @@ def finish(rgb, on, pal):
 
 
 def main():
-    res = {'guanhai': {}, 'guanhai_horse': {}}; tips = {}; scale = {}; prev_sc = None
+    res = {'guanhai': {}, 'guanhai_horse': {}}; tips = {}; scale = {}; prev_sc = None; ground_sc = .1
     for S in SHEETS:
         rgba, fg = key(G(S['file']), PAD)
         fr = frames_of(rgba, fg, len(S['frames']))
@@ -214,6 +219,7 @@ def main():
                 rh = scale[rh]
             sc = rh / (y1 - y0)
         prev_sc = sc
+        if S['char'] == 'guanhai': ground_sc = sc
         for (body, (y0, y1, x0, x1)), (name, spec) in zip(fr, S['frames']):
             if spec:   # 坐标加上留白偏移
                 spec = {k: ((v[0] + PAD, v[1] + PAD) if isinstance(v, tuple) else v) for k, v in spec.items()}
@@ -239,6 +245,17 @@ def main():
             im = finish(rgb, on, pal); im.save(os.path.join(d, name + '.png'))
             atlas[ch][name] = [im.width, im.height, round(float(ax) + 1, 1), int(ay) + 1]
         print(ch, {k: v[:2] for k, v in atlas[ch].items()})
+    # 单独的长戟：投掷飞行 / 落地待捡时用（长度和手里那把一致）
+    sc_g = scale['guanhai:walk1'] if 'guanhai:walk1' in scale else 100
+    gw = SPEAR_LEN; gh = max(3, round(SPEAR.height * SPEAR_LEN / SPEAR.width))   # 和手里那把一样长
+    sp = np.asarray(SPEAR.resize((gw, gh), Image.LANCZOS).convert('RGBA')).astype(float)
+    al = sp[..., 3:] / 255
+    rgb2 = np.clip(sp[..., :3], 0, 255); on2 = al[..., 0] > .45
+    pal2 = Image.new('P', (1, 1)); cols2 = pals['guanhai']; pal2.putpalette(cols2 + cols2[-3:] * (256 - len(cols2) // 3))
+    im = finish(rgb2, on2, pal2)
+    im.save(os.path.join(R, 'art', 'sprites', 'guanhai', 'halberd.png'))
+    atlas['guanhai']['halberd'] = [im.width, im.height, round(im.width / 2, 1), im.height - 1]
+    print('halberd', im.size)
     json.dump(atlas, open(atlas_p, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
     print('戟尖位置（世界单位，相对脚底；x 朝前为正，y 向下为正）：')
     for k, v in tips.items(): print(' ', k, v)
