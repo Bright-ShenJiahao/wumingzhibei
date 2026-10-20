@@ -160,6 +160,10 @@
       tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
       noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
     },
+    blip(o, t, k) {          // 台词逐字跳出的电子音（老游戏机那种短促方波）
+      tone(o, t, { type: 'square', p0: 760 * k, p1: 520, gain: .085, a: .001, d: .035, lp: 2600 });
+      tone(o, t + .012, { type: 'square', p0: 1140 * k, p1: 900, gain: .04, a: .001, d: .022, lp: 3200 });
+    },
     pickup(o, t, k) {        // 捡起武器：两声轻快的上行
       tone(o, t, { type: 'triangle', p0: 620 * k, p1: 700, gain: .16, a: .002, d: .1 });
       tone(o, t + .07, { type: 'triangle', p0: 940 * k, p1: 1000, gain: .12, a: .002, d: .16 });
@@ -205,7 +209,7 @@
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存

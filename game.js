@@ -27,10 +27,12 @@ const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直�
 const WEAP = {
   // move: .5 = 出手期间保留一半移动速度（35 单位/秒），能边走边扫，不会僵在原地；
   // 后摇从 .24/.24/.30 收到 .20/.20/.26，收招更利索（一轮 1.24 → 1.12 秒）
-  staff: { name: '棍', reach: 36, dy: 12, move: .5, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.16, .2], dmg: 1, kb: 35, daze: .15 },                     // 下劈
-    { f: ['staff_2a', 'staff_2b'], d: [.12, .2], dmg: 1, kb: 30, daze: .3 },                      // 上挑
-    { f: ['staff_3a', 'staff_3b'], d: [.18, .26], dmg: 1.5, kb: 110, daze: .4, multi: true, knock: true },   // 横扫
+  // 棍子 = 控场：距离最长（40）、伤害中等，但每一下都有机会把敌人打晕，第三下横扫必定打晕全场；
+  // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
+  staff: { name: '棍', reach: 40, dy: 13, move: .5, combo: [
+    { f: ['staff_1a', 'staff_1b'], d: [.16, .2], dmg: 1.1, kb: 35, daze: .3 },                    // 下劈
+    { f: ['staff_2a', 'staff_2b'], d: [.12, .2], dmg: 1.1, kb: 30, daze: .45 },                   // 上挑
+    { f: ['staff_3a', 'staff_3b'], d: [.18, .26], dmg: 1.8, kb: 130, daze: 1, multi: true, knock: true },   // 横扫（必晕）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -153,7 +155,8 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (z.T.boss) return Boss.hit(z, dmg, dir);
   if (z.dead || z.air) return;
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
-  z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
+  z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = z.T.heavy ? 1 : 1.5; z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连打三下会显得一顿一顿的）

@@ -12,7 +12,7 @@
   const S = {
     mode: 'off',        // off | play
     phase: 'wake',      // wake（还没站起来）| free（可自由走动）
-    t: 0, li: -1, lineT: 0, fade: 1, out: 0, took: 0,
+    t: 0, li: -1, lineT: 0, fade: 1, out: 0, took: 0, cn: 0, ct: 0,
     hero: null, items: [], motes: [],
   };
 
@@ -20,7 +20,7 @@
 
   function resetRoom() {
     const vw = viewW();
-    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.fade = 1; S.out = 0; S.took = 0;
+    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0;
     S.hero = { x: vw * .16, y: 258, f: 1, st: 'down', t: 0, vx: 0 };
     S.items = [
       { k: 'staff', x: vw * .34, y: 252, got: 0, bob: 0 },
@@ -58,10 +58,21 @@
 
     // 醒来：三句台词依次出现，最后站起来
     if (S.phase === 'wake') {
+      // 逐字打出，每 3 个字一声电子音（老游戏机的味道）
+      if (S.li >= 0 && S.li < LINES.length) {
+        const L = LINES[S.li];
+        if (S.cn < L.s.length) {
+          S.ct += dt;
+          while (S.ct > .045 && S.cn < L.s.length) {
+            S.ct -= .045; S.cn++;
+            if (S.cn % 3 === 1 && window.SFX) SFX.play('blip', 0);
+          }
+        }
+      }
       S.lineT -= dt;
       if (S.lineT <= 0) {
         S.li++;
-        if (S.li < LINES.length) { S.lineT = LINES[S.li].d; if (window.SFX) SFX.play('tick', 0); }
+        if (S.li < LINES.length) { S.lineT = LINES[S.li].d; S.cn = 0; S.ct = 0; }
         else if (S.li === LINES.length) { h.st = 'getup'; h.t = 0; S.lineT = .5; }
         else { S.phase = 'free'; h.st = 'idle'; h.t = 0; S.li = -1; document.body.classList.remove('wzb-wake'); }
       }
@@ -227,7 +238,7 @@
   function drawDialogue(W, H) {
     if (S.phase !== 'wake' || S.li < 0 || S.li >= LINES.length) return;
     const line = LINES[S.li];
-    const pop = Math.min(1, Math.max(0, (line.d - S.lineT) / .16));
+    const pop = Math.min(1, Math.max(0, (line.d - S.lineT) / .12));
     const small = H < 520;                       // 手机横屏：底部空间不够，台词框放到上面，别挡住地上的主角和武器
     const bw = Math.min(620, W * .86), bh = small ? 62 : 74;
     const x = (W - bw) / 2, y = small ? 74 : H - bh - 26;
@@ -242,7 +253,7 @@
     ctx.fillStyle = 'rgba(201,151,31,.9)'; ctx.fillRect(x + 16, y - 3, 34, 1.5);
     // 正文（逐字出现）
     ctx.font = 'bold ' + (small ? 16 : 18) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';
-    const shown = line.s.slice(0, Math.max(1, Math.ceil(line.s.length * Math.min(1, pop * 1.15))));
+    const shown = line.s.slice(0, Math.max(1, S.cn || 1));
     ctx.fillStyle = '#f2e6c9'; ctx.fillText(shown, x + 16, y + (small ? 38 : 42));
     // 继续提示
     if (S.lineT < line.d - .6) {

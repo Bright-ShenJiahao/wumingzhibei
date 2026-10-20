@@ -11,7 +11,7 @@
   if (!AC) return;
 
   // ---------- 常量 ----------
-  const OUT_LEVEL = .26;     // 总音量：约为音效的 33%（js/sfx.js 的主输出是 .8），不盖过打击声和配音
+  const OUT_LEVEL = .3;      // 总音量：约为音效的 37%（js/sfx.js 的主输出是 .8），不盖过打击声和配音
   const XFADE = 1.5;         // 换曲时淡入淡出（秒）
   const LOOK = .35;          // 提前排程的时间（秒）
   const A2 = 45;             // 五声基准音 A2
@@ -29,7 +29,7 @@
   const TRACKS = {
     // 村庄：中速，鼓点稀疏，古筝弹哀凉的短句，埙隔几小节吹一声长音
     village: {
-      bpm: 90, bars: 16, lv: { drum: .5, pluck: .34, tone: .3 },
+      bpm: 90, bars: 16, lv: { drum: .48, pluck: .44, tone: .32 },
       drums: {
         a: '1...............',
         b: '1.......2.......',
@@ -50,7 +50,7 @@
     },
     // 战斗：快一些，鼓点密集（8 分音符脉动 + 收尾 16 分加花），拨弦连成急促的上下行
     battle: {
-      bpm: 120, bars: 16, lv: { drum: .62, pluck: .3, tone: .26 },
+      bpm: 120, bars: 16, lv: { drum: .58, pluck: .4, tone: .28 },
       drums: {
         a: '3.2.3.1.3.2.1.2.',
         b: '3.2.3.13.2.1.24.',
@@ -70,7 +70,7 @@
     },
     // Boss：最快，重鼓连击 + 16 分拨弦 + 低音持续音（压迫感）
     boss: {
-      bpm: 140, bars: 16, lv: { drum: .58, pluck: .3, tone: .26 },
+      bpm: 140, bars: 16, lv: { drum: .54, pluck: .4, tone: .28 },
       drone: { midi: 33, level: .075 },
       drums: {
         a: '3.2.3.1.3.2.3.1.',
@@ -364,8 +364,11 @@
     out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL, t + .12);
   }
 
+  // 系统有时会把音频上下文挂起（切后台、来电），在手势或轮询时顺手恢复
+  function resumeAudio() { if (ac && ac.state === 'suspended' && !document.hidden) { try { ac.resume(); } catch (e) {} } }
   function poll() {
     if (!started || !ac) return;
+    resumeAudio();
     const st = readState();
     if (st !== state) applyState(st);
     const m = !!(window.SFX && typeof SFX.isMuted === 'function' && SFX.isMuted());
@@ -382,7 +385,9 @@
       out.gain.value = .0001;
       const comp = ac.createDynamicsCompressor();
       comp.threshold.value = -14; comp.ratio.value = 3; comp.attack.value = .01; comp.release.value = .2;
-      out.connect(comp).connect(ac.destination);
+      // 手机喇叭放不出低频战鼓，给整体加一点高频，旋律和拨弦才听得见
+      const hs = ac.createBiquadFilter(); hs.type = 'highshelf'; hs.frequency.value = 2400; hs.gain.value = 4.5;
+      out.connect(hs).connect(comp).connect(ac.destination);
       if (ac.state === 'suspended') ac.resume();
       muted = !!(window.SFX && typeof SFX.isMuted === 'function' && SFX.isMuted());
       out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL, ac.currentTime + 1.2);
@@ -407,6 +412,7 @@
   }
 
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, boot, { capture: true, passive: true }));
+  ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, resumeAudio, { capture: true, passive: true }));
 
   // 供调试/其它模块使用（不改 game.js）
   window.BGM = {
