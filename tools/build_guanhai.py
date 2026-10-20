@@ -224,9 +224,15 @@ def main():
                 scale[f"{S['char']}:{name + suf}"] = bh
                 if t: tips[f"{S['char']}:{name + suf}"] = (round(t[0] * PX, 1), round(t[1] * PX, 1))
     atlas_p = os.path.join(R, 'art', 'sprites', 'atlas.json'); atlas = json.load(open(atlas_p, encoding='utf-8'))
-    for ch, frames in res.items():
+    pals = {}
+    for ch in ('guanhai', 'guanhai_horse'):
+        frames = res[ch]
         allpx = np.concatenate([rgb[on] for rgb, on, _, _ in frames.values()]).astype('uint8')
-        pal = Image.fromarray(allpx[None]).quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT)
+        pals[ch] = Image.fromarray(allpx[None]).quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT).getpalette()[:COLORS * 3]
+    for ch, frames in res.items():
+        # 骑马帧大部分是马的棕色，单独算调色板会把头巾的黄、皮肤冲淡：并上步战帧的调色板（共 128 色），人物颜色两边一致
+        cols = pals[ch] if ch == 'guanhai' else pals['guanhai_horse'] + pals['guanhai']
+        pal = Image.new('P', (1, 1)); pal.putpalette(cols + cols[-3:] * (256 - len(cols) // 3))
         d = os.path.join(R, 'art', 'sprites', ch); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         atlas[ch] = {}
         for name, (rgb, on, ax, ay) in frames.items():
