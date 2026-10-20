@@ -243,7 +243,7 @@ function draw() {
     ctx.imageSmoothingEnabled = true;
     const ms = .24 / .61, my = 165 - 619 * .24;
     tileLayer(IMG.far, .577, .3, 0);
-    tileLayer(IMG.gnd, ms, 1, my + 610 * ms, true);
+    tileLayer(IMG.gnd, .62, 1, my + 560 * ms);   // 地面纹理垫在中景下面，中景底部渐隐过渡
     tileLayer(IMG.mid, ms, 1, my);
     ctx.imageSmoothingEnabled = false;
   } else if (mode === 'B') {

@@ -11,7 +11,8 @@
 | `art/sprites/` | 主角像素素材表 `farmer_sheet.png`（每帧 56×44，脚底在 (28,40)）和预览动图 |
 | `art/reference/` | 视角对比示意图 |
 | `index.html` / `game.js` | 游戏本体（网站根目录直接发布；`index.html` 为内嵌素材的单文件，`game.js` 为源码） |
-| `tools/` | 生成主角像素图、视角图、抠绿处理背景的脚本 |
+| `tools/` | 生成主角像素图、视角图、抠绿处理背景的脚本；`build.py` 把素材和 `game.js` 打包成 `index.html` |
+| `index.src.html` | 网页模板（改界面改这里，然后运行 `python3 tools/build.py`） |
 
 ## 主角素材表帧序
 
