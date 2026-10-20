@@ -18,6 +18,7 @@ const Boss = (() => {
     return z;
   }
   const set = (z, st) => { z.st = st; z.t = 0; };
+  const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };   // 配音（art/voice/guanhai_*.mp3）
   const view = () => [cam.x, cam.x + viewW()];
   function moveTo(z, tx, ty, sp, dt) {
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
@@ -37,21 +38,21 @@ const Boss = (() => {
     if (z.phase === 2) {
       z.poise += dmg;
       const busy = ['chop_a', 'chop_b', 'spin', 'thrust_a', 'thrust_b'].includes(z.st);
-      if (z.poise >= 9 && !busy) { z.poise = 0; set(z, 'stagger'); }
+      if (z.poise >= 9 && !busy) { z.poise = 0; set(z, 'stagger'); vo('stagger'); }
       else if (z.st === 'walk' || z.st === 'idle') z.x += dir * 3;
     }
     if (z.phase === 1 && !z.called && z.hp <= HP * .75) {
-      z.called = true; say('管亥：「小的们，给我上！」', 2.5);
+      z.called = true; say('管亥：「小的们，给我上！」', 2.5); vo('call');
       spawn('grunt', cam.x + 8, M.top + 20); spawn('grunt', cam.x + viewW() - 8, M.bot - 10);
     }
     if (z.phase === 1 && z.hp <= HP / 2) {   // 摔下马
       z.hp = HP / 2; set(z, 'fall'); z.vx = -z.f * 60; fx = fx.filter(e => e.k !== 'lane' && e.k !== 'ring');
       horse = { x: z.x + z.f * 10, y: z.y, f: z.f, t: 0 };
-      say('管亥：「啊——！畜生！」', 2); sfx('enemyDown', z.x); shake = .3;
+      say('管亥：「啊——！畜生！」', 2); vo('fall'); sfx('enemyDown', z.x); shake = .3;
     }
     if (z.hp <= 0) {
       z.hp = 0; z.dead = 1; kills++; set(z, 'kneel'); fx = [];
-      say('管亥：「这……这小子是什么人……」', 3.5); sfx('enemyDown', z.x); shake = .3;
+      say('管亥：「这……这小子是什么人……」', 3.5); vo('defeat'); sfx('enemyDown', z.x); shake = .3;
     }
   }
 
@@ -125,7 +126,7 @@ const Boss = (() => {
     if (S === 'sweep_b') { if (z.t > .5) { set(z, 'idle'); z.cd = 1.3; } return; }
     if (S === 'fall') {
       z.x += z.vx * dt; z.vx *= .92;
-      if (z.t > 1.1) { z.phase = 2; z.type = 'guanhai'; set(z, 'roar'); say('管亥：「老子宰了你！」', 2.5); sfx('finisher', z.x); shake = .25; }
+      if (z.t > 1.1) { z.phase = 2; z.type = 'guanhai'; set(z, 'roar'); say('管亥：「老子宰了你！」', 2.5); vo('rage'); sfx('finisher', z.x); shake = .25; }
     }
   }
 
@@ -138,7 +139,7 @@ const Boss = (() => {
     if (S === 'idle' || S === 'walk') {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
-        if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); return; }
+        if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); vo('spin'); return; }
         if (ad < 34 && ady < 14) { set(z, 'chop_a'); return; }
         if (ad > 30 && ad < 62 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
@@ -147,7 +148,7 @@ const Boss = (() => {
       return;
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
-    if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x);
+    if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x); vo('chop', .7);
       if (heroIn(z.x + z.f * 12, z.y, 18, 14)) dmgHero(3, z);   // 重劈直接砸中的范围（戟尖约 21），更远处靠冲击波
       fx.push({ k: 'wave', x: z.x + z.f * 40, y: z.y, vx: z.f * 230, t: 0, T: 1.2, hit: false }); } return; }
     if (S === 'chop_b') { if (z.t > .55) { if (rage) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); } else { set(z, 'idle'); z.cd = 1.1; } } return; }
@@ -160,7 +161,7 @@ const Boss = (() => {
       return;
     }
     // 突刺
-    if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); z.x += z.f * 16;
+    if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); vo('thrust', .7); z.x += z.f * 16;
       const reach = 44, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z); } return; }   // 突刺：戟尖约 37 + 半宽
     if (S === 'thrust_b') { if (z.t > .45) { set(z, 'idle'); z.cd = 1; } return; }
   }
