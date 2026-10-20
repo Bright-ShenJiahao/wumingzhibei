@@ -111,17 +111,28 @@ function waves() {
 }
 
 // ---------- 主角 ----------
-function hit(z, dmg, kb, dir) {
-  if (z.dead) return;
+function hit(z, dmg, kb, dir, knock) {
+  if (z.dead || z.air) return;
   z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : .35; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (z.stun) { z.st = 'move'; z.tok = false; }
   freeze = .05; shake = .1;
-  if (z.hp <= 0) { z.dead = 1; z.t = 0; z.vx = kb * 1.6 * dir; kills++; }
+  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
+  if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+}
+// 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
+function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; }
+function airStep(e, dt) {
+  e.z += e.vz * dt; e.vz -= 420 * dt; moveEnt(e, e.ax * dt, 0);
+  if (e.z <= 0 && e.vz < 0) { e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08); }
 }
 function heroUpdate(dt) {
   const h = hero;
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
+  if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
+  if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); }
+  if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
+  if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
   let ix = (key.KeyD || key.ArrowRight ? 1 : 0) - (key.KeyA || key.ArrowLeft ? 1 : 0), iy = (key.KeyS || key.ArrowDown ? 1 : 0) - (key.KeyW || key.ArrowUp ? 1 : 0);
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
@@ -155,20 +166,25 @@ function strike() {
   for (const z of zs) {
     if (z.dead) continue;
     const dx = (z.x - h.x) * h.f;
-    if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f); if (!W.multi) break; }
+    if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f, fin); if (!W.multi) break; }
   }
 }
 function dmgHero(n, from) {
-  const h = hero; if (h.inv > 0 || h.st === 'down' || over) return;
-  h.hp -= n; h.inv = .7; shake = .2; set(h, 'hurt'); h.atk = null; h.vx = (from ? Math.sign(h.x - from.x) || -h.f : -h.f) * 80;
-  if (h.hp <= 0) { set(h, 'down'); over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
+  const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
+  h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
+  const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
+  if (n >= 2 || h.hp <= 0) { launch(h, dir * 85, 120); h.f = -dir; h.inv = 9; }   // 重击：被打飞
+  else { set(h, 'hurt'); h.vx = dir * 80; }
+  if (h.hp <= 0) { over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
 }
 
 // ---------- 黄巾兵 AI ----------
 function zUpdate(z, dt) {
   const T = z.T;
   z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
-  if (z.dead) { z.x += z.vx * dt; z.vx *= .9; return; }
+  if (z.air) { airStep(z, dt); return; }
+  if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
+  if (z.dead) return;
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
   const dx = hero.x - z.x, dy = hero.y - z.y;
@@ -234,7 +250,7 @@ function update(dt) {
   if (freeze > 0) { freeze -= dt; return; }
   heroUpdate(dt); waves();
   zs.forEach(z => zUpdate(z, dt));
-  zs = zs.filter(z => !(z.dead && z.t > 1.2));
+  zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   updateShots(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
@@ -268,12 +284,16 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false) {
 function heroFrame(h) {
   if (h.st === 'atk') return weapon + (h.atk.fi === 0 ? 1 : 2);
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
-  if (h.st === 'walk') return ['walk1', 'walk2', 'walk3', 'walk2'][Math.floor(h.t * 8) % 4];
+  if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
+  if (h.st === 'bounce' || h.st === 'getup') return h.st;
+  if (h.st === 'walk') return weapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
   if (h.st === 'hurt') return 'hurt'; if (h.st === 'down') return 'down';
   return weapon + '0';
 }
 function zFrame(z) {
-  if (z.dead) return z.t < .15 ? 'hurt' : 'down';
+  if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
+  if (z.st === 'land') return 'land';
+  if (z.dead) return 'down';
   if (z.stun > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
   if (z.st === 'strike') return 'strike';
@@ -347,14 +367,14 @@ function drawProp(p) {
 }
 function drawHero() {
   const h = hero; shadow(h.x, h.y, 10);
-  if (h.inv > 0 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
-  drawChar('hero', heroFrame(h), h.x, h.y, h.f < 0);
+  if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
+  drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
   shadow(z.x, z.y, 10);
-  const a = z.dead ? Math.max(0, Math.min(1, (1.2 - z.t) * 2)) : 1;
-  drawChar(z.type, zFrame(z), z.x, z.y, z.f < 0, a, z.flash > 0);
-  if (z.dead) return;
+  const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
+  drawChar(z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
+  if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 42;
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - 9, top, 18, 3); ctx.fillStyle = z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - 8, top + 1, 16 * z.hp / z.T.hp, 1);

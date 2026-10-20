@@ -13,7 +13,7 @@ from scipy import ndimage
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src, spec = sys.argv[1], sys.argv[2]
-TARGET = int(sys.argv[3]) if len(sys.argv) > 3 else 72
+MODE = sys.argv[3] if len(sys.argv) > 3 else '72'   # 数字=第一帧高度；area=按已有 idle 帧的面积匹配大小（用于补帧，保证和原来同样大）
 chars = []
 for part in spec.split(';'):
     n, fr = part.split(':'); chars.append((n.strip(), [f.strip() for f in fr.split(',')]))
@@ -40,7 +40,8 @@ for i in small:   # 小碎块并入水平距离最近、垂直有重叠的大块
         if dist < bd: best, bd = j, dist
     # 很小又离得远的碎块（飞出去的石子、箭）直接丢弃，游戏里用代码画投射物
     tiny = sizes[i] < .04 * np.median(sorted(sizes)[-8:])
-    if best is not None and (bd < 6 or (not tiny and bd < 160)): groups[best].append(i)
+    strict = len(sys.argv) > 4 and sys.argv[4] == 'strict'   # strict：只合并贴在身上的碎块（被打飞时脱手的武器丢掉）
+    if best is not None and (bd < 6 or (not tiny and not strict and bd < 160)): groups[best].append(i)
 
 
 def bbox(ids):
@@ -49,11 +50,12 @@ def bbox(ids):
 
 
 items = [(bbox(v), v) for v in groups.values()]
-# 按行排序：先按底边聚类成行，再按 x
-items.sort(key=lambda it: it[0][1])
+# 按行排序：先按竖直中心聚类成行，再按 x
+cy = lambda it: (it[0][0] + it[0][1]) / 2
+items.sort(key=cy)
 rows, cur = [], [items[0]]
 for it in items[1:]:
-    if it[0][1] - cur[-1][0][1] > 40: rows.append(cur); cur = [it]
+    if cy(it) - cy(cur[-1]) > 60: rows.append(cur); cur = [it]
     else: cur.append(it)
 rows.append(cur)
 seq = [it for row in rows for it in sorted(row, key=lambda it: it[0][2])]
@@ -66,8 +68,13 @@ atlas = json.load(open(atlas_p)) if os.path.exists(atlas_p) else {}
 k = 0
 for name, frames in chars:
     its = seq[k:k + len(frames)]; k += len(frames)
-    (y0, y1, _, _), _ = its[0]
-    sc = TARGET / (y1 - y0)
+    if MODE.startswith('area'):   # area 或 area*0.85（再乘一个修正系数）
+        ref = np.asarray(Image.open(os.path.join(R, 'art', 'sprites', name, 'idle.png')))[..., 3] > 0
+        areas = [np.isin(lab[y0:y1, x0:x1], [i + 1 for i in ids]).sum() for (y0, y1, x0, x1), ids in its]
+        sc = float(np.median([np.sqrt(ref.sum() / a_) for a_ in areas])) * (float(MODE.split('*')[1]) if '*' in MODE else 1)
+    else:
+        (y0, y1, _, _), _ = its[0]
+        sc = int(MODE) / (y1 - y0)
     outs = []
     for (y0, y1, x0, x1), ids in its:
         m = np.isin(lab[y0:y1, x0:x1], [i + 1 for i in ids]).astype(float)
@@ -87,7 +94,7 @@ for name, frames in chars:
     allpx = np.concatenate([o[0][o[1]] for o in outs]).astype('uint8')
     pal = Image.fromarray(allpx[None]).quantize(colors=32, method=Image.Quantize.MEDIANCUT)
     os.makedirs(os.path.join(R, 'art', 'sprites', name), exist_ok=True)
-    atlas[name] = {}
+    atlas.setdefault(name, {})
     for fname, (rgb, al, ax, ay) in zip(frames, outs):
         q = np.asarray(Image.fromarray(rgb.astype('uint8')).quantize(palette=pal, dither=Image.Dither.NONE).convert('RGB'))
         H, W = al.shape
