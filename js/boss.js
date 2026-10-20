@@ -138,6 +138,10 @@ const Boss = (() => {
     if (S === 'stagger') { if (z.t > .9) { set(z, 'idle'); z.cd = .4; } return; }
     if (S === 'dizzy') { if (z.t > 1.6) { set(z, 'idle'); z.cd = .5; } return; }
     z.spinCd = (z.spinCd || 0) - dt;
+    // TODO(待补美术/待做)：二阶段缺位移技能「突进刺」——
+    // 现在他走得太慢（34，狂暴 44），主角 70 只要后退就永远追不上。
+    // 计划：距离 > 70 时发动，前摇 0.5s → 冲刺 0.35s（约 90 单位）→ 收招硬直 0.5s，冷却约 5s。
+    // 冲刺帧暂时可以用 thrust_a / thrust_b 顶替，正式美术见 AGENTS.md「待补美术」。
     if (S === 'idle' || S === 'walk') {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
