@@ -461,14 +461,14 @@ const Boss = (() => {
     return vcache[name];
   }
   let preloaded = false;
-  function preloadVoices() { if (preloaded || !window.ASSETS || !ASSETS.voice) return; preloaded = true; for (const n in ASSETS.voice) decode(n).catch(() => {}); }
+  function preloadVoices() { if (preloaded || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice) return; preloaded = true; for (const n in ASSETS.voice) decode(n).catch(() => {}); }
   async function voice(name, pan = 0) {
-    if (muted || !window.ASSETS || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
+    if (muted || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
     try {
       if (ac.state !== 'running') await ac.resume();
       const buffer = await decode(name);
       const src = ac.createBufferSource(); src.buffer = buffer;
-      src.connect(bus(pan * .5, 1.1, .12)); src.start();
+      src.connect(bus(pan * .5, 1.1, .12)); src.start(); window.__lastVoice = name;
     } catch (e) {
       // 备用：Web Audio 解码失败时，用 <audio> 播放
       try { const el = new Audio(ASSETS.voice[name]); el.volume = 1; el.play().catch(() => {}); } catch (e2) {}
