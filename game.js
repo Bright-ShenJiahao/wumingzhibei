@@ -86,6 +86,8 @@ function say(s, t = 3) { msg = s; msgT = t; }
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
+  if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
   key[e.code] = 1;
   if (e.code === 'KeyJ') pressAtk = true;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
@@ -374,6 +376,7 @@ function updateShots(dt) {
 
 let gameT = 0;
 function update(dt) {
+  if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   gameT += dt;
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
@@ -446,6 +449,7 @@ function zFrame(z) {
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
 }
 function draw() {
+  if (window.TITLE && TITLE.draw()) return;   // 标题界面自己接管整屏
   const W = cv.width, H = cv.height; SC = H / M.viewH;
   const sk = shake > 0 ? rnd(-2, 2) : 0;
   OXs = Math.round(-cam.x * SC + sk);
@@ -493,6 +497,14 @@ function draw() {
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(10, hero.hp)) / 10, 12);
+  // 血条旁边显示玩家名字（标题页输入的）
+  const pnm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
+  if (pnm) {
+    ctx.font = 'bold 14px "PingFang SC","Noto Sans CJK SC",sans-serif';
+    const nw = ctx.measureText(pnm).width;
+    ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14 + bw + 6, 64, nw + 14, 18);
+    ctx.fillStyle = '#ffd86e'; ctx.fillText(pnm, 14 + bw + 13, 78);
+  }
   ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 330, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}   用时 ${fmtTime(runT)}`, 20, 100);
   if (lockR < Infinity) { const n = zs.filter(z => !z.dead).length; ctx.fillStyle = 'rgba(200,40,30,.85)'; ctx.fillRect(14, 110, 200, 22); ctx.fillStyle = '#fff'; ctx.fillText(`本区域剩余敌人：${n}`, 20, 126); }
   if (!over && lockR === Infinity && gateI > 0 && gateI < M.gates.length && Math.floor(performance.now() / 500) % 2 === 0) {
@@ -567,18 +579,20 @@ function drawResult(HW, HH) {
     ctx.strokeText(line, 0, 0); ctx.fillText(line, 0, 0);
     ctx.restore();
   }
-  // 两个按钮：分享 / 再来一局（手机点这里，电脑按 R 也行）
-  const bw = Math.min(150, (pw - 72) / 2), gap = 18, bh = 40;
-  const bx = x + (pw - (bw * 2 + gap)) / 2, by = y + ph - 56;
+  // 三个按钮：分享 / 返回首页 / 再来一局（手机点这里，电脑按 R 也行）
+  const bw = Math.min(140, (pw - 96) / 3), gap = 16, bh = 40;
+  const rowW = bw * 3 + gap * 2;
+  const bx = x + (pw - rowW) / 2, by = y + ph - 56;
   const btn = (bxx, label, act, hot) => {
     ctx.fillStyle = hot ? '#b3372a' : '#efe2c4'; ctx.fillRect(bxx, by, bw, bh);
     ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 2; ctx.strokeRect(bxx + 1, by + 1, bw - 2, bh - 2);
-    ctx.fillStyle = hot ? '#fff8e6' : '#3a2410'; ctx.font = 'bold 19px ' + F;
+    ctx.fillStyle = hot ? '#fff8e6' : '#3a2410'; ctx.font = 'bold 18px ' + F;
     ctx.fillText(label, bxx + bw / 2, by + 27);
     uiBtns.push({ x: bxx, y: by, w: bw, h: bh, act });
   };
   btn(bx, '分　享', 'share', false);
-  btn(bx + bw + gap, '再来一局', 'restart', true);
+  btn(bx + bw + gap, '返回首页', 'home', false);
+  btn(bx + (bw + gap) * 2, '再来一局', 'restart', true);
   if (toastT > 0) {   // 分享结果的提示条：放在屏幕下方，不压面板
     ctx.font = 'bold 15px ' + F;
     const tw = ctx.measureText(toastMsg).width, ty = HH - 52;
@@ -602,7 +616,7 @@ document.addEventListener('pointerdown', e => {
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation();
-      if (b.act === 'share') doShare(); else reset();
+      if (b.act === 'share') doShare(); else if (b.act === 'home') { if (window.TITLE) TITLE.show(); } else reset();
       return;
     }
   }
