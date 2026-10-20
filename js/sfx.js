@@ -175,7 +175,18 @@
     hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
+  // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
+  const vcache = {};
+  async function voice(name, pan = 0) {
+    if (muted || !window.ASSETS || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
+    try {
+      if (!vcache[name]) { const buf = await (await fetch(ASSETS.voice[name])).arrayBuffer(); vcache[name] = await new Promise((ok, no) => ac.decodeAudioData(buf, ok, no)); }
+      const src = ac.createBufferSource(); src.buffer = vcache[name];
+      src.connect(bus(pan * .5, 1.1, .12)); src.start();
+    } catch (e) {}
+  }
   window.SFX = {
+    voice,
     // name：音效名；pan：-1（左）到 1（右）
     play(name, pan = 0) {
       if (muted || !S[name]) return;
