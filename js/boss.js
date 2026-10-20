@@ -68,7 +68,7 @@ const Boss = (() => {
     if (z.spear && !z.spear.land) {
       const p = z.spear; p.x += p.vx * dt;
       if (heroIn(p.x, z.y, 16, 14)) { dmgHero(2, { x: p.x }); p.land = 1; shake = .2; }
-      else if (Math.abs(p.x - z.x) > 420) p.land = 1;
+      else if (Math.abs(p.x - z.x) > 260) p.land = 1;
       if (p.land) { p.y = z.y; z.pickX = p.x; }
     }
     if (horse) { horse.t += dt; horse.x += horse.f * 160 * dt; if (horse.t > 2.5) horse = null; }
@@ -172,9 +172,9 @@ const Boss = (() => {
       return;
     }
     if (S === 'dash_b') {
-      z.x = Math.max(L + 16, Math.min(Rr - 16, z.x + z.f * 300 * dt));
+      z.x = Math.max(L + 16, Math.min(Rr - 16, z.x + z.f * 260 * dt));
       if (!z.hitDone && heroIn(z.x + z.f * 18, z.y, 28, 15)) { z.hitDone = true; dmgHero(2, { x: z.x + z.f * 18 }); shake = .22; freeze = .05; }
-      if (z.t > .35) { set(z, 'dash_end'); z.cd = 1.3; }
+      if (z.t > .22) { set(z, 'dash_end'); z.cd = 1.3; }
       return;
     }
     if (S === 'dash_end') { if (z.t > .5) set(z, 'idle'); return; }
@@ -182,7 +182,7 @@ const Boss = (() => {
     if (S === 'throw_a') {
       z.f = Math.sign(dx) || z.f;
       if (z.t > .45) {
-        z.spear = { x: z.x + z.f * 22, y: z.y, vx: z.f * 560, land: 0 };
+        z.spear = { x: z.x + z.f * 22, y: z.y, vx: z.f * 480, land: 0 };
         set(z, 'bare'); z.bareT = 1.05;
         sfx('enemySwing', z.x); shake = .12;
       }
@@ -248,7 +248,30 @@ const Boss = (() => {
     if (S === 'throw_a') return 'chop_a';
     return { idle: 'idle', roar: 'roar', stagger: 'stagger', dizzy: 'dizzy', chop_a: 'chop_a', chop_b: 'chop_b', thrust_a: 'thrust_a', thrust_b: 'thrust_b', kneel: 'kneel', down: 'down' }[S] || 'idle';
   }
+  // 出招前的预警：地面上的红条（先淡淡画出整个危险区，再被亮色填满）+ 头顶「!」
+  function telegraph(z) {
+    const S = z.st;
+    let len = 0, tmax = 1;
+    if (S === 'dash_a') { len = 78; tmax = .5; }
+    else if (S === 'throw_a') { len = 250; tmax = .45; }
+    else if (S === 'chop_a') { len = 72; tmax = .8; }
+    else if (S === 'thrust_a') { len = 92; tmax = .4; }
+    else return;
+    const p = Math.min(1, z.t / tmax), x0 = z.x, x1 = z.x + z.f * len;
+    const a = Math.min(x0, x1), b = Math.max(x0, x1);
+    ctx.fillStyle = 'rgba(180,35,28,.15)'; ctx.fillRect(a, z.y - 10, b - a, 20);
+    const xf = x0 + z.f * len * p;
+    ctx.fillStyle = 'rgba(245,80,45,' + (.22 + .28 * Math.abs(Math.sin(z.t * 18))) + ')';
+    ctx.fillRect(Math.min(x0, xf), z.y - 10, Math.abs(xf - x0), 20);
+    ctx.strokeStyle = 'rgba(255,130,90,.45)'; ctx.lineWidth = 1; ctx.strokeRect(a + .5, z.y - 10.5, b - a - 1, 20);
+    const top = z.y - 66 - Math.abs(Math.sin(z.t * 10)) * 2;
+    ctx.save(); ctx.font = 'bold 14px "PingFang SC",sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3.5; ctx.strokeStyle = '#2a0f0a'; ctx.fillStyle = '#ff5a3c';
+    ctx.strokeText('!', z.x, top); ctx.fillText('!', z.x, top);
+    ctx.restore();
+  }
   function draw(z) {
+    telegraph(z);
     shadow(z.x, z.y, z.phase === 1 ? 24 : 16);
     const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) : 1;
     // 冲锋前马身后的抖动、狂暴时泛红
@@ -259,7 +282,7 @@ const Boss = (() => {
     if (z.spear) {
       const p = z.spear, yy = p.land ? p.y + 3 : p.y - 14;
       if (p.land) { ctx.fillStyle = 'rgba(255,216,110,.16)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 3, 26, 5, 0, 0, 7); ctx.fill(); }
-      drawChar('guanhai', 'halberd', p.x, yy, (p.vx || 1) < 0);
+      drawChar('guanhai', p.land ? 'halberd_ground' : 'halberd', p.x, p.land ? p.y + 3 : yy, (p.vx || 1) < 0);
     }
     if (z.st === 'dizzy') {
       const t = performance.now() / 260, top = z.y - 58;

@@ -256,6 +256,20 @@ def main():
     im.save(os.path.join(R, 'art', 'sprites', 'guanhai', 'halberd.png'))
     atlas['guanhai']['halberd'] = [im.width, im.height, round(im.width / 2, 1), im.height - 1]
     print('halberd', im.size)
+    # 斜插在地上的长戟（投出去落地后）：旋转 58°，戟尖朝下插进土里
+    k = SPEAR_LEN / SPEAR.width
+    rot = SPEAR.rotate(-58, expand=True, resample=Image.BICUBIC)
+    w3 = max(2, round(rot.width * k)); h3 = max(2, round(rot.height * k))
+    sp3 = np.asarray(rot.resize((w3, h3), Image.LANCZOS).convert('RGBA')).astype(float)
+    al3 = sp3[..., 3:] / 255
+    rgb3 = np.clip(sp3[..., :3], 0, 255); on3 = al3[..., 0] > .45
+    im3 = finish(rgb3, on3, pal2)
+    im3.save(os.path.join(R, 'art', 'sprites', 'guanhai', 'halberd_ground.png'))
+    a3 = np.asarray(im3)[..., 3] > 0
+    ys3, xs3 = np.nonzero(a3)
+    tipx = float(xs3[ys3 >= ys3.max() - 3].mean())
+    atlas['guanhai']['halberd_ground'] = [im3.width, im3.height, round(tipx, 1), int(ys3.max())]
+    print('halberd_ground', im3.size)
     json.dump(atlas, open(atlas_p, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
     print('戟尖位置（世界单位，相对脚底；x 朝前为正，y 向下为正）：')
     for k, v in tips.items(): print(' ', k, v)
