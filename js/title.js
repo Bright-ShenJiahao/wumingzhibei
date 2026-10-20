@@ -197,8 +197,8 @@
     dom.tip = mk('div', 'tTip', '请输入名字');
     dom.panel = document.createElement('div'); dom.panel.id = 'tHelpPanel';
     dom.panel.innerHTML = `<h3>操作说明</h3>
-      <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击（连按三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器 · U 大招（耗血）· R 重来</div>
-      <div><b>手机</b>：左下摇杆移动 · 右下「攻击」连按三连击 · 「翻滚」闪避 · 「大招」耗血爆发 · 右上换武器</div>
+      <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击（连按三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器· R 重来</div>
+      <div><b>手机</b>：左下摇杆移动 · 右下「攻击」连按三连击 · 「翻滚」闪避 · 右上换武器</div>
       <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');

@@ -953,9 +953,6 @@ const Boss = (() => {
     take: 1,       // 受到伤害倍率
     takeFlat: 0,   // 受到伤害减免（点数）
     lifesteal: 0,  // 命中吸血（每次触发量）
-    ultCost: 0,    // 大招代价偏移
-    ultCd: 0,      // 大招冷却偏移（秒）
-    ultDmg: 1,     // 大招伤害倍率
     stoneExtra: 0, // 石子追加一颗的概率
     hammerAoe: 0,  // 锤子第三段范围半径（0 = 无）
     staffWave: 0,  // 棍子第三段冲击波（0 = 无）
@@ -970,28 +967,34 @@ const Boss = (() => {
     { id: 'tough', name: '硬骨', school: '防御', w: 8, desc: '受到的伤害 -1（最少 1）', apply: () => { S.takeFlat += 1; } },
     { id: 'leech', name: '汲取', school: '续航', w: 7, desc: '命中每 2 秒回 0.3 血', apply: () => { S.lifesteal += .3; } },
     { id: 'daze', name: '震击', school: '控制', w: 7, desc: '打晕时间 +50%', apply: () => { S.daze *= 1.5; } },
-    { id: 'stone', name: '石子·连击', school: '武器', w: 6, desc: '扔石子时 30% 概率追加一颗', apply: () => { S.stoneExtra = Math.min(.6, S.stoneExtra + .3); } },
+    { id: 'stone', name: '石子·连击', school: '武器', w: 6, desc: '扔石子时 30% 概率追加一颗（第二颗伤害减半）', apply: () => { S.stoneExtra = Math.min(.6, S.stoneExtra + .3); } },
     { id: 'hammer', name: '锤·震地', school: '武器', w: 6, desc: '锤子第三段变成范围砸地（半径 34）', apply: () => { S.hammerAoe = 34; } },
     { id: 'wave', name: '棍·冲击波', school: '武器', w: 6, desc: '棍子第三段附带一道直线冲击波', apply: () => { S.staffWave = 1; } },
-    { id: 'ultc', name: '卖血行家', school: '大招', w: 5, desc: '大招代价 -1', apply: () => { S.ultCost -= 1; } },
-    { id: 'ultcd', name: '余烬', school: '大招', w: 5, desc: '大招冷却 -2 秒', apply: () => { S.ultCd -= 2; } },
   ];
   const CURSES = [
     { id: 'c_blood', name: '诅咒·狂血', school: '诅咒', w: 3, curse: true, desc: '受到伤害 +35%，但造成伤害 +45%',
       apply: () => { S.take *= 1.35; S.dmg *= 1.45; } },
-    { id: 'c_allin', name: '诅咒·孤注', school: '诅咒', w: 3, curse: true, desc: '大招代价 +1，但大招伤害 +60%',
-      apply: () => { S.ultCost += 1; S.ultDmg *= 1.6; } },
   ];
   const MAX_STACK = 2;
   const stacks = {};
   let open = false, offer = [], picked = -1, anim = 0, rects = [];
 
+  // 按权重抽一张；exclude 里放已经抽到的流派，保证三张不重样
+  const pickOne = (pool, exclude) => {
+    const p = pool.filter(c => !exclude.includes(c.school));
+    const src = p.length ? p : pool;
+    if (!src.length) return null;
+    const tot = src.reduce((a, c) => a + c.w, 0); let r = Math.random() * tot, k = 0;
+    for (; k < src.length; k++) { r -= src[k].w; if (r <= 0) break; }
+    return src.splice(Math.min(k, src.length - 1), 1)[0];
+  };
   const pickN = (pool, n) => {
-    const out = [], p = pool.slice();
+    const out = [], p = pool.slice(), schools = [];
     while (out.length < n && p.length) {
-      const tot = p.reduce((a, c) => a + c.w, 0); let r = Math.random() * tot, k = 0;
-      for (; k < p.length; k++) { r -= p[k].w; if (r <= 0) break; }
-      out.push(p.splice(Math.min(k, p.length - 1), 1)[0]);
+      const c = pickOne(p, schools);
+      if (!c) break;
+      out.push(c); schools.push(c.school);
+      const i = p.indexOf(c); if (i >= 0) p.splice(i, 1);
     }
     return out;
   };
@@ -1588,11 +1591,6 @@ const Boss = (() => {
       tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
       noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
     },
-    ult(o, t, k) {           // 卖血大招：低沉上冲 + 一层破空
-      tone(o, t, { type: 'sawtooth', p0: 90 * k, p1: 240, gain: .22, a: .01, d: .5, lp: 900 });
-      tone(o, t + .06, { type: 'square', p0: 180 * k, p1: 300, gain: .1, a: .005, d: .35, lp: 1600 });
-      noise(o, t, { type: 'highpass', f0: 900, gain: .16, a: .002, d: .3 });
-    },
     crack(o, t, k) {         // 钝器命中：木头的脆响，和闷响叠在一起用
       noise(o, t, { type: 'highpass', f0: 2600, gain: .2, a: .001, d: .04 });
       noise(o, t + .004, { f0: 1200 * k, f1: 620, q: 2, gain: .16, a: .001, d: .07 });
@@ -1647,7 +1645,7 @@ const Boss = (() => {
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42, ult: .6 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
@@ -1933,8 +1931,8 @@ const Boss = (() => {
     dom.tip = mk('div', 'tTip', '请输入名字');
     dom.panel = document.createElement('div'); dom.panel.id = 'tHelpPanel';
     dom.panel.innerHTML = `<h3>操作说明</h3>
-      <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击（连按三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器 · U 大招（耗血）· R 重来</div>
-      <div><b>手机</b>：左下摇杆移动 · 右下「攻击」连按三连击 · 「翻滚」闪避 · 「大招」耗血爆发 · 右上换武器</div>
+      <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击（连按三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器· R 重来</div>
+      <div><b>手机</b>：左下摇杆移动 · 右下「攻击」连按三连击 · 「翻滚」闪避 · 右上换武器</div>
       <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
@@ -2174,208 +2172,6 @@ const Boss = (() => {
     requestAnimationFrame(tick);
   }
   boot();
-})();
-
-// 卖血大招：按当前武器给三种，右下角多一个按钮（桌面按 U）
-//   棍 · 横扫千军  —— 360° 群体控场，两段判定，打晕全场（3 血）
-//   锤 · 开山      —— 正前方一记重砸，最高单发伤害 + 沿地面前进的冲击波（4 血）
-//   石子 · 万石雨  —— 向前连扔 6 颗石子，远程覆盖（3 血）
-// 代价是血：血不够按不出来；每招各自有冷却。game.js 只挂 update / draw 两行。
-(() => {
-  const CFG = {
-    staff: { name: '横扫千军', short: '横扫', cost: 2, cd: 6, dur: .86, windup: .16 },
-    hammer: { name: '开山', short: '开山', cost: 3, cd: 6, dur: 1.02, windup: .30 },
-    stone: { name: '万石雨', short: '万石', cost: 2, cd: 6, dur: .95, windup: .18 },
-  };
-  let on = false, t = 0, kind = '', cdLeft = 0, uses = 0, fx = [], hitTicks = [], wave = null, btn = null, lbl = null;
-
-  const cfg = () => CFG[weapon] || CFG.hammer;
-  const RS = (k, d = 0) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
-  const costOf = () => Math.max(1, cfg().cost + RS('ultCost'));
-  const dmgMul = () => (window.ROGUE ? ROGUE.S.ultDmg : 1);
-
-  function ready() {
-    if (!hero || on) return false;
-    if (typeof over !== 'undefined' && (over || won)) return false;
-    if (typeof result !== 'undefined' && result) return false;
-    if (hero.st === 'down' || hero.st === 'hurt' || hero.air) return false;
-    return cdLeft <= 0 && hero.hp > costOf();
-  }
-
-  function start() {
-    if (!ready()) {
-      if (cdLeft > 0) toast('大招冷却中');
-      else if (hero && hero.hp <= costOf()) toast('血太少，拼不了');
-      return;
-    }
-    kind = weapon; on = true; t = 0; uses++;
-    hero.hp -= costOf();
-    hero.inv = .6;   // 只有开头 0.6 秒无敌，之后是霸体：照吃伤害但不被打断
-    hero.vx = 0; hero.q = 0;
-    hero.st = 'atk'; hero.atk = { c: 2, fi: 0, t: 0, lg: 0 };   // 借用第三段的动作帧
-    fx = []; wave = null;
-    hitTicks = [];
-    if (kind === 'staff') hitTicks = [cfg().windup + .06, cfg().windup + .30];
-    else if (kind === 'hammer') hitTicks = [cfg().windup + .10];
-    else hitTicks = [];
-    sfx('ult', hero.x);
-    shake = .22;
-    toast(cfg().name + '！');
-  }
-
-  function hitEnemies(radius, front, dmg, kb, daze, stun, knock) {
-    for (const z of zs) {
-      if (z.dead) continue;
-      const dx = z.x - hero.x, dy = z.y - hero.y;
-      if (Math.abs(dy) > 20) continue;
-      let ok = false;
-      if (front) { const f = dx * hero.f; ok = f > -22 && f < radius; }
-      else ok = Math.abs(dx) < radius;
-      if (!ok) continue;
-      hit(z, dmg, kb, Math.sign(dx) || hero.f, !!knock, daze, stun);
-    }
-  }
-
-  function update(dt) {
-    if (cdLeft > 0) cdLeft = Math.max(0, cdLeft - dt);
-    if (!on) return false;
-    t += dt;
-    const C = CFG[kind];
-    // 霸体：挨打不会被拽出发招（伤害照吃），空中被打除外（air 会暂停大招）
-    if (hero.st !== 'atk') { hero.st = 'atk'; hero.vx = 0; if (!hero.atk) hero.atk = { c: 2, fi: 1, t, lg: 0 }; }
-
-    // 动作帧：前摇 → 出手 → 收招
-    if (hero.atk) {
-      const f = WEAP[kind].combo[2].f;
-      hero.atk.fi = t < C.windup ? 0 : (t < C.windup + .26 ? 1 : f.length - 1);
-      hero.atk.t = t;
-    }
-
-    // 手动推进的判定
-    while (hitTicks.length && t >= hitTicks[0]) {
-      hitTicks.shift();
-      if (kind === 'staff') {
-        hitEnemies(102, false, 2.2 * dmgMul(), 165, 1, .8, false);   // 360° 两段，打晕
-        fx.push({ k: 'ring', x: hero.x, y: hero.y, t: 0, T: .45, r: 40 });
-        shake = .26; freeze = Math.max(freeze, .07);
-        sfx('hit_staff', hero.x);
-      } else if (kind === 'hammer') {
-        hitEnemies(96, true, 6 * dmgMul(), 190, 0, .55, true);        // 正前方重砸
-        wave = { x: hero.x + hero.f * 44, y: hero.y, vx: hero.f * 320, t: 0, T: .95, hit: new Set() };
-        fx.push({ k: 'crack', x: hero.x + hero.f * 50, y: hero.y, t: 0, T: .8 });
-        shake = .34; freeze = Math.max(freeze, .09);
-        sfx('finisher', hero.x);
-      }
-    }
-
-    // 石子：前摇之后连扔 6 颗
-    if (kind === 'stone' && t >= C.windup) {
-      const n = Math.floor((t - C.windup) / .07);
-      if (n >= 0 && n < 8 && hero._shotN !== n) {
-        hero._shotN = n;
-        shots.push({ x: hero.x + hero.f * 16, y: hero.y, z: 16 + (n % 4) * 7, vx: hero.f * (330 + n * 8),
-          life: 1.2, C: { dmg: 1.6 * dmgMul(), kb: 55, pierce: true }, c: 2, hitSet: [] });   // 穿透：一颗能串好几个
-        sfx('swing_stone', hero.x);
-      }
-    }
-
-    // 冲击波往前跑
-    if (wave) {
-      wave.t += dt; wave.x += wave.vx * dt;
-      for (const z of zs) if (!z.dead && !wave.hit.has(z) && Math.abs(z.x - wave.x) < 18 && Math.abs(z.y - wave.y) < 14) {
-        wave.hit.add(z); hit(z, 3, 130, Math.sign(wave.vx), true, 0, .5);
-      }
-      if (wave.t > wave.T) wave = null;
-    }
-    for (const e of fx) e.t += dt;
-    fx = fx.filter(e => e.t < e.T);
-
-    if (t >= C.dur) {
-      on = false; hero.st = 'idle'; hero.atk = null; hero._shotN = -1;
-      cdLeft = Math.max(2, C.cd + RS('ultCd'));
-      return true;
-    }
-    return true;
-  }
-
-  function draw() {
-    // 世界坐标下画（调用点在 game.js 的 draw 里，已经处在世界变换下）
-    for (const e of fx) {
-      const p = Math.min(1, e.t / e.T);
-      if (e.k === 'ring') {
-        ctx.strokeStyle = `rgba(255,210,110,${.75 * (1 - p)})`; ctx.lineWidth = 4 * (1 - p) + 1;
-        ctx.beginPath(); ctx.ellipse(e.x, e.y - 14, 40 + 90 * p, 16 + 34 * p, 0, 0, 7); ctx.stroke();
-        ctx.strokeStyle = `rgba(255,255,255,${.4 * (1 - p)})`;
-        ctx.beginPath(); ctx.ellipse(e.x, e.y - 14, 20 + 70 * p, 8 + 26 * p, 0, 0, 7); ctx.stroke();
-      } else if (e.k === 'crack') {
-        ctx.strokeStyle = `rgba(60,30,12,${.8 * (1 - p)})`; ctx.lineWidth = 3;
-        for (let i = 0; i < 4; i++) {
-          const dx = (i - 1.5) * 16;
-          ctx.beginPath(); ctx.moveTo(e.x + dx, e.y);
-          ctx.lineTo(e.x + dx * 1.5 + (i % 2 ? 8 : -8), e.y - 26 * (1 - p) - 6); ctx.stroke();
-        }
-      }
-    }
-    if (wave) {
-      const a = 1 - wave.t / wave.T;
-      for (let k = 0; k < 5; k++) {
-        const x = wave.x - Math.sign(wave.vx) * k * 9, hh = (8 - k) * (1 + Math.sin(wave.t * 28 + k) * .3);
-        ctx.fillStyle = `rgba(120,80,40,${a})`;
-        ctx.beginPath(); ctx.moveTo(x - 5, wave.y + 4); ctx.lineTo(x, wave.y + 4 - hh); ctx.lineTo(x + 5, wave.y + 4); ctx.fill();
-        ctx.fillStyle = `rgba(255,220,150,${a * .8})`; ctx.fillRect(x - 1, wave.y - hh * .6, 2, 2);
-      }
-    }
-  }
-
-  // ---------- 按钮 ----------
-  function buildBtn() {
-    const css = document.createElement('style');
-    css.textContent = `
-      #bU { position: fixed; z-index: 3; right: calc(96px + env(safe-area-inset-right));
-        bottom: calc(74px + env(safe-area-inset-bottom)); width: 54px; height: 54px; border-radius: 50%;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        font: 700 11px/1.15 "PingFang SC",sans-serif; color: #fff; text-shadow: 0 1px 3px #000;
-        background: rgba(200,60,150,.3); border: 1.5px solid rgba(255,170,220,.75); padding: 0;
-        -webkit-tap-highlight-color: transparent; }
-      #bU i { font-style: normal; font-size: 9px; opacity: .85; }
-      #bU:active { background: rgba(200,60,150,.55); }
-      #bU.off { background: rgba(90,90,100,.28); border-color: rgba(200,200,210,.35); color: #bbb; }
-      body.wzb-title #bU, body.wzb-room #bU, body.wzb-wake #bU { display: none !important; }
-    `;
-    document.head.appendChild(css);
-    btn = document.createElement('button');
-    btn.id = 'bU';
-    document.body.appendChild(btn);
-    const cap = document.createElement('b'); cap.textContent = '大招';
-    lbl = document.createElement('i'); lbl.textContent = '3血';
-    btn.appendChild(cap); btn.appendChild(lbl);
-    btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); start(); });
-    addEventListener('keydown', e => {
-      if (e.target && e.target.tagName === 'INPUT') return;
-      if (window.TITLE && TITLE.blocks()) return;
-      if (window.ROOM && ROOM.active()) return;
-      if (e.code === 'KeyU') { start(); e.preventDefault(); }
-    });
-    // 按钮状态：跟着武器、血量、冷却变
-    setInterval(() => {
-      if (!btn) return;
-      const C = cfg(), ok = ready();
-      btn.classList.toggle('off', !ok);
-      lbl.textContent = cdLeft > 0 ? '冷' + Math.ceil(cdLeft) : costOf() + '血';
-      btn.firstChild.textContent = C.short;
-      btn.title = C.name + '（' + costOf() + ' 血）';
-    }, 120);
-  }
-
-  function toast(msg) { if (typeof say === 'function') say(msg, 1.2); }
-
-  window.ULT = {
-    start, update, draw,
-    active: () => on,
-    reset: () => { cdLeft = 0; on = false; t = 0; uses = 0; },   // 调试/测试用：清冷却
-    info: () => ({ on, kind, t: +t.toFixed(2), cd: +cdLeft.toFixed(1), uses, ready: ready(), cost: cfg().cost }),
-  };
-  if (document.readyState === 'loading') addEventListener('DOMContentLoaded', buildBtn); else buildBtn();
 })();
 
 // 无名之辈 · 序章「黄巾劫村」—— 宽地面清版
@@ -2623,7 +2419,6 @@ function heroUpdate(dt) {
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
-  if (window.ULT && ULT.update(dt)) { pressAtk = pressRoll = false; return; }   // 卖血大招演出中：接管主角（放在受击/落地之前，才有霸体）
   if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); }
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
   if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
@@ -2795,8 +2590,10 @@ function strike() {
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
     shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
-    if (Math.random() < R_('stoneExtra', 0))   // 锦囊：石子·连击
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C, c, hitSet: [] });
+    if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：石子·连击（第二颗只有一半伤害）
+      const C2 = Object.assign({}, C, { dmg: C.dmg * .5, kb: C.kb * .6 });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [] });
+    }
     return;
   }
   let landed = false, hitEnemy = false;
@@ -3053,7 +2850,6 @@ function draw() {
   drawPWaves();
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
-  if (window.ULT) ULT.draw();   // 大招特效
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
   if (window.ROGUE) ROGUE.draw();   // 锦囊面板
   // HUD

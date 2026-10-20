@@ -12,9 +12,6 @@
     take: 1,       // 受到伤害倍率
     takeFlat: 0,   // 受到伤害减免（点数）
     lifesteal: 0,  // 命中吸血（每次触发量）
-    ultCost: 0,    // 大招代价偏移
-    ultCd: 0,      // 大招冷却偏移（秒）
-    ultDmg: 1,     // 大招伤害倍率
     stoneExtra: 0, // 石子追加一颗的概率
     hammerAoe: 0,  // 锤子第三段范围半径（0 = 无）
     staffWave: 0,  // 棍子第三段冲击波（0 = 无）
@@ -29,28 +26,34 @@
     { id: 'tough', name: '硬骨', school: '防御', w: 8, desc: '受到的伤害 -1（最少 1）', apply: () => { S.takeFlat += 1; } },
     { id: 'leech', name: '汲取', school: '续航', w: 7, desc: '命中每 2 秒回 0.3 血', apply: () => { S.lifesteal += .3; } },
     { id: 'daze', name: '震击', school: '控制', w: 7, desc: '打晕时间 +50%', apply: () => { S.daze *= 1.5; } },
-    { id: 'stone', name: '石子·连击', school: '武器', w: 6, desc: '扔石子时 30% 概率追加一颗', apply: () => { S.stoneExtra = Math.min(.6, S.stoneExtra + .3); } },
+    { id: 'stone', name: '石子·连击', school: '武器', w: 6, desc: '扔石子时 30% 概率追加一颗（第二颗伤害减半）', apply: () => { S.stoneExtra = Math.min(.6, S.stoneExtra + .3); } },
     { id: 'hammer', name: '锤·震地', school: '武器', w: 6, desc: '锤子第三段变成范围砸地（半径 34）', apply: () => { S.hammerAoe = 34; } },
     { id: 'wave', name: '棍·冲击波', school: '武器', w: 6, desc: '棍子第三段附带一道直线冲击波', apply: () => { S.staffWave = 1; } },
-    { id: 'ultc', name: '卖血行家', school: '大招', w: 5, desc: '大招代价 -1', apply: () => { S.ultCost -= 1; } },
-    { id: 'ultcd', name: '余烬', school: '大招', w: 5, desc: '大招冷却 -2 秒', apply: () => { S.ultCd -= 2; } },
   ];
   const CURSES = [
     { id: 'c_blood', name: '诅咒·狂血', school: '诅咒', w: 3, curse: true, desc: '受到伤害 +35%，但造成伤害 +45%',
       apply: () => { S.take *= 1.35; S.dmg *= 1.45; } },
-    { id: 'c_allin', name: '诅咒·孤注', school: '诅咒', w: 3, curse: true, desc: '大招代价 +1，但大招伤害 +60%',
-      apply: () => { S.ultCost += 1; S.ultDmg *= 1.6; } },
   ];
   const MAX_STACK = 2;
   const stacks = {};
   let open = false, offer = [], picked = -1, anim = 0, rects = [];
 
+  // 按权重抽一张；exclude 里放已经抽到的流派，保证三张不重样
+  const pickOne = (pool, exclude) => {
+    const p = pool.filter(c => !exclude.includes(c.school));
+    const src = p.length ? p : pool;
+    if (!src.length) return null;
+    const tot = src.reduce((a, c) => a + c.w, 0); let r = Math.random() * tot, k = 0;
+    for (; k < src.length; k++) { r -= src[k].w; if (r <= 0) break; }
+    return src.splice(Math.min(k, src.length - 1), 1)[0];
+  };
   const pickN = (pool, n) => {
-    const out = [], p = pool.slice();
+    const out = [], p = pool.slice(), schools = [];
     while (out.length < n && p.length) {
-      const tot = p.reduce((a, c) => a + c.w, 0); let r = Math.random() * tot, k = 0;
-      for (; k < p.length; k++) { r -= p[k].w; if (r <= 0) break; }
-      out.push(p.splice(Math.min(k, p.length - 1), 1)[0]);
+      const c = pickOne(p, schools);
+      if (!c) break;
+      out.push(c); schools.push(c.school);
+      const i = p.indexOf(c); if (i >= 0) p.splice(i, 1);
     }
     return out;
   };

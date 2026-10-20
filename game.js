@@ -243,7 +243,6 @@ function heroUpdate(dt) {
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
-  if (window.ULT && ULT.update(dt)) { pressAtk = pressRoll = false; return; }   // 卖血大招演出中：接管主角（放在受击/落地之前，才有霸体）
   if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); }
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
   if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
@@ -415,8 +414,10 @@ function strike() {
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
     shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
-    if (Math.random() < R_('stoneExtra', 0))   // 锦囊：石子·连击
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C, c, hitSet: [] });
+    if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：石子·连击（第二颗只有一半伤害）
+      const C2 = Object.assign({}, C, { dmg: C.dmg * .5, kb: C.kb * .6 });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [] });
+    }
     return;
   }
   let landed = false, hitEnemy = false;
@@ -673,7 +674,6 @@ function draw() {
   drawPWaves();
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
-  if (window.ULT) ULT.draw();   // 大招特效
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
   if (window.ROGUE) ROGUE.draw();   // 锦囊面板
   // HUD

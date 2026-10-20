@@ -45,8 +45,10 @@
 ## 肉鸽系统（js/rogue.js）
 - 每清完一个区域弹「锦囊」三选一（30% 额外多一张诅咒卡），本局有效，**再来一局会清空**。
 - 卡的数值统一放在 `ROGUE.S`，game.js 用 `R_('键')` 读取（没抽卡时是默认值 1）。
-- 已接的键：dmg / move / fin / reach / aspd / daze / take / takeFlat / lifesteal / ultCost / ultCd / ultDmg /
+- 已接的键：dmg / move / fin / reach / aspd / daze / take / takeFlat / lifesteal /
   stoneExtra / hammerAoe / staffWave。加新卡就加进 CARDS 并接一个新的键。
+- 抽卡时三张保证来自**不同流派**；武器卡的出现与当前手上拿什么武器**无关**（纯随机）。
+- 每局抽 4 次（清完第 1~4 区各一次），「再来一局」会清空。
 - 天候：只在 Boss 战、进场 50% 概率（雨=移速-10%/翻滚+25%，雪=移速-12%/出招-10%，风=石子-15%），
   逻辑在 js/boss.js（`Boss.wx()` `wxMove()` `wxAspd()` `wxProj()` `wxDraw()`）。
 - 波次：`WAVES` 里 `core` 是固定教学骨架（新兵种首次登场永远在这），`budget`+`pool` 是随机填充，
