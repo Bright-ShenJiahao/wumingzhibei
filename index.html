@@ -943,22 +943,24 @@ const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直�
 
 // 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
-// 平衡：锤子距离最短、伤害最高；木棍距离长、能打晕、第三下横扫多人；石子安全但伤害最低，击退一点点。
+// 平衡：锤子距离最短、伤害最高，出手带前冲、命中必打断敌人蓄力；木棍距离长、能打晕、第三下横扫多人；
+// 石子射得远但出手慢、伤害最低，只能用来先削血（射程压到比弓箭手近，逼你往前压）。
 const WEAP = {
   staff: { name: '棍', reach: 36, dy: 12, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.16, .24], dmg: 1, kb: 35, daze: .15 },                    // 下劈
     { f: ['staff_2a', 'staff_2b'], d: [.12, .24], dmg: 1, kb: 30, daze: .3 },                     // 上挑
     { f: ['staff_3a', 'staff_3b'], d: [.18, .3], dmg: 1.5, kb: 110, daze: .4, multi: true, knock: true },   // 横扫
   ] },
-  hammer: { name: '锤子', reach: 25, dy: 10, snd: 'staff', combo: [   // snd：借用木棍那套「闷响 + 木头」的音效
-    { f: ['hammer_1a', 'hammer_1b'], d: [.08, .18], dmg: 1.3, kb: 30 },                           // 举锤下砸
-    { f: ['hammer_2a', 'hammer_2b'], d: [.07, .18], dmg: 1.3, kb: 30 },                           // 反手横抡
-    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.1, .08, .26], dmg: 2, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
+  // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
+  hammer: { name: '锤子', reach: 25, dy: 10, snd: 'staff', lunge: 110, lungeT: .12, interrupt: true, combo: [
+    { f: ['hammer_1a', 'hammer_1b'], d: [.08, .18], dmg: 1.5, kb: 30 },                           // 举锤下砸
+    { f: ['hammer_2a', 'hammer_2b'], d: [.07, .18], dmg: 1.5, kb: 30 },                           // 反手横抡
+    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.1, .08, .26], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
   stone: { name: '石子', proj: true, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.08, .18], dmg: .6, kb: 40, spd: 240 },                    // 左手扔
-    { f: ['stone_2a', 'stone_2b'], d: [.08, .18], dmg: .6, kb: 40, spd: 240 },                    // 右手扔
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.16, .07, .26], dmg: 1.2, kb: 70, spd: 340, pierce: true },   // 右手全力投（穿透）
+    { f: ['stone_1a', 'stone_1b'], d: [.1, .26], dmg: .6, kb: 40, spd: 215, life: .55 },          // 左手扔：射程约 118，比弓箭手（190）近
+    { f: ['stone_2a', 'stone_2b'], d: [.1, .26], dmg: .6, kb: 40, spd: 215, life: .55 },          // 右手扔
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.22, .08, .3], dmg: 1.2, kb: 70, spd: 300, life: .7, pierce: true },   // 全力投（穿透）：射程约 210，但前摇 .22
   ] },
 };
 // 黄巾兵
@@ -1051,11 +1053,11 @@ function waves() {
 }
 
 // ---------- 主角 ----------
-function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35) {
+function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (z.T.boss) return Boss.hit(z, dmg, dir);
   if (z.dead || z.air) return;
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
-  z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
+  z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = z.T.heavy ? 1 : 1.5; z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   freeze = .05; shake = .1;
@@ -1091,13 +1093,15 @@ function heroUpdate(dt) {
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
-    const a = h.atk, C = WEAP[weapon].combo[a.c]; a.t += dt;
+    const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
     if (a.t >= C.d[a.fi]) {
       a.t = 0; a.fi++;
       if (a.fi === C.f.length - 1) strike();
       if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
     }
     if (ix && a.fi === 0) h.f = Math.sign(ix);
+    // 锤子这类重型武器出手时朝面向方向前冲一小段（整段动作只冲一次），补足它短得可怜的攻击距离
+    if (W2.lunge && a.lg < W2.lungeT) moveEnt(h, h.f * W2.lunge * dt, 0);
     moveEnt(h, ix * 15 * dt, 0);
     return;
   }
@@ -1110,13 +1114,13 @@ function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
   const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
-  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % 3 : 0, fi: 0, t: 0 };
+  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % 3 : 0, fi: 0, t: 0, lg: 0 };
 }
 function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
-    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd, life: C.pierce ? 1.1 : .8, C, c, hitSet: [] });
+    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd, life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
     return;
   }
   let landed = false;
@@ -1126,7 +1130,7 @@ function strike() {
     const bw = z.T.w || 0, inRange = C.both ? Math.abs(dx) < W.reach + bw : dx > -4 - bw && dx < W.reach + bw;
     if (inRange && Math.abs(z.y - h.y) < W.dy) {
       landed = true;
-      hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0);
+      hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
       if (!C.multi) break;
     }
   }
