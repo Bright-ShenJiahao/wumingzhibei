@@ -7,7 +7,8 @@ const Boss = (() => {
   const HP = 80;
   let fx = [];          // 冲击波、预警等
   let horse = null;     // 摔下马后逃走的马
-  const T = { name: '管亥', hp: HP, heavy: true, boss: true, w: 22 };
+  const T = { name: '管亥', hp: HP, heavy: true, boss: true, w: 18 };
+  const CHARGE = .5;   // 冲锋距离 = 屏幕宽度 × 0.5
 
   function start(rightEdge) {
     const z = { type: 'guanhai_horse', T, x: rightEdge + 60, y: (M.top + M.bot) / 2, f: -1, hp: HP, st: 'intro', t: 0, phase: 1,
@@ -89,9 +90,12 @@ const Boss = (() => {
       return;
     }
     // 骑马冲锋
-    if (S === 'charge_go') {   // 退到屏幕一侧
-      const tx = z.side < 0 ? L + 50 : Rr - 50;
-      if (moveTo(z, tx, hero.y, 170, dt) || z.t > 2.2) { set(z, 'charge_prep'); z.f = -z.side; fx.push({ k: 'lane', y: z.y, t: 0, T: .85 }); sfx('bladeAlert', z.x); }
+    if (S === 'charge_go') {   // 退开一段距离，让主角落在冲锋路线中间
+      const dist = viewW() * CHARGE, tx = Math.max(L + 40, Math.min(Rr - 40, hero.x + z.side * dist * .55));
+      if (moveTo(z, tx, hero.y, 170, dt) || z.t > 2.2) {
+        set(z, 'charge_prep'); z.f = Math.sign(hero.x - z.x) || -z.side; z.cx0 = z.x; z.cdist = dist;
+        fx.push({ k: 'lane', y: z.y, x0: z.x, x1: z.x + z.f * dist, t: 0, T: .85 }); sfx('bladeAlert', z.x);
+      }
       return;
     }
     if (S === 'charge_prep') { if (z.t > .85) { set(z, 'charge'); sfx('enemySwing', z.x); } return; }
@@ -99,7 +103,7 @@ const Boss = (() => {
       z.x += z.f * 300 * dt;
       if (z.t % .18 < dt) sfx('land', z.x);
       if (heroIn(z.x + z.f * 20, z.y, 34, 11)) dmgHero(2, { x: z.x - z.f * 30 });
-      if ((z.f > 0 && z.x > Rr - 45) || (z.f < 0 && z.x < L + 45)) { set(z, 'tired'); }
+      if (Math.abs(z.x - z.cx0) >= z.cdist || (z.f > 0 && z.x > Rr - 30) || (z.f < 0 && z.x < L + 30)) { set(z, 'tired'); }
       return;
     }
     if (S === 'tired') { if (z.t > 1.5) { set(z, 'idle'); z.cd = 1; } return; }
@@ -182,7 +186,7 @@ const Boss = (() => {
     return { idle: 'idle', roar: 'roar', stagger: 'stagger', dizzy: 'dizzy', chop_a: 'chop_a', chop_b: 'chop_b', thrust_a: 'thrust_a', thrust_b: 'thrust_b', kneel: 'kneel', down: 'down' }[S] || 'idle';
   }
   function draw(z) {
-    shadow(z.x, z.y, z.phase === 1 ? 30 : 16);
+    shadow(z.x, z.y, z.phase === 1 ? 24 : 16);
     const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) : 1;
     // 冲锋前马身后的抖动、狂暴时泛红
     const jitter = z.st === 'charge_prep' ? Math.sin(z.t * 60) * .8 : 0;
@@ -203,8 +207,8 @@ const Boss = (() => {
   function drawGround() {
     const [L, Rr] = view();
     for (const e of fx) {
-      if (e.k === 'lane') { const p = e.t / e.T; ctx.fillStyle = `rgba(230,40,30,${.12 + .25 * Math.abs(Math.sin(e.t * 14))})`; ctx.fillRect(L, e.y - 9, Rr - L, 18);
-        ctx.fillStyle = `rgba(255,80,60,${.5 * p})`; ctx.fillRect(L, e.y - 1, Rr - L, 2); }
+      if (e.k === 'lane') { const p = e.t / e.T; ctx.fillStyle = `rgba(230,40,30,${.12 + .25 * Math.abs(Math.sin(e.t * 14))})`; const a = Math.min(e.x0, e.x1), b = Math.max(e.x0, e.x1); ctx.fillRect(a, e.y - 9, b - a, 18);
+        ctx.fillStyle = `rgba(255,80,60,${.5 * p})`; ctx.fillRect(a, e.y - 1, b - a, 2); }
       if (e.k === 'ring') { const p = Math.min(1, e.t / e.T); ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.ellipse(e.x, e.y, 40 * (1.3 - .3 * p), 14 * (1.3 - .3 * p), 0, 0, 7); ctx.stroke(); }
       if (e.k === 'quake') { const p = e.t / e.T; ctx.strokeStyle = `rgba(120,80,40,${.6 * (1 - p)})`; ctx.lineWidth = 3;
