@@ -22,7 +22,11 @@ pm = json.load(open(P('art', 'props', 'meta.json')))
 assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items()}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
+# js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用
+import glob
+mods = sorted(glob.glob(P('js', '*.js')))
+game = '\n'.join(open(f, encoding='utf-8').read() for f in mods) + '\n' + open(P('game.js'), encoding='utf-8').read()
 h = open(P('index.src.html'), encoding='utf-8').read()
-h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', open(P('game.js'), encoding='utf-8').read())
+h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', game)
 open(P('index.html'), 'w', encoding='utf-8').write(h)
 print('index.html', len(h) // 1024, 'KB')

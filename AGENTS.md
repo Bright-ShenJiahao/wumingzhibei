@@ -5,6 +5,7 @@
 
 ## 文件
 - `game.js`：游戏全部逻辑（原生 JS + Canvas，无框架、无构建工具）。
+- `js/*.js`：独立模块（音效、界面等），打包时按文件名顺序放在 `game.js` 前面。新功能尽量写成单独模块，`game.js` 里只加调用，减少多个 AI 同时改同一个文件的冲突。调用模块时先判断是否存在，例如 `window.SFX && SFX.play('hit')`。
 - `index.src.html`：网页模板（界面、按钮、样式）。
 - `index.html`：**打包生成的文件，不要手改**。改完 `game.js` 或 `index.src.html` 后运行 `python3 tools/build.py` 重新生成，再一起提交。
 - `art/gemini/`：Gemini 原图，保持不动。
