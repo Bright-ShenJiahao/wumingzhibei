@@ -10,15 +10,18 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   CH[name] = {};
   for (const [f, [src, w, h, ax, ay]] of Object.entries(frames)) {
     const fr = { img: load(name + '_' + f, src), w, h, ax, ay, white: null };
+    fr.dark = null;   // 深色剪影（精英兵用）
     fr.img.onload = () => {   // 预先做一张白色剪影，用于受击闪白
       const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
       g.drawImage(fr.img, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); fr.white = c;
+      const d = document.createElement('canvas'); d.width = w; d.height = h; const dg = d.getContext('2d');
+      dg.drawImage(fr.img, 0, 0); dg.globalCompositeOperation = 'source-atop'; dg.fillStyle = 'rgba(18,10,6,.55)'; dg.fillRect(0, 0, w, h); fr.dark = d;
     };
     CH[name][f] = fr;
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
+const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag', 'jar', 'jar'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 // 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
@@ -58,31 +61,43 @@ const TYPES = {
   blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true },
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [90, 150], cd: 2.4 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2 },
+  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'blade' },   // 精英：血厚、出手慢、打不断
+  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'grunt' },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
-  { say: '黄巾喽啰来了！J 攻击，连按三连击', units: ['grunt', 'grunt', 'grunt'] },
-  { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！', units: ['grunt', 'grunt', 'blade', 'blade'] },
-  { say: '后排的投石手会扔石头，冲过去收拾他！', units: ['grunt', 'slinger', 'slinger', 'blade', 'grunt'] },
-  { say: '弓箭手射火箭！看到地上的红圈快躲开', units: ['grunt', 'blade', 'archer', 'archer', 'slinger', 'grunt'] },
+  { say: '黄巾喽啰来了！J 攻击，连按三连击', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！',
+    units: ['grunt', 'grunt', 'blade', 'slinger', 'blade'],
+    extra: ['grunt', 'blade', 'grunt'], extraAt: 2, extraSay: '后面又冲上来一队！' },
+  { say: '刀手顶在前面，投石手躲在后面 —— 先冲过去打后排！',
+    units: ['blade', 'blade', 'slinger', 'banner', 'slinger', 'grunt'],
+    extra: ['blade', 'grunt'], extraAt: 2, extraSay: '又来了两个！' },
+  { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
+    units: ['grunt', 'blade', 'archer', 'archer', 'slinger', 'grunt'],
+    extra: ['blade', 'blade', 'grunt'], extraAt: 2 },
+  { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
+    units: ['elite', 'grunt', 'grunt', 'blade', 'archer'],
+    extra: ['slinger', 'grunt'], extraAt: 1, extraSay: '还有埋伏！' },
   { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
-const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 2040, 2620], token: 2 };
+const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 2000, 2500, 3000], token: 2 };
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false;   // 掉落物 / 飘字 / 复活是否已用
+let extraDone = false, bannerZ = null;                // 波中波是否补过 / 场上活着的旗手
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; reviveUsed = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : (k === 'jar' ? 1 : 0), hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
   say('村子被黄巾贼烧了！往右走 →');
 }
@@ -129,7 +144,8 @@ function moveEnt(e, dx, dy) {
 function viewW() { return cv.width / (cv.height / M.viewH); }
 function spawn(type, x, y) {
   const T = TYPES[type];
-  zs.push({ type, T, x, y, f: -1, hp: T.hp, st: 'move', t: rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length });
+  zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: 'move', t: rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
+    sc: T.elite ? 1.18 : 1, dark: !!T.elite });
 }
 function waves() {
   const vw = viewW();
@@ -142,8 +158,21 @@ function waves() {
       else won = true;   // 通关文案交给结算板，这里不再刷长句
     }
   }
+  // 波中波：本区域还剩少量敌人时，从右侧再补一批（每区一次）
+  if (lockR < Infinity && !extraDone) {
+    const W = WAVES[gateI];
+    if (W && W.extra) {
+      const alive = zs.filter(z => !z.dead).length;
+      if (alive <= (W.extraAt || 2)) {
+        extraDone = true;
+        W.extra.forEach((u2, i) => spawn(u2, lockR - rnd(8, 30) - i * 10, rnd(M.top + 6, M.bot - 6)));
+        if (W.extraSay) say(W.extraSay, 2.4);
+        else say('又冲上来一队！', 2.2);
+      }
+    }
+  }
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
-    const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0;
+    const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0; extraDone = false;
     if (W.boss) { Boss.start(lockR); return; }
     W.units.forEach((u, i) => {
       const left = i === W.units.length - 1 && W.units.length > 3 && !TYPES[u].ranged;
@@ -172,7 +201,10 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
     propFx.push({ x: z.x - dir * 6, y: z.y - rnd(12, 26), vx: rnd(-70, 70) - dir * 45, vy: rnd(-110, -20),
       w: rnd(1, 2.2), h: rnd(1, 2.2), life, max: life, c: Math.random() < .5 ? '#fffbe6' : '#ffdd7a' });
   }
-  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
+  if (z.hp <= 0) {
+    z.dead = 1; kills++; knock = true;
+    if (z.T.elite) { spawnDrop(z.x - 6, z.y); spawnDrop(z.x + 10, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉
+  }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
@@ -291,11 +323,11 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 function hitProp(p, dir) {
-  if (p.broken || !(p.g === 'hay' || p.g === 'cart')) return;
+  if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) return;   // 油罐也能打
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
   const hay = p.g === 'hay', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
-  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : p.g === 'jar' ? ['#a0562a', '#c47a3e', '#7d3f1c'] : ['#4b2c12', '#7a4d22', '#a3703c'];
   const n = broken ? 22 : 7;
   for (let i = 0; i < n; i++) {
     const life = broken ? rnd(.42, .65) : rnd(.32, .55);
@@ -307,7 +339,13 @@ function hitProp(p, dir) {
   }
   if (broken) {
     p.broken = true; p.solid = false;
-    if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
+    if (p.g === 'jar') {   // 油罐：炸开一片火，敌我通吃（玩家要引怪进去）
+      fires.push({ x: p.x, y: p.y, t: 4.5, r: 30, dmgZ: 1, tick: 0 });
+      sfx('fireLand', p.x); sfx('land', p.x); shake = .18;
+      for (let i = 0; i < 12; i++) { const life = rnd(.3, .6);
+        propFx.push({ x: p.x + rnd(-10, 10), y: p.y - rnd(4, 16), vx: rnd(-80, 80), vy: rnd(-140, -30),
+          w: rnd(2, 4), h: rnd(2, 4), life, max: life, c: ['#ff9a2e', '#ffd05a', '#a0522d'][i % 3] }); }
+    } else if (Math.random() < .5) spawnDrop(p.x, p.y);   // 草垛/推车：一半概率掉吃的
   }
 }
 function updatePropFx(dt) {
@@ -352,7 +390,7 @@ function strike() {
   }
   // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
-    if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+    if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) continue;
     const dx = (p.x - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < W.reach + p.w / 2 : dx > -4 - p.w / 2 && dx < W.reach + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
@@ -387,8 +425,10 @@ function zUpdate(z, dt) {
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
   const dx = hero.x - z.x, dy = hero.y - z.y;
+  // 附近有旗手：小兵移速 +20%、出手快 20%（旗手优先杀，这是本作第一个"先打谁"的决策）
+  const buff = (bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0;
   if (z.st === 'wind') {
-    if (z.t > T.wind) {
+    if (z.t > T.wind * (buff ? .8 : 1)) {
       set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
       if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: 1.4 });
       else if (T.ranged === 'fire') { const tx = hero.x, ty = hero.y; eshots.push({ k: 'fire', x0: z.x + z.f * 16, y0: z.y, tx, ty, t: 0, T: .9 }); }
@@ -427,7 +467,7 @@ function updateShots(dt) {
     s.x += s.vx * dt; s.life -= dt;
     // 石子碰到草垛/推车：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
-      if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+      if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) continue;
       if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
@@ -452,6 +492,16 @@ function updateShots(dt) {
   for (const f of fires) {
     f.t -= dt;
     if (Math.abs(hero.x - f.x) < f.r && Math.abs(hero.y - f.y) < f.r * .45) dmgHero(1, null);
+    if (f.dmgZ) {   // 油罐的火：烧站在里面的敌人
+      f.tick = (f.tick || 0) - dt;
+      if (f.tick <= 0) {
+        f.tick = .6;
+        for (const z of zs) if (!z.dead && Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .5) {
+          hit(z, 1.5, 20, Math.sign(z.x - f.x) || 1, false, 0, .3);
+          if (window.SFX) SFX.play('hit_stone', 0);
+        }
+      }
+    }
   }
   fires = fires.filter(f => f.t > 0);
 }
@@ -466,6 +516,7 @@ function update(dt) {
   // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
   const done = result && gameT >= result.born;
   if (!done) {
+    bannerZ = zs.find(z => !z.dead && z.T.banner) || null;   // 场上活着的旗手（给周围小兵加速）
     heroUpdate(dt); waves();
     zs.forEach(z => zUpdate(z, dt));
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -503,13 +554,14 @@ function tileLayer(img, s, par, y) {
 }
 function shadow(x, y, r) { ctx.fillStyle = 'rgba(40,30,30,.3)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * .3, 0, 0, 7); ctx.fill(); }
 // 像素角色在屏幕坐标里按整数倍放大绘制，保证像素清晰
-function drawChar(name, f, x, y, flip, alpha = 1, white = false) {
+function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
   const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
-  const sp = Math.max(.5, SC * PX);
+  const sp = Math.max(.5, SC * PX) * sc;
   const sx = Math.round(x * SC + OXs), sy = Math.round(y * SC);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
   ctx.globalAlpha = alpha;
-  ctx.drawImage(white && fr.white ? fr.white : fr.img, -fr.ax * sp, -fr.ay * sp, fr.w * sp, fr.h * sp);
+  const im = white && fr.white ? fr.white : (dark && fr.dark ? fr.dark : fr.img);
+  ctx.drawImage(im, -fr.ax * sp, -fr.ay * sp, fr.w * sp, fr.h * sp);
   ctx.restore();
 }
 function heroFrame(h) {
@@ -747,9 +799,16 @@ function drawHero() {
 }
 function drawZ(z) {
   if (z.T.boss) return Boss.draw(z);
+  // 旗手：背后竖一面「黄天当立」的大旗
+  if (z.T.banner && IMG['p_banner'] && IMG['p_banner'].complete) {
+    const bw = 40, bh = 100;
+    ctx.save(); ctx.globalAlpha = z.dead ? .35 : 1;
+    ctx.drawImage(IMG['p_banner'], Math.round(z.x - bw / 2 + (z.f > 0 ? 8 : -8)), Math.round(z.y - bh + 6), bw, bh);
+    ctx.restore();
+  }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
-  drawChar(z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
+  drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
   if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 34;
   if (z.daze > 0) {   // 头顶转圈的小黄星
@@ -760,7 +819,8 @@ function drawZ(z) {
     }
   }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
-  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - 9, top, 18, 3); ctx.fillStyle = z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - 8, top + 1, 16 * z.hp / z.T.hp, 1);
+  const barW = z.T.elite ? 26 : 18;
+  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, top, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, top + 1, (barW - 2) * z.hp / z.T.hp, 1);
 }
 
 // 画布按实际显示尺寸 × 设备像素比绘制（手机上更清晰），窗口/横竖屏变化时重新适配

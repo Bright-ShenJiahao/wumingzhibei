@@ -5,9 +5,9 @@
 // 代价是血：血不够按不出来；每招各自有冷却。game.js 只挂 update / draw 两行。
 (() => {
   const CFG = {
-    staff: { name: '横扫千军', short: '横扫', cost: 3, cd: 10, dur: .86, windup: .16 },
-    hammer: { name: '开山', short: '开山', cost: 4, cd: 10, dur: 1.02, windup: .30 },
-    stone: { name: '万石雨', short: '万石', cost: 3, cd: 10, dur: .95, windup: .18 },
+    staff: { name: '横扫千军', short: '横扫', cost: 2, cd: 6, dur: .86, windup: .16 },
+    hammer: { name: '开山', short: '开山', cost: 3, cd: 6, dur: 1.02, windup: .30 },
+    stone: { name: '万石雨', short: '万石', cost: 2, cd: 6, dur: .95, windup: .18 },
   };
   let on = false, t = 0, kind = '', cdLeft = 0, uses = 0, fx = [], hitTicks = [], wave = null, btn = null, lbl = null;
 

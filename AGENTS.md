@@ -37,6 +37,11 @@
   - `bare_idle / bare_walk1 / bare_walk2`（空手，掷戟之后用）；
   - `halberd`（单独的长戟，飞出去时用，207×33）和 `halberd_ground`（旋转 58° 斜插在地上的版本）。
 
+## 敌人类型（game.js 的 TYPES）
+- 喽啰 grunt / 刀手 blade / 投石手 slinger / 弓箭手 archer；
+- **老卒 elite**：12 血、出手慢、打不断；没单独美术，借 `blade` 精灵并放大 1.18 倍 + 深色剪影（`spawn` 里 `T.sprite`）。
+- **旗手 banner**：4 血，给 170 范围内的其他小兵 +20% 移速和出手速度；借 `grunt` 精灵，背后画 `p_banner` 大旗。
+
 ## 开发者模式（调试用，普通玩家看不到）
 - 新增 `js/debug.js`：网址带 `?debug` 才启用。
   - `?debug` 显示调试面板；`?debug=boss` 直接进管亥一阶段；`?debug=boss2` 直接进二阶段。
