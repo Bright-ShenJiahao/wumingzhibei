@@ -42,6 +42,16 @@
 - **老卒 elite**：12 血、出手慢、打不断；没单独美术，借 `blade` 精灵并放大 1.18 倍 + 深色剪影（`spawn` 里 `T.sprite`）。
 - **旗手 banner**：4 血，给 170 范围内的其他小兵 +20% 移速和出手速度；借 `grunt` 精灵，背后画 `p_banner` 大旗。
 
+## 肉鸽系统（js/rogue.js）
+- 每清完一个区域弹「锦囊」三选一（30% 额外多一张诅咒卡），本局有效，**再来一局会清空**。
+- 卡的数值统一放在 `ROGUE.S`，game.js 用 `R_('键')` 读取（没抽卡时是默认值 1）。
+- 已接的键：dmg / move / fin / reach / aspd / daze / take / takeFlat / lifesteal / ultCost / ultCd / ultDmg /
+  stoneExtra / hammerAoe / staffWave。加新卡就加进 CARDS 并接一个新的键。
+- 天候：只在 Boss 战、进场 50% 概率（雨=移速-10%/翻滚+25%，雪=移速-12%/出招-10%，风=石子-15%），
+  逻辑在 js/boss.js（`Boss.wx()` `wxMove()` `wxAspd()` `wxProj()` `wxDraw()`）。
+- 波次：`WAVES` 里 `core` 是固定教学骨架（新兵种首次登场永远在这），`budget`+`pool` 是随机填充，
+  威胁值见 `THREAT`（喽啰1/刀手2/投石手2/弓手2/旗手2/老卒4）。
+
 ## 开发者模式（调试用，普通玩家看不到）
 - 新增 `js/debug.js`：网址带 `?debug` 才启用。
   - `?debug` 显示调试面板；`?debug=boss` 直接进管亥一阶段；`?debug=boss2` 直接进二阶段。

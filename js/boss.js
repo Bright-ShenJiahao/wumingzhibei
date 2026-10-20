@@ -10,7 +10,16 @@ const Boss = (() => {
   const T = { name: '管亥', hp: HP, heavy: true, boss: true, w: 18 };
   const CHARGE = .5;   // 冲锋距离 = 屏幕宽度 × 0.5
 
+  // 天气：只在 Boss 战出现，进场的瞬间 50% 概率下雨/下雪/起风
+  let WX = null;
+  const WX_ID = { rain: '下雨了……地面很滑', snow: '下雪了……手脚都变慢了', wind: '起风了……石子会被吹偏' };
+  function wxMove() { return WX === 'rain' ? .9 : WX === 'snow' ? .88 : 1; }
+  function wxAspd() { return WX === 'snow' ? 1.1 : 1; }
+  function wxProj() { return WX === 'wind' ? .85 : 1; }
+
   function start(rightEdge) {
+    WX = Math.random() < .5 ? ['rain', 'snow', 'wind'][Math.floor(Math.random() * 3)] : null;
+    if (WX && WX_ID[WX]) setTimeout(() => say(WX_ID[WX], 3), 500);
     const z = { type: 'guanhai_horse', T, x: rightEdge + 60, y: (M.top + M.bot) / 2, f: -1, hp: HP, st: 'intro', t: 0, phase: 1,
       flash: 0, vx: 0, poise: 0, cd: 1.2, called: false, slot: 0, z: 0 };
     zs.push(z); fx = []; horse = null;
@@ -23,6 +32,7 @@ const Boss = (() => {
   const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };
   const view = () => [cam.x, cam.x + viewW()];
   function moveTo(z, tx, ty, sp, dt) {
+    sp *= wxMove();
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
     if (l < 2) return true;
     const k = Math.min(1, sp * dt / l); z.x += dx * k; z.y += dy * .7 * k;
@@ -338,5 +348,36 @@ const Boss = (() => {
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
     ctx.strokeText('黄巾头目 · 管亥', HW / 2, y + 30); ctx.fillText('黄巾头目 · 管亥', HW / 2, y + 30); ctx.textAlign = 'left';
   }
-  return { start, update, hit, draw, drawHorse, drawGround, updateFx, hud, T, reset() { fx = []; horse = null; } };
+  // 天气的视觉：屏幕空间的雨丝/雪粒 + 一层色调
+  let wxT = 0;
+  function wxDraw(W, H) {
+    if (!WX) return;
+    wxT += .016;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (WX === 'rain') {
+      ctx.fillStyle = 'rgba(40,60,90,.18)'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(180,210,255,.45)'; ctx.lineWidth = 1;
+      for (let i = 0; i < 90; i++) {
+        const x = (i * 137 + wxT * 900) % (W + 40) - 20, y = (i * 211 + wxT * 1500) % (H + 60) - 30;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 14); ctx.stroke();
+      }
+    } else if (WX === 'snow') {
+      ctx.fillStyle = 'rgba(200,220,255,.10)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      for (let i = 0; i < 60; i++) {
+        const x = (i * 173 + Math.sin(wxT + i) * 18) % W, y = (i * 231 + wxT * 120) % H;
+        ctx.fillRect(x, y, 2, 2);
+      }
+    } else {
+      ctx.fillStyle = 'rgba(120,110,80,.08)'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(230,220,190,.35)'; ctx.lineWidth = 1;
+      for (let i = 0; i < 24; i++) {
+        const y = (i * 97) % H, len = 30 + (i % 4) * 18;
+        const x = (wxT * 260 + i * 60) % (W + len) - len;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y + 2); ctx.stroke();
+      }
+    }
+  }
+  return { start, update, hit, draw, drawHorse, drawGround, updateFx, hud, T, wx: () => WX, wxMove, wxAspd, wxProj, wxDraw,
+    reset() { fx = []; horse = null; WX = null; } };
 })();

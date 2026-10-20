@@ -65,34 +65,54 @@ const TYPES = {
   banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'grunt' },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
+  // 区域 1：纯教学，不随机
   { say: '黄巾喽啰来了！J 攻击，连按三连击', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  // 区域 2：刀手首次登场（固定 2 个），其余随机
   { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！',
-    units: ['grunt', 'grunt', 'blade', 'slinger', 'blade'],
-    extra: ['grunt', 'blade', 'grunt'], extraAt: 2, extraSay: '后面又冲上来一队！' },
-  { say: '刀手顶在前面，投石手躲在后面 —— 先冲过去打后排！',
-    units: ['blade', 'blade', 'slinger', 'banner', 'slinger', 'grunt'],
-    extra: ['blade', 'grunt'], extraAt: 2, extraSay: '又来了两个！' },
+    core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
+    extra: ['grunt', 'blade'], extraAt: 2, extraSay: '后面又冲上来一队！' },
+  // 区域 3：旗手首次登场（固定 1 个），投石手固定 2 个
+  { say: '那个扛「黄天当立」大旗的在给贼兵加速 —— 先杀他！',
+    core: ['banner', 'slinger', 'slinger'], budget: 5, pool: ['grunt', 'blade', 'slinger'],
+    extra: ['blade', 'grunt'], extraAt: 2 },
+  // 区域 4：弓箭手固定 2 个
   { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
-    units: ['grunt', 'blade', 'archer', 'archer', 'slinger', 'grunt'],
-    extra: ['blade', 'blade', 'grunt'], extraAt: 2 },
+    core: ['grunt', 'blade', 'archer', 'archer', 'grunt'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
+    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！' },
+  // 区域 5：老卒首次登场
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
-    units: ['elite', 'grunt', 'grunt', 'blade', 'archer'],
-    extra: ['slinger', 'grunt'], extraAt: 1, extraSay: '还有埋伏！' },
+    core: ['elite'], budget: 7, pool: ['grunt', 'blade', 'slinger', 'archer'],
+    extra: ['slinger', 'grunt'], extraAt: 1 },
   { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
+// 威胁值：随机填充时按点数抽兵
+const THREAT = { grunt: 1, blade: 2, slinger: 2, archer: 2, banner: 2, elite: 4 };
+function rollFill(pool, budget) {
+  const out = [];
+  let left = budget;
+  for (let guard = 0; guard < 40 && left > 0; guard++) {
+    const ok = pool.filter(t => THREAT[t] <= left);
+    if (!ok.length) break;
+    const t = ok[Math.floor(Math.random() * ok.length)];
+    out.push(t); left -= THREAT[t];
+  }
+  return out;
+}
 const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 2000, 2500, 3000], token: 2 };
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
-let drops = [], floaters = [], reviveUsed = false;   // 掉落物 / 飘字 / 复活是否已用
+let drops = [], floaters = [], reviveUsed = false, pwaves = [];   // 掉落物 / 飘字 / 复活是否已用 / 棍子冲击波
 let extraDone = false, bannerZ = null;                // 波中波是否补过 / 场上活着的旗手
 const rnd = (a, b) => a + Math.random() * (b - a);
+// 读锦囊数值（没抽卡时就是默认值）
+const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
@@ -155,7 +175,8 @@ function waves() {
     if (gameT >= clearAt) {
       clearAt = 0; lockR = Infinity; gateI++;
       if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
-      else won = true;   // 通关文案交给结算板，这里不再刷长句
+      else won = true;
+      if (!won && window.ROGUE) ROGUE.offer();   // 每清一个区域，抽一次锦囊   // 通关文案交给结算板，这里不再刷长句
     }
   }
   // 波中波：本区域还剩少量敌人时，从右侧再补一批（每区一次）
@@ -174,8 +195,9 @@ function waves() {
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
     const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0; extraDone = false;
     if (W.boss) { Boss.start(lockR); return; }
-    W.units.forEach((u, i) => {
-      const left = i === W.units.length - 1 && W.units.length > 3 && !TYPES[u].ranged;
+    const list = W.units || (W.core || []).concat(rollFill(W.pool || [], W.budget || 0));
+    list.forEach((u, i) => {
+      const left = i === list.length - 1 && list.length > 3 && !TYPES[u].ranged;   // 最后一个近战从左边包过来
       spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, rnd(M.top + 6, M.bot - 6));
     });
     say(W.say, 4);
@@ -187,9 +209,12 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (z.T.boss) return Boss.hit(z, dmg, dir);
   if (z.dead || z.air) return;
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
+  dmg *= R_('dmg');   // 锦囊：造成伤害倍率
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  const ls = R_('lifesteal', 0);
+  if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
   z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
-  if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = z.T.heavy ? 1 : 1.5; z.st = 'move'; z.tok = false; }
+  if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连打三下会显得一顿一顿的）
   const W0 = WEAP[weapon] || {};
@@ -233,12 +258,12 @@ function heroUpdate(dt) {
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
   }
   pressRoll = false;
-  if (h.st === 'roll') { moveEnt(h, h.rx * 150 * dt, h.ry * 105 * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
+  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
     const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
-    if (a.t >= C.d[a.fi]) {
+    if (a.t >= C.d[a.fi] * R_('aspd') * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
       a.t = 0; a.fi++;
       if (a.fi === C.f.length - 1) strike();
       if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
@@ -251,7 +276,7 @@ function heroUpdate(dt) {
     else moveEnt(h, ix * 15 * dt, 0);
     return;
   }
-  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); moveEnt(h, ix * 70 * dt, iy * 52 * dt); }
+  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }
   else if (h.st !== 'idle') set(h, 'idle');
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
@@ -342,6 +367,27 @@ function hitProp(p, dir) {
     if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
   }
 }
+// 棍子第三段的冲击波（锦囊）
+function updatePWaves(dt) {
+  for (const w of pwaves) {
+    w.t += dt; w.x += w.vx * dt;
+    for (const z of zs) if (!z.dead && !w.hit.has(z) && Math.abs(z.x - w.x) < 18 && Math.abs(z.y - w.y) < 16) {
+      w.hit.add(z); hit(z, 1.2 * R_('dmg'), 60, Math.sign(w.vx), false, 0, .3);
+    }
+  }
+  pwaves = pwaves.filter(w => w.t < w.T);
+}
+function drawPWaves() {
+  for (const w of pwaves) {
+    const a = 1 - w.t / w.T;
+    for (let k = 0; k < 4; k++) {
+      const x = w.x - Math.sign(w.vx) * k * 8, hh = (7 - k) * (1 + Math.sin(w.t * 30 + k) * .3);
+      ctx.fillStyle = 'rgba(120,86,44,' + (.75 * a) + ')';
+      ctx.beginPath(); ctx.moveTo(x - 4, w.y + 2); ctx.lineTo(x, w.y + 2 - hh); ctx.lineTo(x + 4, w.y + 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,170,' + (.7 * a) + ')'; ctx.fillRect(x - 1, w.y - hh * .6, 2, 2);
+    }
+  }
+}
 function updatePropFx(dt) {
   for (const p of props) if (p.hitT > 0) p.hitT = Math.max(0, p.hitT - dt);
   for (const f of propFx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 260 * dt; f.life -= dt; }
@@ -368,25 +414,35 @@ function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
-    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd, life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
+    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
+    if (Math.random() < R_('stoneExtra', 0))   // 锦囊：石子·连击
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C, c, hitSet: [] });
     return;
   }
   let landed = false, hitEnemy = false;
+  const reach = W.reach * R_('reach');                                   // 锦囊：长手
+  const fin = (c === 2 ? R_('fin') : 1) * 1;                             // 锦囊：连打（第三段）
+  const aoe = (weapon === 'hammer' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：锤·震地
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
-    const bw = z.T.w || 0, inRange = C.both ? Math.abs(dx) < W.reach + bw : dx > -4 - bw && dx < W.reach + bw;
-    if (inRange && Math.abs(z.y - h.y) < W.dy) {
+    const bw = z.T.w || 0;
+    const inAoE = aoe > 0 && dx > -aoe - bw && dx < aoe + bw && Math.abs(z.y - h.y) < W.dy + 12;
+    const inRange = inAoE || (C.both ? Math.abs(dx) < reach + bw : dx > -4 - bw && dx < reach + bw);
+    if (inRange && Math.abs(z.y - h.y) < W.dy + (inAoE ? 12 : 0)) {
       landed = hitEnemy = true;
-      hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
-      if (!C.multi) break;
+      hit(z, C.dmg * fin, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
+      if (!C.multi && !aoe) break;
     }
+  }
+  if (weapon === 'staff' && c === 2 && R_('staffWave', 0)) {   // 锦囊：棍·冲击波
+    pwaves.push({ x: h.x + h.f * 28, y: h.y, vx: h.f * 330, t: 0, T: .9, hit: new Set(), f: h.f });
   }
   // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
     if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
     const dx = (p.x - h.x) * h.f;
-    const inRange = C.both ? Math.abs(dx) < W.reach + p.w / 2 : dx > -4 - p.w / 2 && dx < W.reach + p.w / 2;
+    const inRange = C.both ? Math.abs(dx) < reach + p.w / 2 : dx > -4 - p.w / 2 && dx < reach + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
       landed = true; h.lastHit = gameT; h.lastHitC = c;
       hitProp(p, Math.sign(p.x - h.x) || h.f);
@@ -398,6 +454,7 @@ function strike() {
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
+  n = Math.max(1, n * R_('take') - R_('takeFlat', 0));   // 锦囊：受到的伤害
   hitsTaken++;   // 结算评价用：被打了多少下
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
@@ -495,6 +552,7 @@ let gameT = 0;
 function update(dt) {
   if (window.ROOM && ROOM.blocks()) { ROOM.update(dt); return; }   // 开场农房：游戏不推进，由 room.js 自己走
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
+  if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   gameT += dt;
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
@@ -506,7 +564,7 @@ function update(dt) {
     zs.forEach(z => zUpdate(z, dt));
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
-  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt);
+  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -612,9 +670,12 @@ function draw() {
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
+  drawPWaves();
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
   if (window.ULT) ULT.draw();   // 大招特效
+  if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
+  if (window.ROGUE) ROGUE.draw();   // 锦囊面板
   // HUD
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
@@ -826,4 +887,4 @@ let lastTouchEnd = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 let last = performance.now();
 function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; update(dt); draw(); requestAnimationFrame(loop); }
-reset(); ui(); requestAnimationFrame(loop);
+if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);

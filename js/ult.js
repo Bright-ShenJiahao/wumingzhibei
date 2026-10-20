@@ -12,23 +12,26 @@
   let on = false, t = 0, kind = '', cdLeft = 0, uses = 0, fx = [], hitTicks = [], wave = null, btn = null, lbl = null;
 
   const cfg = () => CFG[weapon] || CFG.hammer;
+  const RS = (k, d = 0) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
+  const costOf = () => Math.max(1, cfg().cost + RS('ultCost'));
+  const dmgMul = () => (window.ROGUE ? ROGUE.S.ultDmg : 1);
 
   function ready() {
     if (!hero || on) return false;
     if (typeof over !== 'undefined' && (over || won)) return false;
     if (typeof result !== 'undefined' && result) return false;
     if (hero.st === 'down' || hero.st === 'hurt' || hero.air) return false;
-    return cdLeft <= 0 && hero.hp > cfg().cost;
+    return cdLeft <= 0 && hero.hp > costOf();
   }
 
   function start() {
     if (!ready()) {
       if (cdLeft > 0) toast('大招冷却中');
-      else if (hero && hero.hp <= cfg().cost) toast('血太少，拼不了');
+      else if (hero && hero.hp <= costOf()) toast('血太少，拼不了');
       return;
     }
     kind = weapon; on = true; t = 0; uses++;
-    hero.hp -= cfg().cost;
+    hero.hp -= costOf();
     hero.inv = .6;   // 只有开头 0.6 秒无敌，之后是霸体：照吃伤害但不被打断
     hero.vx = 0; hero.q = 0;
     hero.st = 'atk'; hero.atk = { c: 2, fi: 0, t: 0, lg: 0 };   // 借用第三段的动作帧
@@ -74,12 +77,12 @@
     while (hitTicks.length && t >= hitTicks[0]) {
       hitTicks.shift();
       if (kind === 'staff') {
-        hitEnemies(102, false, 2.2, 165, 1, .8, false);   // 360° 两段，打晕
+        hitEnemies(102, false, 2.2 * dmgMul(), 165, 1, .8, false);   // 360° 两段，打晕
         fx.push({ k: 'ring', x: hero.x, y: hero.y, t: 0, T: .45, r: 40 });
         shake = .26; freeze = Math.max(freeze, .07);
         sfx('hit_staff', hero.x);
       } else if (kind === 'hammer') {
-        hitEnemies(96, true, 6, 190, 0, .55, true);        // 正前方重砸
+        hitEnemies(96, true, 6 * dmgMul(), 190, 0, .55, true);        // 正前方重砸
         wave = { x: hero.x + hero.f * 44, y: hero.y, vx: hero.f * 320, t: 0, T: .95, hit: new Set() };
         fx.push({ k: 'crack', x: hero.x + hero.f * 50, y: hero.y, t: 0, T: .8 });
         shake = .34; freeze = Math.max(freeze, .09);
@@ -93,7 +96,7 @@
       if (n >= 0 && n < 8 && hero._shotN !== n) {
         hero._shotN = n;
         shots.push({ x: hero.x + hero.f * 16, y: hero.y, z: 16 + (n % 4) * 7, vx: hero.f * (330 + n * 8),
-          life: 1.2, C: { dmg: 1.6, kb: 55, pierce: true }, c: 2, hitSet: [] });   // 穿透：一颗能串好几个
+          life: 1.2, C: { dmg: 1.6 * dmgMul(), kb: 55, pierce: true }, c: 2, hitSet: [] });   // 穿透：一颗能串好几个
         sfx('swing_stone', hero.x);
       }
     }
@@ -111,7 +114,7 @@
 
     if (t >= C.dur) {
       on = false; hero.st = 'idle'; hero.atk = null; hero._shotN = -1;
-      cdLeft = C.cd;
+      cdLeft = Math.max(2, C.cd + RS('ultCd'));
       return true;
     }
     return true;
@@ -180,9 +183,9 @@
       if (!btn) return;
       const C = cfg(), ok = ready();
       btn.classList.toggle('off', !ok);
-      lbl.textContent = cdLeft > 0 ? '冷' + Math.ceil(cdLeft) : C.cost + '血';
+      lbl.textContent = cdLeft > 0 ? '冷' + Math.ceil(cdLeft) : costOf() + '血';
       btn.firstChild.textContent = C.short;
-      btn.title = C.name + '（' + C.cost + ' 血）';
+      btn.title = C.name + '（' + costOf() + ' 血）';
     }, 120);
   }
 
