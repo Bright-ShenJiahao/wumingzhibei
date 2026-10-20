@@ -36,7 +36,8 @@ const WEAP = {
     { f: ['hammer_2a', 'hammer_2b'], d: [.07, .18], dmg: 1.5, kb: 30 },                           // 反手横抡
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.1, .08, .26], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
-  stone: { name: '石子', proj: true, combo: [
+  // move：投掷时按这个倍率保持走路速度（1 = 全速），所以可以边走边扔，不会僵在原地
+  stone: { name: '石子', proj: true, move: 1, combo: [
     { f: ['stone_1a', 'stone_1b'], d: [.1, .26], dmg: .6, kb: 40, spd: 215, life: .55 },          // 左手扔：射程约 118，比弓箭手（190）近
     { f: ['stone_2a', 'stone_2b'], d: [.1, .26], dmg: .6, kb: 40, spd: 215, life: .55 },          // 右手扔
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.22, .08, .3], dmg: 1.2, kb: 70, spd: 300, life: .7, pierce: true },   // 全力投（穿透）：射程约 210，但前摇 .22
@@ -181,7 +182,9 @@ function heroUpdate(dt) {
     if (ix && a.fi === 0) h.f = Math.sign(ix);
     // 锤子这类重型武器出手时朝面向方向前冲一小段（整段动作只冲一次），补足它短得可怜的攻击距离
     if (W2.lunge && a.lg < W2.lungeT) moveEnt(h, h.f * W2.lunge * dt, 0);
-    moveEnt(h, ix * 15 * dt, 0);
+    // 出手时的移动：默认压到 15（有僵直）；像石子这种设了 move 的，按走路速度边走边扔（move = 1 即全速）
+    if (W2.move != null) moveEnt(h, ix * 70 * W2.move * dt, iy * 52 * W2.move * dt);
+    else moveEnt(h, ix * 15 * dt, 0);
     return;
   }
   if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); moveEnt(h, ix * 70 * dt, iy * 52 * dt); }
