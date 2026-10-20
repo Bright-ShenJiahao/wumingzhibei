@@ -17,18 +17,19 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
     CH[name][f] = fr;
   }
 }
-const PX = 0.5;   // 1 个精灵像素 = 0.5 世界单位（72 像素高 ≈ 36 世界单位）
+const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
+const PROP_SCALE = 1.6;
 const PROP_POOL = ['hay', 'hay', 'well', 'mill', 'cart', 'flag'];
 
 const WEAP = {
-  staff: { name: '棍', dur: [.14, .1, .16], reach: 40, dy: 12, multi: true, kb: 70 },
-  knife: { name: '柴刀', dur: [.06, .08, .1], reach: 30, dy: 10, multi: false, kb: 40 },
+  staff: { name: '棍', dur: [.14, .1, .16], reach: 34, dy: 12, multi: true, kb: 70 },
+  knife: { name: '柴刀', dur: [.06, .08, .1], reach: 26, dy: 10, multi: false, kb: 40 },
   stone: { name: '石子', dur: [.08, .07, .12], proj: true, kb: 30 },
 };
 // 黄巾兵
 const TYPES = {
-  grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 26, dmg: 1 },
-  blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 32, dmg: 2, heavy: true },
+  grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1 },
+  blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true },
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [90, 150], cd: 2.4 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2 },
 };
@@ -45,11 +46,10 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false;
-  for (let x = 160; x < M.W - 100; x += rnd(130, 220)) {
+  for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 4 : pw * .75, h: ph });
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: (k === 'flag' ? 4 : pw * .75) * PROP_SCALE, h: ph });
   }
-  props.push({ g: 'gate', x: M.W - 110, y: M.top + 70 });   // 村口门楼（可穿过）
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
@@ -86,6 +86,7 @@ function moveEnt(e, dx, dy) {
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
+  if (e === hero && lockR < Infinity) e.x = Math.max(cam.x + 12, Math.min(e.x, cam.x + viewW() - 12));
 }
 
 // ---------- 刷怪 ----------
@@ -113,10 +114,11 @@ function waves() {
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock) {
   if (z.dead || z.air) return;
+  window.SFX && SFX.play('hit');
   z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : .35; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (z.stun) { z.st = 'move'; z.tok = false; }
   freeze = .05; shake = .1;
-  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
+  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; window.SFX && SFX.play('enemyDown'); }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
@@ -138,6 +140,7 @@ function heroUpdate(dt) {
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
+    window.SFX && SFX.play('roll');
     set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null;
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
@@ -156,26 +159,30 @@ function heroUpdate(dt) {
   }
   if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); moveEnt(h, ix * 70 * dt, iy * 52 * dt); }
   else if (h.st !== 'idle') set(h, 'idle');
-  if (lockR < Infinity) { const wall = lockR - viewW() * .2; if (h.x >= wall - .5 && ix > 0 && msgT < 0) say(`清空本区域的敌人才能继续前进（还剩 ${zs.filter(z => !z.dead).length} 个）`); h.x = Math.min(h.x, wall); }
+  if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
 function set(e, st) { e.st = st; e.t = 0; }
 function startAtk(keep) { set(hero, 'atk'); hero.atk = { fi: 0, t: 0 }; if (!keep) hero.combo = 0; }
 function strike() {
   const h = hero, W = WEAP[weapon], fin = h.combo === 2;
-  if (W.proj) { shots.push({ x: h.x + h.f * 18, y: h.y, z: 24, vx: h.f * 240, life: .8 }); return; }
+  if (W.proj) { window.SFX && SFX.play(fin ? 'combo3' : 'swing'); shots.push({ x: h.x + h.f * 18, y: h.y, z: 24, vx: h.f * 240, life: .8 }); return; }
+  let landed = false;
   for (const z of zs) {
-    if (z.dead) continue;
+    if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
-    if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f, fin); if (!W.multi) break; }
+    if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { landed = true; hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f, fin); if (!W.multi) break; }
   }
+  if (fin) window.SFX && SFX.play('combo3');
+  else if (!landed) window.SFX && SFX.play('swing');
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
+  window.SFX && SFX.play('hurt');
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (n >= 2 || h.hp <= 0) { launch(h, dir * 85, 120); h.f = -dir; h.inv = 9; }   // 重击：被打飞
   else { set(h, 'hurt'); h.vx = dir * 80; }
-  if (h.hp <= 0) { over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
+  if (h.hp <= 0) { window.SFX && SFX.play('heroDown'); over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
 }
 
 // ---------- 黄巾兵 AI ----------
@@ -274,7 +281,7 @@ function shadow(x, y, r) { ctx.fillStyle = 'rgba(40,30,30,.3)'; ctx.beginPath();
 // 像素角色在屏幕坐标里按整数倍放大绘制，保证像素清晰
 function drawChar(name, f, x, y, flip, alpha = 1, white = false) {
   const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
-  const sp = Math.max(1, Math.round(SC * PX));
+  const sp = Math.max(.5, SC * PX);
   const sx = Math.round(x * SC + OXs), sy = Math.round(y * SC);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
   ctx.globalAlpha = alpha;
@@ -325,15 +332,6 @@ function draw() {
     const p = s.t / s.T;
     ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, 16 * (1.3 - p * .3), 6 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
   }
-  // 区域锁红旗
-  if (lockR < Infinity) {
-    const wx = lockR - vw * .2 + 12, t = performance.now() / 300;
-    ctx.fillStyle = 'rgba(200,40,30,.18)'; ctx.fillRect(wx - 3, M.top, 6, M.bot - M.top + 8);
-    for (let y = M.top + 4; y <= M.bot + 4; y += 18) {
-      ctx.fillStyle = '#3a2418'; ctx.fillRect(wx - 1, y - 16, 2, 16);
-      ctx.fillStyle = '#c8281e'; ctx.beginPath(); ctx.moveTo(wx + 1, y - 16); ctx.lineTo(wx + 10 + Math.sin(t + y) * 1.5, y - 13); ctx.lineTo(wx + 1, y - 10); ctx.fill();
-    }
-  }
   // 按 y 排序绘制
   const list = [];
   for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
@@ -355,11 +353,15 @@ function draw() {
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(10, hero.hp)) / 10, 12);
   ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 200, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}`, 20, 100);
   if (lockR < Infinity) { const n = zs.filter(z => !z.dead).length; ctx.fillStyle = 'rgba(200,40,30,.85)'; ctx.fillRect(14, 110, 200, 22); ctx.fillStyle = '#fff'; ctx.fillText(`本区域剩余敌人：${n}`, 20, 126); }
+  if (!over && lockR === Infinity && gateI > 0 && gateI < M.gates.length && Math.floor(performance.now() / 500) % 2 === 0) {
+    ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
+    ctx.strokeText('GO →', W - 28, H / 2); ctx.fillText('GO →', W - 28, H / 2); ctx.restore();
+  }
   if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(W / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, W / 2, 130); ctx.textAlign = 'left'; }
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
-  const [, w, h] = ASSETS.props[p.g];
+  const [, baseW, baseH] = ASSETS.props[p.g], w = baseW * PROP_SCALE, h = baseH * PROP_SCALE;
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true;
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
@@ -375,7 +377,7 @@ function drawZ(z) {
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   drawChar(z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
   if (z.dead || z.air || z.st === 'land') return;
-  const top = z.y - 42;
+  const top = z.y - 34;
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - 9, top, 18, 3); ctx.fillStyle = z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - 8, top + 1, 16 * z.hp / z.T.hp, 1);
 }
