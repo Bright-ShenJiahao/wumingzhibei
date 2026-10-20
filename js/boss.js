@@ -18,7 +18,9 @@ const Boss = (() => {
     return z;
   }
   const set = (z, st) => { z.st = st; z.t = 0; };
-  const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };   // 配音（art/voice/guanhai_*.mp3）
+  // 配音（art/voice/guanhai_*.mp3）。只保留 5 句台词：登场 / 喊人 / 落马 / 怒吼 / 战败。
+  // 攻击时的吼声（chop / thrust / spin / stagger）已按用户要求去掉：Boss 战一打久了就太吵，而且会互相叠音。
+  const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };
   const view = () => [cam.x, cam.x + viewW()];
   function moveTo(z, tx, ty, sp, dt) {
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
@@ -38,7 +40,7 @@ const Boss = (() => {
     if (z.phase === 2) {
       z.poise += dmg;
       const busy = ['chop_a', 'chop_b', 'spin', 'thrust_a', 'thrust_b'].includes(z.st);
-      if (z.poise >= 9 && !busy) { z.poise = 0; set(z, 'stagger'); vo('stagger'); }
+      if (z.poise >= 9 && !busy) { z.poise = 0; set(z, 'stagger'); }
       else if (z.st === 'walk' || z.st === 'idle') z.x += dir * 3;
     }
     if (z.phase === 1 && !z.called && z.hp <= HP * .75) {
@@ -139,7 +141,7 @@ const Boss = (() => {
     if (S === 'idle' || S === 'walk') {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
-        if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); vo('spin'); return; }
+        if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); return; }
         if (ad < 62 && ady < 14) { set(z, 'chop_a'); return; }
         if (ad > 58 && ad < 96 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
@@ -148,7 +150,7 @@ const Boss = (() => {
       return;
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
-    if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x); vo('chop', .7);
+    if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x);
       if (heroIn(z.x + z.f * 34, z.y, 34, 14)) dmgHero(3, z);   // 重劈：长戟砸在地上，戟尖约 66，更远处靠冲击波
       fx.push({ k: 'wave', x: z.x + z.f * 66, y: z.y, vx: z.f * 230, t: 0, T: 1.2, hit: false }); } return; }
     if (S === 'chop_b') { if (z.t > .55) { if (rage) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); } else { set(z, 'idle'); z.cd = 1.1; } } return; }
@@ -161,7 +163,7 @@ const Boss = (() => {
       return;
     }
     // 突刺
-    if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); vo('thrust', .7); z.x += z.f * 16;
+    if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); z.x += z.f * 16;
       const reach = 84, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z); } return; }   // 突刺：戟尖约 84
     if (S === 'thrust_b') { if (z.t > .45) { set(z, 'idle'); z.cd = 1; } return; }
   }
