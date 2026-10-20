@@ -6,7 +6,7 @@
   const KEY = 'wzb-muted';
   let muted = false;
   try { muted = localStorage.getItem(KEY) === '1'; } catch (e) {}
-  let ac, master, verb, noiseBuf;
+  let ac, master, verb, noiseBuf, fallbackEl;
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -157,6 +157,15 @@
     },
   };
 
+  // 静音：把主输出在 0.1 秒内渐变到 0，正在播的音效和配音跟着立刻听不见；取消静音再渐变回 .8
+  function applyMute() {
+    if (muted && fallbackEl) { try { fallbackEl.pause(); } catch (e) {} }   // <audio> 兜底播放的配音不走 Web Audio，得单独停
+    if (!ac || !master) return;
+    const t = ac.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(muted ? 0 : .8, t + .1);
+  }
   function updateButton() {
     const b = document.getElementById('bMute'); if (!b) return;
     b.textContent = muted ? '🔇' : '🔊'; b.title = muted ? '开启音效' : '静音';
@@ -165,7 +174,8 @@
   const b = document.getElementById('bMute');
   if (b) b.addEventListener('click', () => {
     muted = !muted; try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) {}
-    if (!muted) init(); updateButton();
+    if (!muted) init();
+    applyMute(); updateButton();
   });
   updateButton();
   // 浏览器要求用户操作后才能出声：第一次按键/触摸时启动
@@ -202,8 +212,8 @@
       const src = ac.createBufferSource(); src.buffer = buffer;
       src.connect(bus(pan * .5, 1.1, .12)); src.start(); window.__lastVoice = name;
     } catch (e) {
-      // 备用：Web Audio 解码失败时，用 <audio> 播放
-      try { const el = new Audio(ASSETS.voice[name]); el.volume = 1; el.play().catch(() => {}); } catch (e2) {}
+      // 备用：Web Audio 解码失败时，用 <audio> 播放（记下元素，静音时要能立刻停掉）
+      try { fallbackEl = new Audio(ASSETS.voice[name]); fallbackEl.volume = 1; fallbackEl.play().catch(() => {}); } catch (e2) {}
     }
   }
   window.SFX = {
