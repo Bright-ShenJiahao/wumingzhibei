@@ -41,6 +41,8 @@ const WAVES = [
 const M = { viewH: 300, W: 2400, top: 168, bot: 290, gates: [330, 900, 1470, 2040], token: 2 };
 let hero, zs, shots, eshots, fires, props, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'knife', over, won;
 const rnd = (a, b) => a + Math.random() * (b - a);
+// 播放音效，按世界坐标 x 计算左右声道
+function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, vx: 0 };
@@ -113,18 +115,17 @@ function waves() {
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock) {
   if (z.dead || z.air) return;
-  window.SFX && SFX.play('hit');
   z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : .35; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (z.stun) { z.st = 'move'; z.tok = false; }
   freeze = .05; shake = .1;
-  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; window.SFX && SFX.play('enemyDown'); }
+  if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
 function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; }
 function airStep(e, dt) {
   e.z += e.vz * dt; e.vz -= 420 * dt; moveEnt(e, e.ax * dt, 0);
-  if (e.z <= 0 && e.vz < 0) { e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08); }
+  if (e.z <= 0 && e.vz < 0) { e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08); sfx(e.dead ? 'enemyDown' : e === hero && over ? 'heroDown' : 'land', e.x); }
 }
 function heroUpdate(dt) {
   const h = hero;
@@ -139,7 +140,7 @@ function heroUpdate(dt) {
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
-    window.SFX && SFX.play('roll');
+    sfx('roll', h.x);
     set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null;
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
@@ -164,24 +165,24 @@ function set(e, st) { e.st = st; e.t = 0; }
 function startAtk(keep) { set(hero, 'atk'); hero.atk = { fi: 0, t: 0 }; if (!keep) hero.combo = 0; }
 function strike() {
   const h = hero, W = WEAP[weapon], fin = h.combo === 2;
-  if (W.proj) { window.SFX && SFX.play(fin ? 'combo3' : 'swing'); shots.push({ x: h.x + h.f * 18, y: h.y, z: 24, vx: h.f * 240, life: .8 }); return; }
+  if (W.proj) { sfx('swing_stone', h.x); shots.push({ x: h.x + h.f * 18, y: h.y, z: 24, vx: h.f * 240, life: .8 }); return; }
   let landed = false;
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
     if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { landed = true; hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f, fin); if (!W.multi) break; }
   }
-  if (fin) window.SFX && SFX.play('combo3');
-  else if (!landed) window.SFX && SFX.play('swing');
+  if (landed) { sfx('hit_' + weapon, h.x + h.f * 20); if (fin) sfx('finisher', h.x); }
+  else sfx('swing_' + weapon, h.x);
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
-  window.SFX && SFX.play('hurt');
+  sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (n >= 2 || h.hp <= 0) { launch(h, dir * 85, 120); h.f = -dir; h.inv = 9; }   // 重击：被打飞
   else { set(h, 'hurt'); h.vx = dir * 80; }
-  if (h.hp <= 0) { window.SFX && SFX.play('heroDown'); over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
+  if (h.hp <= 0) { over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
 }
 
 // ---------- 黄巾兵 AI ----------
@@ -196,7 +197,7 @@ function zUpdate(z, dt) {
   const dx = hero.x - z.x, dy = hero.y - z.y;
   if (z.st === 'wind') {
     if (z.t > T.wind) {
-      set(z, 'strike');
+      set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
       if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: 1.4 });
       else if (T.ranged === 'fire') { const tx = hero.x, ty = hero.y; eshots.push({ k: 'fire', x0: z.x + z.f * 16, y0: z.y, tx, ty, t: 0, T: .9 }); }
       else if (Math.abs(dx) < T.reach && Math.abs(dy) < 9 && Math.sign(dx) === z.f) dmgHero(T.dmg, z);
@@ -217,7 +218,7 @@ function zUpdate(z, dt) {
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < M.token && Math.abs(dx) < 130) z.tok = true;
     tx = hero.x - z.f * (z.tok ? T.reach - 6 : 52 + (z.slot % 3) * 14); ty = hero.y + (z.tok ? 0 : (z.slot % 2 ? 16 : -16));
-    if (z.tok && Math.abs(dx) < T.reach && Math.abs(dy) < 7) { set(z, 'wind'); return; }
+    if (z.tok && Math.abs(dx) < T.reach && Math.abs(dy) < 7) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
   }
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);
   z.moving = l > 4;
@@ -232,16 +233,16 @@ function zUpdate(z, dt) {
 function updateShots(dt) {
   for (const s of shots) {
     s.x += s.vx * dt; s.life -= dt;
-    for (const z of zs) if (!z.dead && Math.abs(z.x - s.x) < 10 && Math.abs(z.y - s.y) < 10 && s.life > 0) { hit(z, 1, WEAP.stone.kb, Math.sign(s.vx)); s.life = 0; }
+    for (const z of zs) if (!z.dead && Math.abs(z.x - s.x) < 10 && Math.abs(z.y - s.y) < 10 && s.life > 0) { hit(z, 1, WEAP.stone.kb, Math.sign(s.vx)); sfx('hit_stone', s.x); s.life = 0; }
   }
   shots = shots.filter(s => s.life > 0);
   for (const s of eshots) {
     if (s.k === 'stone') {
       s.x += s.vx * dt; s.life -= dt;
-      if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 8 && Math.abs(hero.y - s.y) < 9) { dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
+      if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 8 && Math.abs(hero.y - s.y) < 9) { sfx('hit_stone', s.x); dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
     } else {
       s.t += dt;
-      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: 3, r: 16 }); s.life = 0; } else s.life = 1;
+      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: 3, r: 16 }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
     }
   }
   eshots = eshots.filter(s => s.life > 0);
