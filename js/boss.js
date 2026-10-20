@@ -140,16 +140,16 @@ const Boss = (() => {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
         if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); vo('spin'); return; }
-        if (ad < 34 && ady < 14) { set(z, 'chop_a'); return; }
-        if (ad > 30 && ad < 62 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
+        if (ad < 40 && ady < 14) { set(z, 'chop_a'); return; }
+        if (ad > 36 && ad < 62 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
-      const walking = ad > 30 || ady > 8;
-      if (walking) { moveTo(z, hero.x - z.f * 26, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
+      const walking = ad > 36 || ady > 8;
+      if (walking) { moveTo(z, hero.x - z.f * 32, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
       return;
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
     if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x); vo('chop', .7);
-      if (heroIn(z.x + z.f * 12, z.y, 18, 14)) dmgHero(3, z);   // 重劈直接砸中的范围（戟尖约 21），更远处靠冲击波
+      if (heroIn(z.x + z.f * 17, z.y, 23, 14)) dmgHero(3, z);   // 重劈直接砸中的范围（长戟戟尖约 31 + 半宽），更远处靠冲击波
       fx.push({ k: 'wave', x: z.x + z.f * 40, y: z.y, vx: z.f * 230, t: 0, T: 1.2, hit: false }); } return; }
     if (S === 'chop_b') { if (z.t > .55) { if (rage) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); } else { set(z, 'idle'); z.cd = 1.1; } } return; }
     // 头顶转戟：追着主角走，靠近就被打；转完头晕
