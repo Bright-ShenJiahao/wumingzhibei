@@ -32,6 +32,11 @@ function reset(m) {
       const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
       props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 4 : pw * .75, h: ph });
     }
+    for (let x = 220; x < M.W - 300; x += rnd(380, 520)) {   // 地面后沿的茅屋（完好/燃烧/倒塌）
+      const k = ['hut', 'hut_fire', 'hut_ruin'][Math.floor(Math.random() * 3)];
+      props.push({ g: k, x, y: M.top + 12, solid: true, w: ASSETS.props[k][1] * .7 });
+    }
+    props.push({ g: 'gate', x: M.W - 110, y: M.top + 70 });   // 村口门楼（可穿过）
     say('往右走 → 进入区域会有僵尸出现');
   } else if (mode === 'B') {
     for (let i = 0; i < 16; i++) props.push({ roof: true, x: rnd(40, 1100), y: rnd(40, 940), w: rnd(60, 100), h: rnd(40, 60) });
