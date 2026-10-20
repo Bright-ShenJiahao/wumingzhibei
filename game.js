@@ -21,7 +21,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag', 'jar', 'jar'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
+const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 // 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
@@ -97,7 +97,7 @@ function reset() {
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : (k === 'jar' ? 1 : 0), hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
   say('村子被黄巾贼烧了！往右走 →');
 }
@@ -323,11 +323,11 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 function hitProp(p, dir) {
-  if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) return;   // 油罐也能打
+  if (p.broken || !(p.g === 'hay' || p.g === 'cart')) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
   const hay = p.g === 'hay', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
-  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : p.g === 'jar' ? ['#a0562a', '#c47a3e', '#7d3f1c'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : ['#4b2c12', '#7a4d22', '#a3703c'];
   const n = broken ? 22 : 7;
   for (let i = 0; i < n; i++) {
     const life = broken ? rnd(.42, .65) : rnd(.32, .55);
@@ -339,13 +339,7 @@ function hitProp(p, dir) {
   }
   if (broken) {
     p.broken = true; p.solid = false;
-    if (p.g === 'jar') {   // 油罐：炸开一片火，敌我通吃（玩家要引怪进去）
-      fires.push({ x: p.x, y: p.y, t: 4.5, r: 30, dmgZ: 1, tick: 0 });
-      sfx('fireLand', p.x); sfx('land', p.x); shake = .18;
-      for (let i = 0; i < 12; i++) { const life = rnd(.3, .6);
-        propFx.push({ x: p.x + rnd(-10, 10), y: p.y - rnd(4, 16), vx: rnd(-80, 80), vy: rnd(-140, -30),
-          w: rnd(2, 4), h: rnd(2, 4), life, max: life, c: ['#ff9a2e', '#ffd05a', '#a0522d'][i % 3] }); }
-    } else if (Math.random() < .5) spawnDrop(p.x, p.y);   // 草垛/推车：一半概率掉吃的
+    if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
   }
 }
 function updatePropFx(dt) {
@@ -390,7 +384,7 @@ function strike() {
   }
   // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
-    if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) continue;
+    if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
     const dx = (p.x - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < W.reach + p.w / 2 : dx > -4 - p.w / 2 && dx < W.reach + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
@@ -467,7 +461,7 @@ function updateShots(dt) {
     s.x += s.vx * dt; s.life -= dt;
     // 石子碰到草垛/推车：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
-      if (p.broken || !['hay', 'cart', 'jar'].includes(p.g)) continue;
+      if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
       if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
@@ -492,16 +486,7 @@ function updateShots(dt) {
   for (const f of fires) {
     f.t -= dt;
     if (Math.abs(hero.x - f.x) < f.r && Math.abs(hero.y - f.y) < f.r * .45) dmgHero(1, null);
-    if (f.dmgZ) {   // 油罐的火：烧站在里面的敌人
-      f.tick = (f.tick || 0) - dt;
-      if (f.tick <= 0) {
-        f.tick = .6;
-        for (const z of zs) if (!z.dead && Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .5) {
-          hit(z, 1.5, 20, Math.sign(z.x - f.x) || 1, false, 0, .3);
-          if (window.SFX) SFX.play('hit_stone', 0);
-        }
-      }
-    }
+
   }
   fires = fires.filter(f => f.t > 0);
 }

@@ -1,5 +1,5 @@
-# 生成两张道具图（像素风）：旗手扛的大旗（写「黄天当立」）、可打爆的油罐。
-# 用法：python tools/make_props.py   （会覆盖 art/props/banner.png、jar.png，并更新 meta.json）
+# 生成旗手扛的大旗（像素风，写「黄天当立」）。
+# 用法：python tools/make_props.py   （会覆盖 art/props/banner.png，并更新 meta.json）
 import json, os
 from PIL import Image, ImageDraw, ImageFont
 
@@ -58,34 +58,14 @@ def banner():
     return im
 
 
-def jar():
-    """24x28：陶罐（打爆后点一片火）"""
-    W, H = 24, 28
-    im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
-    d.ellipse([4, 7, 20, 26], fill=(160, 86, 42, 255))       # 罐身
-    d.ellipse([5, 8, 19, 25], fill=(178, 100, 52, 255))
-    d.ellipse([7, 10, 17, 24], fill=(196, 122, 62, 255))     # 高光
-    d.rectangle([8, 3, 16, 8], fill=(140, 74, 36, 255))      # 罐口
-    d.ellipse([8, 1, 16, 5], fill=(84, 44, 22, 255))         # 口沿
-    d.rectangle([8, 6, 16, 7], fill=(206, 130, 68, 255))
-    d.line([(6, 20), (18, 20)], fill=(120, 62, 30, 255))     # 绳子
-    d.point((11, 14), (250, 220, 150, 255))                  # 高光点
-    d.point((12, 15), (250, 220, 150, 255))
-    return im
-
-
 def main():
     b = banner()
     b.save(os.path.join(OUT, 'banner.png'))
-    j = jar()
-    j.save(os.path.join(OUT, 'jar.png'))
     p = os.path.join(OUT, 'meta.json')
     m = json.load(open(p, encoding='utf-8'))
     m['banner'] = [40.0, 100.0]     # 世界单位
-    m['jar'] = [20.0, 26.0]
     json.dump(m, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
-    print('banner', b.size, 'jar', j.size, 'meta ok')
+    print('banner', b.size, 'meta ok')
 
 
 if __name__ == '__main__':
