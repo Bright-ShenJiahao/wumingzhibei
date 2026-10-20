@@ -62,6 +62,8 @@ const WAVES = [
 ];
 const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 2040, 2620], token: 2 };
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
+// 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
+let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
@@ -69,6 +71,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
@@ -121,12 +124,17 @@ function spawn(type, x, y) {
 }
 function waves() {
   const vw = viewW();
-  if (lockR < Infinity && zs.length === 0) {
-    lockR = Infinity; gateI++;
-    if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →'); else { won = true; say('打败了黄巾头目管亥！村子得救了！（序章待续 · 按 R 再来）', 99); }
+  // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
+  if (lockR < Infinity && !zs.some(z => !z.dead)) {
+    if (!clearAt) clearAt = gameT + 1.4;
+    if (gameT >= clearAt) {
+      clearAt = 0; lockR = Infinity; gateI++;
+      if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
+      else won = true;   // 通关文案交给结算板，这里不再刷长句
+    }
   }
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
-    const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6;
+    const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0;
     if (W.boss) { Boss.start(lockR); return; }
     W.units.forEach((u, i) => {
       const left = i === W.units.length - 1 && W.units.length > 3 && !TYPES[u].ranged;
@@ -271,6 +279,7 @@ function strike() {
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
+  hitsTaken++;   // 结算评价用：被打了多少下
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
@@ -363,16 +372,28 @@ function updateShots(dt) {
 let gameT = 0;
 function update(dt) {
   gameT += dt;
+  if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
-  heroUpdate(dt); waves();
-  zs.forEach(z => zUpdate(z, dt));
-  zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
+  // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
+  const done = result && gameT >= result.born;
+  if (!done) {
+    heroUpdate(dt); waves();
+    zs.forEach(z => zUpdate(z, dt));
+    zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
+  }
   updateShots(dt); Boss.updateFx(dt); updatePropFx(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
+  if (toastT > 0) toastT -= dt;
+  // 通关或倒下：记下成绩，1.2 秒后弹结算板（先让倒地/被打飞的动画演完）
+  if (!result && (won || over)) {
+    endT = runT;
+    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2 };
+    uiBtns = [];
+  }
 }
 
 // ---------- 绘制 ----------
@@ -464,14 +485,96 @@ function draw() {
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(10, hero.hp)) / 10, 12);
-  ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 200, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}`, 20, 100);
+  ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 330, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}   用时 ${fmtTime(runT)}`, 20, 100);
   if (lockR < Infinity) { const n = zs.filter(z => !z.dead).length; ctx.fillStyle = 'rgba(200,40,30,.85)'; ctx.fillRect(14, 110, 200, 22); ctx.fillStyle = '#fff'; ctx.fillText(`本区域剩余敌人：${n}`, 20, 126); }
   if (!over && lockR === Infinity && gateI > 0 && gateI < M.gates.length && Math.floor(performance.now() / 500) % 2 === 0) {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
   if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(HW / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, HW / 2, 130); ctx.textAlign = 'left'; }
+  drawResult(HW, HH);
 }
+
+// ---------- 结算板（通关 / 倒下） ----------
+function fmtTime(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
+// 评价：无伤 SSS；被打 1~3 下 S；其余按用时 A~E（分数先这么定，实测后再调）
+function rankOf(t) {
+  if (hitsTaken === 0) return 'SSS';
+  if (hitsTaken <= 3) return 'S';
+  if (t <= 180) return 'A';
+  if (t <= 240) return 'B';
+  if (t <= 320) return 'C';
+  if (t <= 420) return 'D';
+  return 'E';
+}
+function toast(m) { toastMsg = m; toastT = 2.4; }
+function drawResult(HW, HH) {
+  if (!result || gameT < result.born) return;
+  const F = '"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+  uiBtns = [];
+  ctx.globalAlpha = Math.min(1, (gameT - result.born) / .3);   // 淡入
+  ctx.fillStyle = 'rgba(16,10,22,.62)'; ctx.fillRect(0, 0, HW, HH);
+  const pw = Math.min(520, HW * .82), ph = 300;
+  const x = Math.round((HW - pw) / 2), y = Math.round((HH - ph) / 2);
+  ctx.fillStyle = '#f4e9cf'; ctx.fillRect(x, y, pw, ph);        // 宣纸底
+  ctx.fillStyle = '#e2cfa6'; ctx.fillRect(x, y, pw, 8);
+  ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, y + 1.5, pw - 3, ph - 3);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 36px ' + F; ctx.fillStyle = result.win ? '#b3372a' : '#4a3a2a';
+  ctx.fillText(result.win ? '通　关' : '倒　下', x + pw / 2, y + 62);
+  ctx.font = 'bold 19px ' + F; ctx.fillStyle = '#3a2410';
+  ctx.fillText(`击倒 ${result.kills} 名　　用时 ${fmtTime(result.time)}`, x + pw / 2, y + 108);
+  if (result.win) {
+    ctx.font = 'bold 15px ' + F; ctx.fillStyle = '#6b5233';
+    ctx.fillText('评　价', x + pw / 2, y + 142);
+    ctx.font = 'bold 40px ' + F;
+    ctx.fillStyle = result.rank === 'SSS' ? '#c9971f' : result.rank === 'S' ? '#b3372a' : '#3a2410';
+    ctx.fillText(result.rank, x + pw / 2, y + 186);
+    if (result.hit === 0) { ctx.font = 'bold 13px ' + F; ctx.fillStyle = '#b3372a'; ctx.fillText('全程无伤', x + pw / 2, y + 208); }
+  } else {
+    ctx.font = 'bold 20px ' + F; ctx.fillStyle = '#6b5233';
+    ctx.fillText('再来一局？', x + pw / 2, y + 170);
+  }
+  // 两个按钮：分享 / 再来一局（手机点这里，电脑按 R 也行）
+  const bw = Math.min(150, (pw - 72) / 2), gap = 18, bh = 40;
+  const bx = x + (pw - (bw * 2 + gap)) / 2, by = y + ph - 56;
+  const btn = (bxx, label, act, hot) => {
+    ctx.fillStyle = hot ? '#b3372a' : '#efe2c4'; ctx.fillRect(bxx, by, bw, bh);
+    ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 2; ctx.strokeRect(bxx + 1, by + 1, bw - 2, bh - 2);
+    ctx.fillStyle = hot ? '#fff8e6' : '#3a2410'; ctx.font = 'bold 19px ' + F;
+    ctx.fillText(label, bxx + bw / 2, by + 27);
+    uiBtns.push({ x: bxx, y: by, w: bw, h: bh, act });
+  };
+  btn(bx, '分　享', 'share', false);
+  btn(bx + bw + gap, '再来一局', 'restart', true);
+  if (toastT > 0) {   // 分享结果的提示条：放在屏幕下方，不压面板
+    ctx.font = 'bold 15px ' + F;
+    const tw = ctx.measureText(toastMsg).width, ty = HH - 52;
+    ctx.fillStyle = 'rgba(20,14,30,.88)'; ctx.fillRect(HW / 2 - tw / 2 - 14, ty - 22, tw + 28, 30);
+    ctx.fillStyle = '#ffd86e'; ctx.fillText(toastMsg, HW / 2, ty);
+  }
+  ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+}
+async function doShare() {
+  if (!result) return;
+  if (!window.SHARE) { toast('分享功能不可用'); return; }
+  const st = await SHARE.send({ win: result.win, kills: result.kills, time: result.time, rank: result.rank });
+  if (st === 'copied') toast('链接已复制，去粘贴给朋友吧');
+  else if (st === 'wechat') toast('点右上角 ··· → 分享给朋友');
+  else if (st === 'fail') toast('分享失败：直接搜 wumingzhibei.netlify.app');
+  else if (st === 'shared') toast('分享成功！');
+}
+// 结算板上的按钮：手机上只能点这里（没有 R 键），电脑上点按钮或按 R 都行
+document.addEventListener('pointerdown', e => {
+  if (!result || gameT < result.born) return;
+  for (const b of uiBtns) {
+    if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
+      e.preventDefault(); e.stopPropagation();
+      if (b.act === 'share') doShare(); else reset();
+      return;
+    }
+  }
+}, true);
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画

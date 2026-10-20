@@ -61,8 +61,8 @@ const Boss = (() => {
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
     if (horse) { horse.t += dt; horse.x += horse.f * 160 * dt; if (horse.t > 2.5) horse = null; }
     if (z.dead) {
+      // 跪倒 → 倒地，然后就一直躺着：通关结算时大将要留在场上，不再转 gone 消失
       if (z.st === 'kneel' && z.t > 2.2) set(z, 'down');
-      else if (z.st === 'down' && z.t > 1.2) { z.st = 'gone'; z.t = 0; }
       return;
     }
     const [L, Rr] = view();
@@ -224,7 +224,7 @@ const Boss = (() => {
   }
   // 屏幕上方的大血条
   function hud(HW) {
-    const z = zs.find(o => o.T === T); if (!z || z.st === 'gone') return;
+    const z = zs.find(o => o.T === T); if (!z || z.dead || z.st === 'gone') return;   // 倒下以后不再挂血条
     const w = Math.min(420, HW * .6), x = (HW - w) / 2, y = 22;
     ctx.fillStyle = 'rgba(20,14,30,.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 16);
     ctx.fillStyle = z.phase === 1 ? '#c0392b' : z.hp <= HP * .25 ? '#ff3b1f' : '#d35400';
