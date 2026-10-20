@@ -186,6 +186,7 @@ function heroUpdate(dt) {
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
+  if (window.ULT && ULT.update(dt)) { pressAtk = pressRoll = false; return; }   // 卖血大招演出中：接管主角（放在受击/落地之前，才有霸体）
   if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); }
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
   if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
@@ -576,6 +577,7 @@ function draw() {
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
+  if (window.ULT) ULT.draw();   // 大招特效
   // HUD
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;

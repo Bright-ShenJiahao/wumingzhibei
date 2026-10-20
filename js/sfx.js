@@ -160,6 +160,11 @@
       tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
       noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
     },
+    ult(o, t, k) {           // 卖血大招：低沉上冲 + 一层破空
+      tone(o, t, { type: 'sawtooth', p0: 90 * k, p1: 240, gain: .22, a: .01, d: .5, lp: 900 });
+      tone(o, t + .06, { type: 'square', p0: 180 * k, p1: 300, gain: .1, a: .005, d: .35, lp: 1600 });
+      noise(o, t, { type: 'highpass', f0: 900, gain: .16, a: .002, d: .3 });
+    },
     crack(o, t, k) {         // 钝器命中：木头的脆响，和闷响叠在一起用
       noise(o, t, { type: 'highpass', f0: 2600, gain: .2, a: .001, d: .04 });
       noise(o, t + .004, { f0: 1200 * k, f1: 620, q: 2, gain: .16, a: .001, d: .07 });
@@ -214,7 +219,7 @@
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42, ult: .6 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
