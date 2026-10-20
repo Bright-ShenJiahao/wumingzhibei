@@ -285,7 +285,7 @@ function dmgHero(n, from) {
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (n >= 2 || h.hp <= 0) { launch(h, dir * 85, 120); h.f = -dir; h.inv = 9; }   // 重击：被打飞
   else { set(h, 'hurt'); h.vx = dir * 80; }
-  if (h.hp <= 0) { over = true; say('倒下了…… 按 R 或「攻击」重来', 99); }
+  if (h.hp <= 0) { over = true; say('倒下了……', 1.4); }   // 具体台词交给结算板
 }
 
 // ---------- 黄巾兵 AI ----------
@@ -391,8 +391,13 @@ function update(dt) {
   // 通关或倒下：记下成绩，1.2 秒后弹结算板（先让倒地/被打飞的动画演完）
   if (!result && (won || over)) {
     endT = runT;
-    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2 };
+    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2,
+      line: won ? '' : deathLine(), s1: 0, s2: 0 };
     uiBtns = [];
+  }
+  if (result) {   // 面板弹一声闷「咚」；台词跳出时再来一声轻「嗒」
+    if (!result.s1 && gameT >= result.born) { result.s1 = 1; sfx('panel'); }
+    if (!result.s2 && gameT >= result.born + .12) { result.s2 = 1; if (!result.win) sfx('tick'); }
   }
 }
 
@@ -498,6 +503,18 @@ function draw() {
 // ---------- 结算板（通关 / 倒下） ----------
 function fmtTime(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
 // 评价：无伤 SSS；被打 1~3 下 S；其余按用时 A~E（分数先这么定，实测后再调）
+// 倒下时随机说一句（按打到第几波分档），让每次都死得不太一样
+const DEATH_LINES = {
+  early: ['这就完了？我连这是哪一年都没问清楚。', '汉朝的路，比我想的难走。'],
+  mid: ['黄巾贼……怎么打不完。', '再给我一口气，我还能站起来。'],
+  boss: ['差一点……就差这一下！', '管亥，你等着。'],
+  any: ['无名之辈，也不能就这么交待在这儿。'],
+};
+function deathLine() {
+  const stage = gateI >= 4 ? 'boss' : gateI >= 2 ? 'mid' : 'early';
+  const pool = DEATH_LINES[stage].concat(DEATH_LINES.any);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 function rankOf(t) {
   if (hitsTaken === 0) return 'SSS';
   if (hitsTaken <= 3) return 'S';
@@ -532,8 +549,20 @@ function drawResult(HW, HH) {
     ctx.fillText(result.rank, x + pw / 2, y + 186);
     if (result.hit === 0) { ctx.font = 'bold 13px ' + F; ctx.fillStyle = '#b3372a'; ctx.fillText('全程无伤', x + pw / 2, y + 208); }
   } else {
-    ctx.font = 'bold 20px ' + F; ctx.fillStyle = '#6b5233';
-    ctx.fillText('再来一局？', x + pw / 2, y + 170);
+    // 倒下台词：0.15 秒从下往上弹出，带一点回弹
+    const p = Math.min(1, Math.max(0, (gameT - result.born - .12) / .15));
+    const e = 1 - Math.pow(1 - p, 3);
+    const line = result.line || '';
+    const fs = Math.max(13, Math.min(21, (pw - 56) / Math.max(8, line.length)));
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (gameT - result.born) / .3) * e;
+    ctx.translate(x + pw / 2, y + 166 + (1 - e) * 14);
+    const sc = .9 + .1 * e; ctx.scale(sc, sc);
+    ctx.font = 'bold ' + fs.toFixed(0) + 'px ' + F;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#f4e9cf'; ctx.fillStyle = '#3a2410';
+    ctx.strokeText(line, 0, 0); ctx.fillText(line, 0, 0);
+    ctx.restore();
   }
   // 两个按钮：分享 / 再来一局（手机点这里，电脑按 R 也行）
   const bw = Math.min(150, (pw - 72) / 2), gap = 18, bh = 40;

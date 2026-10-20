@@ -155,6 +155,15 @@
       noise(o, t, { type: 'lowpass', f0: 700, f1: 200, gain: .5, a: .01, d: .35 });
       for (let i = 0; i < 9; i++) noise(o, t + .05 + Math.random() * .6, { f0: R(1800, 4200), q: 6, gain: R(.08, .2), a: .001, d: R(.01, .03) });
     },
+    // —— 结算板（新增，不影原有音效）——
+    panel(o, t, k) {         // 结算板弹出：闷闷的一声「咚」
+      tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
+      noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
+    },
+    tick(o, t, k) {          // 台词跳出：轻轻一声「嗒」
+      noise(o, t, { f0: 2400 * k, q: 5, gain: .18, a: .001, d: .03 });
+      tone(o, t, { type: 'triangle', p0: 900 * k, p1: 620, gain: .1, a: .002, d: .06 });
+    },
   };
 
   // 静音：把主输出在 0.1 秒内渐变到 0，正在播的音效和配音跟着立刻听不见；取消静音再渐变回 .8
@@ -191,7 +200,7 @@
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
