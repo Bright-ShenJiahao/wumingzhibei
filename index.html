@@ -490,12 +490,13 @@ const Boss = (() => {
   function hit(z, dmg, dir) {
     if (z.dead || z.st === 'fall' || z.st === 'roar' || z.st === 'intro') return;
     // 掷戟后的空手窗口：只吃一半伤害（完全不能攻击，是玩家该抓的破绽）
-    if (z.st === 'bare' || z.st === 'leap' || z.st === 'pickup') dmg *= .5;
+    if (z.spear) dmg *= .5;   // 家伙不在手上（掷出去了）就一直只吃一半伤害
     z.hp -= dmg; z.flash = .1; freeze = .04; shake = .08;
     hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (z.phase === 2) {
       z.poise += dmg;
-      const busy = ['chop_a', 'chop_b', 'spin', 'thrust_a', 'thrust_b'].includes(z.st);
+      // 扑过去捡戟的过程不被打断（否则破绽窗口会无限延长），但伤害照吃
+      const busy = ['chop_a', 'chop_b', 'spin', 'thrust_a', 'thrust_b', 'leap', 'pickup'].includes(z.st);
       if (z.poise >= 9 && !busy) { z.poise = 0; set(z, 'stagger'); }
       else if (z.st === 'walk' || z.st === 'idle') z.x += dir * 3;
     }
@@ -601,6 +602,8 @@ const Boss = (() => {
     if (S === 'roar') { if (z.t > 1.4) { set(z, 'idle'); z.cd = .8; z.spinCd = 5; } return; }
     if (S === 'stagger') { if (z.t > .9) { set(z, 'idle'); z.cd = .4; } return; }
     if (S === 'dizzy') { if (z.t > 1.6) { set(z, 'idle'); z.cd = .5; } return; }
+    // 手里没戟（还插在地上）→ 必须回去捡。之前被玩家打断会停在 idle，戟就永远留在地上了
+    if (z.spear && !['throw_a', 'bare', 'leap', 'pickup'].includes(S)) { set(z, 'leap'); z.pickX = z.spear.x; return; }
     z.spinCd = (z.spinCd || 0) - dt;
     // TODO(待补美术/待做)：二阶段缺位移技能「突进刺」——
     // 现在他走得太慢（34，狂暴 44），主角 70 只要后退就永远追不上。
