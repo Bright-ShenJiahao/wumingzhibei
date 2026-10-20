@@ -17,7 +17,7 @@ const Boss = (() => {
     sfx('land', z.x);
     return z;
   }
-  const set = (z, st) => { z.st = st; z.t = 0; };
+  const set = (z, st) => { z.st = st; z.t = 0; if (st !== 'leap') z.z = 0; };   // 切状态时把离地高度清零，防止卡在半空
   // 配音（art/voice/guanhai_*.mp3）。只保留 5 句台词：登场 / 喊人 / 落马 / 怒吼 / 战败。
   // 攻击时的吼声（chop / thrust / spin / stagger）已按用户要求去掉：Boss 战一打久了就太吵，而且会互相叠音。
   const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };
@@ -35,6 +35,15 @@ const Boss = (() => {
   // ---------- 受击 ----------
   function hit(z, dmg, dir) {
     if (z.dead || z.st === 'fall' || z.st === 'roar' || z.st === 'intro') return;
+    // 去捡戟的路上无敌（飞在空中），只溅火星表示"打不动"，避免玩家以为没打中
+    if (z.spear && (z.st === 'leap' || z.st === 'pickup')) {
+      for (let i = 0; i < 5; i++) {
+        const life = rnd(.08, .2);
+        propFx.push({ x: z.x + rnd(-8, 8), y: z.y - rnd(14, 34), vx: rnd(-70, 70) - dir * 30, vy: rnd(-90, -10),
+          w: rnd(1, 2), h: rnd(1, 2), life, max: life, c: Math.random() < .5 ? '#fffbe6' : '#ffd88a' });
+      }
+      return;
+    }
     // 掷戟后的空手窗口：只吃一半伤害（完全不能攻击，是玩家该抓的破绽）
     if (z.spear) dmg *= .5;   // 家伙不在手上（掷出去了）就一直只吃一半伤害
     z.hp -= dmg; z.flash = .1; freeze = .04; shake = .08;
