@@ -68,7 +68,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => key[e.code] = 0);
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
 jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
-jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 50) { dx *= 50 / l; dy *= 50 / l; } joy.dx = dx / 45; joy.dy = dy / 45; jk.style.transform = `translate(${dx}px,${dy}px)`; });
+jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = () => { joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) reset(); else pressAtk = true; });
@@ -363,7 +363,6 @@ function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 
 function drawProp(p) {
   const [, w, h] = ASSETS.props[p.g];
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
-  if (p.g !== 'flag') { ctx.fillStyle = 'rgba(60,36,16,.32)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .5, w * .12, 0, 0, 7); ctx.fill(); }   // 接地阴影
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
   ctx.restore();

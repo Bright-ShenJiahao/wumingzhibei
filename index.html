@@ -4,16 +4,18 @@
 html,body{margin:0;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none;background:#1a1020;font-family:system-ui,"PingFang SC","Noto Sans CJK SC",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh}
 #top{position:fixed;left:0;right:0;top:0;display:flex;gap:6px;padding:8px calc(10px + env(safe-area-inset-left));align-items:center;flex-wrap:wrap;z-index:2;pointer-events:none}
-button{font:inherit;font-size:14px;font-weight:700;border:2px solid #2a2234;background:#fff;color:#2a2234;border-radius:8px;padding:6px 10px;touch-action:none}
-button.on{background:#2a2234;color:#ffd86e}
-#wp{position:fixed;right:calc(10px + env(safe-area-inset-right));top:calc(8px + env(safe-area-inset-top));display:flex;gap:6px;z-index:3}
+button{font:inherit;font-size:13px;font-weight:700;border:1.5px solid rgba(255,255,255,.55);background:rgba(20,14,30,.35);color:#fff;text-shadow:0 1px 2px #000;border-radius:7px;padding:4px 8px;touch-action:none}
+button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border-color:#ffd86e}
+#wp{position:fixed;right:calc(8px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;gap:5px;z-index:3}
 #joy{position:fixed;left:0;bottom:0;width:50%;height:70%;z-index:1;touch-action:none}
-#base{position:absolute;left:calc(40px + env(safe-area-inset-left));bottom:calc(36px + env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35)}
-#knob{position:absolute;left:33px;top:33px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.45)}
-.big{position:fixed;z-index:3;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 3px 8px rgba(0,0,0,.35)}
-/* 按钮抬高，避开右下角的 Netlify 标志和手机底部手势条 */
-#bA{right:calc(28px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));width:96px;height:96px;background:#d23c30;color:#fff;border-color:#7a1c16}
-#bR{right:calc(140px + env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));width:72px;height:72px;font-size:16px}
+#base{position:absolute;left:calc(14px + env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.35)}
+#knob{position:absolute;left:25px;top:25px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.4)}
+.big{position:fixed;z-index:3;border-radius:50%;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.5);color:#fff;text-shadow:0 1px 3px #000}
+.big:active{background:rgba(255,255,255,.3)}
+/* 透明按钮，贴近右下角 */
+#bA{right:calc(14px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:72px;height:72px;background:rgba(210,60,48,.28);border-color:rgba(255,160,150,.7)}
+#bA:active{background:rgba(210,60,48,.5)}
+#bR{right:calc(96px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));width:54px;height:54px;font-size:13px}
 #help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 #rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;align-items:center;justify-content:center;text-align:center;line-height:1.8}
 @media (pointer:coarse){#help{display:none}}
@@ -287,7 +289,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => key[e.code] = 0);
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
 jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
-jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 50) { dx *= 50 / l; dy *= 50 / l; } joy.dx = dx / 45; joy.dy = dy / 45; jk.style.transform = `translate(${dx}px,${dy}px)`; });
+jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = () => { joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) reset(); else pressAtk = true; });
@@ -582,7 +584,6 @@ function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 
 function drawProp(p) {
   const [, w, h] = ASSETS.props[p.g];
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
-  if (p.g !== 'flag') { ctx.fillStyle = 'rgba(60,36,16,.32)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .5, w * .12, 0, 0, 7); ctx.fill(); }   // 接地阴影
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
