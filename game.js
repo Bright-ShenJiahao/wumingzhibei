@@ -20,10 +20,25 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
 const PROP_POOL = ['hay', 'hay', 'well', 'cart', 'flag'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
+// 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
+// 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
+// 平衡：柴刀距离最短、伤害最高；木棍距离长、能打晕、第三下横扫多人；石子安全但伤害最低，击退一点点。
 const WEAP = {
-  staff: { name: '棍', dur: [.14, .1, .16], reach: 34, dy: 12, multi: true, kb: 70 },
-  knife: { name: '柴刀', dur: [.06, .08, .1], reach: 26, dy: 10, multi: false, kb: 40 },
-  stone: { name: '石子', dur: [.08, .07, .12], proj: true, kb: 30 },
+  staff: { name: '棍', reach: 36, dy: 12, combo: [
+    { f: ['staff_1a', 'staff_1b'], d: [.16, .24], dmg: 1, kb: 35, daze: .15 },                    // 下劈
+    { f: ['staff_2a', 'staff_2b'], d: [.12, .24], dmg: 1, kb: 30, daze: .3 },                     // 上挑
+    { f: ['staff_3a', 'staff_3b'], d: [.18, .3], dmg: 1.5, kb: 110, daze: .4, multi: true, knock: true },   // 横扫
+  ] },
+  knife: { name: '柴刀', reach: 25, dy: 10, combo: [
+    { f: ['knife_1a', 'knife_1b'], d: [.08, .18], dmg: 1.3, kb: 30 },                             // 斜劈
+    { f: ['knife_2a', 'knife_2b'], d: [.07, .18], dmg: 1.3, kb: 30 },                             // 反手横砍
+    { f: ['knife_3a', 'knife_3b', 'knife_3c'], d: [.1, .08, .26], dmg: 2, kb: 70, multi: true, both: true, knock: true },   // 转身回旋斩（前后都砍）
+  ] },
+  stone: { name: '石子', proj: true, combo: [
+    { f: ['stone_1a', 'stone_1b'], d: [.08, .18], dmg: .6, kb: 40, spd: 240 },                    // 左手扔
+    { f: ['stone_2a', 'stone_2b'], d: [.08, .18], dmg: .6, kb: 40, spd: 240 },                    // 右手扔
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.16, .07, .26], dmg: 1.2, kb: 70, spd: 340, pierce: true },   // 右手全力投（穿透）
+  ] },
 };
 // 黄巾兵
 const TYPES = {
@@ -45,7 +60,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
-  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, vx: 0 };
+  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
@@ -113,16 +128,18 @@ function waves() {
 }
 
 // ---------- 主角 ----------
-function hit(z, dmg, kb, dir, knock) {
+function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35) {
   if (z.dead || z.air) return;
-  z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : .35; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
+  hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
+  z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
+  if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = z.T.heavy ? 1 : 1.5; z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   freeze = .05; shake = .1;
   if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
-function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; }
+function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; e.daze = 0; }
 function airStep(e, dt) {
   e.z += e.vz * dt; e.vz -= 420 * dt; moveEnt(e, e.ax * dt, 0);
   if (e.z <= 0 && e.vz < 0) { e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08); sfx(e.dead ? 'enemyDown' : e === hero && over ? 'heroDown' : 'land', e.x); }
@@ -141,18 +158,21 @@ function heroUpdate(dt) {
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
     sfx('roll', h.x);
-    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null;
+    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0;
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
   }
   pressRoll = false;
   if (h.st === 'roll') { moveEnt(h, h.rx * 150 * dt, h.ry * 105 * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
+  h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
-    const W = WEAP[weapon], a = h.atk; a.t += dt;
-    if (a.fi === 0 && a.t >= W.dur[0]) { a.fi = 1; a.t = 0; strike(); }
-    else if (a.fi === 1 && a.t >= W.dur[1]) { a.fi = 2; a.t = 0; }
-    else if (a.fi === 2 && a.t >= W.dur[2]) { if (h.q) { h.q = 0; h.combo = (h.combo + 1) % 3; startAtk(true); } else { h.combo = 0; set(h, 'idle'); } }
+    const a = h.atk, C = WEAP[weapon].combo[a.c]; a.t += dt;
+    if (a.t >= C.d[a.fi]) {
+      a.t = 0; a.fi++;
+      if (a.fi === C.f.length - 1) strike();
+      if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
+    }
     if (ix && a.fi === 0) h.f = Math.sign(ix);
     moveEnt(h, ix * 15 * dt, 0);
     return;
@@ -162,17 +182,31 @@ function heroUpdate(dt) {
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
 function set(e, st) { e.st = st; e.t = 0; }
-function startAtk(keep) { set(hero, 'atk'); hero.atk = { fi: 0, t: 0 }; if (!keep) hero.combo = 0; }
+function startAtk() {
+  const h = hero;
+  // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
+  const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
+  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % 3 : 0, fi: 0, t: 0 };
+}
 function strike() {
-  const h = hero, W = WEAP[weapon], fin = h.combo === 2;
-  if (W.proj) { sfx('swing_stone', h.x); shots.push({ x: h.x + h.f * 18, y: h.y, z: 24, vx: h.f * 240, life: .8 }); return; }
+  const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
+  if (W.proj) {
+    sfx('swing_stone', h.x); h.lastShotC = c;
+    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd, life: C.pierce ? 1.1 : .8, C, c, hitSet: [] });
+    return;
+  }
   let landed = false;
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
-    if (dx > -4 && dx < W.reach && Math.abs(z.y - h.y) < W.dy) { landed = true; hit(z, fin ? 2 : 1, fin ? W.kb * 2 : W.kb, h.f, fin); if (!W.multi) break; }
+    const inRange = C.both ? Math.abs(dx) < W.reach : dx > -4 && dx < W.reach;
+    if (inRange && Math.abs(z.y - h.y) < W.dy) {
+      landed = true;
+      hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0);
+      if (!C.multi) break;
+    }
   }
-  if (landed) { sfx('hit_' + weapon, h.x + h.f * 20); if (fin) sfx('finisher', h.x); }
+  if (landed) { sfx('hit_' + weapon, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
   else sfx('swing_' + weapon, h.x);
 }
 function dmgHero(n, from) {
@@ -192,6 +226,7 @@ function zUpdate(z, dt) {
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
+  if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }   // 晕眩：站着不动
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
   const dx = hero.x - z.x, dy = hero.y - z.y;
@@ -233,7 +268,10 @@ function zUpdate(z, dt) {
 function updateShots(dt) {
   for (const s of shots) {
     s.x += s.vx * dt; s.life -= dt;
-    for (const z of zs) if (!z.dead && Math.abs(z.x - s.x) < 10 && Math.abs(z.y - s.y) < 10 && s.life > 0) { hit(z, 1, WEAP.stone.kb, Math.sign(s.vx)); sfx('hit_stone', s.x); s.life = 0; }
+    for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 && Math.abs(z.y - s.y) < 10 && s.life > 0) {
+      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15); hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      if (!s.C.pierce) s.life = 0;
+    }
   }
   shots = shots.filter(s => s.life > 0);
   for (const s of eshots) {
@@ -253,7 +291,9 @@ function updateShots(dt) {
   fires = fires.filter(f => f.t > 0);
 }
 
+let gameT = 0;
 function update(dt) {
+  gameT += dt;
   if (freeze > 0) { freeze -= dt; return; }
   heroUpdate(dt); waves();
   zs.forEach(z => zUpdate(z, dt));
@@ -289,7 +329,7 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false) {
   ctx.restore();
 }
 function heroFrame(h) {
-  if (h.st === 'atk') return weapon + (h.atk.fi === 0 ? 1 : 2);
+  if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
   if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
   if (h.st === 'bounce' || h.st === 'getup') return h.st;
@@ -301,7 +341,7 @@ function zFrame(z) {
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
   if (z.st === 'land') return 'land';
   if (z.dead) return 'down';
-  if (z.stun > 0) return 'hurt';
+  if (z.stun > 0 || z.daze > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
@@ -378,6 +418,13 @@ function drawZ(z) {
   drawChar(z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
   if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 34;
+  if (z.daze > 0) {   // 头顶转圈的小黄星
+    const t = performance.now() / 260;
+    for (let k = 0; k < 3; k++) {
+      const a = t + k * 2.094, sx = z.x + Math.cos(a) * 7, sy = top - 6 + Math.sin(a) * 2;
+      ctx.fillStyle = '#3a2410'; ctx.fillRect(sx - 2, sy - 2, 4, 4); ctx.fillStyle = '#ffd84a'; ctx.fillRect(sx - 1.5, sy - .5, 3, 1); ctx.fillRect(sx - .5, sy - 1.5, 1, 3);
+    }
+  }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - 9, top, 18, 3); ctx.fillStyle = z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - 8, top + 1, 16 * z.hp / z.T.hp, 1);
 }
