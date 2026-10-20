@@ -327,6 +327,7 @@
     draw,
     update: (dt) => update(dt),
     active: () => S.mode === 'play',
+    skip: () => { S.mode = 'off'; document.body.classList.remove('wzb-room', 'wzb-wake'); },
     info: () => ({ phase: S.phase, took: S.took, x: Math.round(S.hero ? S.hero.x : 0), viewW: Math.round(viewW()) }),
   };
 })();

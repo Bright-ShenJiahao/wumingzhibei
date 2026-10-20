@@ -403,6 +403,13 @@
     playerName: () => S.name,
     show: () => show(),
     active: () => S.mode !== 'game',
+    // 调试用：直接跳过标题页进游戏
+    skip: () => {
+      S.mode = 'game'; S.intro = 0;
+      document.body.classList.remove('wzb-title', 'wzb-intro');
+      setDomVisible(false);
+      if (dom.flash) dom.flash.style.opacity = 0;
+    },
   };
 
   // ---------- 初始化 ----------
