@@ -1187,6 +1187,11 @@ const Boss = (() => {
       tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
       noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
     },
+    crack(o, t, k) {         // 钝器命中：木头的脆响，和闷响叠在一起用
+      noise(o, t, { type: 'highpass', f0: 2600, gain: .2, a: .001, d: .04 });
+      noise(o, t + .004, { f0: 1200 * k, f1: 620, q: 2, gain: .16, a: .001, d: .07 });
+      tone(o, t, { type: 'triangle', p0: 330 * k, p1: 180, gain: .1, a: .001, d: .06 });
+    },
     blip(o, t, k) {          // 台词逐字跳出的电子音（老游戏机那种短促方波）
       tone(o, t, { type: 'square', p0: 760 * k, p1: 520, gain: .085, a: .001, d: .035, lp: 2600 });
       tone(o, t + .012, { type: 'square', p0: 1140 * k, p1: 900, gain: .04, a: .001, d: .022, lp: 3200 });
@@ -1236,7 +1241,7 @@ const Boss = (() => {
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
@@ -1789,10 +1794,12 @@ const WEAP = {
   // 后摇从 .24/.24/.30 收到 .20/.20/.26，收招更利索（一轮 1.24 → 1.12 秒）
   // 棍子 = 控场：距离最长（40）、伤害中等，但每一下都有机会把敌人打晕，第三下横扫必定打晕全场；
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
-  staff: { name: '棍', reach: 40, dy: 13, move: .5, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.16, .2], dmg: 1.1, kb: 35, daze: .3 },                    // 下劈
-    { f: ['staff_2a', 'staff_2b'], d: [.12, .2], dmg: 1.1, kb: 30, daze: .45 },                   // 上挑
-    { f: ['staff_3a', 'staff_3b'], d: [.18, .26], dmg: 1.8, kb: 130, daze: 1, multi: true, knock: true },   // 横扫（必晕）
+  // 棍子 = 长距离控场。三段动作按武术的「劈 → 扫 → 回身扫」重排：
+  // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
+  staff: { name: '棍', reach: 40, dy: 13, move: .5, freeze: .062, combo: [
+    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.1, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
+    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.1, kb: 46, daze: .45 },                  // 扫：低身搂扫
+    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.8, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -1828,13 +1835,14 @@ const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 204
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
+let drops = [], floaters = [], reviveUsed = false;   // 掉落物 / 飘字 / 复活是否已用
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; reviveUsed = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
@@ -1920,7 +1928,15 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = z.T.heavy ? 1 : 1.5; z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连打三下会显得一顿一顿的）
-  freeze = Math.min(.085, .02 + dmg * .018); shake = .1;
+  const W0 = WEAP[weapon] || {};
+  freeze = Math.min(.11, W0.freeze != null ? W0.freeze : .02 + dmg * .018);   // 棍子有单独的定格时长，打起来更"实"
+  shake = Math.max(shake, .12);
+  // 命中火花：几粒白/金色小碎块朝被击退方向溅出（复用碎屑系统）
+  for (let i = 0; i < 6; i++) {
+    const life = rnd(.1, .26);
+    propFx.push({ x: z.x - dir * 6, y: z.y - rnd(12, 26), vx: rnd(-70, 70) - dir * 45, vy: rnd(-110, -20),
+      w: rnd(1, 2.2), h: rnd(1, 2.2), life, max: life, c: Math.random() < .5 ? '#fffbe6' : '#ffdd7a' });
+  }
   if (z.hp <= 0) { z.dead = 1; kills++; knock = true; }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
@@ -1974,6 +1990,70 @@ function heroUpdate(dt) {
 function set(e, st) { e.st = st; e.t = 0; }
 // ---------- 可破坏的道具（草垛、推车） ----------
 // 每被打中一次掉 1 点耐久；打坏后取消碰撞（p.solid = false）并从画面消失，水井/旗子 hp 为 0 不受影响
+// 回血道具：包子 +1（70%）、鸡腿 +2（20%）、烤乳猪 +3（10%）
+const FOOD = [
+  { k: 'bun', heal: 1, w: 70 },
+  { k: 'leg', heal: 2, w: 20 },
+  { k: 'pig', heal: 3, w: 10 },
+];
+function spawnDrop(x, y) {
+  const r = Math.random() * 100;
+  let acc = 0, pick = FOOD[0];
+  for (const f of FOOD) { acc += f.w; if (r < acc) { pick = f; break; } }
+  drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, t: rnd(0, 6), got: 0 });
+}
+function updateDrops(dt) {
+  const h = hero;
+  for (const d of drops) {
+    d.t += dt;
+    if (d.got) continue;
+    if (Math.abs(d.x - h.x) < 14 && Math.abs(d.y - h.y) < 16) {
+      d.got = 1;
+      h.hp = Math.min(10, h.hp + d.heal);
+      floaters.push({ x: d.x, y: d.y - 8, t: 0, txt: '+' + d.heal });
+      sfx('pickup', d.x);
+    }
+  }
+  drops = drops.filter(d => !d.got);
+  for (const f of floaters) f.t += dt;
+  floaters = floaters.filter(f => f.t < 1.1);
+}
+function drawDrop(d) {
+  const c = ctx, y = d.y - 10 + Math.sin(d.t * 3) * 2;
+  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(d.x, d.y + 2, 8, 3, 0, 0, 7); c.fill();
+  const gl = c.createRadialGradient(d.x, y - 4, 1, d.x, y - 4, 14);
+  gl.addColorStop(0, 'rgba(255,220,120,.30)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
+  c.fillStyle = gl; c.beginPath(); c.arc(d.x, y - 4, 14, 0, 7); c.fill();
+  c.save(); c.translate(d.x, y);
+  c.shadowColor = 'rgba(26,14,8,.9)'; c.shadowOffsetX = .9; c.shadowOffsetY = .9;   // 落到沙地上也看得清
+  if (d.k === 'bun') {
+    c.fillStyle = '#f6efdc'; c.beginPath(); c.ellipse(0, 0, 6, 5, 0, 0, 7); c.fill();
+    c.fillStyle = '#fffdf4'; c.beginPath(); c.ellipse(-1, -1.5, 4, 3, 0, 0, 7); c.fill();
+    c.fillStyle = '#d8c9a8'; c.fillRect(-.5, -4.5, 1, 1.5);
+  } else if (d.k === 'leg') {
+    c.strokeStyle = '#f1e6cf'; c.lineWidth = 2.2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(3, 4); c.lineTo(-1, 0); c.stroke();
+    c.fillStyle = '#a05a2c'; c.beginPath(); c.ellipse(-3, -2, 6, 5, -.5, 0, 7); c.fill();
+    c.fillStyle = '#c47a3e'; c.beginPath(); c.ellipse(-4, -3, 3.5, 2.6, -.5, 0, 7); c.fill();
+  } else {
+    c.fillStyle = '#b4522a'; c.beginPath(); c.ellipse(0, 0, 9, 6, 0, 0, 7); c.fill();
+    c.fillStyle = '#d06a35'; c.beginPath(); c.ellipse(-1, -1.5, 6.5, 3.6, 0, 0, 7); c.fill();
+    c.fillStyle = '#b4522a'; c.beginPath(); c.arc(7, -2, 3.4, 0, 7); c.fill();   // 头
+    c.fillStyle = '#8a3d1e'; c.fillRect(-6, 4, 3, 2); c.fillRect(2, 4, 3, 2);    // 腿
+    c.fillStyle = '#f4c07a'; c.beginPath(); c.arc(7.5, -2.5, 1.1, 0, 7); c.fill();
+  }
+  c.shadowColor = 'transparent'; c.shadowOffsetX = 0; c.shadowOffsetY = 0;
+  c.restore();
+}
+function drawFloaters() {
+  for (const f of floaters) {
+    ctx.globalAlpha = Math.max(0, 1 - f.t / 1.1);
+    ctx.font = 'bold 13px "PingFang SC","Noto Sans CJK SC",sans-serif';
+    ctx.fillStyle = '#8ef07a'; ctx.textAlign = 'center';
+    ctx.fillText(f.txt, f.x, f.y - f.t * 26);
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left';
+}
 function hitProp(p, dir) {
   if (p.broken || !(p.g === 'hay' || p.g === 'cart')) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
@@ -1989,7 +2069,10 @@ function hitProp(p, dir) {
       vx: rnd(-70, 70) + (dir || 0) * 35, vy: rnd(-130, -45), w, h: hh, life, max: life,
       c: cols[Math.floor(Math.random() * cols.length)] });
   }
-  if (broken) { p.broken = true; p.solid = false; }
+  if (broken) {
+    p.broken = true; p.solid = false;
+    if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
+  }
 }
 function updatePropFx(dt) {
   for (const p of props) if (p.hitT > 0) p.hitT = Math.max(0, p.hitT - dt);
@@ -2042,7 +2125,7 @@ function strike() {
     }
   }
   const snd = W.snd || weapon;   // 音效名（锤子借用木棍那一套闷响）
-  if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); if (c === 2) sfx('finisher', h.x); }
+  if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); sfx('crack', h.x + h.f * 26); if (c === 2) sfx('finisher', h.x); }
   else if (!landed) sfx('swing_' + snd, h.x);   // 只打中道具时，音效由 hitProp 自己播
 }
 function dmgHero(n, from) {
@@ -2151,7 +2234,7 @@ function update(dt) {
     zs.forEach(z => zUpdate(z, dt));
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
-  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt);
+  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -2244,6 +2327,7 @@ function draw() {
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
   for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
+  for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => stone(s.x, s.y - s.z) });
@@ -2256,6 +2340,7 @@ function draw() {
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
+  drawFloaters();
   // HUD
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
@@ -2355,6 +2440,15 @@ function drawResult(HW, HH) {
     ctx.fillText(label, bxx + bw / 2, by + 27);
     uiBtns.push({ x: bxx, y: by, w: bw, h: bh, act });
   };
+  if (!result.win && !reviveUsed) {
+    // 复活按钮：比下面那排更醒目
+    const rw = Math.min(360, pw - 80), rh = 38, rx = x + (pw - rw) / 2, ry = y + 196;
+    ctx.fillStyle = '#2f6b3a'; ctx.fillRect(rx, ry, rw, rh);
+    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+    ctx.fillStyle = '#e9ffe2'; ctx.font = 'bold 17px ' + F;
+    ctx.fillText('分享给好友 · 复活一次', x + pw / 2, ry + 25);
+    uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
+  }
   btn(bx, '分　享', 'share', false);
   btn(bx + bw + gap, '返回首页', 'home', false);
   btn(bx + (bw + gap) * 2, '再来一局', 'restart', true);
@@ -2365,6 +2459,19 @@ function drawResult(HW, HH) {
     ctx.fillStyle = '#ffd86e'; ctx.fillText(toastMsg, HW / 2, ty);
   }
   ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+}
+// 分享换复活（每局一次）：不管分享成不成功都给，分享面板取消也不扣次数
+async function doRevive() {
+  if (!result || result.win || reviveUsed) return;
+  reviveUsed = true;
+  const r = { win: false, kills, time: result.time, rank: '' };
+  result = null; uiBtns = [];
+  over = false;
+  hero.hp = 5; hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = 2.2; hero.rollCd = 0;
+  for (const z of zs) if (!z.dead) { z.stun = Math.max(z.stun, .7); z.st = 'move'; z.tok = false; }
+  say('……还活着！趁现在', 2.2);
+  sfx('finisher', hero.x);
+  try { if (window.SHARE) await SHARE.send(r); } catch (e) {}
 }
 async function doShare() {
   if (!result) return;
@@ -2381,7 +2488,7 @@ document.addEventListener('pointerdown', e => {
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation();
-      if (b.act === 'share') doShare(); else if (b.act === 'home') { if (window.TITLE) TITLE.show(); } else reset();
+      if (b.act === 'share') doShare(); else if (b.act === 'revive') doRevive(); else if (b.act === 'home') { if (window.TITLE) TITLE.show(); } else reset();
       return;
     }
   }
