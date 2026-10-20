@@ -169,7 +169,16 @@
   });
   updateButton();
   // 浏览器要求用户操作后才能出声：第一次按键/触摸时启动
-  ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { if (!muted) init(); }, { once: true }));
+  // iPhone：静音拨片打开时网页声音默认也会被静音，这里声明为"媒体播放"让它照常出声（iOS 17+ 支持）
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  // 浏览器要求用户点一下之后才能出声：每次点击/按键都尝试解锁，并播放一段无声音频（iOS 需要）
+  function unlock() {
+    if (muted || !init()) return;
+    if (ac.state !== 'running') ac.resume();
+    try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {}
+    preloadVoices();
+  }
+  ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
     hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55 };
@@ -177,13 +186,25 @@
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
   const vcache = {};
+  // data:URI → 二进制（不用 fetch，部分手机浏览器不支持 fetch data: 地址）
+  function b64buf(uri) { const bin = atob(uri.split(',')[1]), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function decode(name) {
+    if (!vcache[name]) vcache[name] = new Promise((ok, no) => ac.decodeAudioData(b64buf(ASSETS.voice[name]), ok, no));
+    return vcache[name];
+  }
+  let preloaded = false;
+  function preloadVoices() { if (preloaded || !window.ASSETS || !ASSETS.voice) return; preloaded = true; for (const n in ASSETS.voice) decode(n).catch(() => {}); }
   async function voice(name, pan = 0) {
     if (muted || !window.ASSETS || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
     try {
-      if (!vcache[name]) { const buf = await (await fetch(ASSETS.voice[name])).arrayBuffer(); vcache[name] = await new Promise((ok, no) => ac.decodeAudioData(buf, ok, no)); }
-      const src = ac.createBufferSource(); src.buffer = vcache[name];
+      if (ac.state !== 'running') await ac.resume();
+      const buffer = await decode(name);
+      const src = ac.createBufferSource(); src.buffer = buffer;
       src.connect(bus(pan * .5, 1.1, .12)); src.start();
-    } catch (e) {}
+    } catch (e) {
+      // 备用：Web Audio 解码失败时，用 <audio> 播放
+      try { const el = new Audio(ASSETS.voice[name]); el.volume = 1; el.play().catch(() => {}); } catch (e2) {}
+    }
   }
   window.SFX = {
     voice,
