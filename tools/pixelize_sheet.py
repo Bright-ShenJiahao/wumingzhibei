@@ -4,7 +4,7 @@
 - 同一角色共用一个缩放比例（以第一帧站立高度 = target 像素）和一套调色板
 - 输出 art/sprites/<角色>/<帧名>.png 和 art/sprites/atlas.json（记录尺寸和脚底锚点）
 
-用法：python3 tools/pixelize_sheet.py 原图 '角色名:帧1,帧2,...;角色名2:...' [目标高度=72]
+用法：python3 tools/pixelize_sheet.py 原图 '角色名:帧1,帧2,...;角色名2:...' [目标高度=72 | area | ref=帧名:高度] [strict]
 同一行里出现两个角色时，按顺序写多个角色即可（帧按从左到右、从上到下依次分配）。"""
 import json, os, sys
 import numpy as np
@@ -36,12 +36,12 @@ for i in small:   # 小碎块并入水平距离最近、垂直有重叠的大块
     for j in big:
         jy, jx = objs[j]
         if not (jy.start - 10 < cy < jy.stop + 10): continue
-        dist = max(0, jx.start - cx, cx - jx.stop)
+        dist = max(0, jx.start - sx.stop, sx.start - jx.stop)   # 用碎块边缘到人物边界的距离
         if dist < bd: best, bd = j, dist
     # 很小又离得远的碎块（飞出去的石子、箭）直接丢弃，游戏里用代码画投射物
     tiny = sizes[i] < .04 * np.median(sorted(sizes)[-8:])
     strict = len(sys.argv) > 4 and sys.argv[4] == 'strict'   # strict：只合并贴在身上的碎块（被打飞时脱手的武器丢掉）
-    if best is not None and (bd < 6 or (not tiny and not strict and bd < 160)): groups[best].append(i)
+    if best is not None and (bd < 2 or (tiny and bd < 10) or (not tiny and not strict and bd < 160)): groups[best].append(i)
 
 
 def bbox(ids):
@@ -68,7 +68,10 @@ atlas = json.load(open(atlas_p)) if os.path.exists(atlas_p) else {}
 k = 0
 for name, frames in chars:
     its = seq[k:k + len(frames)]; k += len(frames)
-    if MODE.startswith('area'):   # area 或 area*0.85（再乘一个修正系数）
+    if MODE.startswith('ref='):   # ref=帧名:高度 —— 让指定的那一帧缩放到这个像素高度（用不受武器长短影响的帧做基准，比如 walk1）
+        rf, rh = MODE[4:].split(':'); (ry0, ry1, _, _), _ = its[frames.index(rf)]
+        sc = int(rh) / (ry1 - ry0)
+    elif MODE.startswith('area'):   # area 或 area*0.85（再乘一个修正系数）
         ref = np.asarray(Image.open(os.path.join(R, 'art', 'sprites', name, 'idle.png')))[..., 3] > 0
         areas = [np.isin(lab[y0:y1, x0:x1], [i + 1 for i in ids]).sum() for (y0, y1, x0, x1), ids in its]
         sc = float(np.median([np.sqrt(ref.sum() / a_) for a_ in areas])) * (float(MODE.split('*')[1]) if '*' in MODE else 1)

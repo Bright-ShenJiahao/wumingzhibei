@@ -83,7 +83,7 @@ const Boss = (() => {
       if (ad > 90) moveTo(z, hero.x - z.f * 70, hero.y, 55, dt); else if (ad < 45) moveTo(z, hero.x - z.f * 80, z.y, 50, dt);
       if (z.cd <= 0) {
         const r = Math.random();
-        if (ad < 75 && ady < 16 && r < .55) set(z, 'sweep_a');
+        if (ad < 50 && ady < 16 && r < .55) set(z, 'sweep_a');
         else if (r < .78) { set(z, 'charge_go'); z.side = z.x < (L + Rr) / 2 ? -1 : 1; }
         else { set(z, 'leap_prep'); z.tx = hero.x; z.ty = hero.y; fx.push({ k: 'ring', x: z.tx, y: z.ty, t: 0, T: 1.3 }); sfx('bladeAlert', z.x); }
       }
@@ -102,7 +102,7 @@ const Boss = (() => {
     if (S === 'charge') {
       z.x += z.f * 300 * dt;
       if (z.t % .18 < dt) sfx('land', z.x);
-      if (heroIn(z.x + z.f * 20, z.y, 34, 11)) dmgHero(2, { x: z.x - z.f * 30 });
+      if (heroIn(z.x + z.f * 14, z.y, 30, 11)) dmgHero(2, { x: z.x - z.f * 30 });   // 马身 + 前伸的戟尖（约 44）
       if (Math.abs(z.x - z.cx0) >= z.cdist || (z.f > 0 && z.x > Rr - 30) || (z.f < 0 && z.x < L + 30)) { set(z, 'tired'); }
       return;
     }
@@ -121,7 +121,7 @@ const Boss = (() => {
     }
     if (S === 'stomp') { if (z.t > 1) { set(z, 'idle'); z.cd = 1.2; } return; }
     // 马上横劈
-    if (S === 'sweep_a') { z.f = Math.sign(dx) || z.f; if (z.t > .6) { set(z, 'sweep_b'); sfx('enemySwing', z.x); if (heroIn(z.x + z.f * 35, z.y, 50, 15)) dmgHero(2, z); } return; }
+    if (S === 'sweep_a') { z.f = Math.sign(dx) || z.f; if (z.t > .6) { set(z, 'sweep_b'); sfx('enemySwing', z.x); if (heroIn(z.x + z.f * 20, z.y, 26, 15)) dmgHero(2, z); } return; }   // 横劈：戟尖约 38 + 身体半宽
     if (S === 'sweep_b') { if (z.t > .5) { set(z, 'idle'); z.cd = 1.3; } return; }
     if (S === 'fall') {
       z.x += z.vx * dt; z.vx *= .92;
@@ -139,16 +139,16 @@ const Boss = (() => {
       z.f = Math.sign(dx) || z.f;
       if (z.cd <= 0) {
         if (z.spinCd <= 0 && ad < 140) { set(z, 'spin'); z.spinCd = 9; sfx('bladeAlert', z.x); return; }
-        if (ad < 55 && ady < 14) { set(z, 'chop_a'); return; }
-        if (ad > 60 && ad < 125 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
+        if (ad < 34 && ady < 14) { set(z, 'chop_a'); return; }
+        if (ad > 30 && ad < 62 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
-      const walking = ad > 50 || ady > 8;
-      if (walking) { moveTo(z, hero.x - z.f * 42, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
+      const walking = ad > 30 || ady > 8;
+      if (walking) { moveTo(z, hero.x - z.f * 26, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
       return;
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
     if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x);
-      if (heroIn(z.x + z.f * 30, z.y, 34, 14)) dmgHero(3, z);
+      if (heroIn(z.x + z.f * 12, z.y, 18, 14)) dmgHero(3, z);   // 重劈直接砸中的范围（戟尖约 21），更远处靠冲击波
       fx.push({ k: 'wave', x: z.x + z.f * 40, y: z.y, vx: z.f * 230, t: 0, T: 1.2, hit: false }); } return; }
     if (S === 'chop_b') { if (z.t > .55) { if (rage) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); } else { set(z, 'idle'); z.cd = 1.1; } } return; }
     // 头顶转戟：追着主角走，靠近就被打；转完头晕
@@ -161,7 +161,7 @@ const Boss = (() => {
     }
     // 突刺
     if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); z.x += z.f * 16;
-      const reach = 120, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z); } return; }
+      const reach = 44, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z); } return; }   // 突刺：戟尖约 37 + 半宽
     if (S === 'thrust_b') { if (z.t > .45) { set(z, 'idle'); z.cd = 1; } return; }
   }
 
