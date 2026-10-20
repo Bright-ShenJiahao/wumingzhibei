@@ -10,14 +10,8 @@ def uri(path):
     return f'data:image/{ext};base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 
 
-ph = P('art', 'sprites', 'placeholder')
-meta = json.load(open(os.path.join(ph, 'meta.json')))
-assets = {
-    'hero': uri(P('art', 'sprites', 'farmer_sheet.png')),
-    'z1': uri(os.path.join(ph, 'zombie.png')), 'z2': uri(os.path.join(ph, 'zombie_attack.png')),
-    'tree': uri(os.path.join(ph, 'tree.png')),
-    'houses': [[uri(os.path.join(ph, f'house{i}.png'))] + m for i, m in enumerate(meta['houses'])],
-}
+atlas = json.load(open(P('art', 'sprites', 'atlas.json'), encoding='utf-8'))
+assets = {'chars': {ch: {f: [uri(P('art', 'sprites', ch, f + '.png'))] + v for f, v in fr.items()} for ch, fr in atlas.items()}}
 pm = json.load(open(P('art', 'props', 'meta.json')))
 assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items()}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
