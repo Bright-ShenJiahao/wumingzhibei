@@ -52,8 +52,9 @@ const WAVES = [
   { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！', units: ['grunt', 'grunt', 'blade', 'blade'] },
   { say: '后排的投石手会扔石头，冲过去收拾他！', units: ['grunt', 'slinger', 'slinger', 'blade', 'grunt'] },
   { say: '弓箭手射火箭！看到地上的红圈快躲开', units: ['grunt', 'blade', 'archer', 'archer', 'slinger', 'grunt'] },
+  { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
-const M = { viewH: 300, W: 2400, top: 168, bot: 290, gates: [330, 900, 1470, 2040], token: 2 };
+const M = { viewH: 300, W: 3100, top: 168, bot: 290, gates: [330, 900, 1470, 2040, 2620], token: 2 };
 let hero, zs, shots, eshots, fires, props, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'knife', over, won;
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 播放音效，按世界坐标 x 计算左右声道
@@ -61,7 +62,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 
 function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false;
+  zs = []; shots = []; eshots = []; fires = []; props = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, w: k === 'flag' ? 6 : pw * .75, h: ph });
@@ -115,10 +116,11 @@ function waves() {
   const vw = viewW();
   if (lockR < Infinity && zs.length === 0) {
     lockR = Infinity; gateI++;
-    if (gateI < M.gates.length) say('区域清空！GO →'); else { won = true; say('村子里的黄巾贼被打退了！（序章待续 · 按 R 再来）', 99); }
+    if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →'); else { won = true; say('打败了黄巾头目管亥！村子得救了！（序章待续 · 按 R 再来）', 99); }
   }
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
     const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6;
+    if (W.boss) { Boss.start(lockR); return; }
     W.units.forEach((u, i) => {
       const left = i === W.units.length - 1 && W.units.length > 3 && !TYPES[u].ranged;
       spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, rnd(M.top + 6, M.bot - 6));
@@ -129,6 +131,7 @@ function waves() {
 
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35) {
+  if (z.T.boss) return Boss.hit(z, dmg, dir);
   if (z.dead || z.air) return;
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
   z.hp -= dmg; z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
@@ -199,7 +202,7 @@ function strike() {
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
-    const inRange = C.both ? Math.abs(dx) < W.reach : dx > -4 && dx < W.reach;
+    const bw = z.T.w || 0, inRange = C.both ? Math.abs(dx) < W.reach + bw : dx > -4 - bw && dx < W.reach + bw;
     if (inRange && Math.abs(z.y - h.y) < W.dy) {
       landed = true;
       hit(z, C.dmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0);
@@ -221,6 +224,7 @@ function dmgHero(n, from) {
 
 // ---------- 黄巾兵 AI ----------
 function zUpdate(z, dt) {
+  if (z.T.boss) return Boss.update(z, dt);
   const T = z.T;
   z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
   if (z.air) { airStep(z, dt); return; }
@@ -268,7 +272,7 @@ function zUpdate(z, dt) {
 function updateShots(dt) {
   for (const s of shots) {
     s.x += s.vx * dt; s.life -= dt;
-    for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 && Math.abs(z.y - s.y) < 10 && s.life > 0) {
+    for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15); hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
     }
@@ -298,7 +302,7 @@ function update(dt) {
   heroUpdate(dt); waves();
   zs.forEach(z => zUpdate(z, dt));
   zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
-  updateShots(dt);
+  updateShots(dt); Boss.updateFx(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -372,8 +376,10 @@ function draw() {
     const p = s.t / s.T;
     ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, 16 * (1.3 - p * .3), 6 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
   }
+  Boss.drawGround();
   // 按 y 排序绘制
   const list = [];
+  list.push({ y: hero.y - .2, d: Boss.drawHorse });
   for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
   list.push({ y: hero.y, d: drawHero });
@@ -387,6 +393,7 @@ function draw() {
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
   // HUD
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
@@ -413,6 +420,7 @@ function drawHero() {
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
+  if (z.T.boss) return Boss.draw(z);
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   drawChar(z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
