@@ -68,7 +68,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => key[e.code] = 0);
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
 jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
-jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 50) { dx *= 50 / l; dy *= 50 / l; } joy.dx = dx / 50; joy.dy = dy / 50; jk.style.transform = `translate(${dx}px,${dy}px)`; });
+jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 50) { dx *= 50 / l; dy *= 50 / l; } joy.dx = dx / 45; joy.dy = dy / 45; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = () => { joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) reset(); else pressAtk = true; });
@@ -347,17 +347,17 @@ function draw() {
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
   // HUD
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const bw = Math.min(260, W * .4);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
+  const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(10, hero.hp)) / 10, 12);
   ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 200, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}`, 20, 100);
   if (lockR < Infinity) { const n = zs.filter(z => !z.dead).length; ctx.fillStyle = 'rgba(200,40,30,.85)'; ctx.fillRect(14, 110, 200, 22); ctx.fillStyle = '#fff'; ctx.fillText(`本区域剩余敌人：${n}`, 20, 126); }
   if (!over && lockR === Infinity && gateI > 0 && gateI < M.gates.length && Math.floor(performance.now() / 500) % 2 === 0) {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
-    ctx.strokeText('GO →', W - 28, H / 2); ctx.fillText('GO →', W - 28, H / 2); ctx.restore();
+    ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
-  if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(W / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, W / 2, 130); ctx.textAlign = 'left'; }
+  if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(HW / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, HW / 2, 130); ctx.textAlign = 'left'; }
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
@@ -383,8 +383,22 @@ function drawZ(z) {
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - 9, top, 18, 3); ctx.fillStyle = z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - 8, top + 1, 16 * z.hp / z.T.hp, 1);
 }
 
-function fit() { cv.width = innerWidth; cv.height = innerHeight; }
-addEventListener('resize', fit); fit();
+// 画布按实际显示尺寸 × 设备像素比绘制（手机上更清晰），窗口/横竖屏变化时重新适配
+let DPR = 1;
+function fit() {
+  const vv = window.visualViewport, w = vv ? vv.width : innerWidth, h = vv ? vv.height : innerHeight;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+}
+addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 300));
+if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+fit();
+// 手机：禁止双击放大、双指缩放、页面拖动
+['gesturestart', 'gesturechange', 'dblclick'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 let last = performance.now();
 function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; update(dt); draw(); requestAnimationFrame(loop); }
 reset(); ui(); requestAnimationFrame(loop);

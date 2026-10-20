@@ -1,22 +1,27 @@
-<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>无名之辈</title><style>
-html,body{margin:0;height:100%;overflow:hidden;background:#fff;font-family:system-ui,"PingFang SC","Noto Sans CJK SC",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
-canvas{display:block;position:fixed;inset:0}
-#top{position:fixed;left:0;right:0;top:0;display:flex;gap:6px;padding:8px 10px;align-items:center;flex-wrap:wrap;z-index:2}
-.tag{background:#d23c30;color:#fff;font-weight:800;padding:4px 8px;border-radius:6px;font-size:13px}
-button{font:inherit;font-size:14px;font-weight:700;border:2px solid #2a2234;background:#fff;color:#2a2234;border-radius:8px;padding:6px 10px}
+html,body{margin:0;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none;background:#1a1020;font-family:system-ui,"PingFang SC","Noto Sans CJK SC",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh}
+#top{position:fixed;left:0;right:0;top:0;display:flex;gap:6px;padding:8px calc(10px + env(safe-area-inset-left));align-items:center;flex-wrap:wrap;z-index:2;pointer-events:none}
+button{font:inherit;font-size:14px;font-weight:700;border:2px solid #2a2234;background:#fff;color:#2a2234;border-radius:8px;padding:6px 10px;touch-action:none}
 button.on{background:#2a2234;color:#ffd86e}
-#wp{position:fixed;right:10px;top:52px;display:flex;gap:6px;z-index:2}
-#joy{position:fixed;left:0;bottom:0;width:50%;height:55%;z-index:1}
-#base{position:absolute;left:70px;bottom:60px;width:110px;height:110px;border-radius:50%;background:rgba(42,34,52,.12);border:2px solid rgba(42,34,52,.25)}
-#knob{position:absolute;left:30px;top:30px;width:50px;height:50px;border-radius:50%;background:rgba(42,34,52,.45)}
-.big{position:fixed;z-index:2;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;padding:0}
-#bA{right:34px;bottom:60px;width:92px;height:92px;background:#d23c30;color:#fff;border-color:#7a1c16}
-#bR{right:140px;bottom:40px;width:66px;height:66px;font-size:16px}
-#help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#777;z-index:2}
+#wp{position:fixed;right:calc(10px + env(safe-area-inset-right));top:calc(8px + env(safe-area-inset-top));display:flex;gap:6px;z-index:3}
+#joy{position:fixed;left:0;bottom:0;width:50%;height:70%;z-index:1;touch-action:none}
+#base{position:absolute;left:calc(40px + env(safe-area-inset-left));bottom:calc(36px + env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35)}
+#knob{position:absolute;left:33px;top:33px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.45)}
+.big{position:fixed;z-index:3;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+/* 按钮抬高，避开右下角的 Netlify 标志和手机底部手势条 */
+#bA{right:calc(28px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));width:96px;height:96px;background:#d23c30;color:#fff;border-color:#7a1c16}
+#bR{right:calc(140px + env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));width:72px;height:72px;font-size:16px}
+#help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
+#rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;align-items:center;justify-content:center;text-align:center;line-height:1.8}
+@media (pointer:coarse){#help{display:none}}
+@media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="top"><b style="font-size:14px;color:#fff;text-shadow:0 1px 3px #000">无名之辈 · 序章 黄巾劫村</b></div>
+<div id="rot">📱↻<br>请把手机横过来玩</div>
+<div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈 · 序章 黄巾劫村</b></div>
 <div id="wp"><button data-w="staff">棍</button><button data-w="knife">柴刀</button><button data-w="stone">石子</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
 <button class="big" id="bR">翻滚</button><button class="big" id="bA">攻击</button>
