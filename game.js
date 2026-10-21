@@ -75,8 +75,8 @@ const WAVES = [
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
     extra: ['grunt', 'blade'], extraAt: 2, extraSay: '后面又冲上来一队！' },
   // 区域 3：旗手首次登场（固定 1 个），投石手固定 2 个
-  { say: '那个扛「黄天当立」大旗的在给贼兵加速 —— 先杀他！',
-    core: ['banner', 'slinger', 'slinger'], budget: 5, pool: ['grunt', 'blade', 'slinger'],
+  { say: '投石手在远处扔石头 —— 别站在同一条线上，用 K 翻滚躲！',
+    core: ['grunt', 'slinger', 'slinger'], budget: 5, pool: ['grunt', 'blade', 'slinger'],
     extra: ['blade', 'grunt'], extraAt: 2 },
   // 区域 4：弓箭手固定 2 个
   { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
