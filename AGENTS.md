@@ -100,4 +100,4 @@
 
 ## 旗手大旗
 - 旗杆/横杆/枪头在 game.js 的 poleAndCloth() 里用代码画，旗面贴图 art/ui/flag_cloth.webp 由 `tools/make_flag.py` 生成（临海隶书子集 tools/fonts/LinHaiLiShu-flag.ttf 写「苍天已死 / 黄天当立」），切成横条做飘动。
-- 每帧握旗位置和旗杆角度在 game.js 的 BANNER_GRIP；被打飞/倒地时旗掉在地上。
+- 旗手动作图手里画了一截杆子，代码画的长旗杆沿着这截杆子延长重合（game.js 的 BANNER_POLE：每帧杆底位置和倾角）；换旗手图必须重新量这三个数。旗面始终受重力朝下垂，挥动时被甩向反方向；被打飞/倒地时旗掉在地上。
