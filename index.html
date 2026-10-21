@@ -3733,8 +3733,84 @@ function drawProp(p) {
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2 + sh), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
 }
+function drawChargeAura(h) {
+  const p = chargeRatio(), t = performance.now() / 1000, pulse = .5 + .5 * Math.sin(t * (7 + p * 5));
+  const height = 34 + 34 * p, width = 18 + 10 * p;
+  const K = .55;                      // 只比主角大一点点
+  ctx.save(); ctx.translate(h.x, h.y - (h.z || 0)); ctx.scale(K, K);
+  // 低蓄力时火焰贴身，接近满蓄逐渐向上拔高并向两侧扩张。
+  ctx.globalAlpha = .10 + .16 * p + .05 * pulse;
+  ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 5 + 8 * p;
+  ctx.beginPath(); ctx.ellipse(0, -22, width * (.72 + pulse * .08), 26 + 8 * p, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 2 + 4 * p;
+  // 先铺宽阔的火焰主体，再叠尖舌；避免效果看成几根细长光柱。
+  const body = [
+    [-15, 0], [-27, -7], [-21, -14], [-33, -23], [-24, -28], [-31, -38],
+    [-19, -35], [-21, -49], [-11, -43], [-7, -59], [-1, -48], [3, -75],
+    [10, -51], [19, -63], [17, -44], [30, -50], [23, -34], [34, -26],
+    [25, -16], [29, -7], [16, 0],
+  ];
+  const sx = width / 28, sy = height / 68;
+  for (const [scale, alpha] of [[1, .18 + .20 * p], [.76, .16 + .22 * p]]) {
+    ctx.globalAlpha = alpha * (.88 + pulse * .12); ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    body.forEach(([x, y], i) => {
+      const xx = x * sx * scale + Math.sin(t * 8 + i * .7) * (1 + p * 1.3);
+      const yy = y * sy * scale;
+      if (!i) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    });
+    ctx.closePath(); ctx.fill();
+  }
+  // 成组的折线火舌：每侧有高低错落的尖峰，底部围住人物而不是几根孤立光柱。
+  const tongues = [
+    [-1, .58, .23, 0], [-1, .82, .17, 1.4], [-1, .69, .13, 2.8], [-1, .94, .10, 4.1],
+    [ 1, .63, .23, 1.1], [ 1, .88, .17, 2.5], [ 1, .72, .13, 3.7], [ 1, .98, .10, 5.2],
+  ];
+  for (let layer = 0; layer < 2; layer++) {
+    for (const [side, peakN, spreadN, phase] of tongues) {
+      const sway = Math.sin(t * (8 + layer) + phase) * (1.2 + p * 2.2);
+      const peak = height * peakN * (.94 + pulse * .08);
+      const spread = width * spreadN * (layer ? .72 : 1);
+      const base = side * (4 + layer * 1.5);
+      const tip = side * (width * (.42 + spreadN * 1.25) + sway);
+      ctx.globalAlpha = (layer ? .46 : .60) * (.45 + .55 * p) + .06 * pulse;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(base - side * spread, -1);
+      ctx.lineTo(base - side * (spread * .74), -height * .20);
+      ctx.lineTo(tip - side * spread * .32, -height * .31);
+      ctx.lineTo(tip, -peak);
+      ctx.lineTo(tip + side * spread * .12, -height * (.46 + peakN * .08));
+      ctx.lineTo(base + side * spread, -height * .28);
+      ctx.lineTo(base + side * spread * .72, -height * .10);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.shadowBlur = 0;
+  // 火舌之间穿插短促碎光，地面有扩散的白色气浪环。
+  const moteCount = 5 + Math.round(p * 10);
+  for (let i = 0; i < moteCount; i++) {
+    const phase = (t * (.24 + (i % 4) * .035) + i / moteCount) % 1;
+    const side = i % 2 ? 1 : -1, x = side * (8 + phase * (width + 7)) + Math.sin(t * 9 + i * 2) * 2;
+    const y = -4 - phase * (height * (.72 + (i % 3) * .08));
+    const size = 1 + (i % 3) * .45;
+    ctx.globalAlpha = (.22 + p * .48) * (1 - phase * .55); ctx.fillStyle = '#fff';
+    ctx.fillRect(Math.round(x), Math.round(y), size, size * (1.3 + pulse * .6));
+  }
+  ctx.globalAlpha = .20 + .35 * p + .18 * pulse; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1 + p * 1.4;
+  ctx.beginPath(); ctx.ellipse(0, -1, 13 + p * 9 + pulse * 2, 3 + p * 2, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = .12 + .22 * p; ctx.fillStyle = '#fff';
+  for (let i = 0; i < 7; i++) {
+    const side = i % 2 ? 1 : -1, x = side * (12 + (i % 4) * 4 + Math.sin(t * 8 + i) * 2);
+    const y = -3 - (i % 3) * 2, r = 1.5 + (i % 3) * .6;
+    ctx.beginPath(); ctx.ellipse(x, y, r * 1.6, r * .7, side * .12, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawHero() {
   const h = hero; shadow(h.x, h.y, 10);
+  if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
