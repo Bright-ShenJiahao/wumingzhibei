@@ -7,7 +7,7 @@
     { s: '先拿起地上的武器，往右边过去。', d: 3.4 },
   ];
   // ---------- 村外场景原图 + 统一坐标换算 ----------
-  const IMG_W = 1024, IMG_H = 354;          // art/room/wake_outside.webp 的原始尺寸
+  const IMG_W = 2560, IMG_H = 884;          // 原图 3520×1216，压到 2560 宽以控制网页体积         // art/room/wake_outside.webp 的原始尺寸
   const CROP_TOP = 0;
   const CROP_H = IMG_H;
   const BOX_AR = IMG_W / IMG_H;
@@ -42,7 +42,7 @@
     spawn: () => toW(IMG_W * .40, IMG_H * .82),           // 在空地左侧醒来
     doorL: () => toW(IMG_W * .79, IMG_H * .75),           // 右侧墙门洞
     doorR: () => toW(IMG_W * .88, IMG_H * .75),
-    threshold: () => toW(IMG_W * .835, IMG_H * .69),      // 门槛
+    threshold: () => toW(IMG_W * .835, IMG_H * .76),      // 门口地面中心
     floorTop: () => toW(IMG_W * .5, IMG_H * .59)[1],      // 地面最里侧
     floorBot: () => toW(IMG_W * .5, IMG_H * .94)[1],      // 地面最外侧
     wallL: () => toW(IMG_W * .37, 0)[0],                  // 左侧山坡与废墟不可通行
@@ -181,8 +181,10 @@
 
     // 三把都拿了才能出门
     // 出门：门洞 x 范围内 + 走到门槛上（y 比门槛更靠里）
-    const dl = P.doorL()[0], dr = P.doorR()[0], th = P.threshold()[1];
-    if (S.took >= 3 && h.x > dl && h.x < dr && h.y < th + 12 && S.out === 0) {
+    const dl = P.doorL()[0], dr = P.doorR()[0];
+    const doorY0 = toW(IMG_W * .5, IMG_H * .68)[1], doorY1 = toW(IMG_W * .5, IMG_H * .84)[1];
+    // 门口触发覆盖门洞和门前一段地面，避免必须踩中一条很窄的“传送阵”。
+    if (S.took >= 3 && h.x > dl - 22 && h.x < dr + 22 && h.y > doorY0 && h.y < doorY1 && S.out === 0) {
       S.out = .001;
       if (window.SFX) SFX.play('land', 0);
     }
@@ -346,11 +348,11 @@
       // 门槛前的暖光：走进这个光圈就出门
       const th = P.threshold();
       const a = .28 + .18 * Math.abs(Math.sin(S.t * 3));
-      const g2 = ctx.createRadialGradient(th[0], th[1] + 10, 2, th[0], th[1] + 10, 48);
+      const g2 = ctx.createRadialGradient(th[0], th[1] + 10, 2, th[0], th[1] + 10, 60);
       g2.addColorStop(0, 'rgba(255,214,140,' + a + ')');
       g2.addColorStop(1, 'rgba(255,214,140,0)');
       ctx.fillStyle = g2;
-      ctx.beginPath(); ctx.ellipse(th[0], th[1] + 10, 48, 18, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(th[0], th[1] + 10, 60, 26, 0, 0, 7); ctx.fill();
     }
 
     // 屏幕层 UI
