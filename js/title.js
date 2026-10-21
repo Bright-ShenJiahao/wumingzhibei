@@ -3,11 +3,11 @@
 // 换正式背景图时只改下面 TV 和 drawBg() 里的图片即可。
 (() => {
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
-  const TV = { x: .5674, y: .1923, w: .3359, h: .3671 };   // 绿幕实测 + 外扩 1 像素（绿边已在 tools/fix_title_green.py 里清掉）
+  const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
-  let bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
+  let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
@@ -275,33 +275,52 @@
     c.fillStyle = gb; c.fillRect(0, H * .62, W, H * .38);
   }
 
-  function drawTV(c) {
-    // 取整 + 不用 clip：clip 的抗锯齿会在屏幕边缘混出 1 像素的绿线
-    const x = Math.round(L.tvX), y = Math.round(L.tvY), w = Math.round(L.tvW), h = Math.round(L.tvH);
-    if (demoCv) {
-      c.save();
-      c.imageSmoothingEnabled = false;
-      // 演示画面 16:9，屏幕是 1.64:1 → 用 cover 裁左右，别拉变形
-      const da = demoCv.width / demoCv.height, sa = w / h;
-      let sw = demoCv.width, sh = demoCv.height, sx0 = 0, sy0 = 0;
-      if (sa < da) { sw = demoCv.height * sa; sx0 = (demoCv.width - sw) / 2; }
-      else { sh = demoCv.width / sa; sy0 = (demoCv.height - sh) / 2; }
-      c.drawImage(demoCv, sx0, sy0, sw, sh, x, y, w, h);   // 直接画进矩形，边缘是硬的
-      // 扫描线
-      c.fillStyle = 'rgba(0,0,0,.22)';
-      for (let yy = y; yy < y + h; yy += 3) c.fillRect(x, yy, w, 1);
-      // 暗角
-      const rg = c.createRadialGradient(x + w / 2, y + h / 2, Math.min(w, h) * .25, x + w / 2, y + h / 2, Math.max(w, h) * .62);
-      rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(0,0,0,.55)');
-      c.fillStyle = rg; c.fillRect(x, y, w, h);
-      // 一点点冷色反光
-      c.fillStyle = 'rgba(120,180,255,.05)'; c.fillRect(x, y, w, h * .5);
-      c.restore();
-      // 玻璃高光
-      const gl = c.createLinearGradient(x, y, x + w * .6, y + h);
-      gl.addColorStop(0, 'rgba(255,255,255,.10)'); gl.addColorStop(.4, 'rgba(255,255,255,0)');
-      c.fillStyle = gl; c.fillRect(x, y, w, h);
+  // 离屏图层：尺寸跟着当前缩放走，避免推镜时糊成马赛克
+  function layerFor(w, h) {
+    if (!layerCv || Math.abs(layerX - w) > 2 || layerCv.height !== h) {
+      layerCv = layerCv || document.createElement('canvas');
+      layerCv.width = w; layerCv.height = h; layerX = w;
     }
+    return layerCv;
+  }
+
+  function drawTV(c) {
+    const x = L.tvX, y = L.tvY, w = L.tvW, h = L.tvH;
+    if (!demoCv || !maskCv) return;
+    // 推镜时按放大后的实际像素尺寸画，避免糊
+    const zoom = c.getTransform ? Math.sqrt(Math.abs(c.getTransform().a)) || 1 : 1;
+    const lw = Math.max(2, Math.round(w * zoom)), lh = Math.max(2, Math.round(h * zoom));
+    const cv = layerFor(lw, lh), g = cv.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, lw, lh);
+    // 演示画面：铺满、裁边、不拉伸
+    const da = demoCv.width / demoCv.height, sa = lw / lh;
+    let sw = demoCv.width, sh = demoCv.height, sx0 = 0, sy0 = 0;
+    if (sa < da) { sw = demoCv.height * sa; sx0 = (demoCv.width - sw) / 2; }
+    else { sh = demoCv.width / sa; sy0 = (demoCv.height - sh) / 2; }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(demoCv, sx0, sy0, sw, sh, 0, 0, lw, lh);
+    // 扫描线
+    g.fillStyle = 'rgba(0,0,0,.22)';
+    for (let yy = 0; yy < lh; yy += 3) g.fillRect(0, yy, lw, 1);
+    // 暗角
+    const rg = g.createRadialGradient(lw / 2, lh / 2, Math.min(lw, lh) * .25, lw / 2, lh / 2, Math.max(lw, lh) * .62);
+    rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = rg; g.fillRect(0, 0, lw, lh);
+    // 冷色反光 + 玻璃高光
+    g.fillStyle = 'rgba(120,180,255,.05)'; g.fillRect(0, 0, lw, lh * .5);
+    const gl = g.createLinearGradient(0, 0, lw * .6, lh);
+    gl.addColorStop(0, 'rgba(255,255,255,.10)'); gl.addColorStop(.4, 'rgba(255,255,255,0)');
+    g.fillStyle = gl; g.fillRect(0, 0, lw, lh);
+    // 用绿幕遮罩裁形：猫爪、边框不是绿色 → 自动留在画面上方
+    g.globalCompositeOperation = 'destination-in';
+    g.imageSmoothingEnabled = true;
+    g.drawImage(maskCv, 0, 0, lw, lh);
+    g.globalCompositeOperation = 'source-over';
+    // 画回主画布（整块按屏幕矩形缩放）
+    c.save();
+    c.imageSmoothingEnabled = true;
+    c.drawImage(cv, x, y, w, h);
     c.restore();
   }
 
@@ -422,7 +441,17 @@
   function boot() {
     build();
     document.body.classList.add('wzb-title');
-    bgHome = new Image(); bgHome.src = (typeof ASSETS !== 'undefined' && ASSETS.title) || BG.far;   // 首页背景图
+    bgHome = new Image(); bgHome.src = (typeof ASSETS !== 'undefined' && ASSETS.title) || BG.far;
+    // 绿幕遮罩：整张图尺寸，绿幕处不透明
+    tvMask = new Image();
+    tvMask.onload = () => {
+      const bx = Math.round(TV.x * tvMask.width), by = Math.round(TV.y * tvMask.height);
+      const bw = Math.round(TV.w * tvMask.width), bh = Math.round(TV.h * tvMask.height);
+      maskCv = document.createElement('canvas');
+      maskCv.width = bw; maskCv.height = bh;
+      maskCv.getContext('2d').drawImage(tvMask, bx, by, bw, bh, 0, 0, bw, bh);
+    };
+    tvMask.src = (typeof ASSETS !== 'undefined' && ASSETS.tvMask) || '';   // 首页背景图
     bgFar = new Image(); bgFar.src = BG.far;   // 电视里的演示仍用村景三层
     bgMid = new Image(); bgMid.src = BG.mid;
     bgGnd = new Image(); bgGnd.src = BG.gnd;
