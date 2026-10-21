@@ -239,6 +239,15 @@
   // 武器图标（和装备框共用）
   function icon(kind, x, y, s, ground) {
     const c = ctx;
+    const name = { staff: 'w_staff', hammer: 'w_hammer', stone: 'w_stone' }[kind];
+    const im = (typeof IMG !== 'undefined') && IMG['ui_' + name];
+    if (im && im.complete) {                     // 用新的武器图标
+      const H = 13 * s, W = H * im.width / im.height;
+      c.save(); c.imageSmoothingEnabled = false;
+      c.drawImage(im, Math.round(x - W / 2), Math.round(y - H / 2), W, H);
+      c.restore();
+      return;
+    }
     c.save(); c.translate(x, y); c.scale(s, s);
     if (kind === 'staff') {
       c.strokeStyle = '#3a2410'; c.lineWidth = 5.2; c.lineCap = 'round';

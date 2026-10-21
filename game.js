@@ -63,8 +63,8 @@ const TYPES = {
   blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
-  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'blade', scale: 1.10 },   // 精英：血厚、出手慢、打不断
-  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'grunt', scale: .88 },                     // 旗手：给周围小兵加速，优先击杀目标
+  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
+  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .95 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -975,11 +975,14 @@ function drawHero() {
 function drawZ(z) {
   if (z.T.boss) return Boss.draw(z);
   // 旗手：背后竖一面「黄天当立」的大旗
-  if (z.T.banner && IMG['p_banner'] && IMG['p_banner'].complete) {
-    const bw = 40, bh = 100;
-    ctx.save(); ctx.globalAlpha = z.dead ? .35 : 1;
-    ctx.drawImage(IMG['p_banner'], Math.round(z.x - bw / 2 + (z.f > 0 ? 8 : -8)), Math.round(z.y - bh + 6), bw, bh);
-    ctx.restore();
+  if (z.T.banner) {
+    const im = IMG['ui_flag'];
+    if (im && im.complete) {
+      const bh = 96, bw = bh * im.width / im.height;
+      ctx.save(); ctx.globalAlpha = z.dead ? .35 : 1;
+      ctx.drawImage(im, Math.round(z.x - bw / 2 + (z.f > 0 ? 9 : -9)), Math.round(z.y - bh + 4), bw, bh);
+      ctx.restore();
+    }
   }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
