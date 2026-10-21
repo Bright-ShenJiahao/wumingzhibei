@@ -1029,28 +1029,7 @@ function draw() {
   chargeBtn.classList.toggle('charging', !!atkHeldSince && charging);
   chargeBtn.classList.toggle('charged', !!atkHeldSince && charging && chargeP >= 1);
   chargeBtn.style.setProperty('--charge-angle', (360 * chargeP) + 'deg');
-  if (charging && hero) {
-    const p = chargeP, full = p >= 1, r = 15 + 11 * p, cy = hero.y - 15;
-    const gg = ctx.createRadialGradient(hero.x, cy, 2, hero.x, cy, r);
-    gg.addColorStop(0, 'rgba(255,236,170,' + (.24 + .48 * p) + ')');
-    gg.addColorStop(1, full ? 'rgba(45,190,255,0)' : 'rgba(255,180,60,0)');
-    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(hero.x, hero.y - 14, r, 0, 7); ctx.fill();
-    if (full) {
-      const t = performance.now() / 1000;
-      ctx.save(); ctx.lineCap = 'round';
-      ctx.strokeStyle = 'rgba(93,205,255,.8)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(hero.x, cy, 15 + Math.sin(t * 8) * 2, 23 + Math.cos(t * 7) * 2, 0, -.8, 2.35); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,211,104,.9)'; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.ellipse(hero.x, cy, 18 + Math.cos(t * 6) * 2, 27 + Math.sin(t * 9) * 2, 0, 2.55, 5.5); ctx.stroke();
-      for (let i = 0; i < 7; i++) {
-        const x = hero.x + Math.sin(t * 3 + i * 2.4) * (8 + i % 3 * 4);
-        const y = hero.y - 4 - ((t * 25 + i * 9) % 34);
-        ctx.fillStyle = i % 2 ? 'rgba(119,220,255,.9)' : 'rgba(255,226,140,.95)';
-        ctx.fillRect(x, y, 1.5, 3);
-      }
-      ctx.restore();
-    }
-  }
+  // 蓄力的角色光效统一由 drawChargeAura 负责（白色气焰），不再叠一层圆形光晕
   // 蓄力重击的冲击环
   for (const q of chargeFx) {
     const k = Math.min(1, q.t / q.T), R2 = 20 + 90 * k, a2 = 1 - k;
