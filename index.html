@@ -3114,8 +3114,8 @@ function drawResult(HW, HH) {
   const frName = result.win ? { n: 'guanhai', f: 'kneel' } : { n: 'hero', f: 'down' };
   const fr = CH[frName.n] && CH[frName.n][frName.f];
   if (fr && fr.img.complete) {
-    const k = Math.max(1, Math.min(Math.round(sh * .30 / fr.h), Math.max(1, Math.floor(pw * .62 / fr.w))));
-    const dx = px0 + pw * .08, dy = sy + sh * .62;
+    const k = Math.max(1, Math.min(Math.round(sh * .20 / fr.h), Math.max(1, Math.floor(pw * .34 / fr.w))));
+    const dx = px0 + pw * .07, dy = sy + sh * .66;
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = fade * .95;
     ctx.drawImage(fr.img, Math.round(dx - fr.ax * k), Math.round(dy - fr.ay * k), fr.w * k, fr.h * k);
     ctx.restore();
@@ -3144,7 +3144,7 @@ function drawResult(HW, HH) {
       if (ctx.measureText(row + ch).width > maxW) { rows.push(row); row = ch; } else row += ch;
     }
     if (row) rows.push(row);
-    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.49 + i * .070)));
+    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.47 + i * .070)));
   }
   ctx.globalAlpha = 1;
 
@@ -3155,7 +3155,7 @@ function drawResult(HW, HH) {
     if (!stampPlayed) { stampPlayed = true; sfx('stamp', HW / 2); shake = .12; }
     const sc2 = .6 + .4 * eBack(q);
     const img = IMG[result.win ? 'ui_seal_square' : 'ui_seal_round'];
-    const side = sh * (result.win ? .19 : .16) * sc2;
+    const side = sh * (result.win ? .24 : .22) * sc2;
     const cx2 = px0 + pw * .89, cy2 = sy + sh * .245;
     ctx.save();
     ctx.globalAlpha = Math.min(1, q * 1.6);
