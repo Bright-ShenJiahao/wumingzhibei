@@ -61,10 +61,10 @@ const WEAP = {
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
-  blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
+  blade:   { name: '刀手', hp: 5, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
-  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
+  elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
@@ -81,10 +81,10 @@ const WAVES = [
   // 区域 4：弓箭手固定 2 个
   { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
     core: ['grunt', 'blade', 'archer', 'archer', 'grunt'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
-    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0] },
+    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0], sleepy: 2 },
   // 区域 5：老卒首次登场
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
-    core: ['elite'], budget: 7, pool: ['grunt', 'blade', 'slinger', 'archer'],
+    core: ['elite'], budget: 9, sleepy: 3, pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
   { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
 ];
@@ -306,7 +306,7 @@ function waves() {
     const list = W.units || (W.core || []).concat(rollFill(W.pool || [], W.budget || 0));
     list.forEach((u, i) => {
       const left = i === list.length - 1 && list.length > 3 && !TYPES[u].ranged;   // 最后一个近战从左边包过来
-      const sleeping = W.sleepers && W.sleepers.includes(i);
+      const sleeping = (W.sleepers && W.sleepers.includes(i)) || (W.sleepy && i >= list.length - W.sleepy);
       const y = sleeping ? (gateI % 2 ? M.bot - 14 : M.top + 14) : rnd(M.top + 6, M.bot - 6);
       spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, y, sleeping);
     });
@@ -725,7 +725,7 @@ function zUpdate(z, dt) {
       qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .28 });
       sfx('enemySwing', z.x); shake = Math.max(shake, .18);
       const hx = hero.x - z.x;
-      if (hero.inv <= 0 && Math.abs(hx) < 46 && Math.abs(hero.y - z.y) < 18 && hx * z.f > -10) dmgHero(2, { x: z.x });
+      if (hero.inv <= 0 && Math.abs(hx) < 60 && Math.abs(hero.y - z.y) < 20 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
   if (z.adds != null) {                 // Boss 援军弓箭手：进场、交错齐射两轮、原路撤离
