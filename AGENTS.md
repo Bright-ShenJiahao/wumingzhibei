@@ -7,7 +7,8 @@
 - `game.js`：游戏全部逻辑（原生 JS + Canvas，无框架、无构建工具）。
 - `js/*.js`：独立模块（音效、界面等），打包时按文件名顺序放在 `game.js` 前面。新功能尽量写成单独模块，`game.js` 里只加调用，减少多个 AI 同时改同一个文件的冲突。调用模块时先判断是否存在，例如 `window.SFX && SFX.play('hit')`。
 - `index.src.html`：网页模板（界面、按钮、样式）。
-- `index.html`：**打包生成的文件，不要手改**。改完 `game.js` 或 `index.src.html` 后运行 `python3 tools/build.py` 重新生成，再一起提交。
+- `index.html`：**构建产物，不进仓库**（已在 `.gitignore`）。Netlify 在服务器上跑 `python tools/build.py` 自动生成。
+  本地要预览就自己跑一次 `python tools/build.py`，生成的 index.html 只看不提交。
 - `art/title/home.png`：**登录页背景图**（一对情侣在电视前打游戏，电视屏幕是绿幕）。
   - 屏幕是**绿幕遮罩**显示：`tv_mask.png`（同尺寸、绿幕处不透明）决定游戏画面只出现在屏幕形状内。
     这样电视机自带的透视、以及**垂在屏幕上的布偶猫爪子**都会自然保留在游戏画面之上（矩形贴图做不到这点）。
@@ -34,7 +35,8 @@
 1. **开始前先 `git pull`**，始终在最新版本上改，避免覆盖别人的改动。
 2. 每次改动保持小而集中，一个提交只做一件事。
 3. 提交信息用中文，写清楚改了什么。
-4. 改完运行 `python3 tools/build.py`，确认浏览器打开 `index.html` 没有报错再推送。
+4. 改完运行 `python3 tools/build.py`（本地验证用），确认浏览器打开 `index.html` 没有报错再推送。
+   **只提交源码**（game.js / js/*.js / index.src.html / tools/ / art/），index.html 由 Netlify 构建，不要提交。
 5. 推送前再 `git pull --rebase` 一次；有冲突时保留双方改动，不要强制推送（禁止 `git push --force`）。
 6. 不要删除或重命名别人加的文件，除非用户明确要求。
 
