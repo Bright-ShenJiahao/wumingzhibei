@@ -1,20 +1,9 @@
 // 锦囊（肉鸽抽卡）：每清完一个区域弹 3 张（30% 额外多一张诅咒），选 1 张，本局有效。
 // 卡的效果通过 ROGUE.S 暴露给 game.js / ult.js 读取，全部带默认值，没抽卡时就是 1。
-// game.js 只挂 3 处：update 冻结、draw 画面板、清区时 offer()。
 (() => {
   const S = {
-    dmg: 1,        // 造成伤害倍率
-    move: 1,       // 移速倍率
-    fin: 1,        // 连招第三段伤害倍率
-    reach: 1,      // 武器距离倍率
-    aspd: 1,       // 攻击动作时长倍率（<1 更快）
-    daze: 1,       // 眩晕时长倍率
-    take: 1,       // 受到伤害倍率
-    takeFlat: 0,   // 受到伤害减免（点数）
-    lifesteal: 0,  // 命中吸血（每次触发量）
-    stoneExtra: 0, // 石子追加一颗的概率
-    hammerAoe: 0,  // 锤子第三段范围半径（0 = 无）
-    staffWave: 0,  // 棍子第三段冲击波（0 = 无）
+    dmg: 1, move: 1, fin: 1, reach: 1, aspd: 1, daze: 1, take: 1,
+    takeFlat: 0, lifesteal: 0, stoneExtra: 0, hammerAoe: 0, staffWave: 0,
   };
   const DEFAULT = JSON.parse(JSON.stringify(S));
   const CARDS = [
@@ -31,19 +20,16 @@
     { id: 'wave', name: '棍·冲击波', school: '武器', w: 6, desc: '棍子第三段附带一道直线冲击波', apply: () => { S.staffWave = 1; } },
   ];
   const CURSES = [
-    { id: 'c_blood', name: '诅咒·狂血', school: '诅咒', w: 3, curse: true, desc: '受到伤害 +35%，但造成伤害 +45%',
-      apply: () => { S.take *= 1.35; S.dmg *= 1.45; } },
+    { id: 'c_blood', name: '诅咒·狂血', school: '诅咒', w: 3, curse: true, desc: '受到伤害 +35%，但造成伤害 +45%', apply: () => { S.take *= 1.35; S.dmg *= 1.45; } },
   ];
-  const MAX_STACK = 2;
-  const stacks = {};
+  const MAX_STACK = 2, stacks = {};
   let open = false, offer = [], picked = -1, anim = 0, rects = [], rerollToken = false, rerollRect = null;
 
-  // 按权重抽一张；exclude 里放已经抽到的流派，保证三张不重样
   const pickOne = (pool, exclude) => {
-    const p = pool.filter(c => !exclude.includes(c.school));
-    const src = p.length ? p : pool;
+    const p = pool.filter(c => !exclude.includes(c.school)), src = p.length ? p : pool;
     if (!src.length) return null;
-    const tot = src.reduce((a, c) => a + weightOf(c), 0); let r = Math.random() * tot, k = 0;
+    const total = src.reduce((a, c) => a + weightOf(c), 0);
+    let r = Math.random() * total, k = 0;
     for (; k < src.length; k++) { r -= weightOf(src[k]); if (r <= 0) break; }
     return src.splice(Math.min(k, src.length - 1), 1)[0];
   };
@@ -57,19 +43,20 @@
     }
     return out;
   };
-
-  // 当前武器对应的"专属卡"：拿到它时出现概率 ×3
   const W_CARD = { staff: 'wave', hammer: 'hammer', stone: 'stone' };
   const curWeapon = () => (typeof weapon !== 'undefined' ? weapon : '');
-  const weightOf = (c) => c.w * (W_CARD[curWeapon()] === c.id ? 3 : 1);
+  const weightOf = c => c.w * (W_CARD[curWeapon()] === c.id ? 3 : 1);
+  const setOpen = value => {
+    open = value;
+    document.body.classList.toggle('wzb-rogue', open);
+  };
 
   function offerCards() {
-    // 已经拿满 2 次的卡（含诅咒）不会再出现
     const all = CARDS.concat(CURSES);
     const avail = all.filter(c => (stacks[c.id] || 0) < MAX_STACK);
     offer = pickN(avail, 3);
     if (Math.random() < .3) offer = offer.concat(pickN(CURSES.filter(c => (stacks[c.id] || 0) < MAX_STACK), 1));
-    picked = -1; anim = 0; open = true;
+    picked = -1; anim = 0; setOpen(true);
   }
   function grantReroll() {
     if (rerollToken) return false;
@@ -81,93 +68,96 @@
     rerollToken = false;
     offerCards();
   }
-
   function choose(i) {
     if (!open || i < 0 || i >= offer.length) return;
     const c = offer[i];
-    if ((stacks[c.id] || 0) >= MAX_STACK) return;   // 保险：已满的卡不再生效
+    if ((stacks[c.id] || 0) >= MAX_STACK) return;
     stacks[c.id] = (stacks[c.id] || 0) + 1;
-    c.apply();
-    picked = i; open = false;
+    c.apply(); picked = i; setOpen(false);
     if (typeof toast === 'function') toast('锦囊：' + c.name);
     if (typeof say === 'function') say('获得「' + c.name + '」—— ' + c.desc, 3);
   }
-  // ---------- 画 ----------
+
   function draw() {
     if (!open) return false;
     const W = cv.width / DPR, H = cv.height / DPR;
+    ctx.save();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.fillStyle = 'rgba(8,6,12,.74)'; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(10,7,9,.78)'; ctx.fillRect(0, 0, W, H);
     const F = '"PingFang SC","Noto Sans CJK SC",sans-serif';
-    ctx.textAlign = 'center';
-    ctx.font = '900 26px ' + F; ctx.fillStyle = '#ffd86e'; ctx.fillText('锦囊', W / 2, H * .18);
-    ctx.font = '600 14px ' + F; ctx.fillStyle = 'rgba(242,230,201,.75)';
-    ctx.fillText('选一个带走（本局有效）· 按 1~4 或点击', W / 2, H * .18 + 26);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const compact = H < 500;
+    const titleY = H * (compact ? .12 : .17);
+    ctx.font = '900 26px ' + F; ctx.fillStyle = '#f3d27c'; ctx.fillText('锦囊', W / 2, titleY);
+    ctx.font = '600 14px ' + F; ctx.fillStyle = 'rgba(242,230,201,.88)';
+    ctx.fillText('选一个带走（本局有效）· 按 1~4 或点击', W / 2, titleY + 26);
 
     rects = [];
-    const n = offer.length, gap = 14;
-    const cw = Math.min(160, (W - 60 - gap * (n - 1)) / n), ch = Math.min(220, H * .5);
-    const x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H * .30;
+    const n = offer.length, gap = Math.min(14, W * .018);
+    const ch = Math.min(290, H * (compact ? .62 : .5));
+    const cw = Math.min(194, (W - 48 - gap * (n - 1)) / n, ch * .68);
+    const x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H * (compact ? .245 : .29);
+    const frame = typeof IMG !== 'undefined' ? IMG.ui_rogue_card : null;
     for (let i = 0; i < n; i++) {
       const c = offer[i], x = x0 + i * (cw + gap), y = y0 + Math.sin(anim * 1.5 + i) * 2;
       const curse = !!c.curse;
-      ctx.fillStyle = curse ? 'rgba(46,12,12,.96)' : 'rgba(28,20,14,.96)';
-      ctx.fillRect(x, y, cw, ch);
-      ctx.strokeStyle = curse ? '#e04a3a' : (c.school === '武器' ? '#ffd86e' : c.school === '大招' ? '#c78bf0' : '#8fd07a');
-      ctx.lineWidth = 2.5; ctx.strokeRect(x + 1, y + 1, cw - 2, ch - 2);
-      // 顶条
-      ctx.fillStyle = curse ? 'rgba(224,74,58,.25)' : 'rgba(255,216,110,.14)';
-      ctx.fillRect(x + 1, y + 1, cw - 2, 40);
-      ctx.font = '700 12px ' + F; ctx.fillStyle = curse ? '#ff9a8a' : 'rgba(242,230,201,.8)';
-      ctx.fillText(c.school, x + cw / 2, y + 18);
+      if (frame && frame.complete && frame.naturalWidth) ctx.drawImage(frame, x, y, cw, ch);
+      else {
+        ctx.fillStyle = '#342117'; ctx.fillRect(x, y, cw, ch);
+        ctx.strokeStyle = '#9c7042'; ctx.lineWidth = 4; ctx.strokeRect(x + 2, y + 2, cw - 4, ch - 4);
+      }
+      if (curse) { ctx.fillStyle = 'rgba(100,18,12,.24)'; ctx.fillRect(x + 12, y + 22, cw - 24, ch - 44); }
+      ctx.save(); ctx.beginPath(); ctx.rect(x + 18, y + 24, cw - 36, ch - 48); ctx.clip();
+      if (curse) { ctx.fillStyle = 'rgba(140,30,18,.34)'; ctx.fillRect(x + 19, y + 24, cw - 38, 47); }
+      ctx.font = '700 12px ' + F; ctx.fillStyle = curse ? '#ffc1a8' : '#d5b678';
+      ctx.fillText(c.school, x + cw / 2, y + ch * .18, cw - 38);
       ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F;
-      ctx.fillStyle = curse ? '#ffd0c8' : '#ffd86e';
-      ctx.fillText(c.name, x + cw / 2, y + 38);
-      // 描述（自动换行）
-      ctx.font = '600 13px ' + F; ctx.fillStyle = '#f2e6c9';
-      let line = '', ly = y + 70;
+      ctx.fillStyle = curse ? '#ffd0c8' : '#ffe08a';
+      ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
+      ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.shadowBlur = 0;
+      const descSize = Math.max(9, Math.min(12, cw * .067));
+      ctx.font = '600 ' + descSize + 'px ' + F; ctx.fillStyle = '#f2e6c9';
+      let line = '', ly = y + ch * .41;
+      const lineH = descSize * 1.42;
       for (const ch2 of c.desc) {
-        if (ctx.measureText(line + ch2).width > cw - 22) { ctx.fillText(line, x + cw / 2, ly); line = ch2; ly += 19; }
+        const tooWide = ctx.measureText(line + ch2).width > cw - 42;
+        if (tooWide && /[）\])，。；：、！？，%]/.test(ch2) && line) line += ch2;
+        else if (tooWide) { ctx.fillText(line, x + cw / 2, ly, cw - 40); line = ch2; ly += lineH; }
         else line += ch2;
       }
-      if (line) ctx.fillText(line, x + cw / 2, ly);
-      // 层数
+      if (line) ctx.fillText(line, x + cw / 2, ly, cw - 40);
       const st = stacks[c.id] || 0;
-      ctx.font = '700 11px ' + F;
-      ctx.fillStyle = st >= MAX_STACK ? '#8ef07a' : 'rgba(242,230,201,.55)';
-      ctx.fillText('已拿 ' + st + '/' + MAX_STACK, x + cw / 2, y + ch - 26);
-      // 序号
-      ctx.font = '900 13px ' + F; ctx.fillStyle = 'rgba(255,216,110,.9)';
-      ctx.fillText(String(i + 1), x + cw / 2, y + ch - 8);
+      ctx.font = '700 11px ' + F; ctx.fillStyle = st >= MAX_STACK ? '#b8dc88' : 'rgba(242,230,201,.8)';
+      ctx.fillText('已拿 ' + st + '/' + MAX_STACK, x + cw / 2, y + ch * .82);
+      ctx.font = '900 13px ' + F; ctx.fillStyle = '#f3d27c';
+      ctx.fillText(String(i + 1), x + cw / 2, y + ch * .90);
+      ctx.restore();
       rects.push({ x, y, w: cw, h: ch, i });
     }
     rerollRect = null;
     if (rerollToken) {
       const bw = Math.min(210, W - 40), bh = 42;
-      const bx = (W - bw) / 2, by = Math.min(H - bh - 12, y0 + ch + 18);
-      ctx.fillStyle = 'rgba(111,65,28,.96)'; ctx.fillRect(bx, by, bw, bh);
-      ctx.strokeStyle = '#ffd86e'; ctx.lineWidth = 2; ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+      const bx = (W - bw) / 2, by = Math.min(H - bh - 8, y0 + ch + 12);
+      ctx.fillStyle = '#503019'; ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#d9b667'; ctx.lineWidth = 2; ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
       ctx.font = '900 15px ' + F; ctx.fillStyle = '#ffe49a'; ctx.fillText('ROLL　重抽一次', W / 2, by + 27);
       rerollRect = { x: bx, y: by, w: bw, h: bh };
     }
-    ctx.textAlign = 'left';
+    ctx.restore();
     return true;
   }
 
   function update(dt) { if (open) anim += dt; }
-
   addEventListener('pointerdown', e => {
     if (!open) return;
     if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) {
       e.preventDefault(); e.stopPropagation(); rerollOffer(); return;
     }
-    for (const r of rects) {
-      if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) {
-        e.preventDefault(); e.stopPropagation(); choose(r.i); return;
-      }
+    for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) {
+      e.preventDefault(); e.stopPropagation(); choose(r.i); return;
     }
   }, { capture: true });
-
   addEventListener('keydown', e => {
     if (!open) return;
     if (e.code === 'Digit1') choose(0);
@@ -175,11 +165,10 @@
     if (e.code === 'Digit3') choose(2);
     if (e.code === 'Digit4') choose(3);
   });
-
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, update, choose, grantReroll, rerolls: () => rerollToken,
     pickedUp: () => stacks, cards: () => offer, reset: () => {
-      open = false; offer = []; picked = -1; rerollToken = false; rerollRect = null;
+      setOpen(false); offer = []; picked = -1; rerollToken = false; rerollRect = null;
       for (const k in stacks) delete stacks[k];
       for (const k in DEFAULT) S[k] = DEFAULT[k];
     },

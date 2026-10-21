@@ -223,10 +223,12 @@ function startVillagers(edgeX) {
   const y = Math.max(M.top + 22, Math.min(M.bot - 18, hero.y));
   // 老人先跑，年轻女子跟在身后；角色不参与阻挡和清区计数。
   villagers = [
-    { ch: 'villager_old', x: edgeX - 10, y: y + 6, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: .92 },
-    { ch: 'villager_woman', x: edgeX + 18, y: y - 6, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: .92 },
+    { ch: 'villager_old', x: edgeX - 10, y: y + 6, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: edgeX + 18, y: y - 6, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: edgeX + 44, y: y + 2, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: edgeX + 70, y: y - 3, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
   ];
-  spawn('grunt', edgeX + 62, y);
+  spawn('grunt', edgeX + 126, y);
   const chaser = zs[zs.length - 1];
   chaser.villagerChaser = true;
   chaser.f = -1;
@@ -1123,7 +1125,7 @@ function draw() {
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
-  if (window.ROGUE) ROGUE.draw();   // 锦囊面板
+  if (window.ROGUE && ROGUE.draw()) return;   // 锦囊面板打开时作为模态层，不绘制 HUD
   // HUD
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
