@@ -2435,7 +2435,8 @@ let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, pwaves = [];   // 掉落物 / 飘字 / 复活是否已用 / 棍子冲击波
-let extraDone = false, bannerZ = null;                // 波中波是否补过 / 场上活着的旗手
+let extraDone = false, bannerZ = null;
+let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）                // 波中波是否补过 / 场上活着的旗手
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 读锦囊数值（没抽卡时就是默认值）
 const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
@@ -2446,6 +2447,7 @@ function reset() {
   atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
@@ -2505,6 +2507,20 @@ function moveEnt(e, dx, dy) {
 
 // ---------- 刷怪 ----------
 function viewW() { return cv.width / (cv.height / M.viewH); }
+// 召唤援军弓箭手：左右各 3 个，射 2 轮就撤
+function summonArchers(bz) {
+  say('管亥：「弓箭手，放箭！」', 2.4);
+  sfx('bladeAlert', bz.x);
+  const L0 = Math.max(cam.x + 24, bz.x - 250), R0 = Math.min((lockR < Infinity ? lockR : cam.x + viewW()) - 24, bz.x + 250);
+  for (let i = 0; i < 3; i++) {
+    for (const [x, dir] of [[L0 + rnd(0, 12), 1], [R0 - rnd(0, 12), -1]]) {
+      spawn('archer', x, rnd(M.top + 18, M.bot - 12));
+      const z = zs[zs.length - 1];
+      z.adds = 2; z.st = 'addvolley'; z.t = .2 + i * .25; z.f = dir; z.cd = 99; z.tok = false;
+    }
+  }
+}
+
 function spawn(type, x, y, sleeping = false) {
   const T = TYPES[type];
   // 出生点避开道具：卡在水井/推车里的怪既打不到也打不了你
@@ -2944,6 +2960,21 @@ function zUpdate(z, dt) {
       if (hero.inv <= 0 && Math.abs(hx) < 46 && Math.abs(hero.y - z.y) < 18 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
+  if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
+    if (z.st === 'flee') {
+      moveEnt(z, z.f * 190 * dt, 0);
+      if (z.x < cam.x - 60 || z.x > cam.x + viewW() + 60) { z.dead = true; z.st = 'gone'; }
+      return;
+    }
+    z.t += dt;
+    if (z.t > .62) {
+      eshots.push({ k: 'arrow', x: z.x + z.f * 14, y: z.y, z: 24, vx: z.f * 330, life: 1.15 });
+      sfx('bow', z.x);
+      z.adds--; z.t = 0;
+      if (z.adds <= 0) { z.st = 'flee'; z.f = -z.f; }
+    }
+    return;
+  }
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
@@ -3025,9 +3056,9 @@ function updateShots(dt) {
   }
   shots = shots.filter(s => s.life > 0);
   for (const s of eshots) {
-    if (s.k === 'stone') {
+    if (s.k === 'stone' || s.k === 'arrow') {
       s.x += s.vx * dt; s.life -= dt;
-      if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 8 && Math.abs(hero.y - s.y) < 9) { sfx('hit_stone', s.x); dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
+      if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
     } else {
       s.t += dt;
       if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: 3, r: 16 }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
@@ -3061,6 +3092,10 @@ function update(dt) {
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
+  }
+  const bz = zs.find(z => z.T && z.T.boss);
+  if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
+    archerAddsDone = true; summonArchers(bz);
   }
   updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt);
   const vw = viewW();
@@ -3124,6 +3159,7 @@ function zFrame(z) {
   if (z.st === 'wake') return 'idle';
   if (z.stun > 0 || z.daze > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
+  if (z.st === 'addvolley') return z.t < .34 ? 'wind' : (z.t < .62 ? 'strike' : 'idle');
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
@@ -3235,6 +3271,15 @@ function draw() {
     }
   }
   // 火箭落点预警
+  for (const s of eshots) if (s.k === 'arrow') {
+    const d = Math.sign(s.vx) || 1;
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(s.x - d * 12, s.y - 4); ctx.lineTo(s.x, s.y - 4); ctx.stroke();
+    ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(s.x - d * 12, s.y - 4); ctx.lineTo(s.x, s.y - 4); ctx.stroke();
+    ctx.fillStyle = '#e8e0d0';
+    ctx.beginPath(); ctx.moveTo(s.x + d * 3, s.y - 4); ctx.lineTo(s.x - d * 2, s.y - 7); ctx.lineTo(s.x - d * 2, s.y - 1); ctx.closePath(); ctx.fill();
+  }
   for (const s of eshots) if (s.k === 'fire') {
     const p = s.t / s.T;
     ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, 16 * (1.3 - p * .3), 6 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
