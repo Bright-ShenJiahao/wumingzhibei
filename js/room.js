@@ -6,6 +6,42 @@
     { s: '这里是哪里', d: 1.8 },
     { s: '外面好像很危险，捡起地上的武器 出去看看。', d: 3.4 },
   ];
+  // ---------- 农房原图 + 统一坐标换算 ----------
+  const IMG_W = 1024, IMG_H = 572;          // art/room/home_in.png 的原始尺寸
+  const FIT = { s: 1, dx: 0, dy: 0 };        // cover 后的缩放/平移（设备像素）
+  let roomImg = null;
+  // 把"图上的像素坐标"换算成"世界坐标"，背景、人物、武器、出门判定全用这一个函数
+  function fitImg() {
+    const devW = cv.width, devH = cv.height;
+    const s = Math.max(devW / IMG_W, devH / IMG_H);      // cover
+    FIT.s = s;
+    FIT.dx = (devW - IMG_W * s) / 2;
+    FIT.dy = devH - IMG_H * s;                            // 底部对齐：保住地面和门洞下沿
+    return s;
+  }
+  const toW = (px, py) => {
+    const S2 = cv.height / 300;                           // 和绘制用同一个 SC
+    return [(px * FIT.s + FIT.dx) / S2, (py * FIT.s + FIT.dy) / S2];
+  };
+  // 常用锚点（图上比例 → 世界坐标）
+  const P = {
+    spawn: () => toW(IMG_W * .20, IMG_H * .86),           // 窗下醒来
+    doorL: () => toW(IMG_W * .69, IMG_H * .76),           // 门洞左下
+    doorR: () => toW(IMG_W * .80, IMG_H * .76),           // 门洞右下
+    threshold: () => toW(IMG_W * .745, IMG_H * .73),      // 门槛
+    floorTop: () => toW(IMG_W * .5, IMG_H * .72)[1],      // 地面最里侧
+    floorBot: () => toW(IMG_W * .5, IMG_H * .98)[1],      // 地面最外侧
+    wallL: () => toW(IMG_W * .06, 0)[0],
+    wallR: () => toW(IMG_W * .94, 0)[0],
+  };
+  // 近大远小：站得越靠下（越近）越大
+  const depthScale = (wy) => {
+    const top = P.floorTop(), bot = P.floorBot();
+    const k = Math.max(0, Math.min(1, (wy - top) / Math.max(1, bot - top)));
+    return 0.92 + 0.16 * k;
+  };
+  const HERO_SCALE = 3.6;   // 主角放大倍数（站在门口时头顶约到门框 70%~80%）
+
   const KINDS = ['staff', 'hammer', 'stone'];
   const NAME = { staff: '棍', hammer: '锤子', stone: '石子' };
 
@@ -21,11 +57,14 @@
   function resetRoom() {
     const vw = viewW();
     S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0;
-    S.hero = { x: vw * .16, y: 258, f: 1, st: 'down', t: 0, vx: 0 };
+    fitImg();
+    const sp = P.spawn();
+    S.hero = { x: sp[0], y: sp[1], f: 1, st: 'down', t: 0, vx: 0 };
+    // 三把武器散在屋里的地面上（图上比例 → 世界坐标）
     S.items = [
-      { k: 'staff', x: vw * .34, y: 252, got: 0, bob: 0 },
-      { k: 'hammer', x: vw * .50, y: 262, got: 0, bob: 1.1 },
-      { k: 'stone', x: vw * .66, y: 250, got: 0, bob: 2.2 },
+      { k: 'staff', x: toW(IMG_W * .40, IMG_H * .90)[0], y: toW(IMG_W * .40, IMG_H * .90)[1], got: 0, bob: 0 },
+      { k: 'hammer', x: toW(IMG_W * .52, IMG_H * .93)[0], y: toW(IMG_W * .52, IMG_H * .93)[1], got: 0, bob: 1.1 },
+      { k: 'stone', x: toW(IMG_W * .62, IMG_H * .88)[0], y: toW(IMG_W * .62, IMG_H * .88)[1], got: 0, bob: 2.2 },
     ];
     S.motes = Array.from({ length: 18 }, () => ({ x: Math.random() * vw, y: 140 + Math.random() * 140, r: .6 + Math.random() * 1.2, s: .3 + Math.random() * .8, p: Math.random() * 6.28 }));
   }
@@ -88,15 +127,15 @@
     if (typeof joy !== 'undefined' && joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
     const vw = viewW();
     if (ix) h.f = Math.sign(ix);
-    h.x += ix * 82 * dt; h.y += iy * 58 * dt;
-    h.x = Math.max(24, Math.min(vw - 24, h.x));
-    h.y = Math.max(218, Math.min(282, h.y));
+    h.x += ix * 165 * dt; h.y += iy * 108 * dt;
+    h.x = Math.max(P.wallL(), Math.min(P.wallR(), h.x));
+    h.y = Math.max(P.floorTop() + 4, Math.min(P.floorBot(), h.y));
     h.st = (ix || iy) ? 'walk' : 'idle';
 
     // 碰到武器就自动捡起
     for (const it of S.items) {
       if (it.got) continue;
-      if (Math.abs(it.x - h.x) < 18 && Math.abs(it.y - h.y) < 16) {
+      if (Math.abs(it.x - h.x) < 34 && Math.abs(it.y - h.y) < 30) {
         it.got = 1; S.took++;
         if (window.SFX) SFX.play('pickup', 0);
         S.li = -1; S.lineT = 0;
@@ -104,7 +143,9 @@
     }
 
     // 三把都拿了才能出门
-    if (S.took >= 3 && h.x > vw - 62 && h.y > 210 && S.out === 0) {
+    // 出门：门洞 x 范围内 + 走到门槛上（y 比门槛更靠里）
+    const dl = P.doorL()[0], dr = P.doorR()[0], th = P.threshold()[1];
+    if (S.took >= 3 && h.x > dl && h.x < dr && h.y < th + 12 && S.out === 0) {
       S.out = .001;
       if (window.SFX) SFX.play('land', 0);
     }
@@ -115,78 +156,39 @@
 
   function drawArt(vw) {
     const c = ctx, SC = R();
-    c.setTransform(SC, 0, 0, SC, 0, 0);
-    // 墙
-    const wg = c.createLinearGradient(0, 0, 0, 205);
-    wg.addColorStop(0, '#1c120e'); wg.addColorStop(.55, '#2a1a12'); wg.addColorStop(1, '#231610');
-    c.fillStyle = wg; c.fillRect(0, 0, vw, 205);
-    // 木板：竖条
-    for (let x = 0; x < vw; x += 26) {
-      c.fillStyle = (x / 26) % 2 ? 'rgba(255,190,120,.035)' : 'rgba(0,0,0,.10)';
-      c.fillRect(x, 0, 13, 205);
-      c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 25, 0, 1, 205);
+    fitImg();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    if (roomImg && roomImg.complete) {
+      c.imageSmoothingEnabled = true;
+      c.drawImage(roomImg, FIT.dx, FIT.dy, IMG_W * FIT.s, IMG_H * FIT.s);
+    } else {
+      c.fillStyle = '#241812'; c.fillRect(0, 0, cv.width, cv.height);
     }
-    // 横梁
-    c.fillStyle = '#150d0a'; c.fillRect(0, 66, vw, 9);
-    c.fillStyle = 'rgba(255,200,140,.06)'; c.fillRect(0, 66, vw, 1.5);
-    // 地面
-    const fg = c.createLinearGradient(0, 205, 0, 300);
-    fg.addColorStop(0, '#4a3520'); fg.addColorStop(1, '#2c1f14');
-    c.fillStyle = fg; c.fillRect(0, 205, vw, 95);
-    for (let x = -40; x < vw + 40; x += 44) { c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x + (x % 88 ? 12 : 0), 214, 1, 86); }
-    for (let y = 226; y < 298; y += 22) { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(0, y, vw, 1); }
-    // 窗户（左侧），暖光
-    const wx = vw * .06, wy = 88, ww = vw * .13, wh = 52;
-    c.fillStyle = '#0d0906'; c.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
-    const lg = c.createLinearGradient(wx, wy, wx, wy + wh);
-    lg.addColorStop(0, '#ffd9a0'); lg.addColorStop(1, '#ff9b4a');
-    c.fillStyle = lg; c.fillRect(wx, wy, ww, wh);
-    c.fillStyle = 'rgba(80,40,20,.55)'; c.fillRect(wx + ww * .48, wy, 2, wh); c.fillRect(wx, wy + wh * .46, ww, 2);
-    // 光柱
-    c.save();
-    const sg = c.createLinearGradient(wx, wy + wh, wx + vw * .5, 300);
-    sg.addColorStop(0, 'rgba(255,200,120,.18)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
-    c.fillStyle = sg;
-    c.beginPath(); c.moveTo(wx, wy + wh); c.lineTo(wx + ww, wy + wh); c.lineTo(wx + ww + vw * .42, 300); c.lineTo(wx + vw * .16, 300); c.closePath(); c.fill();
-    c.restore();
-    // 门（右侧）：外面是亮的
-    const dx = vw - 92, dy = 118, dw = 66, dh = 168;
-    c.fillStyle = '#0b0705'; c.fillRect(dx - 4, dy - 4, dw + 8, dh + 4);
-    const dg = c.createLinearGradient(dx, dy, dx, dy + dh);
-    dg.addColorStop(0, '#ffcf8a'); dg.addColorStop(.5, '#ffab4e'); dg.addColorStop(1, '#e07a2c');
-    c.fillStyle = dg; c.fillRect(dx, dy, dw, dh);
-    // 门外的地面/远景剪影
-    c.fillStyle = 'rgba(120,70,30,.45)'; c.fillRect(dx, dy + dh * .72, dw, dh * .28);
-    c.fillStyle = 'rgba(60,30,12,.5)'; c.fillRect(dx + 6, dy + dh * .72, dw - 12, 3);
-    // 门框
-    c.strokeStyle = '#120b07'; c.lineWidth = 5; c.strokeRect(dx - 2.5, dy - 2.5, dw + 5, dh + 5);
-    // 墙角的杂物：草垫 + 陶罐
-    c.fillStyle = '#3b2a17'; c.fillRect(24, 268, 46, 8);
-    c.fillStyle = '#55401f'; c.fillRect(24, 266, 46, 3);
-    c.fillStyle = '#2f2318'; c.beginPath(); c.ellipse(vw * .86, 268, 13, 16, 0, 0, 7); c.fill();
-    c.fillStyle = '#3e2f1f'; c.beginPath(); c.ellipse(vw * .86 - 4, 262, 5, 8, .3, 0, 7); c.fill();
-    // 微尘
+    // 轻微压暗四角，让台词框和装备框压得住
+    const W = cv.width, H = cv.height;
+    const vg = c.createRadialGradient(W / 2, H * .55, Math.min(W, H) * .3, W / 2, H * .55, Math.max(W, H) * .78);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(12,6,4,.62)');
+    c.fillStyle = vg; c.fillRect(0, 0, W, H);
+    // 飘动的微尘（沿窗光柱）
+    const SCw = cv.height / 300;
+    c.setTransform(SCw, 0, 0, SCw, 0, 0);
     for (const m of S.motes) {
-      c.globalAlpha = .12 + .28 * Math.abs(Math.sin(m.p));
+      c.globalAlpha = .10 + .28 * Math.abs(Math.sin(m.p));
       c.fillStyle = '#ffe6b0'; c.fillRect(m.x, m.y, m.r, m.r);
     }
     c.globalAlpha = 1;
-    // 暗角
-    const vg = c.createRadialGradient(vw / 2, 160, 80, vw / 2, 160, vw * .75);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
-    c.fillStyle = vg; c.fillRect(0, 0, vw, 300);
   }
 
   // 地上的武器（世界坐标画）
   function drawItem(it, t) {
     if (it.got) return;
     const c = ctx, yy = it.y + Math.sin(t * 2 + it.bob) * 1.6;
-    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(it.x, it.y + 4, 13, 4, 0, 0, 7); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(it.x, it.y + 4, 22 * depthScale(it.y), 7 * depthScale(it.y), 0, 0, 7); c.fill();
     // 微光
-    const g = c.createRadialGradient(it.x, yy - 6, 1, it.x, yy - 6, 18);
+    const g = c.createRadialGradient(it.x, yy - 6, 1, it.x, yy - 6, 30);
     g.addColorStop(0, 'rgba(255,216,110,.35)'); g.addColorStop(1, 'rgba(255,216,110,0)');
-    c.fillStyle = g; c.beginPath(); c.arc(it.x, yy - 6, 18, 0, 7); c.fill();
-    icon(it.k, it.x, yy - 6, 1, true);
+    c.fillStyle = g; c.beginPath(); c.arc(it.x, yy - 6, 30, 0, 7); c.fill();
+    icon(it.k, it.x, yy - 6, 3.1 * depthScale(it.y), true);
   }
 
   // 武器图标（和装备框共用）
@@ -280,19 +282,19 @@
       let f = 'idle';
       if (h.st === 'down' || h.st === 'getup') f = h.st;
       else if (h.st === 'walk') f = 'walk' + ([1, 2, 3, 2][Math.floor(h.t * 8) % 4]);
-      drawChar('hero', f, h.x, h.y, h.f < 0);
+      drawChar('hero', f, h.x, h.y, h.f < 0, 1, false, HERO_SCALE * depthScale(h.y));
     } });
     list.sort((a, b) => a.y - b.y).forEach(o => o.d());
     // 门的光晕 / 提示
     if (S.took >= 3) {
-      ctx.setTransform(SC, 0, 0, SC, 0, 0);
-      const a = .25 + .2 * Math.abs(Math.sin(S.t * 3));
-      ctx.fillStyle = `rgba(255,216,110,${a})`;
-      ctx.fillRect(vw - 96, 112, 74, 6);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.font = 'bold 16px "PingFang SC","Noto Sans CJK SC",sans-serif';
-      ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e';
-      ctx.fillText('出门 →', W - 60, 100); ctx.textAlign = 'left';
+      // 门槛前的暖光：走进这个光圈就出门
+      const th = P.threshold();
+      const a = .28 + .18 * Math.abs(Math.sin(S.t * 3));
+      const g2 = ctx.createRadialGradient(th[0], th[1] + 10, 2, th[0], th[1] + 10, 48);
+      g2.addColorStop(0, 'rgba(255,214,140,' + a + ')');
+      g2.addColorStop(1, 'rgba(255,214,140,0)');
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.ellipse(th[0], th[1] + 10, 48, 18, 0, 0, 7); ctx.fill();
     }
 
     // 屏幕层 UI
@@ -320,6 +322,8 @@
     body.wzb-wake #bA, body.wzb-wake #bR { display: none !important; }
   `;
   document.head.appendChild(style);
+  roomImg = new Image();
+  roomImg.src = (typeof ASSETS !== 'undefined' && ASSETS.room) || '';
 
   window.ROOM = {
     begin,
@@ -328,6 +332,8 @@
     update: (dt) => update(dt),
     active: () => S.mode === 'play',
     skip: () => { S.mode = 'off'; document.body.classList.remove('wzb-room', 'wzb-wake'); },
+    place: (px, py) => { S.hero.x = px; S.hero.y = py; },   // 调试用：摆位置
+    geo: () => ({ doorL: P.doorL(), doorR: P.doorR(), thr: P.threshold(), top: P.floorTop(), bot: P.floorBot() }),
     info: () => ({ phase: S.phase, took: S.took, x: Math.round(S.hero ? S.hero.x : 0), viewW: Math.round(viewW()) }),
   };
 })();
