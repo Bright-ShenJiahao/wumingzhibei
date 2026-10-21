@@ -196,7 +196,7 @@ function summonArchers(bz) {
       const z = zs[zs.length - 1];
       const standX = side < 0 ? cam.x + 70 + i * 26 : cam.x + vw - 70 - i * 26;
       z.adds = 2; z.standX = standX;
-      z.addExitX = x; z.addExitDir = side; z.addOrder = i * 2 + (side > 0 ? 1 : 0);
+      z.addExitX = x; z.addExitDir = side; z.addOrder = i;
       z.addDelay = z.addOrder * .35; z.volleyGap = 0;
       z.st = 'addwalk'; z.t = 0; z.f = dir; z.cd = 99; z.tok = false; z.moving = true;
     }
@@ -660,7 +660,7 @@ function zUpdate(z, dt) {
       if (zs.some(o => o.adds != null && o.st === 'addwalk')) return;
       if (z.t >= z.addWait) {
         eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x + rnd(-26, 26), ty: hero.y + rnd(-8, 10), t: 0, T: .9, short: 1.8 });
-        sfx('bow', z.x); z.adds = 1; set(z, 'addvolley'); z.volleyGap = 3 + 5 * .35;
+        sfx('bow', z.x); z.adds = 1; set(z, 'addvolley'); z.volleyGap = 3 + 2 * .35;
       }
       return;
     }
@@ -669,7 +669,7 @@ function zUpdate(z, dt) {
       if (z.volleyGap <= 0) {
         if (z.adds > 0) {
           eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x + rnd(-26, 26), ty: hero.y + rnd(-8, 10), t: 0, T: .9, short: 1.8 });
-          sfx('bow', z.x); z.adds = 0; z.volleyGap = .18 + (5 - z.addOrder) * .35; set(z, 'addvolley');
+          sfx('bow', z.x); z.adds = 0; z.volleyGap = .18 + (2 - z.addOrder) * .35; set(z, 'addvolley');
         } else { z.f = z.addExitDir; z.moving = true; set(z, 'addleave'); }
       }
       return;
