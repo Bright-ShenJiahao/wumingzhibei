@@ -182,12 +182,23 @@ function viewW() { return cv.width / (cv.height / M.viewH); }
 function summonArchers(bz) {
   say('管亥：「弓箭手，放箭！」', 2.4);
   sfx('bladeAlert', bz.x);
-  const L0 = Math.max(cam.x + 24, bz.x - 250), R0 = Math.min((lockR < Infinity ? lockR : cam.x + viewW()) - 24, bz.x + 250);
+  const vw = viewW(), leftX = cam.x - 40, rightX = cam.x + vw + 40;
+  const ys = [[], []];
+  for (const side of ys) for (let i = 0; i < 3; i++) {
+    let y, tries = 0;
+    do { y = rnd(M.top + 20, M.bot - 14); tries++; }
+    while (side.some(other => Math.abs(other - y) < 12) && tries < 40);
+    side.push(y);
+  }
   for (let i = 0; i < 3; i++) {
-    for (const [x, dir] of [[L0 + rnd(0, 12), 1], [R0 - rnd(0, 12), -1]]) {
-      spawn('archer', x, rnd(M.top + 18, M.bot - 12));
+    for (const [side, x, dir, y] of [[-1, leftX, 1, ys[0][i]], [1, rightX, -1, ys[1][i]]]) {
+      spawn('archer', x, y);
       const z = zs[zs.length - 1];
-      z.adds = 2; z.st = 'addvolley'; z.t = .2 + i * .25; z.f = dir; z.cd = 99; z.tok = false;
+      const standX = side < 0 ? cam.x + 70 + i * 26 : cam.x + vw - 70 - i * 26;
+      z.adds = 2; z.standX = standX;
+      z.addExitX = x; z.addExitDir = side; z.addOrder = i * 2 + (side > 0 ? 1 : 0);
+      z.addDelay = z.addOrder * .35; z.volleyGap = 0;
+      z.st = 'addwalk'; z.t = 0; z.f = dir; z.cd = 99; z.tok = false; z.moving = true;
     }
   }
 }
@@ -251,6 +262,7 @@ function waves() {
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (z.T.boss) return Boss.hit(z, dmg, dir);
   if (z.dead || z.air) return;
+  if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
@@ -631,18 +643,43 @@ function zUpdate(z, dt) {
       if (hero.inv <= 0 && Math.abs(hx) < 46 && Math.abs(hero.y - z.y) < 18 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
-  if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
-    if (z.st === 'flee') {
-      moveEnt(z, z.f * 190 * dt, 0);
-      if (z.x < cam.x - 60 || z.x > cam.x + viewW() + 60) { z.dead = true; z.st = 'gone'; }
+  if (z.adds != null) {                 // Boss 援军弓箭手：进场、交错齐射两轮、原路撤离
+    if (z.dead || z.air || z.stun > 0 || z.daze > 0) { z.adds = null; return; }
+    if (z.st === 'addwalk') {
+      const dx = z.standX - z.x;
+      z.f = Math.sign(dx) || z.f; z.moving = Math.abs(dx) >= 3;
+      if (Math.abs(dx) < 3) {
+        z.x = z.standX; z.moving = false; set(z, 'addaim');
+        if (!zs.some(o => o !== z && o.adds != null && o.st === 'addwalk'))
+          zs.forEach(o => { if (o.adds != null && o.st === 'addaim') { o.t = 0; o.addWait = .5 + o.addDelay; } });
+      }
+      else z.x += Math.sign(dx) * Math.min(Math.abs(dx), 55 * dt);
       return;
     }
-    z.t += dt;
-    if (z.t > .62) {
-      eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x, ty: hero.y, t: 0, T: .9, short: 1.8 });   // 和普通弓箭手一样的火箭，但烧得短
-      sfx('bow', z.x);
-      z.adds--; z.t = 0;
-      if (z.adds <= 0) { z.st = 'flee'; z.f = (z.x - cam.x) < viewW() / 2 ? -1 : 1; }   // 朝最近的一边撤
+    if (z.st === 'addaim') {
+      if (zs.some(o => o.adds != null && o.st === 'addwalk')) return;
+      if (z.t >= z.addWait) {
+        eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x + rnd(-26, 26), ty: hero.y + rnd(-8, 10), t: 0, T: .9, short: 1.8 });
+        sfx('bow', z.x); z.adds = 1; set(z, 'addvolley'); z.volleyGap = 3 + 5 * .35;
+      }
+      return;
+    }
+    if (z.st === 'addvolley') {
+      z.volleyGap -= dt;
+      if (z.volleyGap <= 0) {
+        if (z.adds > 0) {
+          eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x + rnd(-26, 26), ty: hero.y + rnd(-8, 10), t: 0, T: .9, short: 1.8 });
+          sfx('bow', z.x); z.adds = 0; z.volleyGap = .18 + (5 - z.addOrder) * .35; set(z, 'addvolley');
+        } else { z.f = z.addExitDir; z.moving = true; set(z, 'addleave'); }
+      }
+      return;
+    }
+    if (z.st === 'addleave') {
+      z.moving = true; z.x += z.addExitDir * 70 * dt;
+      if ((z.addExitDir < 0 && z.x <= z.addExitX) || (z.addExitDir > 0 && z.x >= z.addExitX)) {
+        z.x = z.addExitX; z.dead = true; z.st = 'gone'; z.t = 0;
+      }
+      return;
     }
     return;
   }
@@ -830,7 +867,9 @@ function zFrame(z) {
   if (z.st === 'wake') return 'idle';
   if (z.stun > 0 || z.daze > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
-  if (z.st === 'addvolley') return z.t < .34 ? 'wind' : (z.t < .62 ? 'strike' : 'idle');
+  if (z.st === 'addwalk' || z.st === 'addleave') return Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2';
+  if (z.st === 'addaim') return 'wind';
+  if (z.st === 'addvolley') return z.t < .34 ? 'strike' : 'idle';
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
