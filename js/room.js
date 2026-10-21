@@ -1,27 +1,26 @@
-// 开场演出：被吸进东汉末年，在农房里醒来 → 捡起地上三把武器 → 从门口出去进入村庄。
+// 开场演出：在村外醒来，捡起地上的武器，穿过右侧门洞进入村庄。
 // game.js 里只挂 2 处（update/draw 各一行判断），其余全在这个文件里。
 (() => {
   const LINES = [
-    { s: '我怎么了', d: 1.8 },
-    { s: '这里是哪里', d: 1.8 },
-    { s: '外面好像很危险，捡起地上的武器 出去看看。', d: 3.4 },
+    { s: '我怎么会躺在这里……', d: 1.8 },
+    { s: '墙那边有打杀声！', d: 1.8 },
+    { s: '先拿起地上的武器，往右边过去。', d: 3.4 },
   ];
-  // ---------- 农房原图 + 统一坐标换算 ----------
-  const IMG_W = 1024, IMG_H = 572;          // art/room/home_in.png 的原始尺寸
-  const CROP_TOP = 126;                     // 裁掉天花板：从图的 y=126 开始显示
-  const CROP_H = IMG_H - CROP_TOP;          // 446
-  const BOX_AR = IMG_W / CROP_H;            // 舞台框宽高比 ≈ 2.296
-  const PXW = IMG_H / 300;                  // 1 世界单位 = 1.907 图像素
+  // ---------- 村外场景原图 + 统一坐标换算 ----------
+  const IMG_W = 1024, IMG_H = 354;          // art/room/wake_outside.webp 的原始尺寸
+  const CROP_TOP = 0;
+  const CROP_H = IMG_H;
+  const BOX_AR = IMG_W / IMG_H;
+  const PXW = IMG_H / 300;                  // 与原开场保持接近的角色世界比例
   const BOX = { x: 0, y: 0, w: 0, h: 0 };
   const FIT = { s: 1, k: 1 };
   let roomImg = null;
 
-  // 舞台框：高度 = 屏幕高 70%（手机 76%），宽度按比例，居中、略上移
+  // 场景尽量铺满屏幕宽度；手机横屏时限制高度，完整保留两侧地形。
   function fitImg() {
     const W = cv.width / DPR, H = cv.height / DPR;
     const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
-    let bh = H * (coarse ? .51 : .47), bw = bh * BOX_AR;   // 再缩到 2/3（原 76% / 70%）
-    if (bw > W * .94) { bw = W * .94; bh = bw / BOX_AR; }
+    let bw = Math.min(W * .94, H * (coarse ? .76 : .72) * BOX_AR), bh = bw / BOX_AR;
     BOX.w = bw; BOX.h = bh;
     BOX.x = (W - bw) / 2;
     BOX.y = (H - bh) / 2 - H * .02;
@@ -40,13 +39,13 @@
   addEventListener('blur', () => { ptrDown = false; });
 
   const P = {
-    spawn: () => toW(IMG_W * .20, IMG_H * .86),           // 窗下醒来
-    doorL: () => toW(IMG_W * .69, IMG_H * .76),           // 门洞左下
-    doorR: () => toW(IMG_W * .80, IMG_H * .76),           // 门洞右下
-    threshold: () => toW(IMG_W * .745, IMG_H * .73),      // 门槛
-    floorTop: () => toW(IMG_W * .5, IMG_H * .72)[1],      // 地面最里侧
-    floorBot: () => toW(IMG_W * .5, IMG_H * .98)[1],      // 地面最外侧
-    wallL: () => toW(IMG_W * .06, 0)[0],
+    spawn: () => toW(IMG_W * .40, IMG_H * .82),           // 在空地左侧醒来
+    doorL: () => toW(IMG_W * .79, IMG_H * .75),           // 右侧墙门洞
+    doorR: () => toW(IMG_W * .88, IMG_H * .75),
+    threshold: () => toW(IMG_W * .835, IMG_H * .69),      // 门槛
+    floorTop: () => toW(IMG_W * .5, IMG_H * .59)[1],      // 地面最里侧
+    floorBot: () => toW(IMG_W * .5, IMG_H * .94)[1],      // 地面最外侧
+    wallL: () => toW(IMG_W * .37, 0)[0],                  // 左侧山坡与废墟不可通行
     wallR: () => toW(IMG_W * .94, 0)[0],
   };
   // 近大远小：站得越靠下（越近）越大
@@ -55,7 +54,7 @@
     const k = Math.max(0, Math.min(1, (wy - top) / Math.max(1, bot - top)));
     return 0.92 + 0.16 * k;
   };
-  const HERO_SCALE = 1.2;   // 主角放大倍数（3.6 → 1.2，缩到 1/3；改这一个数就能整体缩放）
+  const HERO_SCALE = 1.2;   // 保留原角色尺寸；绘制时按场景显示比例补偿
 
   const KINDS = ['staff', 'hammer', 'stone'];
   const NAME = { staff: '棍', hammer: '锤子', stone: '石子' };
@@ -64,22 +63,22 @@
     mode: 'off',        // off | play
     phase: 'wake',      // wake（还没站起来）| free（可自由走动）
     t: 0, li: -1, lineT: 0, fade: 1, out: 0, took: 0, cn: 0, ct: 0,
-    hero: null, items: [], motes: [],
+    hero: null, items: [], motes: [], battleT: 0, battleI: 0,
   };
 
   function viewW() { try { return cv.width / DPR / ((cv.height / DPR) / 300); } catch (e) { return 640; } }
 
   function resetRoom() {
     const vw = viewW();
-    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0;
+    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0; S.battleT = 1.2; S.battleI = 0;
     fitImg();
     const sp = P.spawn();
     S.hero = { x: sp[0], y: sp[1], f: 1, st: 'down', t: 0, vx: 0 };
-    // 三把武器散在屋里的地面上（图上比例 → 世界坐标）
+    // 三种现有武器散落在醒来点前方的空地上
     S.items = [
-      { k: 'staff', x: toW(IMG_W * .40, IMG_H * .87)[0], y: toW(IMG_W * .40, IMG_H * .87)[1], got: 0, bob: 0 },
-      { k: 'hammer', x: toW(IMG_W * .52, IMG_H * .90)[0], y: toW(IMG_W * .52, IMG_H * .90)[1], got: 0, bob: 1.1 },
-      { k: 'stone', x: toW(IMG_W * .62, IMG_H * .86)[0], y: toW(IMG_W * .62, IMG_H * .86)[1], got: 0, bob: 2.2 },
+      { k: 'staff', x: toW(IMG_W * .47, IMG_H * .83)[0], y: toW(IMG_W * .47, IMG_H * .83)[1], got: 0, bob: 0 },
+      { k: 'hammer', x: toW(IMG_W * .52, IMG_H * .86)[0], y: toW(IMG_W * .52, IMG_H * .86)[1], got: 0, bob: 1.1 },
+      { k: 'stone', x: toW(IMG_W * .57, IMG_H * .82)[0], y: toW(IMG_W * .57, IMG_H * .82)[1], got: 0, bob: 2.2 },
     ];
     S.motes = Array.from({ length: 18 }, () => ({ x: Math.random() * vw, y: 140 + Math.random() * 140, r: .6 + Math.random() * 1.2, s: .3 + Math.random() * .8, p: Math.random() * 6.28 }));
   }
@@ -147,6 +146,14 @@
       return;
     }
 
+    // 墙后持续传来断续的打斗声，音量轻且偏右，提示玩家朝右侧前进。
+    S.battleT -= dt;
+    if (S.battleT <= 0 && window.SFX) {
+      const sounds = ['enemySwing', 'hit_knife', 'enemyDown'];
+      SFX.play(sounds[S.battleI % sounds.length], .72);
+      S.battleI++; S.battleT = 2.2 + Math.random() * 1.5;
+    }
+
     // 可走动：键盘 + 手机摇杆（都读游戏里已有的输入状态）
     let ix = 0, iy = 0;
     if (typeof key !== 'undefined' && key) {
@@ -190,32 +197,16 @@
     c.setTransform(DPR, 0, 0, DPR, 0, 0);
     const W = cv.width / DPR, H = cv.height / DPR;
     const bx = BOX.x, by = BOX.y, bw = BOX.w, bh = BOX.h;
-    // 框外近黑
-    c.fillStyle = '#080605'; c.fillRect(0, 0, W, H);
-    // 门口的暖光渗到黑边上（先画，被画面盖住的部分看不出来，只露在框外）
-    const dW = toW(IMG_W * .745, 0)[0], dY = toW(0, IMG_H * .55)[1];
-    const dcx = bx + dW * FIT.k, dcy = by + dY * FIT.k;
-    const gl = c.createRadialGradient(dcx, dcy, Math.min(bw, bh) * .18, dcx, dcy, Math.max(bw, bh) * 1.05);
-    gl.addColorStop(0, 'rgba(255,168,86,.30)');
-    gl.addColorStop(.45, 'rgba(200,110,50,.12)');
-    gl.addColorStop(1, 'rgba(120,60,20,0)');
-    c.fillStyle = gl; c.fillRect(0, 0, W, H);
-    // 框内画面（裁掉天花板）
+    // 画面外用柔和的黄褐色暗角延续野外氛围，不做室内画框。
+    const bg = c.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#302521'); bg.addColorStop(1, '#76512d');
+    c.fillStyle = bg; c.fillRect(0, 0, W, H);
     if (roomImg && roomImg.complete) {
       c.imageSmoothingEnabled = true;
-      c.drawImage(roomImg, 0, CROP_TOP, IMG_W, CROP_H, bx, by, bw, bh);
+      c.drawImage(roomImg, 0, 0, IMG_W, IMG_H, bx, by, bw, bh);
     } else {
-      c.fillStyle = '#241812'; c.fillRect(bx, by, bw, bh);
+      c.fillStyle = '#76512d'; c.fillRect(bx, by, bw, bh);
     }
-    // 框边：顶部内阴影 + 深色描边 + 内侧微光
-    c.save();
-    c.beginPath(); c.rect(bx, by, bw, bh); c.clip();
-    const ig = c.createLinearGradient(0, by, 0, by + bh * .16);
-    ig.addColorStop(0, 'rgba(0,0,0,.5)'); ig.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = ig; c.fillRect(bx, by, bw, bh * .16);
-    c.restore();
-    c.strokeStyle = 'rgba(12,8,6,.9)'; c.lineWidth = 3; c.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3);
-    c.strokeStyle = 'rgba(255,190,120,.10)'; c.lineWidth = 1; c.strokeRect(bx + 4.5, by + 4.5, bw - 9, bh - 9);
     // 微尘
     c.setTransform(DPR * FIT.k, 0, 0, DPR * FIT.k, bx * DPR, by * DPR);
     for (const m of S.motes) {
@@ -345,7 +336,9 @@
       let f = 'idle';
       if (h.st === 'down' || h.st === 'getup') f = h.st;
       else if (h.st === 'walk') f = 'walk' + ([1, 2, 3, 2][Math.floor(h.t * 8) % 4]);
-      drawChar('hero', f, h.x, h.y + OYw, h.f < 0, 1, false, HERO_SCALE * depthScale(h.y));
+      const oldStageH = (cv.height / DPR) * ((matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0) ? .51 : .47);
+      const sizeKeep = HERO_SCALE * oldStageH * 572 / (446 * Math.max(1, BOX.h));
+      drawChar('hero', f, h.x, h.y + OYw, h.f < 0, 1, false, sizeKeep * depthScale(h.y));
     } });
     list.sort((a, b) => a.y - b.y).forEach(o => o.d());
     // 门的光晕 / 提示
@@ -376,7 +369,7 @@
     return true;
   }
 
-  // ---------- 样式：农房里只留摇杆和静音 ----------
+  // ---------- 样式：开场只留摇杆和静音 ----------
   const style = document.createElement('style');
   style.textContent = `
     body.wzb-room #top, body.wzb-room #wp button[data-w], body.wzb-room #bA,

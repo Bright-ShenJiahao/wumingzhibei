@@ -220,15 +220,17 @@ function spawn(type, x, y, sleeping = false) {
 function startVillagers(edgeX) {
   if (villagersStarted) return;
   villagersStarted = true;
-  const y = Math.max(M.top + 22, Math.min(M.bot - 18, hero.y));
+  const vw0 = viewW();
+  const startX = cam.x + vw0 / 3;                     // 左起 1/3 处开始逃
+  const y = M.top + (M.bot - M.top) * .58;             // 走中间那条路，不贴最底下
   // 老人先跑，年轻女子跟在身后；角色不参与阻挡和清区计数。
   villagers = [
-    { ch: 'villager_old', x: edgeX - 10, y: y + 6, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: edgeX + 18, y: y - 6, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: edgeX + 44, y: y + 2, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: edgeX + 70, y: y - 3, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_old', x: startX, y: y + 7, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 26, y: y - 5, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 50, y: y + 3, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 74, y: y - 2, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
   ];
-  spawn('grunt', edgeX + 126, y);
+  spawn('grunt', startX + 150, y);
   const chaser = zs[zs.length - 1];
   chaser.villagerChaser = true;
   chaser.f = -1;
@@ -254,11 +256,9 @@ function updateVillagers(dt) {
     if (villagersThanksT <= 0) {
       const bowing = villagers.filter(v => v.state === 'bow');
       if (bowing.length && !villagersRewarded) {
-        const x = bowing.reduce((sum, v) => sum + v.x, 0) / bowing.length;
-        const y = bowing.reduce((sum, v) => sum + v.y, 0) / bowing.length;
-        spawnRerollDrop(x, y);
         villagersRewarded = true;
-        say('村民送来锦囊：捡起后可重抽一次', 3);
+        say('村民感激地送上一枚锦囊', 2.4);
+        if (window.ROGUE) ROGUE.offer();     // 直接开三选一（不再掉地上的包裹）
       }
       bowing.forEach(v => { v.state = 'leave'; v.t = 0; v.f = -1; });
       villagersThanksT = -1;
@@ -785,8 +785,9 @@ function zUpdate(z, dt) {
       const dx = target.x - z.x, dy = target.y - z.y, d = Math.hypot(dx, dy);
       z.f = Math.sign(dx) || z.f; z.moving = d > 16;
       if (z.moving) {
-        moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt);
-        if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);
+        const cs = Math.min(T.spd, 26);                                // 比村民（30）慢，永远追不上
+        moveEnt(z, dx / d * cs * dt, dy / d * cs * .7 * dt);
+        if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * cs * dt);
       }
       return;
     }
