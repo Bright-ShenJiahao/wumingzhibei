@@ -1,7 +1,7 @@
 """美术自检：把某个角色的所有帧按脚底锚点对齐排成一排，旁边放主角和喽啰做大小对比，标出帧名和锚点。
 改完任何人物美术后必须跑一次，并亲眼看输出图，确认：帧名和动作对得上、大小和别的兵一致、没有残缺/杂点/绿边。
 
-用法：python3 tools/contact_sheet.py 角色名 [输出路径=/tmp/contact_<角色>.png]
+用法：python3 tools/contact_sheet.py 角色名 [输出路径=build/contact_<角色>.png]
 例：  python3 tools/contact_sheet.py banner
 """
 import json, os, sys
@@ -9,7 +9,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ch = sys.argv[1]
-out = sys.argv[2] if len(sys.argv) > 2 else f'/tmp/contact_{ch}.png'
+out = sys.argv[2] if len(sys.argv) > 2 else os.path.join('build', f'contact_{ch}.png')
+os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
 A = json.load(open(os.path.join(R, 'art', 'sprites', 'atlas.json'), encoding='utf-8'))
 if ch not in A: sys.exit(f'atlas.json 里没有角色 {ch}，现有：{list(A)}')
 
