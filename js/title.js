@@ -3,7 +3,7 @@
 // 换正式背景图时只改下面 TV 和 drawBg() 里的图片即可。
 (() => {
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
-  const TV = { x: .5660, y: .1897, w: .3390, h: .3723 };
+  const TV = { x: .5674, y: .1923, w: .3359, h: .3671 };   // 绿幕实测 + 外扩 1 像素（绿边已在 tools/fix_title_green.py 里清掉）
   const NAME_KEY = 'wzb-name';
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
@@ -276,16 +276,17 @@
   }
 
   function drawTV(c) {
-    const { tvX: x, tvY: y, tvW: w, tvH: h } = L;
+    // 取整 + 不用 clip：clip 的抗锯齿会在屏幕边缘混出 1 像素的绿线
+    const x = Math.round(L.tvX), y = Math.round(L.tvY), w = Math.round(L.tvW), h = Math.round(L.tvH);
     if (demoCv) {
-      c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+      c.save();
       c.imageSmoothingEnabled = false;
       // 演示画面 16:9，屏幕是 1.64:1 → 用 cover 裁左右，别拉变形
       const da = demoCv.width / demoCv.height, sa = w / h;
       let sw = demoCv.width, sh = demoCv.height, sx0 = 0, sy0 = 0;
       if (sa < da) { sw = demoCv.height * sa; sx0 = (demoCv.width - sw) / 2; }
       else { sh = demoCv.width / sa; sy0 = (demoCv.height - sh) / 2; }
-      c.drawImage(demoCv, sx0, sy0, sw, sh, x, y, w, h);
+      c.drawImage(demoCv, sx0, sy0, sw, sh, x, y, w, h);   // 直接画进矩形，边缘是硬的
       // 扫描线
       c.fillStyle = 'rgba(0,0,0,.22)';
       for (let yy = y; yy < y + h; yy += 3) c.fillRect(x, yy, w, 1);

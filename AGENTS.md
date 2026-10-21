@@ -9,6 +9,8 @@
 - `index.src.html`：网页模板（界面、按钮、样式）。
 - `index.html`：**打包生成的文件，不要手改**。改完 `game.js` 或 `index.src.html` 后运行 `python3 tools/build.py` 重新生成，再一起提交。
 - `art/title/home.png`：**登录页背景图**（一对情侣在电视前打游戏，电视屏幕是绿幕）。
+  换图后先跑 `python tools/fix_title_green.py`（清掉屏幕边缘那圈绿 + 顺便输出 WebP 和新的 TV 比例），
+  再跑 `python tools/build.py`。
   绿幕位置已实测：`TV = { x:.566, y:.190, w:.339, h:.372 }`（相对图片的比例），
   改图后要重新量一次（`js/title.js` 顶部）。打包用的是 `home.webp`（43KB，比 png 小 12 倍）。
 - `art/gemini/`：Gemini 原图，保持不动。
