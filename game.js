@@ -222,13 +222,13 @@ function startVillagers(edgeX) {
   villagersStarted = true;
   const vw0 = viewW();
   const startX = cam.x + vw0 / 3;                     // 左起 1/3 处开始逃
-  const y = M.top + (M.bot - M.top) * .58;             // 走中间那条路，不贴最底下
+  const y = M.bot - 8;                                 // 贴着画面最下面那条路走（用户要求）
   // 老人先跑，年轻女子跟在身后；角色不参与阻挡和清区计数。
   villagers = [
-    { ch: 'villager_old', x: startX, y: y + 7, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 26, y: y - 5, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 50, y: y + 3, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 74, y: y - 2, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_old', x: startX, y: y, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 26, y: y - 4, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 50, y: y - 1, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman', x: startX + 74, y: y - 5, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
   ];
   spawn('grunt', startX + 150, y);
   const chaser = zs[zs.length - 1];
