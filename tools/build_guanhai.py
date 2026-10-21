@@ -28,6 +28,11 @@ PAD = 800
 #   spin：在头顶水平旋转的角度（度），c 为两拳中点，握在戟杆中间
 #   ground：长戟横躺在地上（脱手）
 SHEETS = [
+dict(char='guanhai', file='管亥_空手_冲刺.png', ref=('dash_a', 103), r=20, frames=[
+  ('dash_a', dict(c=(380, 245), ang=0, g=.3)),     # 蓄力：戟尖朝右平举
+  ('dash_b', dict(c=(950, 240), ang=0, g=.3)),     # 突刺：双手前推
+]),
+
     dict(char='guanhai_horse', file='管亥_空手_马上上.png', ref=('run1', 127), r=13, frames=[
         ('idle', dict(a=(122, 158), b=(212, 123), g=.32)),
         ('run1', dict(a=(470, 153), b=(555, 139), g=.32)),

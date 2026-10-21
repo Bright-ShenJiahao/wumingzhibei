@@ -40,6 +40,7 @@ const WEAP = {
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.1, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.1, kb: 46, daze: .45 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.8, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
+    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 1.2, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -438,7 +439,7 @@ function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
   const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
-  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % 3 : 0, fi: 0, t: 0, lg: 0 };
+  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % WEAP[weapon].combo.length : 0, fi: 0, t: 0, lg: 0 };
 }
 function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
@@ -453,6 +454,7 @@ function strike() {
   }
   let landed = false, hitEnemy = false;
   const reach = W.reach * R_('reach');                                   // 锦囊：长手
+  const rch = C.thrust ? reach * 1.35 : reach;                          // 「戳」比劈多 35% 距离
   const fin = (c === 2 ? R_('fin') : 1) * 1;                             // 锦囊：连打（第三段）
   const aoe = (weapon === 'hammer' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：锤·震地
   for (const z of zs) {
@@ -460,7 +462,7 @@ function strike() {
     const dx = (z.x - h.x) * h.f;
     const bw = z.T.w || 0;
     const inAoE = aoe > 0 && dx > -aoe - bw && dx < aoe + bw && Math.abs(z.y - h.y) < W.dy + 12;
-    const inRange = inAoE || (C.both ? Math.abs(dx) < reach + bw : dx > -4 - bw && dx < reach + bw);
+    const inRange = inAoE || (C.both ? Math.abs(dx) < rch + bw : dx > -4 - bw && dx < rch + bw);
     if (inRange && Math.abs(z.y - h.y) < W.dy + (inAoE ? 12 : 0)) {
       landed = hitEnemy = true;
       hit(z, C.dmg * fin, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
@@ -474,7 +476,7 @@ function strike() {
   for (const p of props) {
     if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
     const dx = (p.x - h.x) * h.f;
-    const inRange = C.both ? Math.abs(dx) < reach + p.w / 2 : dx > -4 - p.w / 2 && dx < reach + p.w / 2;
+    const inRange = C.both ? Math.abs(dx) < rch + p.w / 2 : dx > -4 - p.w / 2 && dx < rch + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
       landed = true; h.lastHit = gameT; h.lastHitC = c;
       hitProp(p, Math.sign(p.x - h.x) || h.f);

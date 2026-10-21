@@ -265,8 +265,8 @@ const Boss = (() => {
     if (S === 'gone') return 'down';
     if (S === 'bare' || S === 'pickup') return 'bare_idle';     // 空手
     if (S === 'leap') return 'fly';                              // 扑向兵器
-    if (S === 'dash_a') return 'thrust_a';
-    if (S === 'dash_b' || S === 'dash_end') return 'thrust_b';
+    if (S === 'dash_a') return 'dash_a';
+    if (S === 'dash_b' || S === 'dash_end') return 'dash_b';
     if (S === 'throw_a') return 'chop_a';
     return { idle: 'idle', roar: 'roar', stagger: 'stagger', dizzy: 'dizzy', chop_a: 'chop_a', chop_b: 'chop_b', thrust_a: 'thrust_a', thrust_b: 'thrust_b', kneel: 'kneel', down: 'down' }[S] || 'idle';
   }
