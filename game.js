@@ -52,19 +52,19 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .65 },        // 左手扔
-    { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .65 },        // 右手扔
+    { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .78 },        // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .78 },        // 右手扔（射程约 179）
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.18, .07, .28], dmg: 1.2, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
 // 黄巾兵
 const TYPES = {
-  grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1 },
-  blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true },
-  slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [90, 150], cd: 2.4 },
-  archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2 },
-  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'blade' },   // 精英：血厚、出手慢、打不断
-  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'grunt' },                     // 旗手：给周围小兵加速，优先击杀目标
+  grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
+  blade:   { name: '刀手', hp: 6, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
+  slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
+  archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
+  elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'blade', scale: 1.10 },   // 精英：血厚、出手慢、打不断
+  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'grunt', scale: .88 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -167,7 +167,7 @@ function viewW() { return cv.width / (cv.height / M.viewH); }
 function spawn(type, x, y) {
   const T = TYPES[type];
   zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: 'move', t: rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
-    sc: T.elite ? 1.18 : 1, dark: !!T.elite });
+    sc: T.scale || 1, dark: !!T.elite });
 }
 function waves() {
   const vw = viewW();
@@ -513,7 +513,7 @@ function zUpdate(z, dt) {
   if (z.st === 'wind') {
     if (z.t > T.wind * (buff ? .8 : 1)) {
       set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
-      if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: 1.4 });
+      if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
       else if (T.ranged === 'fire') { const tx = hero.x, ty = hero.y; eshots.push({ k: 'fire', x0: z.x + z.f * 16, y0: z.y, tx, ty, t: 0, T: .9 }); }
       else if (Math.abs(dx) < T.reach && Math.abs(dy) < 9 && Math.sign(dx) === z.f) dmgHero(T.dmg, z);
     }

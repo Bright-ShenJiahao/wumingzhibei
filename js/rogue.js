@@ -43,8 +43,8 @@
     const p = pool.filter(c => !exclude.includes(c.school));
     const src = p.length ? p : pool;
     if (!src.length) return null;
-    const tot = src.reduce((a, c) => a + c.w, 0); let r = Math.random() * tot, k = 0;
-    for (; k < src.length; k++) { r -= src[k].w; if (r <= 0) break; }
+    const tot = src.reduce((a, c) => a + weightOf(c), 0); let r = Math.random() * tot, k = 0;
+    for (; k < src.length; k++) { r -= weightOf(src[k]); if (r <= 0) break; }
     return src.splice(Math.min(k, src.length - 1), 1)[0];
   };
   const pickN = (pool, n) => {
@@ -58,16 +58,24 @@
     return out;
   };
 
+  // 当前武器对应的"专属卡"：拿到它时出现概率 ×3
+  const W_CARD = { staff: 'wave', hammer: 'hammer', stone: 'stone' };
+  const curWeapon = () => (typeof weapon !== 'undefined' ? weapon : '');
+  const weightOf = (c) => c.w * (W_CARD[curWeapon()] === c.id ? 3 : 1);
+
   function offerCards() {
-    const avail = CARDS.filter(c => (stacks[c.id] || 0) < MAX_STACK);
+    // 已经拿满 2 次的卡（含诅咒）不会再出现
+    const all = CARDS.concat(CURSES);
+    const avail = all.filter(c => (stacks[c.id] || 0) < MAX_STACK);
     offer = pickN(avail, 3);
-    if (Math.random() < .3) offer = offer.concat(pickN(CURSES, 1));
+    if (Math.random() < .3) offer = offer.concat(pickN(CURSES.filter(c => (stacks[c.id] || 0) < MAX_STACK), 1));
     picked = -1; anim = 0; open = true;
   }
 
   function choose(i) {
     if (!open || i < 0 || i >= offer.length) return;
     const c = offer[i];
+    if ((stacks[c.id] || 0) >= MAX_STACK) return;   // 保险：已满的卡不再生效
     stacks[c.id] = (stacks[c.id] || 0) + 1;
     c.apply();
     picked = i; open = false;
@@ -115,7 +123,9 @@
       if (line) ctx.fillText(line, x + cw / 2, ly);
       // 层数
       const st = stacks[c.id] || 0;
-      if (st) { ctx.font = '700 11px ' + F; ctx.fillStyle = 'rgba(242,230,201,.55)'; ctx.fillText('已拿 ' + st + '/' + MAX_STACK, x + cw / 2, y + ch - 26); }
+      ctx.font = '700 11px ' + F;
+      ctx.fillStyle = st >= MAX_STACK ? '#8ef07a' : 'rgba(242,230,201,.55)';
+      ctx.fillText('已拿 ' + st + '/' + MAX_STACK, x + cw / 2, y + ch - 26);
       // 序号
       ctx.font = '900 13px ' + F; ctx.fillStyle = 'rgba(255,216,110,.9)';
       ctx.fillText(String(i + 1), x + cw / 2, y + ch - 8);
