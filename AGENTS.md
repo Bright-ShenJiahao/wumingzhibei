@@ -26,6 +26,10 @@
 - `tools/make_tv_mask.py`：登录页电视屏幕的绿幕遮罩 + 去绿背景。
 - `tools/split_props.py`：处理绿底道具图（自动切开、抠绿、缩放）；`tools/build.py`：打包。
 
+## 美术与质感（必读）
+- 凡是动到美术、界面、特效、人物/道具绘制，开工前先完整阅读 `.agents/skills/wumingzhibei-art/SKILL.md`，交付前按里面的自检清单逐条检查。
+- 改人物美术后必须运行 `python3 tools/contact_sheet.py 角色名` 并亲眼看输出图。
+
 ## 工作流程
 1. **开始前先 `git pull`**，始终在最新版本上改，避免覆盖别人的改动。
 2. 每次改动保持小而集中，一个提交只做一件事。
