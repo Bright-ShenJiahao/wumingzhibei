@@ -808,7 +808,7 @@ function draw() {
   if (zs.some(z => z.T && z.T.boss)) {
     const im = IMG['ui_boss_flag'];
     if (im && im.complete) {
-      const fh2 = 150, fw2 = fh2 * im.width / im.height;
+      const fh2 = 100, fw2 = fh2 * im.width / im.height;   // 缩到 2/3（150 → 100）
       const fx2 = 3211, fy2 = 189;   // 候选③：右侧上方背景（世界坐标，固定不随镜头）
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);
