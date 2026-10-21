@@ -1137,7 +1137,7 @@ const Boss = (() => {
     const k = Math.max(0, Math.min(1, (wy - top) / Math.max(1, bot - top)));
     return 0.92 + 0.16 * k;
   };
-  const HERO_SCALE = 3.6;   // 主角放大倍数（站在门口时头顶约到门框 70%~80%）
+  const HERO_SCALE = 1.2;   // 主角放大倍数（3.6 → 1.2，缩到 1/3；改这一个数就能整体缩放）
 
   const KINDS = ['staff', 'hammer', 'stone'];
   const NAME = { staff: '棍', hammer: '锤子', stone: '石子' };
@@ -1224,7 +1224,7 @@ const Boss = (() => {
     if (typeof joy !== 'undefined' && joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
     const vw = viewW();
     if (ix) h.f = Math.sign(ix);
-    h.x += ix * 165 * dt; h.y += iy * 108 * dt;
+    h.x += ix * 86 * dt; h.y += iy * 58 * dt;
     h.x = Math.max(P.wallL(), Math.min(P.wallR(), h.x));
     h.y = Math.max(P.floorTop() + 4, Math.min(P.floorBot(), h.y));
     h.st = (ix || iy) ? 'walk' : 'idle';
@@ -1232,7 +1232,7 @@ const Boss = (() => {
     // 碰到武器就自动捡起
     for (const it of S.items) {
       if (it.got) continue;
-      if (Math.abs(it.x - h.x) < 34 && Math.abs(it.y - h.y) < 30) {
+      if (Math.abs(it.x - h.x) < 18 && Math.abs(it.y - h.y) < 16) {
         it.got = 1; S.took++;
         if (window.SFX) SFX.play('pickup', 0);
         S.li = -1; S.lineT = 0;
@@ -1280,12 +1280,12 @@ const Boss = (() => {
   function drawItem(it, t) {
     if (it.got) return;
     const c = ctx, yy = it.y + Math.sin(t * 2 + it.bob) * 1.6;
-    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(it.x, it.y + 4, 22 * depthScale(it.y), 7 * depthScale(it.y), 0, 0, 7); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(it.x, it.y + 4, 13 * depthScale(it.y), 4 * depthScale(it.y), 0, 0, 7); c.fill();
     // 微光
-    const g = c.createRadialGradient(it.x, yy - 6, 1, it.x, yy - 6, 30);
+    const g = c.createRadialGradient(it.x, yy - 6, 1, it.x, yy - 6, 18);
     g.addColorStop(0, 'rgba(255,216,110,.35)'); g.addColorStop(1, 'rgba(255,216,110,0)');
-    c.fillStyle = g; c.beginPath(); c.arc(it.x, yy - 6, 30, 0, 7); c.fill();
-    icon(it.k, it.x, yy - 6, 3.1 * depthScale(it.y), true);
+    c.fillStyle = g; c.beginPath(); c.arc(it.x, yy - 6, 18, 0, 7); c.fill();
+    icon(it.k, it.x, yy - 6, 1.05 * depthScale(it.y), true);
   }
 
   // 武器图标（和装备框共用）
