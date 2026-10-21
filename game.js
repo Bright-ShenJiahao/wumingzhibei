@@ -776,7 +776,7 @@ function drawResult(HW, HH) {
   ctx.fillStyle = vg; ctx.fillRect(0, 0, HW, HH);
 
   // 卷轴：按屏幕适配，从中间向左右展开
-  const sw0 = Math.min(HW * .90, HH * 1.62), sh0 = sw0 / 1.66;
+  const sw0 = Math.min(HW * .90, HH * 1.62) * .75, sh0 = sw0 / 1.66;   // 缩到 3/4，仍然居中
   const p = eOut(Math.min(1, Math.max(0, (raw - .05) / .40)));
   const sw = Math.max(40, sw0 * p), sx = (HW - sw) / 2, sy = Math.round((HH - sh0) / 2);
   const sh = sh0, sc = sh / 561;
@@ -877,9 +877,15 @@ function drawResult(HW, HH) {
     else { ctx.fillStyle = red ? '#8e2f22' : '#7a5530'; ctx.fillRect(x, yy, bw, bh); }
     ctx.restore();
     ctx.save();
-    ctx.font = Math.round(bh * .46) + 'px ' + BRUSH;
+    let lfs = Math.round(bh * .46);
+    ctx.font = lfs + 'px ' + BRUSH;
+    const ltw = ctx.measureText(label).width;
+    if (ltw > bw * .78) {                      // 字太宽就缩小，保证在木牌里
+      lfs = Math.max(8, Math.floor(lfs * bw * .78 / ltw));
+      ctx.font = lfs + 'px ' + BRUSH;
+    }
     ctx.fillStyle = red ? '#f6e2c0' : '#2b1a0c';
-    ctx.fillText(label, x + bw / 2, yy + bh * .66);
+    ctx.fillText(label, x + bw / 2, yy + bh * .62 + lfs * .18);
     ctx.restore();
     uiBtns.push({ x, y: yy, w: bw, h: bh, act });
   };
