@@ -1159,9 +1159,9 @@ const Boss = (() => {
     S.hero = { x: sp[0], y: sp[1], f: 1, st: 'down', t: 0, vx: 0 };
     // 三把武器散在屋里的地面上（图上比例 → 世界坐标）
     S.items = [
-      { k: 'staff', x: toW(IMG_W * .40, IMG_H * .90)[0], y: toW(IMG_W * .40, IMG_H * .90)[1], got: 0, bob: 0 },
-      { k: 'hammer', x: toW(IMG_W * .52, IMG_H * .93)[0], y: toW(IMG_W * .52, IMG_H * .93)[1], got: 0, bob: 1.1 },
-      { k: 'stone', x: toW(IMG_W * .62, IMG_H * .88)[0], y: toW(IMG_W * .62, IMG_H * .88)[1], got: 0, bob: 2.2 },
+      { k: 'staff', x: toW(IMG_W * .40, IMG_H * .87)[0], y: toW(IMG_W * .40, IMG_H * .87)[1], got: 0, bob: 0 },
+      { k: 'hammer', x: toW(IMG_W * .52, IMG_H * .90)[0], y: toW(IMG_W * .52, IMG_H * .90)[1], got: 0, bob: 1.1 },
+      { k: 'stone', x: toW(IMG_W * .62, IMG_H * .86)[0], y: toW(IMG_W * .62, IMG_H * .86)[1], got: 0, bob: 2.2 },
     ];
     S.motes = Array.from({ length: 18 }, () => ({ x: Math.random() * vw, y: 140 + Math.random() * 140, r: .6 + Math.random() * 1.2, s: .3 + Math.random() * .8, p: Math.random() * 6.28 }));
   }
@@ -1232,7 +1232,7 @@ const Boss = (() => {
     // 碰到武器就自动捡起
     for (const it of S.items) {
       if (it.got) continue;
-      if (Math.abs(it.x - h.x) < 18 && Math.abs(it.y - h.y) < 16) {
+      if (Math.abs(it.x - h.x) < 20 && Math.abs(it.y - h.y) < 20) {
         it.got = 1; S.took++;
         if (window.SFX) SFX.play('pickup', 0);
         S.li = -1; S.lineT = 0;
