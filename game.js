@@ -81,11 +81,11 @@ const WAVES = [
   // 区域 4：弓箭手固定 2 个
   { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
     core: ['grunt', 'blade', 'archer', 'archer', 'grunt'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
-    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！' },
+    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0] },
   // 区域 5：老卒首次登场
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
     core: ['elite'], budget: 7, pool: ['grunt', 'blade', 'slinger', 'archer'],
-    extra: ['slinger', 'grunt'], extraAt: 1 },
+    extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
   { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
 ];
 // 威胁值：随机填充时按点数抽兵
@@ -165,9 +165,9 @@ function moveEnt(e, dx, dy) {
 
 // ---------- 刷怪 ----------
 function viewW() { return cv.width / (cv.height / M.viewH); }
-function spawn(type, x, y) {
+function spawn(type, x, y, sleeping = false) {
   const T = TYPES[type];
-  zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: 'move', t: rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
+  zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: sleeping ? 'sleep' : 'move', t: sleeping ? 0 : rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
     sc: T.scale || 1, dark: false });
 }
 function waves() {
@@ -201,7 +201,9 @@ function waves() {
     const list = W.units || (W.core || []).concat(rollFill(W.pool || [], W.budget || 0));
     list.forEach((u, i) => {
       const left = i === list.length - 1 && list.length > 3 && !TYPES[u].ranged;   // 最后一个近战从左边包过来
-      spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, rnd(M.top + 6, M.bot - 6));
+      const sleeping = W.sleepers && W.sleepers.includes(i);
+      const y = sleeping ? (gateI % 2 ? M.bot - 14 : M.top + 14) : rnd(M.top + 6, M.bot - 6);
+      spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, y, sleeping);
     });
     say(W.say, 4);
   }
@@ -520,6 +522,11 @@ function zUpdate(z, dt) {
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
+  if (z.st === 'sleep') {
+    if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) set(z, 'wake');
+    return;
+  }
+  if (z.st === 'wake') { if (z.t > .55) set(z, 'move'); else return; }
   if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }   // 晕眩：站着不动
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
@@ -673,6 +680,8 @@ function zFrame(z) {
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
   if (z.st === 'land') return 'land';
   if (z.dead) return 'down';
+  if (z.st === 'sleep') return 'down';
+  if (z.st === 'wake') return 'idle';
   if (z.stun > 0 || z.daze > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
   if (z.st === 'strike') return 'strike';
@@ -1085,6 +1094,18 @@ function drawZ(z) {
   drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
   if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 34;
+  if (z.st === 'sleep') {
+    const bob = Math.sin(performance.now() / 300) * 2;
+    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#fff0a8';
+    ctx.strokeText('Z', z.x + 9, z.y - 20 + bob); ctx.fillText('Z', z.x + 9, z.y - 20 + bob);
+    ctx.textAlign = 'left'; return;
+  }
+  if (z.st === 'wake') {
+    ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ff4a32';
+    ctx.strokeText('!', z.x, top - 4); ctx.fillText('!', z.x, top - 4); ctx.textAlign = 'left';
+  }
   if (z.daze > 0) {   // 头顶转圈的小黄星
     const t = performance.now() / 260;
     for (let k = 0; k < 3; k++) {
