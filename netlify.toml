@@ -1,3 +1,6 @@
-[build]
-  publish = "."
-  command = ""
+﻿[build]
+  command = "python tools/build.py && mkdir -p dist && cp index.html dist/"
+  publish = "dist"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
