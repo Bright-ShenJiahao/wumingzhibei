@@ -14,9 +14,16 @@
   换图后先跑 `python tools/make_tv_mask.py`（生成绿幕遮罩 + 去绿背景 + 打印外接矩形比例），再跑 `python tools/build.py`。
   绿幕外接矩形：`TV = { x:.5684, y:.1958, w:.3320, h:.3601 }`（相对图片的比例，脚本会打印），
   只用来定位离屏画布的位置和大小，**屏幕形状由遮罩决定**。打包用的是 `home.webp`（52KB）+ `tv_mask.png`（6KB）。
+- `art/ui/`：卷轴、木牌按钮（普通/红漆）、三种印章（方/圆/长方），webp，由 `tools/process_ui.py` 从绿底原图生成。
+- `art/food/`：回血食物（包子 1 血 / 鸡腿 2 血 / 烤乳猪 4 血），png + `meta.json` 记录世界尺寸。
+- `art/fonts/result.ttf`：结算画面的毛笔字体子集（Ma Shan Zheng，OFL）。
+  字表在 `tools/build.py` 里自动从 game.js 的结算文案里收集，打包时内联成 @font-face（约 84KB）。
+  **不要**改成在线加载 Google Fonts（国内微信打不开）。
 - `art/gemini/`：Gemini 原图，保持不动。
 - `art/bg/`：背景层；`art/props/`：道具（`meta.json` 记录世界尺寸）；`art/sprites/`：像素人物。
 - `tools/pixelize_sheet.py`：把 Gemini 出的"仿像素"绿底人物动作图转成真像素精灵（自动切帧、统一缩放和调色板、加描边），输出到 `art/sprites/<角色>/` 并更新 `art/sprites/atlas.json`。用法见脚本开头。
+- `tools/process_ui.py`：把绿底 UI / 食物原图抠绿、自动切开、裁空、命名，输出到 `art/ui` 和 `art/food`。
+- `tools/make_tv_mask.py`：登录页电视屏幕的绿幕遮罩 + 去绿背景。
 - `tools/split_props.py`：处理绿底道具图（自动切开、抠绿、缩放）；`tools/build.py`：打包。
 
 ## 工作流程

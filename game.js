@@ -4,6 +4,8 @@ const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
+Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
+Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
 // 角色像素图：CH[角色][帧] = { img, w, h, ax, ay, white }
 const CH = {};
 for (const [name, frames] of Object.entries(ASSETS.chars)) {
@@ -228,7 +230,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   }
   if (z.hp <= 0) {
     z.dead = 1; kills++; knock = true;
-    if (z.T.elite) { spawnDrop(z.x - 6, z.y); spawnDrop(z.x + 10, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉
+    if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 }
@@ -284,26 +286,41 @@ function set(e, st) { e.st = st; e.t = 0; }
 // 每被打中一次掉 1 点耐久；打坏后取消碰撞（p.solid = false）并从画面消失，水井/旗子 hp 为 0 不受影响
 // 回血道具：包子 +1（70%）、鸡腿 +2（20%）、烤乳猪 +3（10%）
 const FOOD = [
-  { k: 'bun', heal: 1, w: 70 },
-  { k: 'leg', heal: 2, w: 20 },
-  { k: 'pig', heal: 3, w: 10 },
+  { k: 'bun', heal: 1, w: 60 },   // 包子：最常见，回 1
+  { k: 'leg', heal: 2, w: 30 },   // 鸡腿：中等，回 2
+  { k: 'pig', heal: 4, w: 10 },   // 烤乳猪：稀有，回 4
 ];
-function spawnDrop(x, y) {
-  const r = Math.random() * 100;
-  let acc = 0, pick = FOOD[0];
-  for (const f of FOOD) { acc += f.w; if (r < acc) { pick = f; break; } }
-  drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, t: rnd(0, 6), got: 0 });
+function spawnDrop(x, y, forceK) {
+  let pick;
+  if (forceK) pick = FOOD.find(f => f.k === forceK) || FOOD[0];
+  else {
+    const r = Math.random() * 100;
+    let acc = 0; pick = FOOD[0];
+    for (const f of FOOD) { acc += f.w; if (r < acc) { pick = f; break; } }
+  }
+  drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
 function updateDrops(dt) {
   const h = hero;
   for (const d of drops) {
     d.t += dt;
+    // 弹跳落地
+    if (d.z > 0 || d.vy) {
+      d.vy -= 1400 * dt; d.z += d.vy * dt;
+      if (d.z <= 0) {
+        d.z = 0;
+        if (d.vy < -70) { d.vy = -d.vy * .38; sfx('land', d.x); }
+        else d.vy = 0;
+      }
+    }
     if (d.got) continue;
-    if (Math.abs(d.x - h.x) < 14 && Math.abs(d.y - h.y) < 16) {
+    d.life -= dt;
+    if (d.life <= 0) { d.got = 1; continue; }   // 放久了消失
+    if (Math.abs(d.x - h.x) < 15 && Math.abs(d.y - h.y) < 16 && d.z < 22) {
       d.got = 1;
       h.hp = Math.min(10, h.hp + d.heal);
-      floaters.push({ x: d.x, y: d.y - 8, t: 0, txt: '+' + d.heal });
-      sfx('pickup', d.x);
+      floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+      sfx('food', d.x);
     }
   }
   drops = drops.filter(d => !d.got);
@@ -311,12 +328,26 @@ function updateDrops(dt) {
   floaters = floaters.filter(f => f.t < 1.1);
 }
 function drawDrop(d) {
-  const c = ctx, y = d.y - 10 + Math.sin(d.t * 3) * 2;
-  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(d.x, d.y + 2, 8, 3, 0, 0, 7); c.fill();
-  const gl = c.createRadialGradient(d.x, y - 4, 1, d.x, y - 4, 14);
-  gl.addColorStop(0, 'rgba(255,220,120,.30)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
-  c.fillStyle = gl; c.beginPath(); c.arc(d.x, y - 4, 14, 0, 7); c.fill();
-  c.save(); c.translate(d.x, y);
+  const c = ctx, meta = (ASSETS.food || {})[d.k], im = IMG['food_' + d.k];
+  const fw = meta ? meta[1] : 12, fh = meta ? meta[2] : 10;
+  const zz = d.z || 0, y = d.y - zz;
+  // 快消失时闪烁
+  if (d.life < 1.2 && Math.floor(d.t * 8) % 2) return;
+  // 影子（越高越淡越小）
+  const sh = Math.max(.35, 1 - zz / 40);
+  c.fillStyle = 'rgba(0,0,0,' + (.28 * sh) + ')';
+  c.beginPath(); c.ellipse(d.x, d.y + 2, fw * .38 * sh, 2.4 * sh, 0, 0, 7); c.fill();
+  // 光晕
+  const gl = c.createRadialGradient(d.x, y - fh * .5, 1, d.x, y - fh * .5, fw * .9);
+  gl.addColorStop(0, 'rgba(255,220,120,.22)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
+  c.fillStyle = gl; c.beginPath(); c.arc(d.x, y - fh * .5, fw * .9, 0, 7); c.fill();
+  if (im && im.complete) {
+    c.save(); c.imageSmoothingEnabled = false;
+    c.drawImage(im, Math.round(d.x - fw / 2), Math.round(y - fh), fw, fh);
+    c.restore();
+    return;
+  }
+  c.save(); c.translate(d.x, y - fh / 2);
   c.shadowColor = 'rgba(26,14,8,.9)'; c.shadowOffsetX = .9; c.shadowOffsetY = .9;   // 落到沙地上也看得清
   if (d.k === 'bun') {
     c.fillStyle = '#f6efdc'; c.beginPath(); c.ellipse(0, 0, 6, 5, 0, 0, 7); c.fill();
@@ -575,7 +606,8 @@ function update(dt) {
   // 通关或倒下：记下成绩，1.2 秒后弹结算板（先让倒地/被打飞的动画演完）
   if (!result && (won || over)) {
     endT = runT;
-    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2,
+    stampPlayed = false; pressAct = null;
+  result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2,
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     uiBtns = [];
   }
@@ -725,68 +757,152 @@ function rankOf(t) {
   return 'E';
 }
 function toast(m) { toastMsg = m; toastT = 2.4; }
+// ---------- 结算画面 ----------
+const eOut = t => 1 - Math.pow(1 - t, 3);
+const eBack = t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);   // 盖章回弹
+let stampPlayed = false, pressAct = null, pressAt = 0;
+
 function drawResult(HW, HH) {
   if (!result || gameT < result.born) return;
-  const F = '"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+  const raw = gameT - result.born;
   uiBtns = [];
-  ctx.globalAlpha = Math.min(1, (gameT - result.born) / .3);   // 淡入
-  ctx.fillStyle = 'rgba(16,10,22,.62)'; ctx.fillRect(0, 0, HW, HH);
-  const pw = Math.min(520, HW * .82), ph = 300;
-  const x = Math.round((HW - pw) / 2), y = Math.round((HH - ph) / 2);
-  ctx.fillStyle = '#f4e9cf'; ctx.fillRect(x, y, pw, ph);        // 宣纸底
-  ctx.fillStyle = '#e2cfa6'; ctx.fillRect(x, y, pw, 8);
-  ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, y + 1.5, pw - 3, ph - 3);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  ctx.font = 'bold 36px ' + F; ctx.fillStyle = result.win ? '#b3372a' : '#4a3a2a';
-  ctx.fillText(result.win ? '通　关' : '倒　下', x + pw / 2, y + 62);
-  ctx.font = 'bold 19px ' + F; ctx.fillStyle = '#3a2410';
-  ctx.fillText(`击倒 ${result.kills} 名　　用时 ${fmtTime(result.time)}`, x + pw / 2, y + 108);
-  if (result.win) {
-    ctx.font = 'bold 15px ' + F; ctx.fillStyle = '#6b5233';
-    ctx.fillText('评　价', x + pw / 2, y + 142);
-    ctx.font = 'bold 40px ' + F;
-    ctx.fillStyle = result.rank === 'SSS' ? '#c9971f' : result.rank === 'S' ? '#b3372a' : '#3a2410';
-    ctx.fillText(result.rank, x + pw / 2, y + 186);
-    if (result.hit === 0) { ctx.font = 'bold 13px ' + F; ctx.fillStyle = '#b3372a'; ctx.fillText('全程无伤', x + pw / 2, y + 208); }
+  const BRUSH = '"MaShanZheng","KaiTi","STKaiti","Kaiti SC",serif';
+  const F = '"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+
+  // 背景压暗 + 四角暗角
+  ctx.fillStyle = 'rgba(8,5,10,.74)'; ctx.fillRect(0, 0, HW, HH);
+  const vg = ctx.createRadialGradient(HW / 2, HH / 2, Math.min(HW, HH) * .22, HW / 2, HH / 2, Math.max(HW, HH) * .72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.66)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, HW, HH);
+
+  // 卷轴：按屏幕适配，从中间向左右展开
+  const sw0 = Math.min(HW * .90, HH * 1.62), sh0 = sw0 / 1.66;
+  const p = eOut(Math.min(1, Math.max(0, (raw - .05) / .40)));
+  const sw = Math.max(40, sw0 * p), sx = (HW - sw) / 2, sy = Math.round((HH - sh0) / 2);
+  const sh = sh0, sc = sh / 561;
+  const roll = 92 * sc;
+  const scroll = IMG['ui_scroll'];
+  if (scroll && scroll.complete) {
+    ctx.drawImage(scroll, 0, 0, 92, 561, sx, sy, roll, sh);
+    ctx.drawImage(scroll, 838, 0, 92, 561, sx + sw - roll, sy, roll, sh);
+    if (sw > roll * 2) ctx.drawImage(scroll, 92, 0, 746, 561, sx + roll, sy, sw - roll * 2, sh);
   } else {
-    // 倒下台词：0.15 秒从下往上弹出，带一点回弹
-    const p = Math.min(1, Math.max(0, (gameT - result.born - .12) / .15));
-    const e = 1 - Math.pow(1 - p, 3);
-    const line = result.line || '';
-    const fs = Math.max(13, Math.min(21, (pw - 56) / Math.max(8, line.length)));
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, (gameT - result.born) / .3) * e;
-    ctx.translate(x + pw / 2, y + 166 + (1 - e) * 14);
-    const sc = .9 + .1 * e; ctx.scale(sc, sc);
-    ctx.font = 'bold ' + fs.toFixed(0) + 'px ' + F;
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 3; ctx.strokeStyle = '#f4e9cf'; ctx.fillStyle = '#3a2410';
-    ctx.strokeText(line, 0, 0); ctx.fillText(line, 0, 0);
+    ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx, sy, sw, sh);
+  }
+
+  // 内容区（卷轴中间的纸面）
+  const px0 = sx + roll * 1.12, px1 = sx + sw - roll * 1.12, pw = px1 - px0;
+  const ink = '#2c2117';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const fade = Math.min(1, Math.max(0, (raw - .30) / .25));
+  ctx.globalAlpha = fade;
+
+  // 左侧像素人物：通关 = 管亥跪地，倒下 = 主角倒地
+  const frName = result.win ? { n: 'guanhai', f: 'kneel' } : { n: 'hero', f: 'down' };
+  const fr = CH[frName.n] && CH[frName.n][frName.f];
+  if (fr && fr.img.complete) {
+    const k = Math.max(1, Math.min(Math.round(sh * .26 / fr.h), Math.max(1, Math.floor(pw * .55 / fr.w))));
+    const dx = px0 + pw * .16, dy = sy + sh * .70;
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = fade * .95;
+    ctx.drawImage(fr.img, Math.round(dx - fr.ax * k), Math.round(dy - fr.ay * k), fr.w * k, fr.h * k);
     ctx.restore();
   }
-  // 三个按钮：分享 / 返回首页 / 再来一局（手机点这里，电脑按 R 也行）
-  const bw = Math.min(140, (pw - 96) / 3), gap = 16, bh = 40;
-  const rowW = bw * 3 + gap * 2;
-  const bx = x + (pw - rowW) / 2, by = y + ph - 56;
-  const btn = (bxx, label, act, hot) => {
-    ctx.fillStyle = hot ? '#b3372a' : '#efe2c4'; ctx.fillRect(bxx, by, bw, bh);
-    ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 2; ctx.strokeRect(bxx + 1, by + 1, bw - 2, bh - 2);
-    ctx.fillStyle = hot ? '#fff8e6' : '#3a2410'; ctx.font = 'bold 18px ' + F;
-    ctx.fillText(label, bxx + bw / 2, by + 27);
-    uiBtns.push({ x: bxx, y: by, w: bw, h: bh, act });
+
+  // 标题（毛笔）
+  const title = result.win ? '通关' : '倒下';
+  ctx.font = Math.round(sh * .142) + 'px ' + BRUSH;
+  ctx.fillStyle = ink;
+  ctx.fillText(title, px0 + pw * .62, sy + sh * .295);
+
+  // 击倒 / 用时
+  ctx.font = Math.round(sh * .058) + 'px ' + F;
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time), px0 + pw * .60, sy + sh * .40);
+
+  // 台词
+  const line = result.line || '';
+  if (line) {
+    const lfs = Math.max(11, Math.round(sh * .052));
+    ctx.font = lfs + 'px ' + BRUSH;
+    ctx.fillStyle = '#3a2410';
+    const maxW = pw * .56, cx = px0 + pw * .60;
+    let row = '', rows = [];
+    for (const ch of line) {
+      if (ctx.measureText(row + ch).width > maxW) { rows.push(row); row = ch; } else row += ch;
+    }
+    if (row) rows.push(row);
+    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.49 + i * .070)));
+  }
+  ctx.globalAlpha = 1;
+
+  // 印章
+  const sealDelay = .52;
+  if (raw > sealDelay) {
+    const q = Math.min(1, (raw - sealDelay) / .22);
+    if (!stampPlayed) { stampPlayed = true; sfx('stamp', HW / 2); shake = .12; }
+    const sc2 = .6 + .4 * eBack(q);
+    const img = IMG[result.win ? 'ui_seal_square' : 'ui_seal_round'];
+    const side = sh * (result.win ? .19 : .16) * sc2;
+    const cx2 = px0 + pw * .89, cy2 = sy + sh * .245;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, q * 1.6);
+    if (img && img.complete) ctx.drawImage(img, cx2 - side / 2, cy2 - side / 2, side, side);
+    else { ctx.strokeStyle = '#a4321f'; ctx.lineWidth = 3; ctx.strokeRect(cx2 - side / 2, cy2 - side / 2, side, side); }
+    ctx.fillStyle = '#9c2b1c';
+    const sealTxt = result.win ? result.rank : '败';
+    let fs2 = Math.round(side * (result.win ? .44 : .58));
+    ctx.font = fs2 + 'px ' + BRUSH;
+    const tw = ctx.measureText(sealTxt).width;
+    if (tw > side * .62) { fs2 = Math.max(8, Math.floor(fs2 * side * .62 / tw)); ctx.font = fs2 + 'px ' + BRUSH; }
+    ctx.textAlign = 'center';
+    ctx.fillText(sealTxt, cx2, cy2 + fs2 * .36);
+    ctx.restore();
+  }
+
+  // 木牌按钮
+  const btnFade = Math.min(1, Math.max(0, (raw - .62) / .3));
+  ctx.globalAlpha = btnFade;
+  const gap = pw * .035;
+  const bw = (pw * .84 - gap * 2) / 3, bh = bw / 1.66;
+  const byy = sy + sh * .755;
+  const bx0 = px0 + (pw - (bw * 3 + gap * 2)) / 2;
+  const plank = (i, label, act, red) => {
+    const x = bx0 + i * (bw + gap);
+    const pressed = pressAct === act && performance.now() - pressAt < 140;
+    const yy = byy + (pressed ? bh * .06 : 0);
+    const img = IMG[red ? 'ui_btn_red' : 'ui_btn'];
+    ctx.save();
+    ctx.globalAlpha = btnFade * (pressed ? .82 : 1);
+    if (img && img.complete) ctx.drawImage(img, x, yy, bw, bh);
+    else { ctx.fillStyle = red ? '#8e2f22' : '#7a5530'; ctx.fillRect(x, yy, bw, bh); }
+    ctx.restore();
+    ctx.save();
+    ctx.font = Math.round(bh * .46) + 'px ' + BRUSH;
+    ctx.fillStyle = red ? '#f6e2c0' : '#2b1a0c';
+    ctx.fillText(label, x + bw / 2, yy + bh * .66);
+    ctx.restore();
+    uiBtns.push({ x, y: yy, w: bw, h: bh, act });
   };
-  if (!result.win && !reviveUsed) {
-    // 复活按钮：比下面那排更醒目
-    const rw = Math.min(360, pw - 80), rh = 38, rx = x + (pw - rw) / 2, ry = y + 196;
-    ctx.fillStyle = '#2f6b3a'; ctx.fillRect(rx, ry, rw, rh);
-    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
-    ctx.fillStyle = '#e9ffe2'; ctx.font = 'bold 17px ' + F;
-    ctx.fillText('分享给好友 · 复活一次', x + pw / 2, ry + 25);
+  plank(0, '分享', 'share', false);
+  plank(1, '返回首页', 'home', false);
+  plank(2, '再来一局', 'restart', true);
+
+  // 复活按钮
+  if (!result.win && !reviveUsed && raw > .8) {
+    const rw = pw * .46, rh = sh * .068, rx = px0 + pw * .50, ry = sy + sh * .615;
+    const pressed = pressAct === 'revive' && performance.now() - pressAt < 140;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (raw - .8) / .2);
+    ctx.fillStyle = pressed ? 'rgba(40,90,48,.95)' : 'rgba(47,107,58,.92)';
+    ctx.fillRect(rx, ry + (pressed ? 2 : 0), rw, rh);
+    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
+    ctx.fillStyle = '#e9ffe2'; ctx.font = Math.round(rh * .52) + 'px ' + F;
+    ctx.fillText('分享给好友 · 复活一次', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
+    ctx.restore();
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
-  btn(bx, '分　享', 'share', false);
-  btn(bx + bw + gap, '返回首页', 'home', false);
-  btn(bx + (bw + gap) * 2, '再来一局', 'restart', true);
+  ctx.globalAlpha = 1;
+
   if (toastT > 0) {   // 分享结果的提示条：放在屏幕下方，不压面板
     ctx.font = 'bold 15px ' + F;
     const tw = ctx.measureText(toastMsg).width, ty = HH - 52;
@@ -823,7 +939,14 @@ document.addEventListener('pointerdown', e => {
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation();
-      if (b.act === 'share') doShare(); else if (b.act === 'revive') doRevive(); else if (b.act === 'home') { if (window.TITLE) TITLE.show(); } else reset();
+      pressAct = b.act; pressAt = performance.now();
+      const act = b.act;
+      setTimeout(() => {
+        if (act === 'share') doShare();
+        else if (act === 'revive') doRevive();
+        else if (act === 'home') { if (window.TITLE) TITLE.show(); }
+        else reset();
+      }, 140);
       return;
     }
   }

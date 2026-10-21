@@ -160,6 +160,16 @@
       tone(o, t, { p0: 120 * k, p1: 52, gain: .55, d: .3, lp: 520 });
       noise(o, t, { type: 'lowpass', f0: 520, f1: 160, gain: .22, a: .002, d: .2 });
     },
+    food(o, t, k) {          // 捡到吃的：两声清脆的"叮咚"
+      tone(o, t, { type: 'triangle', p0: 1180 * k, p1: 1320, gain: .13, a: .002, d: .09 });
+      tone(o, t + .055, { type: 'triangle', p0: 1580 * k, p1: 1760, gain: .1, a: .002, d: .14 });
+      noise(o, t, { type: 'highpass', f0: 4200, gain: .05, a: .001, d: .04 });
+    },
+    stamp(o, t, k) {         // 盖章：纸张闷响 + 木头磕碰
+      noise(o, t, { f0: 420, f1: 180, q: 1.4, gain: .3, a: .001, d: .12 });
+      tone(o, t, { type: 'sine', p0: 150 * k, p1: 70, gain: .26, a: .001, d: .16 });
+      noise(o, t + .01, { type: 'highpass', f0: 2600, gain: .06, a: .001, d: .05 });
+    },
     crack(o, t, k) {         // 钝器命中：木头的脆响，和闷响叠在一起用
       noise(o, t, { type: 'highpass', f0: 2600, gain: .2, a: .001, d: .04 });
       noise(o, t + .004, { f0: 1200 * k, f1: 620, q: 2, gain: .16, a: .001, d: .07 });
@@ -214,7 +224,7 @@
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42, food: .55, stamp: .7 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存

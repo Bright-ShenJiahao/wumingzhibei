@@ -34,7 +34,36 @@ _src = open(P('game.js'), encoding='utf-8').read()
 assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items() if f"'{k}'" in _src}
 # 配音：art/voice/*.mp3 → ASSETS.voice[名字]
 assets['title'] = uri(P('art', 'title', 'home.webp'))
-assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))   # 电视屏幕遮罩（绿幕形状，含猫爪镂空）   # 首页背景（电视屏幕是绿的，留给实时演示）
+assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))
+# UI（卷轴/木牌按钮/印章）与回血食物
+assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect')}
+_fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
+assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
+
+# 结算字体的毛笔字子集（Ma Shan Zheng，OFL）：只保留游戏里真正用到的字，压到 100KB 以内
+FONT_SRC = P('tools', 'fonts', 'MaShanZheng-Regular.ttf')
+FONT_OUT = P('art', 'fonts', 'result.ttf')
+os.makedirs(P('art', 'fonts'), exist_ok=True)
+_gsrc = open(P('game.js'), encoding='utf-8').read()
+_i = _gsrc.find('const DEATH_LINES')
+_body = _gsrc[_i:] if _i > 0 else _gsrc
+_chars = set()
+for _m in __import__('re').findall(r"'([^'\\]*)'|\"([^\"\\]*)\"|`([^`\\]*)`", _body):
+    for _t in _m:
+        _chars |= set(_t)
+_chars |= set('通关倒下败分享再来一局返回首页评价击倒用时被击全程无伤名次SSSABCDE0123456789:·— ！？，。')
+_chars = {c for c in _chars if c.strip()}
+_chars |= set('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+if os.path.exists(FONT_SRC):
+    from fontTools import subset as _sub
+    _o = _sub.Options(); _o.name_IDs = ['*']; _o.recalc_bounds = True
+    _f = _sub.load_font(FONT_SRC, _o)
+    _ss = _sub.Subsetter(_o); _ss.populate(text=''.join(sorted(_chars)))
+    _ss.subset(_f); _sub.save_font(_f, FONT_OUT, _o)
+    print('font subset', ''.join(sorted(_chars)).__len__(), 'chars,', os.path.getsize(FONT_OUT) // 1024, 'KB')
+FONT_FACE = ''
+if os.path.exists(FONT_OUT):
+    FONT_FACE = '<style>@font-face{font-family:"MaShanZheng";src:url(data:font/ttf;base64,' + base64.b64encode(open(FONT_OUT, 'rb').read()).decode() + ')format("truetype");font-display:swap}</style>'   # 电视屏幕遮罩（绿幕形状，含猫爪镂空）   # 首页背景（电视屏幕是绿的，留给实时演示）
 assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: 'data:audio/mpeg;base64,' + base64.b64encode(open(f, 'rb').read()).decode()
                    for f in sorted(__import__('glob').glob(P('art', 'voice', '*.mp3')))}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
@@ -44,6 +73,7 @@ import glob
 mods = sorted(glob.glob(P('js', '*.js')))
 game = '\n'.join(open(f, encoding='utf-8').read() for f in mods) + '\n' + open(P('game.js'), encoding='utf-8').read()
 h = open(P('index.src.html'), encoding='utf-8').read()
+h = h.replace('__FONT_FACE__', FONT_FACE)
 h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', game)
 open(P('index.html'), 'w', encoding='utf-8').write(h)
 print('index.html', len(h) // 1024, 'KB')
