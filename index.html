@@ -2718,6 +2718,8 @@ function updatePWaves(dt) {
     }
   }
   pwaves = pwaves.filter(w => w.t < w.T);
+  for (const q of qiFx) q.t += dt;
+  qiFx = qiFx.filter(q => q.t < q.T);
 }
 function drawPWaves() {
   for (const w of pwaves) {
@@ -2746,6 +2748,7 @@ function drawPropFx() {
   }
   ctx.globalAlpha = 1;
 }
+let qiFx = [];   // 老卒的扇形剑气特效
 function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
@@ -2814,6 +2817,17 @@ function zUpdate(z, dt) {
   if (z.T.boss) return Boss.update(z, dt);
   const T = z.T;
   z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
+  if (z.qiCd > 0) z.qiCd -= dt;
+  if (z.qi != null) {                     // 老卒蓄力中：0.62 秒后劈出扇形剑气
+    z.qi += dt;
+    if (z.qi >= .62) {
+      z.qi = null;
+      qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .42 });
+      sfx('enemySwing', z.x); shake = Math.max(shake, .18);
+      const hx = hero.x - z.x;
+      if (hero.inv <= 0 && Math.abs(hx) < 130 && Math.abs(hero.y - z.y) < 30 && hx * z.f > -14) dmgHero(2, { x: z.x });
+    }
+  }
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
@@ -2846,6 +2860,10 @@ function zUpdate(z, dt) {
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < M.token && Math.abs(dx) < 130) z.tok = true;
     tx = hero.x - z.f * (z.tok ? T.reach - 6 : 52 + (z.slot % 3) * 14); ty = hero.y + (z.tok ? 0 : (z.slot % 2 ? 16 : -16));
+    // 老卒专属：站到中距离就蓄力放剑气（6.5 秒一次）
+    if (T.elite && !z.qi && (z.qiCd || 0) <= 0 && Math.abs(dx) < 130 && Math.abs(dy) < 26) {
+      set(z, 'wind'); z.qi = 0; z.qiCd = 6.5; sfx('bladeAlert', z.x); return;
+    }
     if (z.tok && Math.abs(dx) < T.reach && Math.abs(dy) < 7) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
   }
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);
@@ -2984,14 +3002,16 @@ function draw() {
   tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
   tileLayer(IMG.mid, ms, 1, my);
   ctx.imageSmoothingEnabled = false;
-  // Boss 关：战场右端插一面「黄天当立」大旗（纯装饰，人物从旗前走过）
-  if (zs.some(z => z.T && z.T.boss)) {
-    const im = IMG['ui_flag'], fx = Math.min(M.W - 40, cam.x + vw - 34), fy = M.bot + 2, fh = 138;
-    if (im && im.complete) {
-      const fw = fh * im.width / im.height;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(im, Math.round(fx - fw / 2), Math.round(fy - fh), fw, fh);
-    }
+  // 老卒的白色扇形剑气
+  for (const q of qiFx) {
+    const k = Math.min(1, q.t / q.T), R = 30 + 108 * k, a = 1 - k;
+    ctx.save(); ctx.translate(q.x, q.y - 14); ctx.scale(q.f, 1);
+    ctx.beginPath(); ctx.arc(0, 0, R, -.95, .95); ctx.lineTo(0, 0); ctx.closePath();
+    ctx.fillStyle = 'rgba(226,240,255,' + (.18 * a) + ')'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (.92 * a) + ')'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R * .88, -.78, .78);
+    ctx.strokeStyle = 'rgba(198,228,255,' + (.45 * a) + ')'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.restore();
   }
   // 火
   const now = performance.now() / 100;
