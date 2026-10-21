@@ -971,13 +971,20 @@ function draw() {
     ctx.restore();
   }
   // 火
-  const now = performance.now() / 100;
   for (const f of fires) {
     const a = Math.min(1, f.t);
-    ctx.fillStyle = `rgba(255,120,20,${.25 * a})`; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .4, 0, 0, 7); ctx.fill();
-    for (let k = 0; k < 7; k++) {
-      const fx = f.x + Math.sin(k * 2.3) * f.r * .75, fy = f.y + Math.cos(k * 1.7) * f.r * .25, hgt = 6 + Math.sin(now + k) * 2.5;
-      ctx.fillStyle = `rgba(255,${150 + k * 12},40,${.9 * a})`; ctx.beginPath(); ctx.moveTo(fx - 2.5, fy); ctx.lineTo(fx, fy - hgt); ctx.lineTo(fx + 2.5, fy); ctx.fill();
+    // 地面被烤红的一圈（让伤害范围看得见）
+    ctx.fillStyle = 'rgba(255,110,30,' + (.20 * a) + ')';
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * 1.05, f.r * .42, 0, 0, 7); ctx.fill();
+    // 4 帧火焰精灵，每帧 90ms
+    const k = Math.floor(performance.now() / 90 + (f.seed || 0)) % 4;
+    const im = IMG['ui_fire' + k];   // 打包时 UI 图统一加 ui_ 前缀
+    if (im && im.complete) {
+      const FH = 30, FW = FH * im.width / im.height;
+      ctx.globalAlpha = a;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(f.x - FW / 2), Math.round(f.y - FH + 5), FW, FH);
+      ctx.globalAlpha = 1;
     }
   }
   // 火箭落点预警
