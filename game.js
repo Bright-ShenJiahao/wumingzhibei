@@ -673,6 +673,15 @@ function draw() {
   tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
   tileLayer(IMG.mid, ms, 1, my);
   ctx.imageSmoothingEnabled = false;
+  // Boss 关：战场右端插一面「黄天当立」大旗（纯装饰，人物从旗前走过）
+  if (zs.some(z => z.T && z.T.boss)) {
+    const im = IMG['ui_flag'], fx = Math.min(M.W - 40, cam.x + vw - 34), fy = M.bot + 2, fh = 138;
+    if (im && im.complete) {
+      const fw = fh * im.width / im.height;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(fx - fw / 2), Math.round(fy - fh), fw, fh);
+    }
+  }
   // 火
   const now = performance.now() / 100;
   for (const f of fires) {
