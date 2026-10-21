@@ -2,17 +2,17 @@
 // 卡的效果通过 ROGUE.S 暴露给 game.js / ult.js 读取，全部带默认值，没抽卡时就是 1。
 (() => {
   const S = {
-    dmg: 1, move: 1, fin: 1, reach: 1, aspd: 1, daze: 1, take: 1,
-    takeFlat: 0, lifesteal: 0, stoneExtra: 0, hammerAoe: 0, staffWave: 0,
+    dmg: 1, move: 1, fin: 1, reach: 1, aspd: 1, daze: 1, take: 1, takeFlat: 0,
+    lifesteal: 0, stoneExtra: 0, hammerAoe: 0, staffWave: 0,
   };
   const DEFAULT = JSON.parse(JSON.stringify(S));
   const CARDS = [
     { id: 'dmg', name: '蛮力', school: '伤害', w: 10, desc: '造成的伤害 +20%', apply: () => { S.dmg *= 1.2; } },
-    { id: 'fin', name: '连打', school: '伤害', w: 9, desc: '连招第三段伤害 +50%', apply: () => { S.fin *= 1.5; } },
+    { id: 'fin', name: '重招', school: '伤害', w: 9, desc: '连招第三段伤害 +50%', apply: () => { S.fin *= 1.5; } },
     { id: 'move', name: '疾风', school: '速度', w: 9, desc: '移动速度 +15%', apply: () => { S.move *= 1.15; } },
     { id: 'aspd', name: '快打', school: '速度', w: 8, desc: '出招前后摇 -15%', apply: () => { S.aspd *= .85; } },
     { id: 'reach', name: '长手', school: '武器', w: 8, desc: '所有武器距离 +12%', apply: () => { S.reach *= 1.12; } },
-    { id: 'tough', name: '硬骨', school: '防御', w: 8, desc: '受到的伤害 -1（最少 1）', apply: () => { S.takeFlat += 1; } },
+    { id: 'tough', name: '硬骨', school: '防御', w: 8, desc: '受到的伤害 -20%（最多叠加 2 层，最低 1）', apply: () => { S.take *= .8; } },
     { id: 'leech', name: '汲取', school: '续航', w: 7, desc: '命中每 2 秒回 0.3 血', apply: () => { S.lifesteal += .3; } },
     { id: 'daze', name: '震击', school: '控制', w: 7, desc: '打晕时间 +50%', apply: () => { S.daze *= 1.5; } },
     { id: 'stone', name: '石子·连击', school: '武器', w: 6, desc: '扔石子时 30% 概率追加一颗（第二颗伤害减半）', apply: () => { S.stoneExtra = Math.min(.6, S.stoneExtra + .3); } },

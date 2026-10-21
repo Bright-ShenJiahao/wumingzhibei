@@ -25,7 +25,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
 const PROP_POOL = ['hay', 'hay', 'well', 'cart'];   // 去掉地上的黄旗道具：和旗手的大旗太像，容易看成一个人拿两面旗   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
-// 三段连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。
+// 连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。棍四段，锤和石子三段。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
 // 平衡：锤子距离最短、伤害最高，出手带前冲、命中必打断敌人蓄力；木棍距离长、能打晕、第三下横扫多人；
 // 石子射得远但出手慢、伤害最低，只能用来先削血（射程压到比弓箭手近，逼你往前压）。
@@ -34,7 +34,7 @@ const WEAP = {
   // 后摇从 .24/.24/.30 收到 .20/.20/.26，收招更利索（一轮 1.24 → 1.12 秒）
   // 棍子 = 控场：距离最长（40）、伤害中等，但每一下都有机会把敌人打晕，第三下横扫必定打晕全场；
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
-  // 棍子 = 长距离控场。三段动作按武术的「劈 → 扫 → 回身扫」重排：
+  // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', reach: 40, dy: 13, move: .5, freeze: .062, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.1, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
@@ -69,7 +69,7 @@ const TYPES = {
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
-  { say: '黄巾喽啰来了！J 攻击，连按三连击', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  { say: '黄巾喽啰来了！棍可四连击，锤和石子各三连击', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
   // 区域 2：刀手首次登场（固定 2 个），其余随机
   { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！',
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
@@ -137,13 +137,13 @@ const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
 let ghosts = [];                              // 残影
 const CHARGE_MS = 400, CHARGE_MAX_MS = 2000;
-let atkHeldSince = 0, charging = false, chargeFx = [];   // 蓄力状态
+let atkHeldSince = 0, charging = false, chargeFx = [];   // 攻击按住待判定 / 蓄力状态
 let deathLandedAt = null, enemiesCelebrating = false;
 function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / CHARGE_MAX_MS)) : 0; }
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
-  if (e.code === 'KeyJ' && !key.KeyJ) { pressAtk = true; atkHeldSince = performance.now(); }
+  if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
   if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
@@ -159,7 +159,7 @@ jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', end
 document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
 document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());
 document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
-document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) { if (result && gameT >= result.born) reset(); return; } atkHeldSince = performance.now(); pressAtk = true; });
+document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
 function setW(w) { weapon = w; ui(); }
@@ -328,7 +328,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
-  // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连打三下会显得一顿一顿的）
+  // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连击会显得一顿一顿的）
   const W0 = WEAP[weapon] || {};
   freeze = Math.min(.11, W0.freeze != null ? W0.freeze : .02 + dmg * .018);   // 棍子有单独的定格时长，打起来更"实"
   shake = Math.max(shake, .12);
@@ -378,7 +378,7 @@ function heroUpdate(dt) {
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
   if (atkHeldSince && !charging && performance.now() - atkHeldSince >= CHARGE_MS && !h.air && h.st !== 'down' && h.st !== 'hurt') {
-    charging = true; sfx('charge', h.x); h.comboWin = 0;
+    charging = true; sfx('charge', h.x); h.comboWin = 0; h.q = 0;
   }
   if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
@@ -395,7 +395,7 @@ function heroUpdate(dt) {
     const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
     if (a.t >= C.d[a.fi] * R_('aspd') * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
       a.t = 0; a.fi++;
-      if (a.fi === C.f.length - 1) strike();
+      if (a.fi === C.f.length - 1 && !a.visualOnly) strike();
       if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
     }
     if (ix && a.fi === 0) h.f = Math.sign(ix);
@@ -585,21 +585,35 @@ function drawPropFx() {
   ctx.globalAlpha = 1;
 }
 let qiFx = [];   // 老卒的扇形剑气特效
-// 松开攻击键：按住超过 0.4 秒 → 放蓄力重击
+// 攻击按下先等待：短按松开才出普通攻击，长按到 0.4 秒后转为蓄力。
+function atkPress() {
+  if (over) { if (result && gameT >= result.born) reset(); return; }
+  if (atkHeldSince) return;
+  atkHeldSince = performance.now(); charging = false;
+}
 function atkRelease() {
   if (!atkHeldSince) return;
   const held = performance.now() - atkHeldSince;
   atkHeldSince = 0;
-  if (!charging) return;
+  const canAct = hero.st !== 'down' && hero.st !== 'hurt' && !hero.air && !over;
+  if (held >= CHARGE_MS) {
+    charging = false;
+    if (canAct) chargedAttack(Math.min(1, held / CHARGE_MAX_MS));
+    return;
+  }
   charging = false;
-  if (held >= CHARGE_MS && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack(Math.min(1, held / CHARGE_MAX_MS));
+  if (canAct) {
+    if (hero.st === 'atk') hero.q = 1;
+    else pressAtk = true;
+  }
 }
 function cancelCharge() { charging = false; atkHeldSince = 0; }
 
-// 蓄力重击：三种武器各不相同
+// 蓄力重击：三种武器各不相同；命中只在释放时结算一次，动画仅作表现。
 function chargedAttack(power) {
   const h = hero, W = WEAP[weapon];
-  h.atk = { c: W.combo.length - 1, fi: 0, t: 0, lg: 0 }; set(h, 'atk');
+  h.q = 0; h.comboWin = 0;
+  h.atk = { c: W.combo.length - 1, fi: 0, t: 0, lg: 0, visualOnly: true }; set(h, 'atk');
   chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power });
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
@@ -619,7 +633,7 @@ function chargedAttack(power) {
     const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
     if (inFan) {
       const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
-      hit(z, dmg * R_('dmg'), (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
+      hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
     }
   }
   for (const v of villagers) {
@@ -649,7 +663,7 @@ function strike() {
   let landed = false, hitEnemy = false;
   const reach = W.reach * R_('reach');                                   // 锦囊：长手
   const rch = C.thrust ? reach * 1.35 : reach;                          // 「戳」比劈多 35% 距离
-  const fin = (c === 2 ? R_('fin') : 1) * 1;                             // 锦囊：连打（第三段）
+  const fin = (c === 2 ? R_('fin') : 1) * 1;                             // 锦囊：重招（第三段）
   const aoe = (weapon === 'hammer' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：锤·震地
   for (const z of zs) {
     if (z.dead || z.air) continue;
@@ -697,7 +711,7 @@ function strike() {
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
-  n = Math.max(1, n * R_('take') - R_('takeFlat', 0));   // 锦囊：受到的伤害
+  n = Math.max(1, n * R_('take'));   // 锦囊：每层减伤 20%，最低受到 1 点
   hitsTaken++;   // 结算评价用：被打了多少下
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null; cancelCharge();
