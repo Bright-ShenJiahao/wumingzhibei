@@ -98,6 +98,7 @@
   }, { capture: true });
 
   function begin() {
+    setTimeout(() => { if (window.SFX && SFX.voice) SFX.voice('intro'); }, 260);   // 报幕语音
     S.mode = 'play';
     resetRoom();
     document.body.classList.add('wzb-room', 'wzb-wake');

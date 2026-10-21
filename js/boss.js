@@ -1,4 +1,4 @@
-// 序章 Boss：黄巾头目 管亥
+// 序章 Boss：黄巾流寇·管亥
 // 第一阶段（马上）：骑马冲锋 / 马踏飞燕 / 马上横劈，75% 血时叫两个喽啰
 // 转阶段（一半血）：摔下马，马逃走，怒吼（无敌）
 // 第二阶段（步战）：重劈（地面冲击波）/ 头顶转戟（追人，转完头晕）/ 突刺；打太多下会踉跄；25% 以下狂暴
@@ -346,7 +346,7 @@ const Boss = (() => {
     ctx.fillRect(x, y, w * z.hp / HP, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    ctx.strokeText('黄巾头目 · 管亥', HW / 2, y + 30); ctx.fillText('黄巾头目 · 管亥', HW / 2, y + 30); ctx.textAlign = 'left';
+    ctx.strokeText('黄巾流寇·管亥', HW / 2, y + 30); ctx.fillText('黄巾流寇·管亥', HW / 2, y + 30); ctx.textAlign = 'left';
   }
   // 天气的视觉：屏幕空间的雨丝/雪粒 + 一层色调
   let wxT = 0;

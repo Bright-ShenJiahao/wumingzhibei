@@ -337,8 +337,8 @@
     // 副标题
     c.font = `700 ${L.sub}px "PingFang SC","Noto Sans CJK SC",sans-serif`;
     c.lineWidth = Math.max(3, L.sub * .35); c.strokeStyle = 'rgba(10,6,16,.9)'; c.fillStyle = '#f2e6c9';
-    c.strokeText('序章 · 黄巾劫村', pad + 4, y + L.sub * 1.9);
-    c.fillText('序章 · 黄巾劫村', pad + 4, y + L.sub * 1.9);
+    c.strokeText('序章 · 幻想三国录', pad + 4, y + L.sub * 1.9);
+    c.fillText('序章 · 幻想三国录', pad + 4, y + L.sub * 1.9);
     // 角落的小字：操作提示（电脑/手机自适应）
     const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
     c.font = '600 12px "PingFang SC",sans-serif'; c.fillStyle = 'rgba(242,230,201,.5)';

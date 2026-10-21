@@ -1,4 +1,4 @@
-// 无名之辈 · 序章「黄巾劫村」—— 宽地面清版
+// 无名之辈·序章 幻想三国录 —— 宽地面清版
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
@@ -86,7 +86,7 @@ const WAVES = [
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
     core: ['elite'], budget: 7, pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
-  { boss: true },   // 村口：黄巾头目 管亥（js/boss.js）
+  { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
 ];
 // 威胁值：随机填充时按点数抽兵
 const THREAT = { grunt: 1, blade: 2, slinger: 2, archer: 2, banner: 2, elite: 4 };
@@ -114,6 +114,7 @@ const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
+  atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
@@ -131,13 +132,15 @@ const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 // 完美闪避 / 蓄力重击
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
 let ghosts = [];                              // 残影
-const CHARGE_MS = 500;
+const CHARGE_MS = 400, CHARGE_MAX_MS = 2000;
 let atkHeldSince = 0, charging = false, chargeFx = [];   // 蓄力状态
+let deathLandedAt = null, enemiesCelebrating = false;
+function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / CHARGE_MAX_MS)) : 0; }
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
+  if (e.code === 'KeyJ' && !key.KeyJ) { pressAtk = true; atkHeldSince = performance.now(); }
   key[e.code] = 1;
-  if (e.code === 'KeyJ') { pressAtk = true; atkHeldSince = performance.now(); }
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
   if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
@@ -152,7 +155,7 @@ jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', end
 document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
 document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());
 document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
-document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) { reset(); return; } atkHeldSince = performance.now(); pressAtk = true; });
+document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) { if (result && gameT >= result.born) reset(); return; } atkHeldSince = performance.now(); pressAtk = true; });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
 function setW(w) { weapon = w; ui(); }
@@ -252,8 +255,21 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
 function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; e.daze = 0; }
 function airStep(e, dt) {
-  e.z += e.vz * dt; e.vz -= 420 * dt; moveEnt(e, e.ax * dt, 0);
-  if (e.z <= 0 && e.vz < 0) { e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08); sfx(e.dead ? 'enemyDown' : e === hero && over ? 'heroDown' : 'land', e.x); }
+  e.z += e.vz * dt; e.vz -= e.deathArc ? 220 * dt : 420 * dt; moveEnt(e, e.ax * dt, 0);
+  if (e.z <= 0 && e.vz < 0) {
+    e.z = 0; e.air = false; e.st = 'land'; e.t = 0; shake = Math.max(shake, .08);
+    sfx(e.dead ? 'enemyDown' : e === hero && over ? 'heroDown' : 'land', e.x);
+    if (e === hero && over) { e.deathArc = false; deathLandedAt = gameT; startEnemyCelebration(); }
+  }
+}
+function startEnemyCelebration() {
+  if (enemiesCelebrating) return;
+  enemiesCelebrating = true;
+  zs.forEach(z => {
+    if (z.dead) return;
+    z.celebrating = true; z.celebrateT = 0; z.vx = 0; z.qi = null;
+    if (!z.T.boss) set(z, 'idle');
+  });
 }
 function heroUpdate(dt) {
   const h = hero;
@@ -469,20 +485,21 @@ function atkRelease() {
   atkHeldSince = 0;
   if (!charging) return;
   charging = false;
-  if (held >= CHARGE_MS && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack();
+  if (held >= CHARGE_MS && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack(Math.min(1, held / CHARGE_MAX_MS));
 }
 function cancelCharge() { charging = false; atkHeldSince = 0; }
 
 // 蓄力重击：三种武器各不相同
-function chargedAttack() {
+function chargedAttack(power) {
   const h = hero, W = WEAP[weapon];
   h.atk = { c: W.combo.length - 1, fi: 0, t: 0, lg: 0 }; set(h, 'atk');
-  chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f });
-  sfx('finisher', h.x); shake = Math.max(shake, .25);
+  chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power });
+  sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
+  const force = .35 + .65 * power;
   const R = weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : 0;
   if (weapon === 'stone') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {
-      const C = Object.assign({}, W.combo[0], { dmg: 1.0, spd: 240, life: .8 });
+      const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force, spd: 240, life: .8 });
       shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [] });
     }
     return;
@@ -494,8 +511,8 @@ function chargedAttack() {
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
     const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
     if (inFan) {
-      const dmg = weapon === 'staff' ? 1.6 : 2.4;
-      hit(z, dmg * R_('dmg'), weapon === 'staff' ? 140 : 90, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
+      const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
+      hit(z, dmg * R_('dmg'), (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
     }
   }
 }
@@ -563,11 +580,16 @@ function dmgHero(n, from) {
   n = Math.max(1, n * R_('take') - R_('takeFlat', 0));   // 锦囊：受到的伤害
   hitsTaken++;   // 结算评价用：被打了多少下
   sfx('hurt', h.x);
-  h.hp -= n; h.inv = .7; shake = .2; h.atk = null;
+  h.hp -= n; h.inv = .7; shake = .2; h.atk = null; cancelCharge();
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
-  if (n >= 2 || h.hp <= 0) { launch(h, dir * 85, 120); h.f = -dir; h.inv = 9; }   // 重击：被打飞
-  else { set(h, 'hurt'); h.vx = dir * 80; }
-  if (h.hp <= 0) { over = true; say('倒下了……', 1.4); }   // 具体台词交给结算板
+  if (n >= 2 || h.hp <= 0) {
+    launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
+    if (h.hp <= 0) h.deathArc = true;
+  } else { set(h, 'hurt'); h.vx = dir * 80; }
+  if (h.hp <= 0) {
+    over = true; deathLandedAt = null; enemiesCelebrating = false; say('倒下了……', 1.4);
+    zs.forEach(z => { if (!z.dead && !z.T.boss) { set(z, 'idle'); z.vx = 0; z.qi = null; } });
+  }
 }
 
 // ---------- 黄巾兵 AI ----------
@@ -699,8 +721,9 @@ function update(dt) {
   const done = result && gameT >= result.born;
   if (!done) {
     bannerZ = zs.find(z => !z.dead && z.T.banner) || null;   // 场上活着的旗手（给周围小兵加速）
-    heroUpdate(dt); waves();
-    zs.forEach(z => zUpdate(z, dt));
+    heroUpdate(dt);
+    if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
+    else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt);
@@ -710,11 +733,12 @@ function update(dt) {
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
   if (toastT > 0) toastT -= dt;
-  // 通关或倒下：记下成绩，1.2 秒后弹结算板（先让倒地/被打飞的动画演完）
-  if (!result && (won || over)) {
+  // 失败时等主角落地、敌人庆祝一会儿后再显示结算。
+  const deathResultReady = over && deathLandedAt != null && gameT >= deathLandedAt + 1.5;
+  if (!result && (won || deathResultReady)) {
     endT = runT;
     stampPlayed = false; pressAct = null;
-  result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + 1.2,
+    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     uiBtns = [];
   }
@@ -803,13 +827,31 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   // 蓄力：主角身上渐亮的光
+  const chargeBtn = document.getElementById('bA'), chargeP = chargeRatio();
+  chargeBtn.classList.toggle('charging', !!atkHeldSince && charging);
+  chargeBtn.classList.toggle('charged', !!atkHeldSince && charging && chargeP >= 1);
+  chargeBtn.style.setProperty('--charge-angle', (360 * chargeP) + 'deg');
   if (charging && hero) {
-    const p = Math.min(1, (performance.now() - atkHeldSince) / 400);
-    const r = 14 + 8 * p;
-    const gg = ctx.createRadialGradient(hero.x, hero.y - 14, 2, hero.x, hero.y - 14, r);
-    gg.addColorStop(0, 'rgba(255,236,170,' + (.30 + .45 * p) + ')');
-    gg.addColorStop(1, 'rgba(255,180,60,0)');
+    const p = chargeP, full = p >= 1, r = 15 + 11 * p, cy = hero.y - 15;
+    const gg = ctx.createRadialGradient(hero.x, cy, 2, hero.x, cy, r);
+    gg.addColorStop(0, 'rgba(255,236,170,' + (.24 + .48 * p) + ')');
+    gg.addColorStop(1, full ? 'rgba(45,190,255,0)' : 'rgba(255,180,60,0)');
     ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(hero.x, hero.y - 14, r, 0, 7); ctx.fill();
+    if (full) {
+      const t = performance.now() / 1000;
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(93,205,255,.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(hero.x, cy, 15 + Math.sin(t * 8) * 2, 23 + Math.cos(t * 7) * 2, 0, -.8, 2.35); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,211,104,.9)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(hero.x, cy, 18 + Math.cos(t * 6) * 2, 27 + Math.sin(t * 9) * 2, 0, 2.55, 5.5); ctx.stroke();
+      for (let i = 0; i < 7; i++) {
+        const x = hero.x + Math.sin(t * 3 + i * 2.4) * (8 + i % 3 * 4);
+        const y = hero.y - 4 - ((t * 25 + i * 9) % 34);
+        ctx.fillStyle = i % 2 ? 'rgba(119,220,255,.9)' : 'rgba(255,226,140,.95)';
+        ctx.fillRect(x, y, 1.5, 3);
+      }
+      ctx.restore();
+    }
   }
   // 蓄力重击的冲击环
   for (const q of chargeFx) {
@@ -1223,11 +1265,13 @@ function clothStrips(cx, top, t, sway, lean, limp) {
   ctx.imageSmoothingEnabled = false;
 }
 function drawZ(z) {
-  if (z.T.boss) return Boss.draw(z);
+  if (z.T.boss) { Boss.draw(z); if (z.celebrating) drawCheer(z); return; }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   if (z.T.banner) drawBanner(z, a);   // 旗画在人后面
-  drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
+  const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
+  drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
+  if (z.celebrating) drawCheer(z);
   if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 34;
   if (z.st === 'sleep') {
@@ -1254,6 +1298,24 @@ function drawZ(z) {
   // 旗手的血条放到脚下：头顶那块是旗面，压上去会挡住"苍天已死"的字
   const barY = z.T.banner ? z.y + 4 : top;
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, barY, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, barY + 1, (barW - 2) * z.hp / z.T.hp, 1);
+}
+function drawCheer(z) {
+  const t = z.celebrateT || 0, bob = Math.abs(Math.sin(t * 7)) * 2.5, y = z.y - 20 - bob;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(z.x + side * 4, y); ctx.quadraticCurveTo(z.x + side * 10, y - 7, z.x + side * 9, y - 13);
+    ctx.strokeStyle = '#34231b'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.strokeStyle = '#d69b42'; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.fillStyle = '#fff0a8'; ctx.fillRect(z.x + side * 8 - 1, y - 15, 3, 3);
+  }
+  for (let i = 0; i < 3; i++) {
+    const phase = (t * 2.8 + i / 3) % 1, x = z.x + (i - 1) * 9 + Math.sin(t * 5 + i) * 2;
+    const sy = y - 12 - phase * 14;
+    ctx.globalAlpha = 1 - phase;
+    ctx.fillStyle = i % 2 ? '#f5c75e' : '#e76a3b';
+    ctx.fillRect(x, sy, 2, 3);
+  }
+  ctx.restore();
 }
 
 // 画布按实际显示尺寸 × 设备像素比绘制（手机上更清晰），窗口/横竖屏变化时重新适配
