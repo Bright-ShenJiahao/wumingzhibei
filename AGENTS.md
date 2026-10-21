@@ -8,6 +8,9 @@
 - `js/*.js`：独立模块（音效、界面等），打包时按文件名顺序放在 `game.js` 前面。新功能尽量写成单独模块，`game.js` 里只加调用，减少多个 AI 同时改同一个文件的冲突。调用模块时先判断是否存在，例如 `window.SFX && SFX.play('hit')`。
 - `index.src.html`：网页模板（界面、按钮、样式）。
 - `index.html`：**打包生成的文件，不要手改**。改完 `game.js` 或 `index.src.html` 后运行 `python3 tools/build.py` 重新生成，再一起提交。
+- `art/title/home.png`：**登录页背景图**（一对情侣在电视前打游戏，电视屏幕是绿幕）。
+  绿幕位置已实测：`TV = { x:.566, y:.190, w:.339, h:.372 }`（相对图片的比例），
+  改图后要重新量一次（`js/title.js` 顶部）。打包用的是 `home.webp`（43KB，比 png 小 12 倍）。
 - `art/gemini/`：Gemini 原图，保持不动。
 - `art/bg/`：背景层；`art/props/`：道具（`meta.json` 记录世界尺寸）；`art/sprites/`：像素人物。
 - `tools/pixelize_sheet.py`：把 Gemini 出的"仿像素"绿底人物动作图转成真像素精灵（自动切帧、统一缩放和调色板、加描边），输出到 `art/sprites/<角色>/` 并更新 `art/sprites/atlas.json`。用法见脚本开头。

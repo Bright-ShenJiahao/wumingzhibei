@@ -2,11 +2,12 @@
 // 只在 game.js 里挂 3 处：update 开头挡推进、draw 开头接管整屏、HUD 取名字。
 // 换正式背景图时只改下面 TV 和 drawBg() 里的图片即可。
 (() => {
-  const TV = { x: .40, y: .22, w: .30, h: .30 };   // 电视屏幕区域（按屏幕宽高的比例）
+  // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
+  const TV = { x: .5660, y: .1897, w: .3390, h: .3723 };
   const NAME_KEY = 'wzb-name';
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
-  let bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
+  let bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
@@ -223,7 +224,7 @@
     L.sub = Math.max(12, Math.min(18, h * .033));
     L.inW = Math.max(180, Math.min(320, w * .42));
     L.inH = Math.max(34, Math.min(46, h * .095));
-    L.inY = h * .60;
+    L.inY = h * .64;
     L.btnW = Math.max(190, Math.min(300, w * .38));
     L.btnH = Math.max(44, Math.min(58, h * .12));
     L.btnY = L.inY + L.inH + Math.max(12, h * .035);
@@ -251,36 +252,40 @@
 
   // ---------- 整屏绘制 ----------
   function drawBg(c, W, H) {
-    if (bgFar && bgFar.complete && bgFar.width) {
-      const s = Math.max(W / bgFar.width, H / bgFar.height);
-      c.save(); c.globalAlpha = .95;
-      c.drawImage(bgFar, (W - bgFar.width * s) / 2, (H - bgFar.height * s) / 2, bgFar.width * s, bgFar.height * s);
-      c.restore();
+    let placed = false;
+    if (bgHome && bgHome.complete && bgHome.width) {
+      // cover 铺满，再把电视矩形按同一套缩放算出来，保证画面严丝合缝嵌进屏幕
+      const s = Math.max(W / bgHome.width, H / bgHome.height);
+      const dw = bgHome.width * s, dh = bgHome.height * s, dx = (W - dw) / 2, dy = (H - dh) / 2;
+      c.drawImage(bgHome, dx, dy, dw, dh);
+      L.tvX = dx + TV.x * dw; L.tvY = dy + TV.y * dh;
+      L.tvW = TV.w * dw; L.tvH = TV.h * dh;
+      placed = true;
     }
-    if (bgMid && bgMid.complete && bgMid.width) {
-      const s = Math.max(W / bgMid.width, (H * .9) / bgMid.height);
-      c.save(); c.globalAlpha = .8;
-      c.drawImage(bgMid, (W - bgMid.width * s) / 2, H - bgMid.height * s, bgMid.width * s, bgMid.height * s);
-      c.restore();
+    if (!placed) {   // 图还没加载好：先用深色打底，避免白屏
+      c.fillStyle = '#241816'; c.fillRect(0, 0, W, H);
+      L.tvX = W * TV.x; L.tvY = H * TV.y; L.tvW = W * TV.w; L.tvH = H * TV.h;
     }
-    // 压暗 + 顶部/底部渐深，保证文字可读
-    c.fillStyle = 'rgba(10,7,16,.58)'; c.fillRect(0, 0, W, H);
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, 'rgba(8,5,14,.75)'); g.addColorStop(.45, 'rgba(8,5,14,0)'); g.addColorStop(1, 'rgba(8,5,14,.8)');
-    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    // 左侧/上下轻微压暗，让标题和按钮更清楚（不挡住画面本身）
+    const gl = c.createLinearGradient(0, 0, W * .42, 0);
+    gl.addColorStop(0, 'rgba(8,5,10,.62)'); gl.addColorStop(1, 'rgba(8,5,10,0)');
+    c.fillStyle = gl; c.fillRect(0, 0, W * .42, H);
+    const gb = c.createLinearGradient(0, H * .62, 0, H);
+    gb.addColorStop(0, 'rgba(8,5,10,0)'); gb.addColorStop(1, 'rgba(8,5,10,.72)');
+    c.fillStyle = gb; c.fillRect(0, H * .62, W, H * .38);
   }
 
   function drawTV(c) {
     const { tvX: x, tvY: y, tvW: w, tvH: h } = L;
-    // 电视外框（等有正式背景图后，这一段可以整个交给背景图）
-    c.save();
-    c.fillStyle = '#0b0910'; c.fillRect(x - 8, y - 8, w + 16, h + 16);
-    c.strokeStyle = '#2b2434'; c.lineWidth = 3; c.strokeRect(x - 6, y - 6, w + 12, h + 12);
-    c.fillStyle = '#050308'; c.fillRect(x, y, w, h);
     if (demoCv) {
       c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
       c.imageSmoothingEnabled = false;
-      c.drawImage(demoCv, x, y, w, h);
+      // 演示画面 16:9，屏幕是 1.64:1 → 用 cover 裁左右，别拉变形
+      const da = demoCv.width / demoCv.height, sa = w / h;
+      let sw = demoCv.width, sh = demoCv.height, sx0 = 0, sy0 = 0;
+      if (sa < da) { sw = demoCv.height * sa; sx0 = (demoCv.width - sw) / 2; }
+      else { sh = demoCv.width / sa; sy0 = (demoCv.height - sh) / 2; }
+      c.drawImage(demoCv, sx0, sy0, sw, sh, x, y, w, h);
       // 扫描线
       c.fillStyle = 'rgba(0,0,0,.22)';
       for (let yy = y; yy < y + h; yy += 3) c.fillRect(x, yy, w, 1);
@@ -416,7 +421,8 @@
   function boot() {
     build();
     document.body.classList.add('wzb-title');
-    bgFar = new Image(); bgFar.src = BG.far;
+    bgHome = new Image(); bgHome.src = (typeof ASSETS !== 'undefined' && ASSETS.title) || BG.far;   // 首页背景图
+    bgFar = new Image(); bgFar.src = BG.far;   // 电视里的演示仍用村景三层
     bgMid = new Image(); bgMid.src = BG.mid;
     bgGnd = new Image(); bgGnd.src = BG.gnd;
     demoCv = document.createElement('canvas'); demoCv.width = 480; demoCv.height = 270;

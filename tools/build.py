@@ -33,6 +33,7 @@ _src = open(P('game.js'), encoding='utf-8').read()
 # 只打包 game.js 里实际用到的道具（按名字出现与否判断），减小网页体积
 assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items() if f"'{k}'" in _src}
 # 配音：art/voice/*.mp3 → ASSETS.voice[名字]
+assets['title'] = uri(P('art', 'title', 'home.webp'))   # 首页背景（电视屏幕是绿的，留给实时演示）
 assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: 'data:audio/mpeg;base64,' + base64.b64encode(open(f, 'rb').read()).decode()
                    for f in sorted(__import__('glob').glob(P('art', 'voice', '*.mp3')))}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
