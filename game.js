@@ -490,7 +490,9 @@ function chargedAttack() {
     if (z.dead) continue;
     const dx = (z.x - h.x) * h.f, dy = z.y - h.y;
     if (Math.abs(dy) > 26) continue;
-    if (weapon === 'staff' ? (Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0))) {
+    const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
+    const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
+    if (inFan) {
       const dmg = weapon === 'staff' ? 1.6 : 2.4;
       hit(z, dmg * R_('dmg'), weapon === 'staff' ? 140 : 90, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
     }
@@ -577,10 +579,10 @@ function zUpdate(z, dt) {
     z.qi += dt;
     if (z.qi >= .62) {
       z.qi = null;
-      qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .42 });
+      qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .28 });
       sfx('enemySwing', z.x); shake = Math.max(shake, .18);
       const hx = hero.x - z.x;
-      if (hero.inv <= 0 && Math.abs(hx) < 130 && Math.abs(hero.y - z.y) < 30 && hx * z.f > -14) dmgHero(2, { x: z.x });
+      if (hero.inv <= 0 && Math.abs(hx) < 46 && Math.abs(hero.y - z.y) < 18 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
   if (z.air) { airStep(z, dt); return; }
@@ -781,8 +783,9 @@ function draw() {
   if (zs.some(z => z.T && z.T.boss)) {
     const im = IMG['ui_boss_flag'];
     if (im && im.complete) {
-      const fh2 = 120, fw2 = fh2 * im.width / im.height;
-      const fx2 = Math.min(M.W - 26, cam.x + vw - 30), fy2 = M.bot - 4;
+      const fh2 = 150, fw2 = fh2 * im.width / im.height;
+      const fx2 = Math.min(M.W - 24, cam.x + vw - 26);
+      const fy2 = M.top + 6 + fh2;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);
       ctx.imageSmoothingEnabled = false;
@@ -810,21 +813,37 @@ function draw() {
   // 蓄力重击的冲击环
   for (const q of chargeFx) {
     const k = Math.min(1, q.t / q.T), R2 = 20 + 90 * k, a2 = 1 - k;
-    ctx.save(); ctx.translate(q.x, q.y - 12);
+    ctx.save(); ctx.translate(q.x, q.y - 12); ctx.scale(q.f, 1);
     ctx.strokeStyle = q.w === 'hammer' ? 'rgba(255,190,90,' + (.9 * a2) + ')' : 'rgba(240,250,255,' + (.9 * a2) + ')';
     ctx.lineWidth = 4 * (1 - k) + 1;
-    ctx.beginPath(); ctx.ellipse(0, 0, R2, R2 * .42, 0, 0, 7); ctx.stroke();
+    ctx.beginPath();
+    if (q.w === 'staff') ctx.arc(0, 0, R2, -2.094, 2.094);
+    else ctx.ellipse(0, 0, R2, R2 * .42, 0, 0, 7);
+    ctx.stroke();
     ctx.restore();
   }
-  // 老卒的白色扇形剑气
+  // 老卒的月牙剑气：细弧、双层冷白刀光与短拖尾
   for (const q of qiFx) {
-    const k = Math.min(1, q.t / q.T), R = 30 + 108 * k, a = 1 - k;
+    const k = Math.min(1, q.t / q.T), R = 16 + 32 * k, a = 1 - k;
+    const lw = 9 * (1 - k) + 1;
     ctx.save(); ctx.translate(q.x, q.y - 14); ctx.scale(q.f, 1);
-    ctx.beginPath(); ctx.arc(0, 0, R, -.95, .95); ctx.lineTo(0, 0); ctx.closePath();
-    ctx.fillStyle = 'rgba(226,240,255,' + (.18 * a) + ')'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,' + (.92 * a) + ')'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, R * .88, -.78, .78);
-    ctx.strokeStyle = 'rgba(198,228,255,' + (.45 * a) + ')'; ctx.lineWidth = 7; ctx.stroke();
+    for (const offset of [-.25, .25]) {
+      ctx.beginPath(); ctx.arc(0, 0, R, -.75 + offset, .75 + offset);
+      ctx.strokeStyle = 'rgba(240,248,255,' + (.28 * a) + ')';
+      ctx.lineWidth = Math.max(1, lw * .45); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, R, -.75, .75);
+    ctx.strokeStyle = 'rgba(210,235,255,' + (.75 * a) + ')';
+    ctx.lineWidth = lw + 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R, -.75, .75);
+    ctx.strokeStyle = 'rgba(255,255,255,' + a + ')';
+    ctx.lineWidth = lw; ctx.stroke();
+    if (q.t < .12) {
+      const impact = 10 * (q.t / .12);
+      ctx.beginPath(); ctx.arc(q.f * 8, 0, impact, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,' + (1 - q.t / .12) + ')';
+      ctx.lineWidth = 2; ctx.stroke();
+    }
     ctx.restore();
   }
   // 火
