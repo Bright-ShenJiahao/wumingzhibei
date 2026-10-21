@@ -41,7 +41,16 @@
     btn('Boss 一阶段', 'alt', () => jumpBoss(false));
     btn('Boss 二阶段', 'alt', () => jumpBoss(true));
     btn('清空本区域', '', () => { if (typeof zs !== 'undefined') zs.forEach(z => { z.dead = 1; z.hp = 0; }); });
-    btn('跳到下一关', '', () => { if (typeof gateI !== 'undefined') { gateI++; lockR = Infinity; zs.length = 0; clearAt = 0; } });
+    // 瞬移主角到新区域入口，并把镜头一起拉过去（否则镜头要滑半天）
+  function warpTo(x) {
+    hero.x = x; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.st = 'idle';
+    cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() / 2));
+  }
+  btn('跳到下一关', '', () => {
+    if (typeof gateI === 'undefined') return;
+    gateI++; lockR = Infinity; zs.length = 0; clearAt = 0;
+    if (gateI < M.gates.length) warpTo(M.gates[gateI] + 10);
+  });
     btn('回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = 10; });
     const godBtn = btn(god ? '无敌：开' : '无敌：关', 'off', () => { god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off'; });
     btn('复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
@@ -65,6 +74,7 @@
     gateI = M.gates.length - 1;
     lockR = Infinity; clearAt = 0;
     hero.x = M.gates[gateI] + 6; hero.y = (M.top + M.bot) / 2;
+  cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() / 2));
     hero.hp = 10; hero.inv = 1.5;
     say('调试：直接开打', 1.2);
     setTimeout(() => {
@@ -72,6 +82,7 @@
       if (!z) return;
       // 把人直接挪到 Boss 面前（不然还要自己往右跑一段）
       hero.x = Math.max(M.gates[gateI] + 20, z.x - 150); hero.y = z.y;
+    cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() / 2));
       if (phase2) { z.phase = 2; z.type = 'guanhai'; z.st = 'idle'; z.t = 0; z.z = 0; z.cd = .6; z.hp = 80; }
     }, 150);
   }
