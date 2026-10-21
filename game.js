@@ -106,6 +106,7 @@ let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, pwaves = [];   // 掉落物 / 飘字 / 复活是否已用 / 棍子冲击波
+let villagers = [], villagersStarted = false, villagersRewarded = false, villagersThanksT = -1;
 let extraDone = false, bannerZ = null;
 let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）                // 波中波是否补过 / 场上活着的旗手
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -115,9 +116,10 @@ const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
+  if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -215,6 +217,58 @@ function spawn(type, x, y, sleeping = false) {
   zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: sleeping ? 'sleep' : 'move', t: sleeping ? 0 : rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
     sc: T.scale || 1, dark: false });
 }
+function startVillagers(edgeX) {
+  if (villagersStarted) return;
+  villagersStarted = true;
+  const y = Math.max(M.top + 22, Math.min(M.bot - 18, hero.y));
+  // 老人先跑，年轻女子跟在身后；角色不参与阻挡和清区计数。
+  villagers = [
+    { ch: 'villager_old', x: edgeX - 10, y: y + 6, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: .92 },
+    { ch: 'villager_woman', x: edgeX + 18, y: y - 6, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: .92 },
+  ];
+  spawn('grunt', edgeX + 62, y);
+  const chaser = zs[zs.length - 1];
+  chaser.villagerChaser = true;
+  chaser.f = -1;
+  say('村民：「黄巾贼来了！」', 2.8);
+}
+function thankVillagers() {
+  if (villagersRewarded) return;
+  const present = villagers.filter(v => v.state === 'run');
+  if (!present.length) return;   // 村民已经逃出画面，本次遭遇就算错过了
+  present.forEach(v => { v.state = 'bow'; v.t = 0; v.f = hero.x < v.x ? -1 : 1; });
+  villagersThanksT = 1.5;
+}
+function updateVillagers(dt) {
+  for (const v of villagers) {
+    v.flash = Math.max(0, v.flash - dt);
+    v.t += dt;
+    if (v.state === 'run') v.x -= v.speed * dt;
+    else if (v.state === 'leave') v.x -= 26 * dt;
+    if ((v.state === 'run' || v.state === 'leave') && v.x < cam.x - 40) v.state = 'gone';
+  }
+  if (villagersThanksT >= 0) {
+    villagersThanksT -= dt;
+    if (villagersThanksT <= 0) {
+      const bowing = villagers.filter(v => v.state === 'bow');
+      if (bowing.length && !villagersRewarded) {
+        const x = bowing.reduce((sum, v) => sum + v.x, 0) / bowing.length;
+        const y = bowing.reduce((sum, v) => sum + v.y, 0) / bowing.length;
+        spawnRerollDrop(x, y);
+        villagersRewarded = true;
+        say('村民送来锦囊：捡起后可重抽一次', 3);
+      }
+      bowing.forEach(v => { v.state = 'leave'; v.t = 0; v.f = -1; });
+      villagersThanksT = -1;
+    }
+  }
+  villagers = villagers.filter(v => v.state !== 'gone');
+}
+function drawVillager(v) {
+  shadow(v.x, v.y, 8);
+  const frame = v.state === 'bow' ? 'bow' : (v.state === 'run' || v.state === 'leave') ? (Math.floor(v.t * 8) % 2 ? 'run1' : 'run2') : 'idle';
+  drawChar(v.ch, frame, v.x, v.y, v.f < 0, 1, v.flash > 0, v.sc);
+}
 function waves() {
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
@@ -222,7 +276,7 @@ function waves() {
     zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });
   }
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
-    if (!clearAt) clearAt = gameT + 1.4;
+    if (!clearAt) clearAt = gameT + (villagersThanksT >= 0 ? 2 : 1.4);   // 救下村民时先让鞠躬和锦囊掉落演完
     if (gameT >= clearAt) {
       clearAt = 0; lockR = Infinity; gateI++;
       if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
@@ -255,6 +309,7 @@ function waves() {
       spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, y, sleeping);
     });
     say(W.say, 4);
+    if (gateI === 0) startVillagers(lockR);
   }
 }
 
@@ -283,6 +338,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   }
   if (z.hp <= 0) {
     z.dead = 1; kills++; knock = true;
+    if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
@@ -372,6 +428,7 @@ function spawnDrop(x, y, forceK) {
   }
   drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
+function spawnRerollDrop(x, y) { drops.push({ k: 'roll', x, y, z: 10, vy: 130, t: 0, life: 24, got: 0 }); }
 function updateDrops(dt) {
   const h = hero;
   for (const d of drops) {
@@ -390,6 +447,12 @@ function updateDrops(dt) {
     if (d.life <= 0) { d.got = 1; continue; }   // 放久了消失
     if (Math.abs(d.x - h.x) < 15 && Math.abs(d.y - h.y) < 16 && d.z < 22) {
       d.got = 1;
+      if (d.k === 'roll') {
+        const granted = window.ROGUE && ROGUE.grantReroll();
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: granted ? 'ROLL +1' : '锦囊已满' });
+        if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
+        continue;
+      }
       h.hp = Math.min(10, h.hp + d.heal);
       floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
       sfx('food', d.x);
@@ -413,6 +476,13 @@ function drawDrop(d) {
   const gl = c.createRadialGradient(d.x, y - fh * .5, 1, d.x, y - fh * .5, fw * .9);
   gl.addColorStop(0, 'rgba(255,220,120,.22)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
   c.fillStyle = gl; c.beginPath(); c.arc(d.x, y - fh * .5, fw * .9, 0, 7); c.fill();
+  if (d.k === 'roll') {
+    c.save(); c.translate(d.x, y - fh / 2); c.shadowColor = 'rgba(26,14,8,.9)'; c.shadowOffsetX = .9; c.shadowOffsetY = .9;
+    c.fillStyle = '#442518'; c.beginPath(); c.ellipse(0, 0, 6.5, 5, 0, 0, 7); c.fill();
+    c.fillStyle = '#c78b3d'; c.beginPath(); c.ellipse(0, -.5, 4.8, 3.5, 0, 0, 7); c.fill();
+    c.strokeStyle = '#8e3a24'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-3, -3); c.lineTo(3, 3); c.moveTo(3, -3); c.lineTo(-3, 3); c.stroke();
+    c.fillStyle = '#f3d27c'; c.fillRect(-1, -1, 2, 2); c.restore(); return;
+  }
   if (im && im.complete) {
     c.save(); c.imageSmoothingEnabled = false;
     c.drawImage(im, Math.round(d.x - fw / 2), Math.round(y - fh), fw, fh);
@@ -550,6 +620,12 @@ function chargedAttack(power) {
       hit(z, dmg * R_('dmg'), (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
     }
   }
+  for (const v of villagers) {
+    if (v.state === 'gone') continue;
+    const dx = (v.x - h.x) * h.f, dy = v.y - h.y;
+    const inRange = weapon === 'staff' ? Math.hypot(dx, dy) < R + 10 : dx > -14 && dx < R + 10;
+    if (inRange && Math.abs(dy) < 26) v.flash = .12;
+  }
 }
 function startAtk() {
   const h = hero;
@@ -595,6 +671,13 @@ function strike() {
   }
   if (weapon === 'staff' && c === 2 && R_('staffWave', 0)) {   // 锦囊：棍·冲击波
     pwaves.push({ x: h.x + h.f * 28, y: h.y, vx: h.f * 330, t: 0, T: .9, hit: new Set(), f: h.f });
+  }
+  // 误伤村民只闪一下，不扣血、不计击倒，也不改变连招判定。
+  for (const v of villagers) {
+    if (v.state === 'gone' || v.hitAtk === h.atk) continue;
+    const dx = (v.x - h.x) * h.f;
+    const inRange = C.both ? Math.abs(dx) < rch + 10 : dx > -14 && dx < rch + 10;
+    if (inRange && Math.abs(v.y - h.y) < W.dy) { v.flash = .12; v.hitAtk = h.atk; }
   }
   // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
@@ -694,6 +777,18 @@ function zUpdate(z, dt) {
   if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }   // 晕眩：站着不动
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
+  if (z.villagerChaser) {
+    const target = [...villagers].reverse().find(v => v.state === 'run');
+    if (target) {
+      const dx = target.x - z.x, dy = target.y - z.y, d = Math.hypot(dx, dy);
+      z.f = Math.sign(dx) || z.f; z.moving = d > 16;
+      if (z.moving) {
+        moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt);
+        if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);
+      }
+      return;
+    }
+  }
   const dx = hero.x - z.x, dy = hero.y - z.y;
   // 附近有旗手：小兵移速 +20%、出手快 20%（旗手优先杀，这是本作第一个"先打谁"的决策）
   const buff = (bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0;
@@ -757,6 +852,11 @@ function updateShots(dt) {
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
       }
     }
+    if (s.life > 0) for (const v of villagers) {
+      if (v.state === 'gone' || Math.abs(v.x - s.x) >= 10 || Math.abs(v.y - s.y) >= 10) continue;
+      s.villagerHits ||= new Set();
+      if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
+    }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15); hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
@@ -805,7 +905,7 @@ function update(dt) {
   if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
     archerAddsDone = true; summonArchers(bz);
   }
-  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt);
+  updateShots(dt); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -1007,6 +1107,7 @@ function draw() {
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
   for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
+  for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => stone(s.x, s.y - s.z) });

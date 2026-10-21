@@ -36,7 +36,7 @@
   ];
   const MAX_STACK = 2;
   const stacks = {};
-  let open = false, offer = [], picked = -1, anim = 0, rects = [];
+  let open = false, offer = [], picked = -1, anim = 0, rects = [], rerollToken = false, rerollRect = null;
 
   // 按权重抽一张；exclude 里放已经抽到的流派，保证三张不重样
   const pickOne = (pool, exclude) => {
@@ -70,6 +70,16 @@
     offer = pickN(avail, 3);
     if (Math.random() < .3) offer = offer.concat(pickN(CURSES.filter(c => (stacks[c.id] || 0) < MAX_STACK), 1));
     picked = -1; anim = 0; open = true;
+  }
+  function grantReroll() {
+    if (rerollToken) return false;
+    rerollToken = true;
+    return true;
+  }
+  function rerollOffer() {
+    if (!open || !rerollToken) return;
+    rerollToken = false;
+    offerCards();
   }
 
   function choose(i) {
@@ -131,6 +141,15 @@
       ctx.fillText(String(i + 1), x + cw / 2, y + ch - 8);
       rects.push({ x, y, w: cw, h: ch, i });
     }
+    rerollRect = null;
+    if (rerollToken) {
+      const bw = Math.min(210, W - 40), bh = 42;
+      const bx = (W - bw) / 2, by = Math.min(H - bh - 12, y0 + ch + 18);
+      ctx.fillStyle = 'rgba(111,65,28,.96)'; ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#ffd86e'; ctx.lineWidth = 2; ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+      ctx.font = '900 15px ' + F; ctx.fillStyle = '#ffe49a'; ctx.fillText('ROLL　重抽一次', W / 2, by + 27);
+      rerollRect = { x: bx, y: by, w: bw, h: bh };
+    }
     ctx.textAlign = 'left';
     return true;
   }
@@ -139,6 +158,9 @@
 
   addEventListener('pointerdown', e => {
     if (!open) return;
+    if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) {
+      e.preventDefault(); e.stopPropagation(); rerollOffer(); return;
+    }
     for (const r of rects) {
       if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) {
         e.preventDefault(); e.stopPropagation(); choose(r.i); return;
@@ -155,9 +177,9 @@
   });
 
   window.ROGUE = {
-    S, offer: offerCards, blocks: () => open, draw, update, choose,
+    S, offer: offerCards, blocks: () => open, draw, update, choose, grantReroll, rerolls: () => rerollToken,
     pickedUp: () => stacks, cards: () => offer, reset: () => {
-      open = false; offer = []; picked = -1;
+      open = false; offer = []; picked = -1; rerollToken = false; rerollRect = null;
       for (const k in stacks) delete stacks[k];
       for (const k in DEFAULT) S[k] = DEFAULT[k];
     },
