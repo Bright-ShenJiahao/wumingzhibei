@@ -178,6 +178,13 @@ function moveEnt(e, dx, dy) {
 function viewW() { return cv.width / (cv.height / M.viewH); }
 function spawn(type, x, y, sleeping = false) {
   const T = TYPES[type];
+  // 出生点避开道具：卡在水井/推车里的怪既打不到也打不了你
+  for (let tries = 0; tries < 14; tries++) {
+    const bad = props.some(p => !p.broken && Math.abs(p.x - x) < (p.w || 10) / 2 + 11 && Math.abs(p.y - y) < (p.h || 10) / 2 + 13);
+    if (!bad) break;
+    y = rnd(M.top + 8, M.bot - 6);
+    x += rnd(-16, 16);
+  }
   zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: sleeping ? 'sleep' : 'move', t: sleeping ? 0 : rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
     sc: T.scale || 1, dark: false });
 }
@@ -314,7 +321,7 @@ function heroUpdate(dt) {
     else moveEnt(h, ix * 15 * mvq * dt, 0);
     return;
   }
-  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }
+  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (charging ? .65 : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
   else if (h.st !== 'idle') set(h, 'idle');
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
