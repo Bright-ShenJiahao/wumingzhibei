@@ -8,21 +8,30 @@
   ];
   // ---------- 农房原图 + 统一坐标换算 ----------
   const IMG_W = 1024, IMG_H = 572;          // art/room/home_in.png 的原始尺寸
-  const FIT = { s: 1, dx: 0, dy: 0 };        // cover 后的缩放/平移（设备像素）
+  const CROP_TOP = 126;                     // 裁掉天花板：从图的 y=126 开始显示
+  const CROP_H = IMG_H - CROP_TOP;          // 446
+  const BOX_AR = IMG_W / CROP_H;            // 舞台框宽高比 ≈ 2.296
+  const PXW = IMG_H / 300;                  // 1 世界单位 = 1.907 图像素
+  const BOX = { x: 0, y: 0, w: 0, h: 0 };
+  const FIT = { s: 1, k: 1 };
   let roomImg = null;
-  // 把"图上的像素坐标"换算成"世界坐标"，背景、人物、武器、出门判定全用这一个函数
+
+  // 舞台框：高度 = 屏幕高 70%（手机 76%），宽度按比例，居中、略上移
   function fitImg() {
-    const devW = cv.width, devH = cv.height;
-    const s = Math.max(devW / IMG_W, devH / IMG_H);      // cover
-    FIT.s = s;
-    FIT.dx = (devW - IMG_W * s) / 2;
-    FIT.dy = devH - IMG_H * s;                            // 底部对齐：保住地面和门洞下沿
-    return s;
+    const W = cv.width / DPR, H = cv.height / DPR;
+    const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
+    let bh = H * (coarse ? .76 : .70), bw = bh * BOX_AR;
+    if (bw > W * .94) { bw = W * .94; bh = bw / BOX_AR; }
+    BOX.w = bw; BOX.h = bh;
+    BOX.x = (W - bw) / 2;
+    BOX.y = (H - bh) / 2 - H * .02;
+    FIT.s = bw / IMG_W;                       // CSS 像素 / 图像素
+    FIT.k = FIT.s * PXW;                      // CSS 像素 / 世界单位
+    return FIT.s;
   }
-  const toW = (px, py) => {
-    const S2 = cv.height / 300;                           // 和绘制用同一个 SC
-    return [(px * FIT.s + FIT.dx) / S2, (py * FIT.s + FIT.dy) / S2];
-  };
+  // 图上像素 → 世界坐标（原点 = 裁切后的左上角），背景/人物/武器/判定全用这一个
+  const toW = (px, py) => [px / PXW, (py - CROP_TOP) / PXW];
+
   // 常用锚点（图上比例 → 世界坐标）
   const P = {
     spawn: () => toW(IMG_W * .20, IMG_H * .86),           // 窗下醒来
@@ -155,23 +164,39 @@
   const R = () => (typeof SC !== 'undefined' ? SC : 1);
 
   function drawArt(vw) {
-    const c = ctx, SC = R();
+    const c = ctx;
     fitImg();
-    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const W = cv.width / DPR, H = cv.height / DPR;
+    const bx = BOX.x, by = BOX.y, bw = BOX.w, bh = BOX.h;
+    // 框外近黑
+    c.fillStyle = '#080605'; c.fillRect(0, 0, W, H);
+    // 门口的暖光渗到黑边上（先画，被画面盖住的部分看不出来，只露在框外）
+    const dW = toW(IMG_W * .745, 0)[0], dY = toW(0, IMG_H * .55)[1];
+    const dcx = bx + dW * FIT.k, dcy = by + dY * FIT.k;
+    const gl = c.createRadialGradient(dcx, dcy, Math.min(bw, bh) * .18, dcx, dcy, Math.max(bw, bh) * 1.05);
+    gl.addColorStop(0, 'rgba(255,168,86,.30)');
+    gl.addColorStop(.45, 'rgba(200,110,50,.12)');
+    gl.addColorStop(1, 'rgba(120,60,20,0)');
+    c.fillStyle = gl; c.fillRect(0, 0, W, H);
+    // 框内画面（裁掉天花板）
     if (roomImg && roomImg.complete) {
       c.imageSmoothingEnabled = true;
-      c.drawImage(roomImg, FIT.dx, FIT.dy, IMG_W * FIT.s, IMG_H * FIT.s);
+      c.drawImage(roomImg, 0, CROP_TOP, IMG_W, CROP_H, bx, by, bw, bh);
     } else {
-      c.fillStyle = '#241812'; c.fillRect(0, 0, cv.width, cv.height);
+      c.fillStyle = '#241812'; c.fillRect(bx, by, bw, bh);
     }
-    // 轻微压暗四角，让台词框和装备框压得住
-    const W = cv.width, H = cv.height;
-    const vg = c.createRadialGradient(W / 2, H * .55, Math.min(W, H) * .3, W / 2, H * .55, Math.max(W, H) * .78);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(12,6,4,.62)');
-    c.fillStyle = vg; c.fillRect(0, 0, W, H);
-    // 飘动的微尘（沿窗光柱）
-    const SCw = cv.height / 300;
-    c.setTransform(SCw, 0, 0, SCw, 0, 0);
+    // 框边：顶部内阴影 + 深色描边 + 内侧微光
+    c.save();
+    c.beginPath(); c.rect(bx, by, bw, bh); c.clip();
+    const ig = c.createLinearGradient(0, by, 0, by + bh * .16);
+    ig.addColorStop(0, 'rgba(0,0,0,.5)'); ig.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = ig; c.fillRect(bx, by, bw, bh * .16);
+    c.restore();
+    c.strokeStyle = 'rgba(12,8,6,.9)'; c.lineWidth = 3; c.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3);
+    c.strokeStyle = 'rgba(255,190,120,.10)'; c.lineWidth = 1; c.strokeRect(bx + 4.5, by + 4.5, bw - 9, bh - 9);
+    // 微尘
+    c.setTransform(DPR * FIT.k, 0, 0, DPR * FIT.k, bx * DPR, by * DPR);
     for (const m of S.motes) {
       c.globalAlpha = .10 + .28 * Math.abs(Math.sin(m.p));
       c.fillStyle = '#ffe6b0'; c.fillRect(m.x, m.y, m.r, m.r);
@@ -270,7 +295,12 @@
     if (S.mode !== 'play') return false;
     const W = cv.width / DPR, H = cv.height / DPR;
     const vw = viewW();
-    SC = cv.height / 300;   // 用设备像素高（和 game.js 的 SC 一致），高分屏才不会只画左上角
+    fitImg();
+    SC = FIT.k * DPR;                 // 设备像素 / 世界单位（按舞台框缩放）
+    OXs = BOX.x * DPR;                // 世界原点 X
+    const OYw = (BOX.y * DPR) / SC;   // 世界原点 Y（折算成世界单位，drawChar 没有 OY，只能加在坐标上）
+    drawArt(vw);
+    ctx.setTransform(SC, 0, 0, SC, OXs, BOX.y * DPR);
     OXs = 0;
     ctx.setTransform(SC, 0, 0, SC, 0, 0);
     drawArt(vw);
@@ -282,7 +312,7 @@
       let f = 'idle';
       if (h.st === 'down' || h.st === 'getup') f = h.st;
       else if (h.st === 'walk') f = 'walk' + ([1, 2, 3, 2][Math.floor(h.t * 8) % 4]);
-      drawChar('hero', f, h.x, h.y, h.f < 0, 1, false, HERO_SCALE * depthScale(h.y));
+      drawChar('hero', f, h.x, h.y + OYw, h.f < 0, 1, false, HERO_SCALE * depthScale(h.y));
     } });
     list.sort((a, b) => a.y - b.y).forEach(o => o.d());
     // 门的光晕 / 提示
