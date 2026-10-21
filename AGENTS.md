@@ -87,3 +87,7 @@
   - 主角在屋内放大 3.6 倍（`HERO_SCALE`），并按 y 做近大远小（`depthScale`）；站门口时头顶约到门框 72%。
   - **门在后墙**：出门判定是「x 在门洞 0.69~0.80 之间，且走到门槛以内（y 比门槛小）」，提示光晕画在门槛前的地面。
 - **登录页**：已完成。屏幕用绿幕遮罩显示（`tools/make_tv_mask.py`），四角与猫爪都正确，无绿边。
+
+## 旗手大旗
+- 旗杆/横杆/枪头在 game.js 的 poleAndCloth() 里用代码画，旗面贴图 art/ui/flag_cloth.webp 由 `tools/make_flag.py` 生成（临海隶书子集 tools/fonts/LinHaiLiShu-flag.ttf 写「苍天已死 / 黄天当立」），切成横条做飘动。
+- 每帧握旗位置和旗杆角度在 game.js 的 BANNER_GRIP；被打飞/倒地时旗掉在地上。

@@ -65,7 +65,7 @@ const TYPES = {
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 12, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
-  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .95 },                     // 旗手：给周围小兵加速，优先击杀目标
+  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -974,21 +974,83 @@ function drawHero() {
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
+// ---------- 旗手的大旗：旗杆、横杆、枪头用代码画，旗面贴图切成横条做随风飘动 ----------
+// 每帧握旗的拳头位置（精灵像素坐标）和旗杆倾角（度，0=竖直，正数=杆顶朝前）；握点离杆底的比例 g
+const BANNER_GRIP = {
+  idle: [33, 18, 4, .3], walk1: [34, 22, 6, .32], walk2: [34, 22, 2, .32],
+  wind: [8, 9, -38, .2], strike: [56, 28, 62, .25], hurt: [30, 20, -18, .3],
+};
+const BANNER = { pole: 64, clothW: 15, clothH: 31, bar: 19 };   // 世界单位：旗杆约 2.4 个人高
+let flagDark = null;
+function bannerGripPos(z) {
+  const fr = zFrame(z), grip = BANNER_GRIP[fr]; if (!grip) return null;
+  const ch = CH[z.sprite] && CH[z.sprite][fr]; if (!ch) return null; const k = PX * (z.sc || 1);
+  return [z.x + (grip[0] - ch.ax) * k * z.f, z.y - (z.z || 0) - (ch.ay - grip[1]) * k];
+}
+function drawBanner(z, alpha) {
+  const tex = IMG.ui_flag_cloth; if (!tex || !tex.complete || !tex.width) return;
+  if (!flagDark) {   // 预先做一张压暗的旗面，用来画布料褶皱的背光面
+    const c = document.createElement('canvas'); c.width = tex.width; c.height = tex.height; const g = c.getContext('2d');
+    g.drawImage(tex, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(60,30,10,.55)'; g.fillRect(0, 0, c.width, c.height); flagDark = c;
+  }
+  const fr = zFrame(z), grip = BANNER_GRIP[fr], down = !grip;
+  const t = performance.now() / 1000 + (z.slot || 0) * .7;
+  ctx.save(); ctx.globalAlpha = alpha * (z.st === 'gone' ? .8 : 1);
+  if (down) {   // 被打飞/倒地：旗掉在地上，躺平
+    if (z.flagX == null) { z.flagX = z.x; z.flagY = z.y; }
+    ctx.translate(z.flagX - z.f * 6, z.flagY + 1); ctx.rotate(-Math.PI / 2 * (z.f < 0 ? -1 : 1) + (z.f < 0 ? Math.PI : 0));
+    poleAndCloth(0, 0, t, .15, true);
+    ctx.restore(); return;
+  }
+  z.flagX = null;
+  const gp = bannerGripPos(z); if (!gp) { ctx.restore(); return; }
+  const [gx, gy] = gp;
+  ctx.translate(gx, gy); ctx.rotate(grip[2] * Math.PI / 180 * z.f);
+  // 握点以下的杆长 g，杆底在握点下方
+  ctx.translate(0, BANNER.pole * grip[3]);
+  const sway = z.moving ? 1.4 : 1;   // 走动时旗面摆得更大
+  poleAndCloth(0, 0, t, sway, false, -z.f * (z.moving ? 1 : .4));
+  ctx.restore();
+}
+// 以杆底为原点、杆朝上（-y）画整面旗；lean：旗面被风吹向哪边（-1 左 / 1 右）
+function poleAndCloth(x, y, t, sway, limp, lean = 0) {
+  const P = BANNER, top = y - P.pole;
+  // 旗杆（深色描边 + 木色 + 亮边）
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - 1.3, top, 2.6, P.pole);
+  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - .8, top, 1.6, P.pole);
+  ctx.fillStyle = '#b07a44'; ctx.fillRect(x - .8, top, .6, P.pole);
+  // 枪头
+  ctx.fillStyle = '#2a2430'; ctx.beginPath(); ctx.moveTo(x, top - 7); ctx.lineTo(x - 2.2, top - 1); ctx.lineTo(x + 2.2, top - 1); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b8bcc8'; ctx.beginPath(); ctx.moveTo(x, top - 6); ctx.lineTo(x - 1.2, top - 1.4); ctx.lineTo(x + .4, top - 1.4); ctx.closePath(); ctx.fill();
+  // 横杆
+  const by = top + 4;
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - P.bar / 2, by - 1.2, P.bar, 2.4);
+  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - P.bar / 2 + .4, by - .7, P.bar - .8, 1.4);
+  // 旗面：从横杆垂下，切成横条，越往下摆幅越大
+  const tex = IMG.ui_flag_cloth, N = 28, w = P.clothW, h = P.clothH, sh = tex.height / N;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  for (let i = 0; i < N; i++) {
+    const v = i / N, ph = t * 4.2 - v * 5.5;
+    const off = limp ? 0 : (Math.sin(ph) * 2.2 * sway + lean * 3.2) * v * v + Math.sin(ph * .5) * .4 * v;
+    const squeeze = limp ? 1 : 1 - .08 * Math.abs(Math.cos(ph)) * v;   // 布面翻转时略变窄
+    const ww = w * squeeze, sx = x - ww / 2 + off, sy = by + 1 + v * h;
+    ctx.drawImage(tex, 0, i * sh, tex.width, sh + .5, sx, sy, ww, h / N + .35);
+    const dk = limp ? .15 : Math.max(0, Math.cos(ph)) * .55 * v + .05;   // 褶皱背光面
+    if (dk > .02) { ctx.globalAlpha *= dk; ctx.drawImage(flagDark, 0, i * sh, tex.width, sh + .5, sx, sy, ww, h / N + .35); ctx.globalAlpha /= dk; }
+  }
+  ctx.imageSmoothingEnabled = false;
+}
 function drawZ(z) {
   if (z.T.boss) return Boss.draw(z);
-  // 旗手：背后竖一面「黄天当立」的大旗
-  if (z.T.banner) {
-    const im = IMG['ui_flag'];
-    if (im && im.complete) {
-      const bh = 96, bw = bh * im.width / im.height;
-      ctx.save(); ctx.globalAlpha = z.dead ? .35 : 1;
-      ctx.drawImage(im, Math.round(z.x - bw / 2 + (z.f > 0 ? 9 : -9)), Math.round(z.y - bh + 4), bw, bh);
-      ctx.restore();
-    }
-  }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
+  if (z.T.banner) drawBanner(z, a);   // 旗画在人后面
   drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
+  const gp = z.T.banner && bannerGripPos(z);
+  if (gp) {   // 把拳头再画一遍压在旗杆上面，看起来是握在手里
+    ctx.save(); ctx.beginPath(); ctx.arc(gp[0], gp[1], 3.2, 0, 7); ctx.clip();
+    drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark); ctx.restore();
+  }
   if (z.dead || z.air || z.st === 'land') return;
   const top = z.y - 34;
   if (z.daze > 0) {   // 头顶转圈的小黄星
