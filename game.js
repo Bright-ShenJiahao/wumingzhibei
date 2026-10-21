@@ -1062,7 +1062,9 @@ function drawZ(z) {
   }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   const barW = z.T.elite ? 26 : 18;
-  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, top, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, top + 1, (barW - 2) * z.hp / z.T.hp, 1);
+  // 旗手的血条放到脚下：头顶那块是旗面，压上去会挡住"苍天已死"的字
+  const barY = z.T.banner ? z.y + 4 : top;
+  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, barY, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, barY + 1, (barW - 2) * z.hp / z.T.hp, 1);
 }
 
 // 画布按实际显示尺寸 × 设备像素比绘制（手机上更清晰），窗口/横竖屏变化时重新适配
