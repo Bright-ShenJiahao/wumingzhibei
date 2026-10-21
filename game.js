@@ -777,6 +777,17 @@ function draw() {
   tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
   tileLayer(IMG.mid, ms, 1, my);
   ctx.imageSmoothingEnabled = false;
+  // Boss 关：右上角插一面「苍天已死」血字旗（装饰，人物从旗前走过）
+  if (zs.some(z => z.T && z.T.boss)) {
+    const im = IMG['ui_boss_flag'];
+    if (im && im.complete) {
+      const fh2 = 120, fw2 = fh2 * im.width / im.height;
+      const fx2 = Math.min(M.W - 26, cam.x + vw - 30), fy2 = M.bot - 4;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);
+      ctx.imageSmoothingEnabled = false;
+    }
+  }
   // 完美闪避的残影
   for (const gh of ghosts) {
     const ch2 = CH['hero'] && CH['hero'].idle;
