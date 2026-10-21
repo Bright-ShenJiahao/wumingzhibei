@@ -2968,10 +2968,10 @@ function zUpdate(z, dt) {
     }
     z.t += dt;
     if (z.t > .62) {
-      eshots.push({ k: 'arrow', x: z.x + z.f * 14, y: z.y, z: 24, vx: z.f * 330, life: 1.15 });
+      eshots.push({ k: 'fire', x0: z.x + z.f * 14, y0: z.y, tx: hero.x, ty: hero.y, t: 0, T: .9, short: 1.8 });   // 和普通弓箭手一样的火箭，但烧得短
       sfx('bow', z.x);
       z.adds--; z.t = 0;
-      if (z.adds <= 0) { z.st = 'flee'; z.f = -z.f; }
+      if (z.adds <= 0) { z.st = 'flee'; z.f = (z.x - cam.x) < viewW() / 2 ? -1 : 1; }   // 朝最近的一边撤
     }
     return;
   }
@@ -3061,7 +3061,7 @@ function updateShots(dt) {
       if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
     } else {
       s.t += dt;
-      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: 3, r: 16 }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
+      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: 16 }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
     }
   }
   eshots = eshots.filter(s => s.life > 0);
