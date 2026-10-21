@@ -1690,6 +1690,19 @@ const Boss = (() => {
       tone(o, t, { type: 'sine', p0: 150 * k, p1: 70, gain: .26, a: .001, d: .16 });
       noise(o, t + .01, { type: 'highpass', f0: 2600, gain: .06, a: .001, d: .05 });
     },
+    wake(o, t, k) {          // 装死的兵惊醒：布料摩擦 + 低吼
+      noise(o, t, { f0: 900, f1: 300, q: 1.2, gain: .16, a: .01, d: .16 });
+      tone(o, t + .02, { type: 'sawtooth', p0: 120 * k, p1: 80, gain: .12, a: .01, d: .18 });
+    },
+    perfect(o, t, k) {       // 完美闪避：一声脆亮的"叮"
+      tone(o, t, { type: 'sine', p0: 1760 * k, p1: 2640, gain: .16, a: .002, d: .28 });
+      tone(o, t + .04, { type: 'triangle', p0: 2640 * k, p1: 3520, gain: .08, a: .002, d: .2 });
+      noise(o, t, { type: 'highpass', f0: 5000, gain: .05, a: .001, d: .06 });
+    },
+    charge(o, t, k) {        // 蓄力开始：低频"嗡"
+      tone(o, t, { type: 'sawtooth', p0: 90 * k, p1: 150, gain: .07, a: .08, d: .5 });
+      tone(o, t, { type: 'sine', p0: 180 * k, p1: 300, gain: .05, a: .1, d: .45 });
+    },
     crack(o, t, k) {         // 钝器命中：木头的脆响，和闷响叠在一起用
       noise(o, t, { type: 'highpass', f0: 2600, gain: .2, a: .001, d: .04 });
       noise(o, t + .004, { f0: 1200 * k, f1: 620, q: 2, gain: .16, a: .001, d: .07 });
@@ -1744,7 +1757,7 @@ const Boss = (() => {
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
   const VOL = { swing_staff: .5, swing_knife: .45, swing_stone: .4, hit_staff: .7, hit_knife: .6, hit_stone: .55, finisher: .6, roll: .55, land: .55, enemyDown: .6,
-    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42, food: .55, stamp: .7 };
+    hurt: .7, heroDown: .7, enemySwing: .4, bladeAlert: .35, sling: .4, bow: .45, fireLand: .55, panel: .42, tick: .3, pickup: .5, blip: .5, crack: .42, food: .55, stamp: .7, wake: .55, perfect: .6, charge: .5 };
   const WET = { finisher: .5, enemyDown: .35, heroDown: .5, bladeAlert: .4, fireLand: .3 };
   const lastAt = {};
   // 配音：ASSETS.voice 里的 mp3，第一次播放时解码并缓存
@@ -2439,12 +2452,17 @@ function say(s, t = 3) { msg = s; msgT = t; }
 
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
+// 完美闪避 / 蓄力重击
+let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
+let ghosts = [];                              // 残影
+let atkHeldSince = 0, charging = false, chargeFx = [];   // 蓄力状态
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
   key[e.code] = 1;
-  if (e.code === 'KeyJ') pressAtk = true;
+  if (e.code === 'KeyJ') { pressAtk = true; atkHeldSince = performance.now(); }
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
+  if (e.code === 'KeyJ' && atkHeldSince) { /* 由 keyup 收尾 */ }
   if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
@@ -2455,7 +2473,10 @@ jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX,
 jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = () => { joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
-document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) reset(); else pressAtk = true; });
+document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
+document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());
+document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
+document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); if (over) { reset(); return; } atkHeldSince = performance.now(); pressAtk = true; });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
 function setW(w) { weapon = w; ui(); }
@@ -2484,6 +2505,9 @@ function spawn(type, x, y, sleeping = false) {
 function waves() {
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
+  if (lockR < Infinity && zs.some(z => !z.dead) && !zs.some(z => !z.dead && z.st !== 'sleep')) {
+    zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });
+  }
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
     if (!clearAt) clearAt = gameT + 1.4;
     if (gameT >= clearAt) {
@@ -2497,10 +2521,11 @@ function waves() {
   if (lockR < Infinity && !extraDone) {
     const W = WAVES[gateI];
     if (W && W.extra) {
-      const alive = zs.filter(z => !z.dead).length;
+      const alive = zs.filter(z => !z.dead && z.st !== 'sleep').length;   // 装死的不算，避免和波中波叠成 4 个
       if (alive <= (W.extraAt || 2)) {
         extraDone = true;
         W.extra.forEach((u2, i) => spawn(u2, lockR - rnd(8, 30) - i * 10, rnd(M.top + 6, M.bot - 6)));
+        zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });   // 尸体一起站起来
         if (W.extraSay) say(W.extraSay, 2.4);
         else say('又冲上来一队！', 2.2);
       }
@@ -2566,9 +2591,14 @@ function heroUpdate(dt) {
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
+  // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
+  if (atkHeldSince && !charging && performance.now() - atkHeldSince >= 400 && !h.air && h.st !== 'down' && h.st !== 'hurt') {
+    charging = true; sfx('charge', h.x); h.comboWin = 0;
+  }
+  if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
     sfx('roll', h.x);
-    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0;
+    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0; cancelCharge();
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
   }
@@ -2722,6 +2752,10 @@ function updatePWaves(dt) {
   pwaves = pwaves.filter(w => w.t < w.T);
   for (const q of qiFx) q.t += dt;
   qiFx = qiFx.filter(q => q.t < q.T);
+  for (const q of chargeFx) q.t += dt;
+  chargeFx = chargeFx.filter(q => q.t < q.T);
+  for (const gh of ghosts) gh.t += dt;
+  ghosts = ghosts.filter(gh => gh.t < .45);
 }
 function drawPWaves() {
   for (const w of pwaves) {
@@ -2751,6 +2785,41 @@ function drawPropFx() {
   ctx.globalAlpha = 1;
 }
 let qiFx = [];   // 老卒的扇形剑气特效
+// 松开攻击键：按住超过 0.4 秒 → 放蓄力重击
+function atkRelease() {
+  if (!atkHeldSince) return;
+  const held = performance.now() - atkHeldSince;
+  atkHeldSince = 0;
+  if (!charging) return;
+  charging = false;
+  if (held >= 400 && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack();
+}
+function cancelCharge() { charging = false; atkHeldSince = 0; }
+
+// 蓄力重击：三种武器各不相同
+function chargedAttack() {
+  const h = hero, W = WEAP[weapon];
+  h.atk = { c: W.combo.length - 1, fi: 0, t: 0, lg: 0 }; set(h, 'atk');
+  chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f });
+  sfx('finisher', h.x); shake = Math.max(shake, .25);
+  const R = weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : 0;
+  if (weapon === 'stone') {                    // 三颗扇形
+    for (const ang of [-.22, 0, .22]) {
+      const C = Object.assign({}, W.combo[0], { dmg: 1.0, spd: 240, life: .8 });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [] });
+    }
+    return;
+  }
+  for (const z of zs) {
+    if (z.dead) continue;
+    const dx = (z.x - h.x) * h.f, dy = z.y - h.y;
+    if (Math.abs(dy) > 26) continue;
+    if (weapon === 'staff' ? (Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0))) {
+      const dmg = weapon === 'staff' ? 1.6 : 2.4;
+      hit(z, dmg * R_('dmg'), weapon === 'staff' ? 140 : 90, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
+    }
+  }
+}
 function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
@@ -2781,7 +2850,15 @@ function strike() {
     const inRange = inAoE || (C.both ? Math.abs(dx) < rch + bw : dx > -4 - bw && dx < rch + bw);
     if (inRange && Math.abs(z.y - h.y) < W.dy + (inAoE ? 12 : 0)) {
       landed = hitEnemy = true;
-      hit(z, C.dmg * fin, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
+      // 背刺：从敌人背后打 ×1.5；补刀：敌人倒地中 ×2；完美闪避暴击 ×2
+      const behind = Math.sign(h.x - z.x) !== z.f;   // 主角在敌人背后（敌人朝另一侧）
+      const downed = z.st === 'land' || z.air;
+      let mult = 1;
+      if (behind) mult *= 1.5;
+      if (downed) mult *= 2;
+      if (critT > 0) mult *= 2;
+      if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背刺！', big: true });
+      hit(z, C.dmg * fin * mult, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
       if (!C.multi && !aoe) break;
     }
   }
@@ -2834,10 +2911,10 @@ function zUpdate(z, dt) {
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
   if (z.st === 'sleep') {
-    if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) set(z, 'wake');
+    if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); sfx('wake', z.x); }
     return;
   }
-  if (z.st === 'wake') { if (z.t > .55) set(z, 'move'); else return; }
+  if (z.st === 'wake') { if (z.t > (z.T.elite ? 1.0 : .55)) set(z, 'move'); else return; }
   if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }   // 晕眩：站着不动
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
@@ -2845,6 +2922,16 @@ function zUpdate(z, dt) {
   // 附近有旗手：小兵移速 +20%、出手快 20%（旗手优先杀，这是本作第一个"先打谁"的决策）
   const buff = (bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0;
   if (z.st === 'wind') {
+    // 完美闪避：敌人刀落下前 0.18 秒内翻滚 → 慢动作 + 1 秒暴击窗
+    if (!z.pd && z.st === 'wind') {
+      const rem = T.wind * (buff ? .8 : 1) - z.t;
+      if (rem > 0 && rem < .18 && hero.st === 'roll' && hero.t < .22 && pdCd <= 0 &&
+          Math.abs(z.x - hero.x) < 130 && Math.abs(z.y - hero.y) < 40) {
+        z.pd = true; pdCd = 1.5; slowT = .3; critT = 1.0;
+        sfx('perfect', hero.x); shake = Math.max(shake, .12);
+        for (let i = 1; i <= 3; i++) ghosts.push({ x: hero.x - hero.rx * i * 9, y: hero.y - (hero.ry || 0) * i * 9, f: hero.f, a: .45 - i * .1, t: 0 });
+      }
+    }
     if (z.t > T.wind * (buff ? .8 : 1)) {
       set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
       if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
@@ -2920,6 +3007,9 @@ function updateShots(dt) {
 
 let gameT = 0;
 function update(dt) {
+  if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
+  if (critT > 0) critT -= dt;
+  if (pdCd > 0) pdCd -= dt;
   if (window.ROOM && ROOM.blocks()) { ROOM.update(dt); return; }   // 开场农房：游戏不推进，由 room.js 自己走
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
@@ -3011,6 +3101,34 @@ function draw() {
   tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
   tileLayer(IMG.mid, ms, 1, my);
   ctx.imageSmoothingEnabled = false;
+  // 完美闪避的残影
+  for (const gh of ghosts) {
+    const ch2 = CH['hero'] && CH['hero'].idle;
+    if (!ch2) break;
+    ctx.globalAlpha = Math.max(0, gh.a * (1 - gh.t / .45));
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(ch2.img, Math.round(gh.x - ch2.ax * PX), Math.round(gh.y - ch2.ay * PX), ch2.w * PX, ch2.h * PX);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  // 蓄力：主角身上渐亮的光
+  if (charging && hero) {
+    const p = Math.min(1, (performance.now() - atkHeldSince) / 400);
+    const r = 14 + 8 * p;
+    const gg = ctx.createRadialGradient(hero.x, hero.y - 14, 2, hero.x, hero.y - 14, r);
+    gg.addColorStop(0, 'rgba(255,236,170,' + (.30 + .45 * p) + ')');
+    gg.addColorStop(1, 'rgba(255,180,60,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(hero.x, hero.y - 14, r, 0, 7); ctx.fill();
+  }
+  // 蓄力重击的冲击环
+  for (const q of chargeFx) {
+    const k = Math.min(1, q.t / q.T), R2 = 20 + 90 * k, a2 = 1 - k;
+    ctx.save(); ctx.translate(q.x, q.y - 12);
+    ctx.strokeStyle = q.w === 'hammer' ? 'rgba(255,190,90,' + (.9 * a2) + ')' : 'rgba(240,250,255,' + (.9 * a2) + ')';
+    ctx.lineWidth = 4 * (1 - k) + 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, R2, R2 * .42, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
   // 老卒的白色扇形剑气
   for (const q of qiFx) {
     const k = Math.min(1, q.t / q.T), R = 30 + 108 * k, a = 1 - k;
