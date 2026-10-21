@@ -131,6 +131,7 @@ const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 // 完美闪避 / 蓄力重击
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
 let ghosts = [];                              // 残影
+const CHARGE_MS = 500;
 let atkHeldSince = 0, charging = false, chargeFx = [];   // 蓄力状态
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
@@ -138,12 +139,11 @@ addEventListener('keydown', e => {
   key[e.code] = 1;
   if (e.code === 'KeyJ') { pressAtk = true; atkHeldSince = performance.now(); }
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
-  if (e.code === 'KeyJ' && atkHeldSince) { /* 由 keyup 收尾 */ }
   if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
 });
-addEventListener('keyup', e => key[e.code] = 0);
+addEventListener('keyup', e => { key[e.code] = 0; if (e.code === 'KeyJ') atkRelease(); });
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
 jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
 jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
@@ -268,7 +268,7 @@ function heroUpdate(dt) {
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
-  if (atkHeldSince && !charging && performance.now() - atkHeldSince >= 400 && !h.air && h.st !== 'down' && h.st !== 'hurt') {
+  if (atkHeldSince && !charging && performance.now() - atkHeldSince >= CHARGE_MS && !h.air && h.st !== 'down' && h.st !== 'hurt') {
     charging = true; sfx('charge', h.x); h.comboWin = 0;
   }
   if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
@@ -293,8 +293,9 @@ function heroUpdate(dt) {
     // 锤子这类重型武器出手时朝面向方向前冲一小段（整段动作只冲一次），补足它短得可怜的攻击距离
     if (W2.lunge && a.lg < W2.lungeT) moveEnt(h, h.f * W2.lunge * dt, 0);
     // 出手时的移动：默认压到 15（有僵直）；像石子这种设了 move 的，按走路速度边走边扔（move = 1 即全速）
-    if (W2.move != null) moveEnt(h, ix * 70 * W2.move * dt, iy * 52 * W2.move * dt);
-    else moveEnt(h, ix * 15 * dt, 0);
+    const mvq = charging ? .2 : 1;   // 蓄力时只能极慢挪动
+  if (W2.move != null) moveEnt(h, ix * 70 * W2.move * mvq * dt, iy * 52 * W2.move * mvq * dt);
+    else moveEnt(h, ix * 15 * mvq * dt, 0);
     return;
   }
   if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }
@@ -468,7 +469,7 @@ function atkRelease() {
   atkHeldSince = 0;
   if (!charging) return;
   charging = false;
-  if (held >= 400 && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack();
+  if (held >= CHARGE_MS && hero.st !== 'down' && hero.st !== 'hurt' && !hero.air) chargedAttack();
 }
 function cancelCharge() { charging = false; atkHeldSince = 0; }
 
