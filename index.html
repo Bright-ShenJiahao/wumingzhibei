@@ -966,7 +966,7 @@ const Boss = (() => {
   const DEFAULT = JSON.parse(JSON.stringify(S));
   const CARDS = [
     { id: 'dmg', name: '蛮力', school: '伤害', w: 10, desc: '造成的伤害 +20%', apply: () => { S.dmg *= 1.2; } },
-    { id: 'fin', name: '重招', school: '伤害', w: 9, desc: '连招第三段伤害 +50%', apply: () => { S.fin *= 1.5; } },
+    { id: 'fin', name: '终招', school: '伤害', w: 9, desc: '连招终段伤害 +50%', apply: () => { S.fin *= 1.5; } },
     { id: 'move', name: '疾风', school: '速度', w: 9, desc: '移动速度 +15%', apply: () => { S.move *= 1.15; } },
     { id: 'aspd', name: '快打', school: '速度', w: 8, desc: '出招前后摇 -15%', apply: () => { S.aspd *= .85; } },
     { id: 'reach', name: '长手', school: '武器', w: 8, desc: '所有武器距离 +12%', apply: () => { S.reach *= 1.12; } },
@@ -2406,10 +2406,10 @@ const WEAP = {
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', reach: 40, dy: 13, move: .5, freeze: .062, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.1, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
-    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.1, kb: 46, daze: .45 },                  // 扫：低身搂扫
-    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.8, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
-    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 1.2, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
+    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
+    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
+    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
+    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -2488,7 +2488,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
-  comboCount = 0; comboExpireAt = 0; comboPulseAt = 0;
+  comboCount = 0; comboExpireAt = 0; comboNotices = [];
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
@@ -2758,7 +2758,8 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
   z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
-  if (daze && !z.daze && Math.random() < daze * (z.T.heavy ? .5 : 1)) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
+  const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
+  if (daze && !z.daze && Math.random() < daze * heavyDazeScale) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连击会显得一顿一顿的）
   const W0 = WEAP[weapon] || {};
@@ -3108,7 +3109,8 @@ function strike() {
   let landed = false, hitEnemy = false;
   const reach = W.reach * R_('reach');                                   // 锦囊：长手
   const rch = C.thrust ? reach * 1.35 : reach;                          // 「戳」比劈多 35% 距离
-  const fin = (c === 2 ? R_('fin') : 1) * 1;                             // 锦囊：重招（第三段）
+  const finisher = weapon === 'staff' ? 3 : 2;
+  const fin = (c === finisher ? R_('fin') : 1) * 1;                     // 锦囊：终招（各武器最后一段）
   const aoe = (weapon === 'hammer' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：锤·震地
   for (const z of zs) {
     if (z.dead || z.air) continue;
@@ -3151,7 +3153,7 @@ function strike() {
     }
   }
   const snd = W.snd || weapon;   // 音效名（锤子借用木棍那一套闷响）
-  if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); sfx('crack', h.x + h.f * 26); if (c === 2) sfx('finisher', h.x); }
+  if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); sfx('crack', h.x + h.f * 26); if (c === W.combo.length - 1) sfx('finisher', h.x); }
   else if (!landed) sfx('swing_' + snd, h.x);   // 只打中道具时，音效由 hitProp 自己播
 }
 function dmgHero(n, from) {
@@ -3381,11 +3383,12 @@ function updateShots(dt) {
 
 let gameT = 0;
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
-let comboCount = 0, comboExpireAt = 0, comboPulseAt = 0;
+let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {
   comboCount = gameT < comboExpireAt ? comboCount + 1 : 1;
   comboExpireAt = gameT + 1.2;
-  comboPulseAt = gameT;
+  comboNotices.push({ count: comboCount, born: gameT });
+  if (comboNotices.length > 2) comboNotices.shift();   // 最多同时两条
 }
 function update(dt) {
   if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
@@ -3676,6 +3679,7 @@ function draw() {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
+  drawCombo(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
     const tw = Math.max(...lines.map(line => ctx.measureText(line).width)), bh = lines.length * 23 + 10, by = 108 - (bh - 32) / 2;
@@ -3710,19 +3714,24 @@ function rankOf(t) {
   return 'E';
 }
 function toast(m) { toastMsg = m; toastT = 2.4; }
-function drawCombo() {
-  const left = comboExpireAt - gameT;
-  if (comboCount < 2 || left <= 0) return;
-  const fade = Math.min(1, left / .18);
-  const pulse = Math.max(0, 1 - (gameT - comboPulseAt) / .16);
-  const label = comboCount + ' HIT';
-  const bx = hero.x, by = hero.y - (hero.z || 0) - 44 - pulse * 2;   // 画在主角头顶
-  ctx.save(); ctx.globalAlpha = fade;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = 'bold ' + (7.8 + pulse * 1.2) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';   // 世界单位，约 21~24 设备像素
-  ctx.lineJoin = 'round'; ctx.lineWidth = 2.4;
-  ctx.strokeStyle = 'rgba(40,22,8,.9)'; ctx.strokeText(label, bx, by);
-  ctx.fillStyle = '#ffd86e'; ctx.fillText(label, bx, by);
+function drawCombo(HW) {   // 屏幕坐标绘制（在 HUD 里调用）
+  const scale = SC / DPR;
+  const x = (hero.x - cam.x) * scale;
+  const headY = (hero.y - 37) * scale;
+  const visible = comboNotices.filter(n => gameT - n.born < .72);
+  comboNotices = visible;
+  if (!visible.length) return;
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  visible.forEach((n, i) => {
+    const age = gameT - n.born, fade = Math.min(1, (.72 - age) / .18);
+    const rise = Math.min(1, age / .12) * 5;
+    const y = headY - (visible.length - 1 - i) * 16 - rise;
+    ctx.globalAlpha = .72 * fade;
+    ctx.font = 'bold 14px sans-serif'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(45,32,23,.62)'; ctx.fillStyle = 'rgba(245,231,198,.82)';
+    const label = String(n.count) + ' HIT';
+    ctx.strokeText(label, x, y); ctx.fillText(label, x, y);
+  });
   ctx.restore();
 }
 // ---------- 结算画面 ----------
@@ -4015,7 +4024,6 @@ function drawHero() {
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
-  drawCombo();   // HIT 连击显示在主角头顶
 }
 function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); if (z.celebrating) drawCheer(z); return; }

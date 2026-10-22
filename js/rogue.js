@@ -8,7 +8,7 @@
   const DEFAULT = JSON.parse(JSON.stringify(S));
   const CARDS = [
     { id: 'dmg', name: '蛮力', school: '伤害', w: 10, desc: '造成的伤害 +20%', apply: () => { S.dmg *= 1.2; } },
-    { id: 'fin', name: '重招', school: '伤害', w: 9, desc: '连招第三段伤害 +50%', apply: () => { S.fin *= 1.5; } },
+    { id: 'fin', name: '终招', school: '伤害', w: 9, desc: '连招终段伤害 +50%', apply: () => { S.fin *= 1.5; } },
     { id: 'move', name: '疾风', school: '速度', w: 9, desc: '移动速度 +15%', apply: () => { S.move *= 1.15; } },
     { id: 'aspd', name: '快打', school: '速度', w: 8, desc: '出招前后摇 -15%', apply: () => { S.aspd *= .85; } },
     { id: 'reach', name: '长手', school: '武器', w: 8, desc: '所有武器距离 +12%', apply: () => { S.reach *= 1.12; } },
