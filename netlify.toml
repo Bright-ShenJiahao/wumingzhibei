@@ -11,3 +11,14 @@
   [headers.values]
     Content-Type = "application/manifest+json; charset=utf-8"
     Cache-Control = "public, max-age=3600"
+
+# 首页不要长期缓存：微信/QQ 的内置浏览器缓存很顽固，改了代码看不到更新
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
