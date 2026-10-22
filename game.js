@@ -151,10 +151,11 @@ addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup', e => { key[e.code] = 0; if (e.code === 'KeyJ') atkRelease(); });
+addEventListener('contextmenu', e => e.preventDefault());   // 手机长按不弹菜单
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
-jz.addEventListener('pointerdown', e => { joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
+jz.addEventListener('pointerdown', e => { e.preventDefault(); joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
 jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
-const endJ = () => { joy = null; jk.style.transform = ''; };
+const endJ = e => { if (joy && e && e.pointerId !== joy.id) return; joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
 document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
 document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());

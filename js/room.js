@@ -34,8 +34,10 @@
   // 常用锚点（图上比例 → 世界坐标）
   let ptrDown = false;                 // 当前是否有手指/鼠标按在屏幕上
   addEventListener('pointerdown', () => { ptrDown = true; });
-  addEventListener('pointerup', () => { ptrDown = false; try { if (typeof joy !== 'undefined') joy = null; } catch (e) {} });
-  addEventListener('pointercancel', () => { ptrDown = false; try { if (typeof joy !== 'undefined') joy = null; } catch (e) {} });
+  // 只记"有没有手指按着"，不要清游戏的 joy：那样会在战斗中右手松开攻击键时
+  // 把左手的摇杆一起清掉（手机版走路断触的根因）
+  addEventListener('pointerup', () => { ptrDown = false; });
+  addEventListener('pointercancel', () => { ptrDown = false; });
   addEventListener('blur', () => { ptrDown = false; });
 
   const P = {
