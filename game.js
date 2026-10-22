@@ -227,9 +227,9 @@ function startVillagers(edgeX) {
   // 老人先跑，年轻女子跟在身后；角色不参与阻挡和清区计数。
   villagers = [
     { ch: 'villager_old', x: startX, y: y, state: 'run', t: 0, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 26, y: y - 4, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 50, y: y - 1, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
-    { ch: 'villager_woman', x: startX + 74, y: y - 5, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman_cream', x: startX + 26, y: y - 4, state: 'run', t: .18, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman_green', x: startX + 50, y: y - 1, state: 'run', t: .36, flash: 0, f: -1, speed: 30, sc: 1 },
+    { ch: 'villager_woman_red', x: startX + 74, y: y - 5, state: 'run', t: .54, flash: 0, f: -1, speed: 30, sc: 1 },
   ];
   spawn('grunt', startX + 150, y);
   const chaser = zs[zs.length - 1];
