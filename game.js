@@ -23,7 +23,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_POOL = ['hay', 'hay', 'well', 'cart'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
+const PROP_POOL = ['hay', 'hay', 'cart'];   // 水井已移除（只保留草垛、推车）   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 // 连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。棍四段，锤和石子三段。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
@@ -491,9 +491,9 @@ function set(e, st) { e.st = st; e.t = 0; }
 // 每被打中一次掉 1 点耐久；打坏后取消碰撞（p.solid = false）并从画面消失，水井/旗子 hp 为 0 不受影响
 // 回血道具：包子 +1（70%）、鸡腿 +2（20%）、烤乳猪 +3（10%）
 const FOOD = [
-  { k: 'bun', heal: 1, w: 60 },   // 包子：最常见，回 1
-  { k: 'leg', heal: 2, w: 30 },   // 鸡腿：中等，回 2
-  { k: 'pig', heal: 4, w: 10 },   // 烤乳猪：稀有，回 4
+  { k: 'bun', heal: 1, w: 72 },   // 包子：最常见，回 1（权重 60→72）
+  { k: 'leg', heal: 2, w: 22 },   // 鸡腿：中等，回 2（30→22）
+  { k: 'pig', heal: 4, w: 6 },    // 烤乳猪：稀有，回 4（10→6）
 ];
 function spawnDrop(x, y, forceK) {
   let pick;
@@ -627,7 +627,7 @@ function hitProp(p, dir) {
   }
   if (broken) {
     p.broken = true; p.solid = false;
-    if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
+    if (Math.random() < .65) spawnDrop(p.x, p.y);   // 65% 概率掉吃的（原 50%）
   }
 }
 // 棍子第三段的冲击波（锦囊）
