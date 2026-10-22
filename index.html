@@ -3222,7 +3222,7 @@ function zUpdate(z, dt) {
     if (z.st === 'addleave') {
       z.moving = true; z.x += z.addExitDir * 70 * dt;
       if ((z.addExitDir < 0 && z.x <= z.addExitX) || (z.addExitDir > 0 && z.x >= z.addExitX)) {
-        z.x = z.addExitX; z.dead = true; z.st = 'gone'; z.t = 0;
+        z.x = z.addExitX; z.st = 'gone'; z.t = 1;   // 走出画面直接消失（不播倒地、不计击倒）
       }
       return;
     }
@@ -3676,7 +3676,6 @@ function draw() {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
-  drawCombo(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
     const tw = Math.max(...lines.map(line => ctx.measureText(line).width)), bh = lines.length * 23 + 10, by = 108 - (bh - 32) / 2;
@@ -3711,20 +3710,20 @@ function rankOf(t) {
   return 'E';
 }
 function toast(m) { toastMsg = m; toastT = 2.4; }
-function drawCombo(HW) {
+function drawCombo() {
   const left = comboExpireAt - gameT;
   if (comboCount < 2 || left <= 0) return;
   const fade = Math.min(1, left / .18);
   const pulse = Math.max(0, 1 - (gameT - comboPulseAt) / .16);
   const label = comboCount + ' HIT';
+  const bx = hero.x, by = hero.y - (hero.z || 0) - 44 - pulse * 2;   // 画在主角头顶
   ctx.save(); ctx.globalAlpha = fade;
-  ctx.font = 'bold 24px sans-serif';
-  const tw = ctx.measureText(label).width, w = tw + 20, x = HW - 14 - w, y = 50;
-  ctx.fillStyle = 'rgba(20,14,30,.76)'; ctx.fillRect(x, y, w, 34);
-  ctx.strokeStyle = 'rgba(255,216,110,.8)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, 33);
-  ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 4;
-  ctx.font = 'bold ' + (24 + pulse * 4) + 'px sans-serif'; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd86e';
-  ctx.strokeText(label, HW - 22, y + 17); ctx.fillText(label, HW - 22, y + 17); ctx.restore();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold ' + (7.8 + pulse * 1.2) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';   // 世界单位，约 21~24 设备像素
+  ctx.lineJoin = 'round'; ctx.lineWidth = 2.4;
+  ctx.strokeStyle = 'rgba(40,22,8,.9)'; ctx.strokeText(label, bx, by);
+  ctx.fillStyle = '#ffd86e'; ctx.fillText(label, bx, by);
+  ctx.restore();
 }
 // ---------- 结算画面 ----------
 const eOut = t => 1 - Math.pow(1 - t, 3);
@@ -4016,6 +4015,7 @@ function drawHero() {
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
+  drawCombo();   // HIT 连击显示在主角头顶
 }
 function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); if (z.celebrating) drawCheer(z); return; }
