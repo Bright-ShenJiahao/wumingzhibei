@@ -530,9 +530,10 @@ function updateDrops(dt) {
         if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
         continue;
       }
-      if (h.hp >= 10) {                      // 满血：回不了血，改成加一点积分
-        runBonus += 10;
-        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+10分' });
+      if (h.hp >= 10) {                      // 满血：回不了血，按回复量折算积分（1 血 = 5 分）
+        const bp = d.heal * 5;
+        runBonus += bp;
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + bp + '分' });
       } else {
         h.hp = Math.min(10, h.hp + d.heal);
         floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
