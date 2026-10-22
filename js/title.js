@@ -266,6 +266,14 @@
       s.width = L.btnW + 'px'; s.height = L.btnH + 'px';
       s.fontSize = Math.round(Math.max(16, Math.min(24, h * .045))) + 'px';
     }
+    if (dom.board) {
+      const s = dom.board.style;
+      const bw = Math.max(150, Math.min(230, w * .3));
+      s.left = (w - bw) / 2 + 'px';
+      s.top = (L.btnY + L.btnH + Math.max(12, h * .022)) + 'px';
+      s.width = bw + 'px'; s.height = '36px';
+      s.fontSize = Math.max(13, Math.min(16, h * .034)) + 'px';
+    }
     if (dom.novice) {
       const s = dom.novice.style;
       s.left = '0'; s.right = '0'; s.top = (L.btnY - Math.max(34, h * .06)) + 'px'; s.height = '28px';

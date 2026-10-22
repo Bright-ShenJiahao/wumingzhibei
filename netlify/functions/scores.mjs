@@ -44,8 +44,12 @@ async function readAll(store) {
   return items.filter(x => x && x.season === SEASON && Number.isFinite(x.kills) && Number.isFinite(x.t));
 }
 
+// 评分 = 击杀 x10 + 时间分（480 秒内每快 1 秒 +0.6，最多 +240）
+function scoreOf(kills, t) {
+  return kills * 10 + Math.max(0, Math.min(240, Math.round((480 - t) * .6)));
+}
 function pub(x) {
-  return { name: x.name, kills: x.kills, t: x.t, at: x.at };
+  return { name: x.name, kills: x.kills, t: x.t, at: x.at, score: scoreOf(x.kills, x.t) };
 }
 
 export default async function handler(req, context) {

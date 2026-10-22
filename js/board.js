@@ -60,7 +60,7 @@
           <button type="button" data-tab="speed">速通榜</button>
         </div>
         <div class="body"></div>
-        <div class="foot">每局只能提交一次，成绩实时更新 · 只显示前 20</div>
+        <div class="foot">每局只能提交一次 · 只显示前 20 · 评分 = 击杀×10 + 时间分</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
@@ -87,19 +87,18 @@
       return;
     }
     const rows = list.map((r, i) => {
-      const val = curTab === 'kills' ? (r.kills + ' 杀') : fmtTime(r.t);
-      const sub = curTab === 'kills' ? fmtTime(r.t) : (r.kills + ' 杀');
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
         <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
-        <td class="num">${val}</td>
-        <td class="num" style="color:#b79c72;font-size:12px">${sub}</td>
+        <td class="num">${r.kills} 杀</td>
+        <td class="num">${fmtTime(r.t)}</td>
+        <td class="num">${r.score == null ? '-' : r.score}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
       </tr>`;
     }).join('');
     body.innerHTML = `<table>
-      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">${curTab === 'kills' ? '击杀' : '用时'}</th>
-      <th style="text-align:right">${curTab === 'kills' ? '用时' : '击杀'}</th><th style="text-align:right">日期</th></tr></thead>
+      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">击杀</th>
+      <th style="text-align:right">用时</th><th style="text-align:right">评分</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 
