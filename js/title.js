@@ -148,7 +148,7 @@
       body.wzb-title #wp button[data-w] { display: none !important; }
       body.wzb-intro #wp, body.wzb-intro #bMute { display: none !important; }
       #tStyle0 { display: none; }
-      #tName, #tStart, #tHelp, #tNovice, #tBoard {
+      #tName, #tStart, #tHelp, #tNovice, #tBoard, #tHintOff {
         position: fixed; z-index: 7; font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
         box-sizing: border-box; -webkit-tap-highlight-color: transparent;
       }
@@ -175,6 +175,11 @@
         font-size:14px; font-weight:700; text-shadow:0 1px 3px #000; cursor:pointer;
       }
       #tNovice input { width:18px; height:18px; accent-color:#ffd86e; }
+      #tHintOff {
+        display:flex; align-items:center; justify-content:flex-start; gap:6px; color:#c9b691;
+        font-size:12.5px; font-weight:600; text-shadow:0 1px 3px #000; cursor:pointer;
+      }
+      #tHintOff input { width:15px; height:15px; accent-color:#c9971f; }
       #tHelp {
         background: rgba(20,14,30,.55); border: 1.5px solid rgba(255,255,255,.5); border-radius: 8px;
         color: #fff; font-size: 15px; font-weight: 700; text-shadow: 0 1px 2px #000; cursor: pointer;
@@ -216,6 +221,15 @@
     dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后显示操作、武器、蓄力和敌人提示';
     dom.board = mk('button', 'tBoard', '英雄榜');
     dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
+    dom.hintOff = mk('label', 'tHintOff', '关闭提醒');
+    dom.hintOffInput = document.createElement('input');
+    dom.hintOffInput.type = 'checkbox';
+    try { dom.hintOffInput.checked = localStorage.getItem('wzb-hint-off') === '1'; } catch (e) {}
+    dom.hintOff.prepend(dom.hintOffInput);
+    dom.hintOff.title = '勾选后不再显示手机全屏提示（微信里玩会留黑边那条）';
+    dom.hintOffInput.addEventListener('change', () => {
+      try { localStorage.setItem('wzb-hint-off', dom.hintOffInput.checked ? '1' : '0'); } catch (e) {}
+    });
     dom.help = mk('button', 'tHelp', '?');
     dom.help.title = '操作说明'; dom.help.setAttribute('aria-label', '操作说明');
     dom.tip = mk('div', 'tTip', '请输入名字');
@@ -282,6 +296,7 @@
       const space = w - nameRight;                        // 右边剩余空间
       s.height = Math.max(28, L.inH) + 'px';
       s.width = ''; s.right = '';
+      L._narrow = space <= 118;
       if (space > 118) {                                  // 右边放得下：放在输入框右边
         s.left = (nameRight + gapX) + 'px';
         s.top = L.inY + 'px';
@@ -299,6 +314,17 @@
       s.width = sz + 'px'; s.height = sz + 'px';
       s.right = (10 + sz + 8) + 'px'; s.top = '8px';
       s.fontSize = Math.round(sz * .5) + 'px';
+    }
+    if (dom.hintOff) {
+      const s = dom.hintOff.style;
+      s.height = '24px'; s.width = '104px';
+      if (!L._narrow) {                                  // 教学模式下面
+        s.left = ((w + L.inW) / 2 + 10) + 'px';
+        s.top = (L.inY + L.inH + 4) + 'px';
+      } else {                                           // 窄屏：跟在教学模式右边，别再往下堆
+        s.left = Math.round(w / 2 + 52) + 'px';
+        s.top = (L.inY + L.inH + 8) + 'px';
+      }
     }
     if (dom.tip) dom.tip.style.left = (w / 2) + 'px', dom.tip.style.top = (L.inY - 26) + 'px';
   }
@@ -433,7 +459,7 @@
   // ---------- 状态切换 ----------
   function setDomVisible(v) {
     const d = v ? '' : 'none';
-    for (const k of ['name', 'start', 'help', 'novice', 'board']) if (dom[k]) dom[k].style.display = d;
+    for (const k of ['name', 'start', 'help', 'novice', 'board', 'hintOff']) if (dom[k]) dom[k].style.display = d;
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 
