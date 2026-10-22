@@ -1064,7 +1064,26 @@ function hit(z, dmg, dir, ranged) {
   const unlocked = false;
   let selectedRoute = null;
   const battles = Object.freeze([
-    Object.freeze({ number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼', units: ['yellow-heavy'], map: MAP, status: 'locked' }),
+    Object.freeze({
+      number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼',
+      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger'], enemyCount: 9,
+      // 先让玩家读懂正面大刀兵，再逐步展开两翼与远程支援；左右投石手错开发射。
+      waves: [
+        Object.freeze({ id: 'center-guard', trigger: 'battle-start', enemies: [
+          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'front-center' }),
+        ] }),
+        Object.freeze({ id: 'flanking-reserve', trigger: 'first-center-enemy-defeated', enemies: [
+          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-left' }),
+          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-right' }),
+        ] }),
+        Object.freeze({ id: 'ranged-support', trigger: 'flanking-reserve-entered', delay: 1.2, enemies: [
+          Object.freeze({ unit: 'yellow-priest', count: 1, formation: 'rear-center' }),
+          Object.freeze({ unit: 'yellow-slinger', count: 1, formation: 'rear-left', attackDelay: 0 }),
+          Object.freeze({ unit: 'yellow-slinger', count: 1, formation: 'rear-right', attackDelay: 0.8 }),
+        ] }),
+      ],
+      map: MAP, status: 'locked',
+    }),
     Object.freeze({ number: 2, title: '黄巾后阵', encounter: '远程兵种为主', units: ['yellow-shield'], map: MAP, status: 'locked' }),
     Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear'], map: MAP, route: 'zhang-liang', status: 'locked' }),
     Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-catapult'], map: MAP, route: 'zhang-bao', status: 'locked' }),
@@ -1081,6 +1100,8 @@ function hit(z, dmg, dir, ranged) {
     Object.freeze({ id: 'yellow-shield', name: '黄巾盾兵', sprite: 'yellow_shield', kind: 'shield-frontline', role: '持大盾掩护后排；正面格挡远程攻击，侧后方可突破。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 2 }),
     Object.freeze({ id: 'yellow-spear', name: '黄巾枪兵', sprite: 'yellow_spear', kind: 'long-melee', role: '预备后直线突刺，攻击距离较长；横向走位躲开后反击。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
     Object.freeze({ id: 'yellow-catapult', name: '投石车', sprite: 'yellow_catapult', kind: 'siege', role: '固定远程攻城器械；地面预警后投石砸击范围区域，可作为优先破坏目标。', actions: ['idle', 'load', 'fire', 'recoil', 'break', 'wreck'], firstBattle: 4 }),
+    Object.freeze({ id: 'yellow-priest', name: '黄巾方士', sprite: 'priest', kind: 'support', role: '沿用第一章方士；在后排为黄巾兵提供支援。', firstBattle: 1 }),
+    Object.freeze({ id: 'yellow-slinger', name: '黄巾投石手', sprite: 'slinger', kind: 'ranged', role: '沿用第一章投石手；左右错开发射，避免同时压中玩家。', firstBattle: 1 }),
   ]);
   const completed = new Set();
   const canEnterBattle = number => {
