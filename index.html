@@ -480,6 +480,7 @@ const Boss = (() => {
   function start(rightEdge) {
     WX = Math.random() < .5 ? ['rain', 'snow', 'wind'][Math.floor(Math.random() * 3)] : null;
     if (WX && WX_ID[WX]) setTimeout(() => say(WX_ID[WX], 3), 500);
+    if (typeof arenaL !== 'undefined') arenaL = rightEdge - (typeof viewW === 'function' ? viewW() : 530) * 1.2;   // 决斗场：1.2 个屏幕宽
     const z = { type: 'guanhai_horse', T, x: rightEdge + 60, y: (M.top + M.bot) / 2, f: -1, hp: HP, st: 'intro', t: 0, phase: 1,
       flash: 0, vx: 0, poise: 0, cd: 1.2, called: false, slot: 0, z: 0 };
     zs.push(z); fx = []; horse = null;
@@ -669,7 +670,7 @@ function hit(z, dmg, dir, ranged) {
         if (ad > 58 && ad < 96 && ady < 14) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); return; }
       }
       const walking = ad > 52 || ady > 8;
-      if (walking) { moveTo(z, hero.x - z.f * 48, hero.y, 34 * sp, dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
+      if (walking) { moveTo(z, hero.x - z.f * 48, hero.y, (rage ? 64 : 56), dt); if (S !== 'walk') set(z, 'walk'); } else if (S !== 'idle') set(z, 'idle');
       return;
     }
     // 突进刺：举戟后撤（前摇）→ 冲 90 单位 → 收招硬直（可被打）
@@ -2514,6 +2515,7 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
+  arenaL = null;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
@@ -2597,6 +2599,7 @@ function moveEnt(e, dx, dy) {
     const lo = cam.x + (e === hero ? 12 : 10), hi = Math.min(lockR, cam.x + viewW()) - (e === hero ? 12 : 10);
     e.x = Math.max(lo, Math.min(e.x, Math.max(lo, hi)));   // 敌人也不许被打出场外（否则打不到、卡关）
   }
+  if (e === hero && arenaL != null) e.x = Math.max(arenaL + 12, e.x);   // Boss 战场地左边界
 }
 
 // ---------- 刷怪 ----------
@@ -3434,6 +3437,7 @@ function updateShots(dt) {
 }
 
 let gameT = 0;
+let arenaL = null;   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
 let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {

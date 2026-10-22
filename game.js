@@ -120,6 +120,7 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
+  arenaL = null;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
@@ -203,6 +204,7 @@ function moveEnt(e, dx, dy) {
     const lo = cam.x + (e === hero ? 12 : 10), hi = Math.min(lockR, cam.x + viewW()) - (e === hero ? 12 : 10);
     e.x = Math.max(lo, Math.min(e.x, Math.max(lo, hi)));   // 敌人也不许被打出场外（否则打不到、卡关）
   }
+  if (e === hero && arenaL != null) e.x = Math.max(arenaL + 12, e.x);   // Boss 战场地左边界
 }
 
 // ---------- 刷怪 ----------
@@ -1040,6 +1042,7 @@ function updateShots(dt) {
 }
 
 let gameT = 0;
+let arenaL = null;   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
 let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {
