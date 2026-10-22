@@ -53,9 +53,9 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .78 },        // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .6, kb: 40, spd: 230, life: .78 },        // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.18, .07, .28], dmg: 1.2, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
+    { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.18, .07, .28], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
 // 黄巾兵
@@ -367,10 +367,10 @@ function waves() {
 }
 
 // ---------- 主角 ----------
-function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
+function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false) {
   if (z.T.boss) {
     const hp0 = z.hp;
-    const res = Boss.hit(z, dmg, dir);
+    const res = Boss.hit(z, dmg, dir, ranged);
     if (z.hp < hp0) countComboHit();
     return res;
   }
@@ -989,7 +989,7 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15); hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
     }
   }
