@@ -1,7 +1,7 @@
 // 英雄榜：读取 /api/scores 显示「斩敌榜 / 速通榜」，通关后自动提交成绩
 (function () {
   const top = 20;
-  let wrap = null, body = null, title = null, tabRow = null, curTab = 'kills';
+  let wrap = null, body = null, title = null;
   let data = null, loading = false, err = null;
 
   const CSS = `
@@ -55,23 +55,13 @@
     wrap.innerHTML = `
       <div class="panel">
         <div class="hd"><h2>英雄榜</h2><button class="x" type="button">关闭</button></div>
-        <div class="tabs">
-          <button type="button" data-tab="kills" class="on">斩敌榜</button>
-          <button type="button" data-tab="speed">速通榜</button>
-        </div>
+        <div class="tabs"><button type="button" class="on" style="cursor:default">积分榜</button></div>
         <div class="body"></div>
-        <div class="foot">每局只能提交一次 · 只显示前 20 · 评分 = 击杀×10 + 时间分</div>
+        <div class="foot">评分 = 击杀×10 + 推进关卡×100 + 通关时间分 · 只显示前 20</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
-    tabRow = wrap.querySelector('.tabs');
     wrap.querySelector('.x').addEventListener('click', close);
-    tabRow.addEventListener('click', e => {
-      const b = e.target.closest('button[data-tab]'); if (!b) return;
-      curTab = b.dataset.tab;
-      tabRow.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-      render();
-    });
     wrap.addEventListener('pointerdown', e => e.stopPropagation());
     wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
     addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
@@ -81,24 +71,27 @@
     if (!body) return;
     if (loading) { body.innerHTML = '<div class="empty">正在读取榜单……</div>'; return; }
     if (err) { body.innerHTML = '<div class="empty">榜单暂时连不上<br><span style="font-size:12px">' + err + '</span></div>'; return; }
-    const list = (data && data[curTab]) || [];
+    const list = (data && data.list) || [];
     if (!list.length) {
-      body.innerHTML = '<div class="empty">还没有人上榜<br>通关一次就能留下名字</div>';
+      body.innerHTML = '<div class="empty">还没有人上榜<br>打一局就能留下名字</div>';
       return;
     }
     const rows = list.map((r, i) => {
+      const prog = r.win ? '通关' : (r.zone ? ('第 ' + r.zone + ' 关') : '—');
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
         <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
+        <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
         <td class="num">${r.kills} 杀</td>
+        <td class="num">${prog}</td>
         <td class="num">${fmtTime(r.t)}</td>
-        <td class="num">${r.score == null ? '-' : r.score}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
       </tr>`;
     }).join('');
     body.innerHTML = `<table>
-      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">击杀</th>
-      <th style="text-align:right">用时</th><th style="text-align:right">评分</th><th style="text-align:right">日期</th></tr></thead>
+      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
+      <th style="text-align:right">击杀</th><th style="text-align:right">进度</th>
+      <th style="text-align:right">用时</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 

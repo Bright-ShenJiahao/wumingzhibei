@@ -9,6 +9,7 @@ const SEASON = 's1';        // 换赛季只改这里（旧数据自动被忽略�
 const NAME_MAX = 8;
 const MIN_TIME = 90;        // 用时低于 90 秒视为异常（正常通关要几分钟）
 const MAX_KILLS = 200;
+const MAX_ZONE = 6;         // 一共 6 个区域
 const RATE_WINDOW = 60;     // 同一 IP 60 秒内最多 3 次提交
 const RATE_MAX = 3;
 const TOP_N = 20;
@@ -44,12 +45,17 @@ async function readAll(store) {
   return items.filter(x => x && x.season === SEASON && Number.isFinite(x.kills) && Number.isFinite(x.t));
 }
 
-// 评分 = 击杀 x10 + 时间分（480 秒内每快 1 秒 +0.6，最多 +240）
-function scoreOf(kills, t) {
-  return kills * 10 + Math.max(0, Math.min(240, Math.round((480 - t) * .6)));
+// 评分 = 击杀 x10 + 推进区域 x100 + 通关时间分（600 秒内每快 1 秒 +0.5，最多 +240）
+// 死掉也能上榜：没通关就没有时间分，只有击杀 + 推进
+function scoreOf(kills, t, zone, win) {
+  const progress = Math.max(0, Math.min(MAX_ZONE, zone)) * 100;
+  const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
+  return kills * 10 + progress + speed;
 }
 function pub(x) {
-  return { name: x.name, kills: x.kills, t: x.t, at: x.at, score: scoreOf(x.kills, x.t) };
+  const zone = Number.isFinite(x.zone) ? x.zone : (x.win ? MAX_ZONE : 0);
+  const win = !!x.win;
+  return { name: x.name, kills: x.kills, t: x.t, zone, win, at: x.at, score: scoreOf(x.kills, x.t, zone, win) };
 }
 
 export default async function handler(req, context) {
@@ -63,10 +69,10 @@ export default async function handler(req, context) {
       if (u.searchParams.get('admin') === ADMIN) {
         return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, at: x.at, cheat: x.cheat })) });
       }
-      const clean = all.filter(x => !x.cheat);
-      const kills = [...clean].sort((a, b) => b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
-      const speed = [...clean].sort((a, b) => a.t - b.t || b.kills - a.kills).slice(0, TOP_N);
-      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub), });
+      const clean = all.filter(x => !x.cheat).map(pub);
+      // 只按评分排；同分时击杀多者靠前，再同则用时短者靠前
+      const list = clean.sort((a, b) => b.score - a.score || b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
+      return json({ ok: true, season: SEASON, total: clean.length, list });
     } catch (e) {
       return json({ ok: false, error: 'read failed' }, 500);
     }
@@ -91,9 +97,13 @@ export default async function handler(req, context) {
   const name = cleanName(body.name);
   const kills = Math.round(Number(body.kills));
   const t = Math.round(Number(body.t));
+  const win = !!body.win;
+  const zone = Math.round(Number(body.zone)) || 0;
   if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
-  if (t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);
+  if (win && t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);      // 通关不可能这么快
+  if (!win && t < 10) return json({ ok: false, error: 'too fast' }, 400);
   if (kills < 0 || kills > MAX_KILLS) return json({ ok: false, error: 'bad kills' }, 400);
+  if (zone < 0 || zone > MAX_ZONE) return json({ ok: false, error: 'bad zone' }, 400);
 
   const ip = (context && context.ip) || req.headers.get('x-nf-client-connection-ip') || 'unknown';
   const now = Date.now();
@@ -103,7 +113,7 @@ export default async function handler(req, context) {
     const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
     if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
 
-    const rec = { name, kills, t, at: now, season: SEASON, ip, cheat: 0 };
+    const rec = { name, kills, t, zone, win, at: now, season: SEASON, ip, cheat: 0 };
     const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
     await store.set(key, JSON.stringify(rec));
     return json({ ok: true, key });

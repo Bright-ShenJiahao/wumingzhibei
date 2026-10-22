@@ -1087,13 +1087,15 @@ function update(dt) {
   if (!result && (won || deathResultReady)) {
     endT = runT;
     stampPlayed = false; pressAct = null;
-    result = { win: won, kills, time: endT, hit: hitsTaken, rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+    const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
+    result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
+      score: scoreOfRun(kills, endT, zoneNow, won), rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
-    if (won && !boardSent) {   // 通关：上报英雄榜（失败不影响游戏）
+    if (!boardSent) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT) });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won });
       }
     }
     uiBtns = [];
@@ -1374,6 +1376,12 @@ function deathLine() {
   const pool = DEATH_LINES[stage].concat(DEATH_LINES.any);
   return pool[Math.floor(Math.random() * pool.length)];
 }
+// 评分 = 击杀×10 + 推进关卡×100 + 通关时间分（最多 +240）；死掉没有时间分
+function scoreOfRun(kills, t, zone, win) {
+  const progress = Math.max(0, Math.min(6, zone)) * 100;
+  const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
+  return kills * 10 + progress + speed;
+}
 function rankOf(t) {
   if (hitsTaken === 0) return 'SSS';
   if (hitsTaken <= 3) return 'S';
@@ -1464,7 +1472,7 @@ function drawResult(HW, HH) {
   // 击倒 / 用时
   ctx.font = Math.round(sh * .058) + 'px ' + F;
   ctx.fillStyle = '#4a3a2a';
-  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time), px0 + pw * .50, sy + sh * .40);
+  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .40);
 
   // 台词
   const line = result.line || '';
