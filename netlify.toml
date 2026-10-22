@@ -4,3 +4,10 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+# manifest 必须以 JSON 类型返回，Chrome 才会当成"可安装的网页应用"
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
