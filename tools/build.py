@@ -69,6 +69,7 @@ assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: 'data:audio/mpeg;ba
                    for f in sorted(__import__('glob').glob(P('art', 'voice', '*.mp3')))}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
+assets['chapter2'] = {'battlefield': uri(P('art', 'bg', 'chapter2_battlefield.webp'))}
 # js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用
 import glob
 mods = sorted(glob.glob(P('js', '*.js')))

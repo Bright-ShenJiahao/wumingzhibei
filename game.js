@@ -1104,7 +1104,8 @@ function update(dt) {
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
       score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
-    if (!boardSent) {   // 通关或者阵亡都上报（失败不影响游戏）
+    const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
+    if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
@@ -1562,7 +1563,8 @@ function drawResult(HW, HH) {
   plank(0, '分享', 'share', false);
   plank(1, '返回首页', 'home', false);
   plank(2, '再来一局', 'restart', true);
-  plank(3, '下一关', 'next', false, true);   // 新关卡还没做，先灰着
+  const chapter2Locked = !window.CHAPTER2 || !CHAPTER2.canEnter();
+  plank(3, '第二章', 'next', false, chapter2Locked);
 
   // 复活按钮
   if (!result.win && !reviveUsed && raw > .8) {
@@ -1622,7 +1624,10 @@ document.addEventListener('pointerdown', e => {
         if (act === 'share') doShare();
         else if (act === 'revive') doRevive();
         else if (act === 'home') { if (window.TITLE) TITLE.show(); }
-        else if (act === 'next') { toast('下一关还在做，敬请期待'); }
+        else if (act === 'next') {
+          if (window.CHAPTER2 && !CHAPTER2.canEnter()) toast('第二章「黄巾决战」尚未开放');
+          else toast('下一关还在做，敬请期待');
+        }
         else reset();
       }, 140);
       return;
