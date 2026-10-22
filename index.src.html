@@ -25,12 +25,14 @@ button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border
 #help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 body.wzb-rogue #top,body.wzb-rogue #wp,body.wzb-rogue #joy,body.wzb-rogue .big,body.wzb-rogue #help{display:none}
 body.wzb-pro #help{display:none}
-#rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;align-items:center;justify-content:center;text-align:center;line-height:1.8}
+#rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
+#rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
 </style>__FONT_FACE__</head><body>
 <canvas id="c"></canvas>
-<div id="rot">📱↻<br>请把手机横过来玩</div>
+<div id="rot">📱↻<br>请把手机横过来玩
+  <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
 <div id="wp"><button data-w="staff">棍</button><button data-w="hammer">锤子</button><button data-w="stone">石子</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
