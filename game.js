@@ -386,7 +386,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
-  if (noviceMode()) dmg *= 2;   // 新手模式：敌人受到的伤害翻倍
+  if (noviceMode()) dmg *= 2;   // 教学模式：敌人受到的伤害翻倍
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }

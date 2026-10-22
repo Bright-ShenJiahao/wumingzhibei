@@ -9,12 +9,12 @@
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
-  let noviceMode = true;
+  let noviceMode = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
-  function readNovice() { try { const v = localStorage.getItem(NOVICE_KEY); return v == null ? true : v === '1'; } catch (e) { return true; } }
+  function readNovice() { try { const v = localStorage.getItem(NOVICE_KEY); return v == null ? false : v === '1'; } catch (e) { return true; } }
   function setNoviceClass() { document.body.classList.toggle('wzb-pro', !noviceMode); }
   function writeNovice(v) { noviceMode = !!v; setNoviceClass(); try { localStorage.setItem(NOVICE_KEY, noviceMode ? '1' : '0'); } catch (e) {} }
   S.name = readName();
@@ -171,7 +171,7 @@
       }
       #tStart:active { transform: translateY(4px); box-shadow: 0 0 0 #8a5f12, 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5); }
       #tNovice {
-        display:flex; align-items:center; justify-content:center; gap:8px; color:#f7e7c2;
+        display:flex; align-items:center; justify-content:flex-start; gap:7px; color:#f7e7c2;
         font-size:14px; font-weight:700; text-shadow:0 1px 3px #000; cursor:pointer;
       }
       #tNovice input { width:18px; height:18px; accent-color:#ffd86e; }
@@ -211,7 +211,7 @@
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
-    dom.novice = mk('label', 'tNovice', '新手模式');
+    dom.novice = mk('label', 'tNovice', '教学模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
     dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后显示操作、武器、蓄力和敌人提示';
     dom.board = mk('button', 'tBoard', '英雄榜');
@@ -277,7 +277,21 @@
     }
     if (dom.novice) {
       const s = dom.novice.style;
-      s.left = '0'; s.right = '0'; s.top = (L.btnY - Math.max(34, h * .06)) + 'px'; s.height = '28px';
+      const gapX = 10;
+      const nameRight = (w + L.inW) / 2;                 // 输入框右边缘
+      const space = w - nameRight;                        // 右边剩余空间
+      s.height = Math.max(28, L.inH) + 'px';
+      s.width = ''; s.right = '';
+      if (space > 118) {                                  // 右边放得下：放在输入框右边
+        s.left = (nameRight + gapX) + 'px';
+        s.top = L.inY + 'px';
+        s.width = Math.min(space - gapX - 8, 108) + 'px';   // 只占文字那么宽，别把整条右边都做成按钮
+        s.justifyContent = 'flex-start';
+      } else {                                            // 太窄：退回输入框下方居中
+        s.left = '0'; s.right = '0';
+        s.top = (L.inY + L.inH + 8) + 'px';
+        s.justifyContent = 'center';
+      }
     }
     if (dom.help) {
       const s = dom.help.style;

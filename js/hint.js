@@ -58,12 +58,12 @@
   // 放在"开始游戏"按钮上方，避免挡住它（横屏时底部空间很紧）
   function place() {
     if (!box) return;
-    const anchor = document.getElementById('tName') || document.getElementById('tStart');
+    const anchor = document.getElementById('tBoard') || document.getElementById('tName') || document.getElementById('tStart');
     const h = box.offsetHeight || 60;
     let top = (innerHeight - h) * 0.5;
     if (anchor) {
       const r = anchor.getBoundingClientRect();
-      top = Math.max(8, r.top - h - 10);   // 放在"输入名字"上方，不压住输入框/新手模式/开始游戏
+      top = Math.max(8, r.top - h - 10);   // 放在"输入名字"上方，不压住输入框/教学模式/开始游戏
     }
     box.style.top = Math.round(top) + 'px';
   }
