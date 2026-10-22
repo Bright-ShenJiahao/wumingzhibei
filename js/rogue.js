@@ -51,12 +51,15 @@
     document.body.classList.toggle('wzb-rogue', open);
   };
 
+  let inputLockT = 0;   // 面板刚弹出时短暂屏蔽点击，避免摇杆没松就选中卡
   function offerCards() {
     const all = CARDS.concat(CURSES);
     const avail = all.filter(c => (stacks[c.id] || 0) < MAX_STACK);
     offer = pickN(avail, 3);
     if (Math.random() < .3) offer = offer.concat(pickN(CURSES.filter(c => (stacks[c.id] || 0) < MAX_STACK), 1));
     picked = -1; anim = 0; setOpen(true);
+    inputLockT = performance.now() + 350;
+    try { if (typeof joy !== 'undefined' && joy) joy = null; } catch (e) {}   // 顺手松开摇杆
   }
   function grantReroll() {
     if (rerollToken) return false;
@@ -151,6 +154,7 @@
   function update(dt) { if (open) anim += dt; }
   addEventListener('pointerdown', e => {
     if (!open) return;
+    if (performance.now() < inputLockT) { e.preventDefault(); e.stopPropagation(); return; }   // 防误触
     if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) {
       e.preventDefault(); e.stopPropagation(); rerollOffer(); return;
     }

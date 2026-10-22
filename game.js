@@ -370,7 +370,7 @@ function heroUpdate(dt) {
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
-  if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); }
+  if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); if (over) return; }   // 死了就躺下，不许再接管输入
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
   if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
   let ix = (key.KeyD || key.ArrowRight ? 1 : 0) - (key.KeyA || key.ArrowLeft ? 1 : 0), iy = (key.KeyS || key.ArrowDown ? 1 : 0) - (key.KeyW || key.ArrowUp ? 1 : 0);
@@ -408,6 +408,7 @@ function heroUpdate(dt) {
     else moveEnt(h, ix * 15 * mvq * dt, 0);
     return;
   }
+  if (over) return;   // 死亡后彻底停止玩家操作
   if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (charging ? .65 : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
   else if (h.st !== 'idle') set(h, 'idle');
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
@@ -1573,12 +1574,6 @@ function drawZ(z) {
 function drawCheer(z) {
   const t = z.celebrateT || 0, bob = Math.abs(Math.sin(t * 7)) * 2.5, y = z.y - 20 - bob;
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  for (const side of [-1, 1]) {
-    ctx.beginPath(); ctx.moveTo(z.x + side * 4, y); ctx.quadraticCurveTo(z.x + side * 10, y - 7, z.x + side * 9, y - 13);
-    ctx.strokeStyle = '#34231b'; ctx.lineWidth = 3.5; ctx.stroke();
-    ctx.strokeStyle = '#d69b42'; ctx.lineWidth = 1.8; ctx.stroke();
-    ctx.fillStyle = '#fff0a8'; ctx.fillRect(z.x + side * 8 - 1, y - 15, 3, 3);
-  }
   for (let i = 0; i < 3; i++) {
     const phase = (t * 2.8 + i / 3) % 1, x = z.x + (i - 1) * 9 + Math.sin(t * 5 + i) * 2;
     const sy = y - 12 - phase * 14;
