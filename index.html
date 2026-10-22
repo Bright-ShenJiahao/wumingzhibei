@@ -583,7 +583,8 @@ body.wzb-pro #help{display:none}
 
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
-    const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t };
+    const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
+      zone: rec && rec.zone, win: !!(rec && rec.win) };   // 关卡和是否通关必须一起传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
