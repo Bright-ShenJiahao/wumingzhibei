@@ -118,7 +118,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 
 function reset() {
   if (window.ROGUE) ROGUE.reset();
-  atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
+  atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
@@ -145,7 +145,7 @@ const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
 let ghosts = [];                              // 残影
 const CHARGE_MS = 400, CHARGE_MAX_MS = 2000;
-let atkHeldSince = 0, charging = false, chargeFx = [];   // 攻击按住待判定 / 蓄力状态
+let atkHeldSince = 0, charging = false, chargeFx = [], chargeHitFx = [];   // 攻击按住待判定 / 蓄力状态
 let deathLandedAt = null, enemiesCelebrating = false;
 function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / CHARGE_MAX_MS)) : 0; }
 addEventListener('keydown', e => {
@@ -627,6 +627,8 @@ function updatePWaves(dt) {
   qiFx = qiFx.filter(q => q.t < q.T);
   for (const q of chargeFx) q.t += dt;
   chargeFx = chargeFx.filter(q => q.t < q.T);
+  for (const q of chargeHitFx) q.t += dt;
+  chargeHitFx = chargeHitFx.filter(q => q.t < q.T);
   for (const q of blessFx) q.t += dt;
   blessFx = blessFx.filter(q => q.t < q.T);
   for (const gh of ghosts) gh.t += dt;
@@ -686,6 +688,29 @@ function atkRelease() {
 function cancelCharge() { charging = false; atkHeldSince = 0; }
 
 // 蓄力重击：三种武器各不相同；命中只在释放时结算一次，动画仅作表现。
+function addChargeHitFx(kind, x, y, f = 1) {
+  const T = kind === 'hammer' ? .27 : .22;
+  chargeHitFx.push({ kind, x, y, f, t: 0, T });
+  if (chargeHitFx.length > 32) chargeHitFx.shift();
+}
+function drawChargeHitFx() {
+  for (const q of chargeHitFx) {
+    const im = IMG['ui_charge_hit_' + q.kind];
+    if (!im || !im.complete || !im.naturalWidth) continue;
+    const n = q.kind === 'staff' ? 4 : 3;
+    const frame = Math.min(n - 1, Math.floor(q.t / q.T * n));
+    const w = q.kind === 'staff' ? 58 : q.kind === 'hammer' ? 58 : 23;
+    const h = q.kind === 'staff' ? 45 : q.kind === 'hammer' ? 36 : 22;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1 - q.t / q.T) * 1.3);
+    ctx.translate(q.x, q.y);
+    if (q.kind === 'staff') ctx.scale(q.f, 1);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(im, frame * 160, 0, 160, 120, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+}
+
 function chargedAttack(power) {
   const h = hero, W = WEAP[weapon];
   h.q = 0; h.comboWin = 0;
@@ -697,7 +722,7 @@ function chargedAttack(power) {
   if (weapon === 'stone') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {
       const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force, spd: 240, life: .8 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [] });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
     }
     return;
   }
@@ -711,6 +736,7 @@ function chargedAttack(power) {
     if (inFan) {
       const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
       hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
+      addChargeHitFx(weapon, z.x, z.y - (weapon === 'hammer' ? 2 : 15), h.f);
     }
   }
   for (const v of villagers) {
@@ -989,7 +1015,8 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);
+      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
     }
   }
@@ -1153,6 +1180,7 @@ function draw() {
   chargeBtn.classList.toggle('charged', !!atkHeldSince && charging && chargeP >= 1);
   chargeBtn.style.setProperty('--charge-angle', (360 * chargeP) + 'deg');
   // 蓄力的角色光效统一由 drawChargeAura 负责（白色气焰），不再叠一层圆形光晕
+  drawChargeHitFx();
   // 蓄力重击的冲击环
   for (const q of chargeFx) {
     const k = Math.min(1, q.t / q.T), R2 = 20 + 90 * k, a2 = 1 - k;
