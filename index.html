@@ -546,13 +546,14 @@ body.wzb-pro #help{display:none}
         <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
         <td class="num">${r.kills} 杀</td>
         <td class="num">${prog}</td>
+        <td class="num">${r.cleared == null ? '—' : r.cleared}</td>
         <td class="num">${fmtTime(r.t)}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
       </tr>`;
     }).join('');
     body.innerHTML = `<table>
       <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
-      <th style="text-align:right">击杀</th><th style="text-align:right">进度</th>
+      <th style="text-align:right">击杀</th><th style="text-align:right">进度</th><th style="text-align:right">通关数</th>
       <th style="text-align:right">用时</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
@@ -1245,7 +1246,8 @@ function hit(z, dmg, dir, ranged) {
 
   function tick() {
     if (!box) ensure();
-    const shouldShow = isMobile() && !isStandalone() && !off() && document.body.classList.contains('wzb-title');
+    const landscape = innerWidth > innerHeight;   // 竖屏时游戏的"请横屏"提示更重要，别挡它
+    const shouldShow = isMobile() && !isStandalone() && !off() && landscape && document.body.classList.contains('wzb-title');
     const on = box.classList.contains('on');
     if (shouldShow && !on) { box.classList.add('on'); place(); addEventListener('resize', place); }
     else if (!shouldShow && on) box.classList.remove('on');

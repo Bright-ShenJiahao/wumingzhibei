@@ -74,7 +74,8 @@
 
   function tick() {
     if (!box) ensure();
-    const shouldShow = isMobile() && !isStandalone() && !off() && document.body.classList.contains('wzb-title');
+    const landscape = innerWidth > innerHeight;   // 竖屏时游戏的"请横屏"提示更重要，别挡它
+    const shouldShow = isMobile() && !isStandalone() && !off() && landscape && document.body.classList.contains('wzb-title');
     const on = box.classList.contains('on');
     if (shouldShow && !on) { box.classList.add('on'); place(); addEventListener('resize', place); }
     else if (!shouldShow && on) box.classList.remove('on');

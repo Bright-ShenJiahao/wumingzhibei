@@ -55,7 +55,8 @@ function scoreOf(kills, t, zone, win) {
 function pub(x) {
   const zone = Number.isFinite(x.zone) ? x.zone : (x.win ? MAX_ZONE : 0);
   const win = !!x.win;
-  return { name: x.name, kills: x.kills, t: x.t, zone, win, at: x.at, score: scoreOf(x.kills, x.t, zone, win) };
+  const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
+  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, at: x.at, score: scoreOf(x.kills, x.t, zone, win) };
 }
 
 export default async function handler(req, context) {
