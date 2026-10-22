@@ -1556,7 +1556,8 @@ function drawResult(HW, HH) {
   plank(0, '分享', 'share', false);
   plank(1, '返回首页', 'home', false);
   plank(2, '再来一局', 'restart', true);
-  plank(3, '下一关', 'next', false, true);   // 新关卡还没做，先灰着
+  const chapter2Locked = !window.CHAPTER2 || !CHAPTER2.canEnter();
+  plank(3, '第二章', 'next', false, chapter2Locked);
 
   // 复活按钮
   if (!result.win && !reviveUsed && raw > .8) {
@@ -1616,7 +1617,10 @@ document.addEventListener('pointerdown', e => {
         if (act === 'share') doShare();
         else if (act === 'revive') doRevive();
         else if (act === 'home') { if (window.TITLE) TITLE.show(); }
-        else if (act === 'next') { toast('下一关还在做，敬请期待'); }
+        else if (act === 'next') {
+          if (window.CHAPTER2 && !CHAPTER2.canEnter()) toast('第二章「黄巾决战」尚未开放');
+          else toast('下一关还在做，敬请期待');
+        }
         else reset();
       }, 140);
       return;
