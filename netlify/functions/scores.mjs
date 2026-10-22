@@ -34,7 +34,10 @@ async function readAll(store) {
     (list.blobs || []).map(async b => {
       try {
         const raw = await store.get(b.key);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const rec = JSON.parse(raw);
+        rec.key = b.key;                     // 内部 key（只在管理员接口返回）
+        return rec;
       } catch (e) { return null; }
     })
   );
