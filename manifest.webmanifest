@@ -1,0 +1,15 @@
+{
+  "name": "无名之辈·序章 幻想三国录",
+  "short_name": "无名之辈",
+  "description": "宽地面清版动作 + 肉鸽网页游戏",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1a1020",
+  "theme_color": "#1a1020",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
