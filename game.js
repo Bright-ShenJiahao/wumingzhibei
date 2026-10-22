@@ -119,6 +119,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
+  comboCount = 0; comboExpireAt = 0; comboPulseAt = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
@@ -367,8 +368,14 @@ function waves() {
 
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
-  if (z.T.boss) return Boss.hit(z, dmg, dir);
+  if (z.T.boss) {
+    const hp0 = z.hp;
+    const res = Boss.hit(z, dmg, dir);
+    if (z.hp < hp0) countComboHit();
+    return res;
+  }
   if (z.dead || z.air) return;
+  countComboHit();
   if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (z.T.priest && z.st === 'chant') {   // 打断念咒：这一轮白念，冷却照走
@@ -782,6 +789,7 @@ function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   n = Math.max(1, n * R_('take'));   // 锦囊：每层减伤 20%，最低受到 1 点
   hitsTaken++;   // 结算评价用：被打了多少下
+  comboCount = 0; comboExpireAt = 0;   // 主角实际受击，连击立即结束
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2; h.atk = null; cancelCharge();
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
@@ -1003,6 +1011,13 @@ function updateShots(dt) {
 }
 
 let gameT = 0;
+// HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
+let comboCount = 0, comboExpireAt = 0, comboPulseAt = 0;
+function countComboHit() {
+  comboCount = gameT < comboExpireAt ? comboCount + 1 : 1;
+  comboExpireAt = gameT + 1.2;
+  comboPulseAt = gameT;
+}
 function update(dt) {
   if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
   if (critT > 0) critT -= dt;
@@ -1292,6 +1307,7 @@ function draw() {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
+  drawCombo(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
     const tw = Math.max(...lines.map(line => ctx.measureText(line).width)), bh = lines.length * 23 + 10, by = 108 - (bh - 32) / 2;
@@ -1326,6 +1342,21 @@ function rankOf(t) {
   return 'E';
 }
 function toast(m) { toastMsg = m; toastT = 2.4; }
+function drawCombo(HW) {
+  const left = comboExpireAt - gameT;
+  if (comboCount < 2 || left <= 0) return;
+  const fade = Math.min(1, left / .18);
+  const pulse = Math.max(0, 1 - (gameT - comboPulseAt) / .16);
+  const label = comboCount + ' HIT';
+  ctx.save(); ctx.globalAlpha = fade;
+  ctx.font = 'bold 24px sans-serif';
+  const tw = ctx.measureText(label).width, w = tw + 20, x = HW - 14 - w, y = 50;
+  ctx.fillStyle = 'rgba(20,14,30,.76)'; ctx.fillRect(x, y, w, 34);
+  ctx.strokeStyle = 'rgba(255,216,110,.8)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, 33);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 4;
+  ctx.font = 'bold ' + (24 + pulse * 4) + 'px sans-serif'; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd86e';
+  ctx.strokeText(label, HW - 22, y + 17); ctx.fillText(label, HW - 22, y + 17); ctx.restore();
+}
 // ---------- 结算画面 ----------
 const eOut = t => 1 - Math.pow(1 - t, 3);
 const eBack = t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);   // 盖章回弹
