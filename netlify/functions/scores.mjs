@@ -46,12 +46,12 @@ async function readAll(store) {
 }
 
 // 评分 = 击杀 x10 + 通关数 x100 + 通关时间分（最多 +240）+ 无伤分（最多 +200）
-//   通关时间分：只有通关才算，(600 - 用时) x 0.5
+//   通关时间分：只有通关才算，(900 - 用时秒) x 0.4，不封顶、每秒都在变
 //   无伤分：每被打 1 下扣 20 分，200 分封顶
 // 死掉也能上榜：没通关就没有时间分
 function scoreOf(kills, t, cleared, win, hits) {
   const progress = Math.max(0, Math.min(MAX_ZONE, cleared)) * 100;
-  const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
+  const speed = win ? Math.max(0, Math.round((900 - t) * .4)) : 0;
   const safe = Math.max(0, 200 - Math.max(0, Math.min(99, hits || 0)) * 20);
   return kills * 10 + progress + speed + safe;
 }

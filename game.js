@@ -1383,11 +1383,11 @@ function deathLine() {
   const pool = DEATH_LINES[stage].concat(DEATH_LINES.any);
   return pool[Math.floor(Math.random() * pool.length)];
 }
-// 评分 = 击杀×10 + 通关数×100 + 通关时间分（最多 +240）+ 无伤分（最多 +200）
+// 评分 = 击杀×10 + 通关数×100 + 通关时间分（(900-秒)×0.4，不封顶）+ 无伤分（最多 +200）
 // 死掉没有时间分；每被打 1 下扣 20 分
 function scoreOfRun(kills, t, cleared, win, hits) {
   const progress = Math.max(0, Math.min(6, cleared)) * 100;
-  const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
+  const speed = win ? Math.max(0, Math.round((900 - t) * .4)) : 0;
   const safe = Math.max(0, 200 - Math.max(0, Math.min(99, hits || 0)) * 20);
   return kills * 10 + progress + speed + safe;
 }
