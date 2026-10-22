@@ -1510,28 +1510,28 @@ function drawResult(HW, HH) {
   const btnFade = Math.min(1, Math.max(0, (raw - .62) / .3));
   ctx.globalAlpha = btnFade;
   const gap = pw * .035;
-  const bw = (pw * .84 - gap * 2) / 3, bh = bw / 1.66;
+  const bw = (pw * .84 - gap * 3) / 4, bh = bw / 1.66;
   const byy = sy + sh * .755;
-  const bx0 = px0 + (pw - (bw * 3 + gap * 2)) / 2;
+  const bx0 = px0 + (pw - (bw * 4 + gap * 3)) / 2;
   // 先按最长的标签算一个统一字号，三块牌子字一样大
   let ufs = Math.round(bh * .46);
   ctx.font = ufs + 'px ' + BRUSH;
-  const longest = Math.max(...['分享', '返回首页', '再来一局'].map(t => ctx.measureText(t).width));
+  const longest = Math.max(...['分享', '返回首页', '再来一局', '下一关'].map(t => ctx.measureText(t).width));
   if (longest > bw * .78) ufs = Math.max(8, Math.floor(ufs * bw * .78 / longest));
-  const plank = (i, label, act, red) => {
+  const plank = (i, label, act, red, off) => {
     const x = bx0 + i * (bw + gap);
     const pressed = pressAct === act && performance.now() - pressAt < 140;
     const yy = byy + (pressed ? bh * .06 : 0);
     const img = IMG[red ? 'ui_btn_red' : 'ui_btn'];
     ctx.save();
-    ctx.globalAlpha = btnFade * (pressed ? .82 : 1);
+    ctx.globalAlpha = btnFade * (pressed ? .82 : 1) * (off ? .72 : 1);
     if (img && img.complete) ctx.drawImage(img, x, yy, bw, bh);
     else { ctx.fillStyle = red ? '#8e2f22' : '#7a5530'; ctx.fillRect(x, yy, bw, bh); }
     ctx.restore();
     ctx.save();
     const lfs = ufs;
     ctx.font = lfs + 'px ' + BRUSH;
-    ctx.fillStyle = red ? '#f6e2c0' : '#2b1a0c';
+    ctx.fillStyle = off ? 'rgba(52,40,26,.92)' : (red ? '#f6e2c0' : '#2b1a0c');
     ctx.fillText(label, x + bw / 2, yy + bh * .62 + lfs * .18);
     ctx.restore();
     uiBtns.push({ x, y: yy, w: bw, h: bh, act });
@@ -1539,6 +1539,7 @@ function drawResult(HW, HH) {
   plank(0, '分享', 'share', false);
   plank(1, '返回首页', 'home', false);
   plank(2, '再来一局', 'restart', true);
+  plank(3, '下一关', 'next', false, true);   // 新关卡还没做，先灰着
 
   // 复活按钮
   if (!result.win && !reviveUsed && raw > .8) {
@@ -1598,6 +1599,7 @@ document.addEventListener('pointerdown', e => {
         if (act === 'share') doShare();
         else if (act === 'revive') doRevive();
         else if (act === 'home') { if (window.TITLE) TITLE.show(); }
+        else if (act === 'next') { toast('下一关还在做，敬请期待'); }
         else reset();
       }, 140);
       return;

@@ -268,11 +268,12 @@
     }
     if (dom.board) {
       const s = dom.board.style;
-      const bw = Math.max(150, Math.min(230, w * .3));
+      const bw = Math.max(132, Math.min(190, w * .26));
+      const bh2 = Math.max(30, Math.min(38, h * .09));
       s.left = (w - bw) / 2 + 'px';
-      s.top = (L.btnY + L.btnH + Math.max(12, h * .022)) + 'px';
-      s.width = bw + 'px'; s.height = '36px';
-      s.fontSize = Math.max(13, Math.min(16, h * .034)) + 'px';
+      s.top = (L.inY - bh2 - Math.max(8, h * .022)) + 'px';   // 输入名字上方
+      s.width = bw + 'px'; s.height = bh2 + 'px';
+      s.fontSize = Math.max(12, Math.min(15, h * .032)) + 'px';
     }
     if (dom.novice) {
       const s = dom.novice.style;
@@ -418,7 +419,7 @@
   // ---------- 状态切换 ----------
   function setDomVisible(v) {
     const d = v ? '' : 'none';
-    for (const k of ['name', 'start', 'help', 'novice']) if (dom[k]) dom[k].style.display = d;
+    for (const k of ['name', 'start', 'help', 'novice', 'board']) if (dom[k]) dom[k].style.display = d;
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 
