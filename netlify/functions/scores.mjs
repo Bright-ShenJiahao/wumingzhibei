@@ -44,7 +44,7 @@ function pub(x) {
 }
 
 export default async function handler(req, context) {
-  const store = getStore(STORE);
+  const store = getStore({ name: STORE, consistency: 'strong' });
 
   if (req.method === 'GET') {
     try {
@@ -52,7 +52,8 @@ export default async function handler(req, context) {
       const clean = all.filter(x => !x.cheat);
       const kills = [...clean].sort((a, b) => b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
       const speed = [...clean].sort((a, b) => a.t - b.t || b.kills - a.kills).slice(0, TOP_N);
-      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub) });
+      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub),
+        _dbg: { raw: all.length, first: all[0] || null, keys: (await store.list({ prefix: 'run:' })).blobs.map(b => b.key).slice(0, 5) } });
     } catch (e) {
       return json({ ok: false, error: 'read failed' }, 500);
     }
