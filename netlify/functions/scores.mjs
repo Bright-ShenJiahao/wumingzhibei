@@ -73,7 +73,7 @@ export default async function handler(req, context) {
       const u = new URL(req.url);
       // 管理员视角：?admin=口令 → 附带内部 key，方便精确删除
       if (u.searchParams.get('admin') === ADMIN) {
-        return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, at: x.at, cheat: x.cheat })) });
+        return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, zone: x.zone, win: !!x.win, hits: x.hits, at: x.at, ip: x.ip, cheat: x.cheat })) });
       }
       const clean = all.filter(x => !x.cheat).map(pub);
       // 同一个名字只留最好的那一条（评分高的优先；同分比击杀，再比用时）

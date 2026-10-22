@@ -541,7 +541,7 @@ body.wzb-pro #help{display:none}
       return;
     }
     const rows = list.map((r, i) => {
-      const cl = r.cleared == null ? '—' : (r.win ? (r.cleared + ' 通关') : String(r.cleared));
+      const cl = r.cleared == null ? '—' : String(r.cleared);
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
         <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
