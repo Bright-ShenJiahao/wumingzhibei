@@ -57,7 +57,7 @@
         <div class="hd"><h2>英雄榜</h2><button class="x" type="button">关闭</button></div>
         <div class="tabs"><button type="button" class="on" style="cursor:default">积分榜</button></div>
         <div class="body"></div>
-        <div class="foot">评分 = 击杀×10 + 推进关卡×100 + 通关时间分 · 只显示前 20</div>
+        <div class="foot">评分 = 击杀×10 + 通关数×100 + 通关时间分 + 无伤分 · 只显示前 20</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
@@ -77,22 +77,23 @@
       return;
     }
     const rows = list.map((r, i) => {
-      const prog = r.win ? '通关' : (r.zone ? ('第 ' + r.zone + ' 关') : '—');
+      const cl = r.cleared == null ? '—' : (r.win ? (r.cleared + ' 通关') : String(r.cleared));
+      const hurt = r.hits == null ? '—' : (r.hits + ' 次');
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
         <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
         <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
         <td class="num">${r.kills} 杀</td>
-        <td class="num">${prog}</td>
-        <td class="num">${r.cleared == null ? '—' : r.cleared}</td>
+        <td class="num">${cl}</td>
         <td class="num">${fmtTime(r.t)}</td>
+        <td class="num" style="color:#c9b691;font-size:12.5px">${hurt}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
       </tr>`;
     }).join('');
     body.innerHTML = `<table>
       <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
-      <th style="text-align:right">击杀</th><th style="text-align:right">进度</th><th style="text-align:right">通关数</th>
-      <th style="text-align:right">用时</th><th style="text-align:right">日期</th></tr></thead>
+      <th style="text-align:right">击杀</th><th style="text-align:right">通关数</th>
+      <th style="text-align:right">用时</th><th style="text-align:right">受击</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 
@@ -120,7 +121,7 @@
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
     const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
-      zone: rec && rec.zone, win: !!(rec && rec.win) };   // 关卡和是否通关必须一起传，否则服务端算不出一样的评分
+      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

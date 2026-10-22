@@ -45,18 +45,23 @@ async function readAll(store) {
   return items.filter(x => x && x.season === SEASON && Number.isFinite(x.kills) && Number.isFinite(x.t));
 }
 
-// 评分 = 击杀 x10 + 推进区域 x100 + 通关时间分（600 秒内每快 1 秒 +0.5，最多 +240）
-// 死掉也能上榜：没通关就没有时间分，只有击杀 + 推进
-function scoreOf(kills, t, zone, win) {
-  const progress = Math.max(0, Math.min(MAX_ZONE, zone)) * 100;
+// 评分 = 击杀 x10 + 通关数 x100 + 通关时间分（最多 +240）+ 无伤分（最多 +200）
+//   通关时间分：只有通关才算，(600 - 用时) x 0.5
+//   无伤分：每被打 1 下扣 20 分，200 分封顶
+// 死掉也能上榜：没通关就没有时间分
+function scoreOf(kills, t, cleared, win, hits) {
+  const progress = Math.max(0, Math.min(MAX_ZONE, cleared)) * 100;
   const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
-  return kills * 10 + progress + speed;
+  const safe = Math.max(0, 200 - Math.max(0, Math.min(99, hits || 0)) * 20);
+  return kills * 10 + progress + speed + safe;
 }
 function pub(x) {
   const zone = Number.isFinite(x.zone) ? x.zone : (x.win ? MAX_ZONE : 0);
   const win = !!x.win;
+  const hits = Number.isFinite(x.hits) ? x.hits : 0;
   const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
-  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, at: x.at, score: scoreOf(x.kills, x.t, zone, win) };
+  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at,
+    score: scoreOf(x.kills, x.t, cleared, win, hits) };
 }
 
 export default async function handler(req, context) {
@@ -109,6 +114,7 @@ export default async function handler(req, context) {
   const t = Math.round(Number(body.t));
   const win = !!body.win;
   const zone = Math.round(Number(body.zone)) || 0;
+  const hits = Math.max(0, Math.min(99, Math.round(Number(body.hits)) || 0));
   if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
   if (win && t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);      // 通关不可能这么快
   if (!win && t < 10) return json({ ok: false, error: 'too fast' }, 400);
@@ -123,7 +129,7 @@ export default async function handler(req, context) {
     const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
     if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
 
-    const rec = { name, kills, t, zone, win, at: now, season: SEASON, ip, cheat: 0 };
+    const rec = { name, kills, t, zone, win, hits, at: now, season: SEASON, ip, cheat: 0 };
     const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
     await store.set(key, JSON.stringify(rec));
     return json({ ok: true, key });

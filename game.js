@@ -1096,13 +1096,13 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, Math.round(endT), zoneNow, won),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     if (!boardSent) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken });
       }
     }
     uiBtns = [];
@@ -1383,11 +1383,13 @@ function deathLine() {
   const pool = DEATH_LINES[stage].concat(DEATH_LINES.any);
   return pool[Math.floor(Math.random() * pool.length)];
 }
-// 评分 = 击杀×10 + 推进关卡×100 + 通关时间分（最多 +240）；死掉没有时间分
-function scoreOfRun(kills, t, zone, win) {
-  const progress = Math.max(0, Math.min(6, zone)) * 100;
+// 评分 = 击杀×10 + 通关数×100 + 通关时间分（最多 +240）+ 无伤分（最多 +200）
+// 死掉没有时间分；每被打 1 下扣 20 分
+function scoreOfRun(kills, t, cleared, win, hits) {
+  const progress = Math.max(0, Math.min(6, cleared)) * 100;
   const speed = win ? Math.max(0, Math.min(240, Math.round((600 - t) * .5))) : 0;
-  return kills * 10 + progress + speed;
+  const safe = Math.max(0, 200 - Math.max(0, Math.min(99, hits || 0)) * 20);
+  return kills * 10 + progress + speed + safe;
 }
 function rankOf(t) {
   if (hitsTaken === 0) return 'SSS';
