@@ -120,7 +120,7 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
-  arenaL = null; boardSent = false;
+  arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
@@ -128,7 +128,8 @@ function reset() {
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
+    const psc = k === 'cart' ? .5 : 1;   // 推车整体缩到一半
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: k === 'flag' ? 6 : pw * .75 * psc, h: ph * psc });
   }
   tutorialQueue = [
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
@@ -529,8 +530,13 @@ function updateDrops(dt) {
         if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
         continue;
       }
-      h.hp = Math.min(10, h.hp + d.heal);
-      floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+      if (h.hp >= 10) {                      // 满血：回不了血，改成加一点积分
+        runBonus += 10;
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+10分' });
+      } else {
+        h.hp = Math.min(10, h.hp + d.heal);
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+      }
       sfx('food', d.x);
     }
   }
@@ -1060,7 +1066,8 @@ function updateShots(dt) {
 
 let gameT = 0;
 let arenaL = null;
-let boardSent = false;   // 本局成绩是否已提交到英雄榜   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
+let boardSent = false;   // 本局成绩是否已提交到英雄榜
+let runBonus = 0;        // 满血吃补血道具等额外积分   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
 let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {
@@ -1106,14 +1113,14 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus,   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus });
       }
     }
     uiBtns = [];
@@ -1641,7 +1648,8 @@ document.addEventListener('pointerdown', e => {
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
-  const [, w, h] = ASSETS.props[p.g];
+  const [, w0, h0] = ASSETS.props[p.g];
+  const w = w0 * (p.sc || 1), h = h0 * (p.sc || 1);
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
