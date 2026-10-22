@@ -65,7 +65,8 @@ const TYPES = {
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
-  banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
+  priest:  { name: '黄巾方士', hp: 5, spd: 24, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速
+banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -80,16 +81,16 @@ const WAVES = [
     extra: ['blade', 'grunt'], extraAt: 2 },
   // 区域 4：弓箭手固定 2 个
   { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
-    core: ['grunt', 'blade', 'archer', 'archer', 'grunt'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
-    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0], sleepy: 2 },
+    core: ['grunt', 'blade', 'archer', 'archer', 'grunt', 'priest'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
+    extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0, 5], sleepy: 2 },
   // 区域 5：老卒首次登场
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
-    core: ['elite'], budget: 9, sleepy: 3, pool: ['grunt', 'blade', 'slinger', 'archer'],
+    core: ['elite', 'priest'], budget: 9, sleepy: 3, sleepers: [0, 1], pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
   { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
 ];
 // 威胁值：随机填充时按点数抽兵
-const THREAT = { grunt: 1, blade: 2, slinger: 2, archer: 2, banner: 2, elite: 4 };
+const THREAT = { priest: 3, grunt: 1, blade: 2, slinger: 2, archer: 2, banner: 2, elite: 4 };
 function rollFill(pool, budget) {
   const out = [];
   let left = budget;
@@ -182,6 +183,20 @@ function moveEnt(e, dx, dy) {
 // ---------- 刷怪 ----------
 function viewW() { return cv.width / (cv.height / M.viewH); }
 // 召唤援军弓箭手：左右各 3 个，射 2 轮就撤
+function priestCast(z) {
+  sfx('stamp', z.x); shake = Math.max(shake, .08);
+  blessFx.push({ x: z.x, y: z.y, t: 0, T: .45 });
+  for (const o of zs) {
+    if (o === z || o.dead || o.T.boss) continue;
+    if (Math.abs(o.x - z.x) > 120 || Math.abs(o.y - z.y) > 60) continue;
+    if (o.hp < o.T.hp) {
+      o.hp = Math.min(o.T.hp, o.hp + 2);
+      floaters.push({ x: o.x, y: o.y - 26, t: 0, txt: '+2', heal: true });
+    }
+    o.blessT = 4;                        // 只刷新时间，不叠层
+  }
+}
+
 function summonArchers(bz) {
   say('管亥：「弓箭手，放箭！」', 2.4);
   sfx('bladeAlert', bz.x);
@@ -322,6 +337,11 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
   if (z.dead || z.air) return;
   if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
+    if (z.T.priest && z.st === 'chant') {   // 打断念咒：这一轮白念，冷却照走
+      set(z, 'hurt'); z.t = 0; z.chantCd = 8; z.chant = 0;
+      sfx('crack', z.x);
+      for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
+    }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
@@ -556,6 +576,8 @@ function updatePWaves(dt) {
   qiFx = qiFx.filter(q => q.t < q.T);
   for (const q of chargeFx) q.t += dt;
   chargeFx = chargeFx.filter(q => q.t < q.T);
+  for (const q of blessFx) q.t += dt;
+  blessFx = blessFx.filter(q => q.t < q.T);
   for (const gh of ghosts) gh.t += dt;
   ghosts = ghosts.filter(gh => gh.t < .45);
 }
@@ -587,6 +609,7 @@ function drawPropFx() {
   ctx.globalAlpha = 1;
 }
 let qiFx = [];   // 老卒的扇形剑气特效
+let blessFx = []; // 方士施法成功的黄圈
 // 攻击按下先等待：短按松开才出普通攻击，长按到 0.4 秒后转为蓄力。
 function atkPress() {
   if (over) { if (result && gameT >= result.born) reset(); return; }
@@ -744,7 +767,22 @@ function zUpdate(z, dt) {
       if (hero.inv <= 0 && Math.abs(hx) < 60 && Math.abs(hero.y - z.y) < 20 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
-  if (z.adds != null) {                 // Boss 援军弓箭手：进场、交错齐射两轮、原路撤离
+  if (T.priest) {                        // 方士：远离玩家 → 念咒 2 秒 → 回血+加速，念咒可被打断
+    if (z.chantCd == null) z.chantCd = 1.5;
+    z.chantCd -= dt;
+    if (z.st === 'chant') {
+      if (z.t >= 2) { priestCast(z); set(z, 'idle'); z.chantCd = 8; }
+      return;
+    }
+    if (z.chantCd <= 0 && Math.abs(z.tok ? 1 : 1)) { set(z, 'chant'); return; }
+    const pdx = hero.x - z.x;
+    if (pdx) z.f = Math.sign(pdx);
+    const keep = 100;
+    if (Math.abs(pdx) < keep) { z.moving = true; moveEnt(z, -Math.sign(pdx) * T.spd * dt, 0); }
+    else z.moving = false;
+    return;
+  }
+  if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
     if (z.dead || z.air || z.stun > 0 || z.daze > 0) { z.adds = null; return; }
     if (z.st === 'addwalk') {
       const dx = z.standX - z.x;
@@ -810,7 +848,8 @@ function zUpdate(z, dt) {
   }
   const dx = hero.x - z.x, dy = hero.y - z.y;
   // 附近有旗手：小兵移速 +20%、出手快 20%（旗手优先杀，这是本作第一个"先打谁"的决策）
-  const buff = (bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0;
+  const buff = ((bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0) || (z.blessT > 0 ? 1 : 0);
+  if (z.blessT > 0) z.blessT -= dt;
   if (z.st === 'wind') {
     // 完美闪避：敌人刀落下前 0.18 秒内翻滚 → 慢动作 + 1 秒暴击窗
     if (!z.pd && z.st === 'wind') {
@@ -986,6 +1025,7 @@ function zFrame(z) {
   if (z.st === 'wake') return 'idle';
   if (z.stun > 0 || z.daze > 0) return 'hurt';
   if (z.st === 'wind') return 'wind';
+  if (z.st === 'chant') return 'chant';
   if (z.st === 'addwalk' || z.st === 'addleave') return Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2';
   if (z.st === 'addaim') return 'wind';
   if (z.st === 'addvolley') return z.t < .34 ? 'strike' : 'idle';
@@ -1044,7 +1084,40 @@ function draw() {
     ctx.stroke();
     ctx.restore();
   }
-  // 老卒的月牙剑气：细弧、双层冷白刀光与短拖尾
+  // 方士：念咒光圈 + 头顶符文；施法成功时扫一圈黄光
+  for (const o of zs) {
+    if (o.dead || o.st !== 'chant') continue;
+    const pulse = .5 + .5 * Math.sin(performance.now() / 160);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,216,74,' + (.35 + .2 * pulse) + ')'; ctx.lineWidth = 2;
+    ctx.fillStyle = 'rgba(255,216,74,' + (.06 + .05 * pulse) + ')';
+    ctx.beginPath(); ctx.ellipse(o.x, o.y, 120, 48, 0, 0, 7); ctx.fill(); ctx.stroke();
+    const t = performance.now() / 420;
+    for (let k = 0; k < 4; k++) {
+      const a = t + k * 1.57, rx = Math.cos(a) * 10, ry = Math.sin(a) * 4;
+      ctx.fillStyle = '#ffd84a';
+      ctx.fillRect(Math.round(o.x + rx - 2), Math.round(o.y - 46 + ry - 2), 4, 6);
+      ctx.fillStyle = '#b3372a';
+      ctx.fillRect(Math.round(o.x + rx - 1), Math.round(o.y - 45 + ry - 1), 1, 4);
+    }
+    ctx.restore();
+  }
+  for (const q of blessFx) {
+    const k = Math.min(1, q.t / q.T);
+    ctx.save(); ctx.globalAlpha = 1 - k;
+    ctx.strokeStyle = 'rgba(255,216,74,.9)'; ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.ellipse(q.x, q.y, 40 + 80 * k, 16 + 32 * k, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  // 被加持的敌人脚下有一圈淡黄光
+  for (const o of zs) {
+    if (o.dead || !(o.blessT > 0)) continue;
+    ctx.save(); ctx.globalAlpha = Math.min(1, o.blessT / 1.2) * .35;
+    ctx.fillStyle = '#ffd84a';
+    ctx.beginPath(); ctx.ellipse(o.x, o.y - 1, 14, 5, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  // 老卒的白色扇形剑气
   for (const q of qiFx) {
     const k = Math.min(1, q.t / q.T), R = 16 + 32 * k, a = 1 - k;
     const lw = 9 * (1 - k) + 1;
