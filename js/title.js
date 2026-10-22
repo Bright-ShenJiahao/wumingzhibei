@@ -5,14 +5,20 @@
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
+  const NOVICE_KEY = 'wzb-novice-mode';
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
+  let noviceMode = true;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
+  function readNovice() { try { const v = localStorage.getItem(NOVICE_KEY); return v == null ? true : v === '1'; } catch (e) { return true; } }
+  function setNoviceClass() { document.body.classList.toggle('wzb-pro', !noviceMode); }
+  function writeNovice(v) { noviceMode = !!v; setNoviceClass(); try { localStorage.setItem(NOVICE_KEY, noviceMode ? '1' : '0'); } catch (e) {} }
   S.name = readName();
+  noviceMode = readNovice();
 
   // ---------- 演示用的迷你世界（离屏 canvas） ----------
   const D = { camX: 0, t: 0, hero: null, foes: [], props: [], loop: 0, over: 0 };
@@ -142,7 +148,7 @@
       body.wzb-title #wp button[data-w] { display: none !important; }
       body.wzb-intro #wp, body.wzb-intro #bMute { display: none !important; }
       #tStyle0 { display: none; }
-      #tName, #tStart, #tHelp {
+      #tName, #tStart, #tHelp, #tNovice {
         position: fixed; z-index: 7; font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
         box-sizing: border-box; -webkit-tap-highlight-color: transparent;
       }
@@ -164,6 +170,11 @@
         cursor: pointer; transition: transform .06s, box-shadow .06s;
       }
       #tStart:active { transform: translateY(4px); box-shadow: 0 0 0 #8a5f12, 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5); }
+      #tNovice {
+        display:flex; align-items:center; justify-content:center; gap:8px; color:#f7e7c2;
+        font-size:14px; font-weight:700; text-shadow:0 1px 3px #000; cursor:pointer;
+      }
+      #tNovice input { width:18px; height:18px; accent-color:#ffd86e; }
       #tHelp {
         background: rgba(20,14,30,.55); border: 1.5px solid rgba(255,255,255,.5); border-radius: 8px;
         color: #fff; font-size: 15px; font-weight: 700; text-shadow: 0 1px 2px #000; cursor: pointer;
@@ -188,11 +199,15 @@
       }
     `;
     document.head.appendChild(st);
+    setNoviceClass();
     const mk = (tag, id, text) => { const e = document.createElement(tag); e.id = id; if (text) e.textContent = text; document.body.appendChild(e); return e; };
     dom.name = mk('input', 'tName'); dom.name.type = 'text'; dom.name.maxLength = 8;
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
+    dom.novice = mk('label', 'tNovice', '新手模式');
+    dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
+    dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后显示操作、武器、蓄力和敌人提示';
     dom.help = mk('button', 'tHelp', '?');
     dom.help.title = '操作说明'; dom.help.setAttribute('aria-label', '操作说明');
     dom.tip = mk('div', 'tTip', '请输入名字');
@@ -200,6 +215,8 @@
     dom.panel.innerHTML = `<h3>操作说明</h3>
       <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器· R 重来</div>
       <div><b>手机</b>：左下摇杆移动 · 右下「攻击」短按出招、长按蓄力；棍四连击，锤/石子三连击 · 「翻滚」闪避 · 右上换武器</div>
+      <div><b>武器</b>：棍攻击范围大、四连击；锤重击可打断；石子可远程攻击。</div>
+      <div><b>蓄力</b>：按住攻击 0.4 秒开始蓄力，最多 2 秒；受击会打断，松开释放。</div>
       <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
@@ -210,6 +227,7 @@
     });
     dom.name.addEventListener('input', () => { if (dom.name.value.length > 8) dom.name.value = dom.name.value.slice(0, 8); });
     dom.start.addEventListener('click', start);
+    dom.noviceInput.addEventListener('change', () => writeNovice(dom.noviceInput.checked));
     dom.help.addEventListener('click', () => { helpOpen = !helpOpen; dom.panel.style.display = helpOpen ? 'block' : 'none'; });
     dom.panel.addEventListener('click', () => { helpOpen = false; dom.panel.style.display = 'none'; });
     // 首次进入：把白闪淡出
@@ -227,7 +245,7 @@
     L.inY = h * .64;
     L.btnW = Math.max(190, Math.min(300, w * .38));
     L.btnH = Math.max(44, Math.min(58, h * .12));
-    L.btnY = L.inY + L.inH + Math.max(12, h * .035);
+    L.btnY = L.inY + L.inH + Math.max(42, h * .075);
     L.tvX = w * TV.x; L.tvY = h * TV.y; L.tvW = w * TV.w; L.tvH = h * TV.h;
     if (dom.name) {
       const s = dom.name.style;
@@ -239,6 +257,10 @@
       s.left = (w - L.btnW) / 2 + 'px'; s.top = L.btnY + 'px';
       s.width = L.btnW + 'px'; s.height = L.btnH + 'px';
       s.fontSize = Math.round(Math.max(16, Math.min(24, h * .045))) + 'px';
+    }
+    if (dom.novice) {
+      const s = dom.novice.style;
+      s.left = '0'; s.right = '0'; s.top = (L.btnY - Math.max(34, h * .06)) + 'px'; s.height = '28px';
     }
     if (dom.help) {
       const s = dom.help.style;
@@ -341,8 +363,10 @@
     c.fillText('序章 · 幻想三国录', pad + 4, y + L.sub * 1.9);
     // 角落的小字：操作提示（电脑/手机自适应）
     const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
-    c.font = '600 12px "PingFang SC",sans-serif'; c.fillStyle = 'rgba(242,230,201,.5)';
-    c.fillText(coarse ? '手机：左下摇杆移动 · 右下攻击/翻滚' : 'WASD 移动 · J 攻击 · K 翻滚 · 1/2/3 换武器', pad, L.h - 10);
+    if (noviceMode) {
+      c.font = '600 12px "PingFang SC",sans-serif'; c.fillStyle = 'rgba(242,230,201,.5)';
+      c.fillText(coarse ? '手机：左下摇杆移动 · 右下攻击/翻滚' : 'WASD 移动 · J 攻击 · K 翻滚 · 1/2/3 换武器', pad, L.h - 10);
+    }
     c.restore();
   }
 
@@ -378,7 +402,7 @@
   // ---------- 状态切换 ----------
   function setDomVisible(v) {
     const d = v ? '' : 'none';
-    for (const k of ['name', 'start', 'help']) if (dom[k]) dom[k].style.display = d;
+    for (const k of ['name', 'start', 'help', 'novice']) if (dom[k]) dom[k].style.display = d;
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 
@@ -426,6 +450,7 @@
     blocks: () => S.mode !== 'game',            // true = 游戏逻辑不推进
     draw: () => draw(),                          // 返回 true = 这一帧由标题界面接管
     playerName: () => S.name,
+    noviceMode: () => noviceMode,
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏
@@ -440,6 +465,7 @@
   // ---------- 初始化 ----------
   function boot() {
     build();
+    setNoviceClass();
     document.body.classList.add('wzb-title');
     bgHome = new Image(); bgHome.src = (typeof ASSETS !== 'undefined' && ASSETS.title) || BG.far;
     // 绿幕遮罩：整张图尺寸，绿幕处不透明

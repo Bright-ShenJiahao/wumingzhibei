@@ -2,7 +2,7 @@
 """把某个角色的精灵调色板对齐到参考角色，并可选做水平加宽。
 
 用法：
-    python tools/match_palette.py banner --ref grunt blade --widen 1.12
+    python tools/match_palette.py elite --ref grunt blade --widen 1.12
 
 为什么要这个：pixelize_sheet.py 是按每张图各自量化调色板的，
 不同批次生成的图会带来不同的色系（比如橄榄黄 vs 亮黄），

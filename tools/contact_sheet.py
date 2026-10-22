@@ -2,7 +2,7 @@
 改完任何人物美术后必须跑一次，并亲眼看输出图，确认：帧名和动作对得上、大小和别的兵一致、没有残缺/杂点/绿边。
 
 用法：python3 tools/contact_sheet.py 角色名 [输出路径=build/contact_<角色>.png]
-例：  python3 tools/contact_sheet.py banner
+例：  python3 tools/contact_sheet.py grunt
 """
 import json, os, sys
 from PIL import Image, ImageDraw, ImageFont

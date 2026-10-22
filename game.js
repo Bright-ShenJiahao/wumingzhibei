@@ -23,7 +23,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_POOL = ['hay', 'hay', 'well', 'cart'];   // 去掉地上的黄旗道具：和旗手的大旗太像，容易看成一个人拿两面旗   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
+const PROP_POOL = ['hay', 'hay', 'well', 'cart'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 // 连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。棍四段，锤和石子三段。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
@@ -65,8 +65,7 @@ const TYPES = {
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
-  priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 比小兵快，跑位躲后排   // 不打人，念咒奶人+加速
-banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
+  priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -75,7 +74,7 @@ const WAVES = [
   { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！',
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
     extra: ['grunt', 'blade'], extraAt: 2, extraSay: '后面又冲上来一队！' },
-  // 区域 3：旗手首次登场（固定 1 个），投石手固定 2 个
+  // 区域 3：投石手首次登场
   { say: '投石手在远处扔石头 —— 别站在同一条线上，用 K 翻滚躲！',
     core: ['grunt', 'slinger', 'slinger'], budget: 5, pool: ['grunt', 'blade', 'slinger'],
     extra: ['blade', 'grunt'], extraAt: 2 },
@@ -90,7 +89,7 @@ const WAVES = [
   { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
 ];
 // 威胁值：随机填充时按点数抽兵
-const THREAT = { priest: 3, grunt: 1, blade: 2, slinger: 2, archer: 2, banner: 2, elite: 4 };
+const THREAT = { priest: 3, grunt: 1, blade: 2, slinger: 2, archer: 2, elite: 4 };
 function rollFill(pool, budget) {
   const out = [];
   let left = budget;
@@ -108,8 +107,9 @@ let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, pwaves = [];   // 掉落物 / 飘字 / 复活是否已用 / 棍子冲击波
 let villagers = [], villagersStarted = false, villagersRewarded = false, villagersThanksT = -1;
-let extraDone = false, bannerZ = null;
-let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）                // 波中波是否补过 / 场上活着的旗手
+let extraDone = false;
+let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）
+let tutorialQueue = [];
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 读锦囊数值（没抽卡时就是默认值）
 const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
@@ -120,7 +120,7 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; deathLandedAt = null; enemiesCelebrating = false;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; bannerZ = null; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -128,9 +128,15 @@ function reset() {
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
     props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
+  tutorialQueue = window.TITLE && TITLE.noviceMode && TITLE.noviceMode() ? [
+    { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
+    { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
+    { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
+  ] : [];
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
+function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }
 
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
@@ -346,7 +352,7 @@ function waves() {
       }
       spawn(u, sx, y, sleeping);
     });
-    say(W.say, 4);
+    if (W.say && noviceMode()) say(W.say, 4);
     if (gateI === 0) startVillagers(lockR);
   }
 }
@@ -883,13 +889,13 @@ function zUpdate(z, dt) {
     }
   }
   const dx = hero.x - z.x, dy = hero.y - z.y;
-  // 附近有旗手：小兵移速 +20%、出手快 20%（旗手优先杀，这是本作第一个"先打谁"的决策）
-  const buff = ((bannerZ && bannerZ !== z && !z.T.banner && Math.abs(bannerZ.x - z.x) < 170 && Math.abs(bannerZ.y - z.y) < 70) ? 1 : 0) || (z.blessT > 0 ? 1 : 0);
+  // 方士的加持：移速/出手 +20%，持续 4 秒（只刷新不叠加）
+  const buff = (z.blessT > 0) ? 1 : 0;
   if (z.blessT > 0) z.blessT -= dt;
   if (z.st === 'wind') {
     // 完美闪避：敌人刀落下前 0.18 秒内翻滚 → 慢动作 + 1 秒暴击窗
     if (!z.pd && z.st === 'wind') {
-      const rem = T.wind * (buff ? .8 : 1) - z.t;
+      const rem = T.wind - z.t;
       if (rem > 0 && rem < .18 && hero.st === 'roll' && hero.t < .22 && pdCd <= 0 &&
           Math.abs(z.x - hero.x) < 130 && Math.abs(z.y - hero.y) < 40) {
         z.pd = true; pdCd = 1.5; slowT = .3; critT = 1.0;
@@ -897,7 +903,7 @@ function zUpdate(z, dt) {
         for (let i = 1; i <= 3; i++) ghosts.push({ x: hero.x - hero.rx * i * 9, y: hero.y - (hero.ry || 0) * i * 9, f: hero.f, a: .45 - i * .1, t: 0 });
       }
     }
-    if (z.t > T.wind * (buff ? .8 : 1)) {
+    if (z.t > T.wind) {
       set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
       if (T.ranged === 'stone') eshots.push({ k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
       else if (T.ranged === 'fire') { const tx = hero.x, ty = hero.y; eshots.push({ k: 'fire', x0: z.x + z.f * 16, y0: z.y, tx, ty, t: 0, T: .9 }); }
@@ -989,7 +995,6 @@ function update(dt) {
   // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
   const done = result && gameT >= result.born;
   if (!done) {
-    bannerZ = zs.find(z => !z.dead && z.T.banner) || null;   // 场上活着的旗手（给周围小兵加速）
     heroUpdate(dt);
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
@@ -1005,6 +1010,7 @@ function update(dt) {
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
+  if (msgT <= 0 && tutorialQueue.length && noviceMode()) { const tip = tutorialQueue.shift(); say(tip.text, tip.time); }
   if (toastT > 0) toastT -= dt;
   // 失败时等主角落地、敌人庆祝一会儿后再显示结算。
   const deathResultReady = over && deathLandedAt != null && gameT >= deathLandedAt + 1.5;
@@ -1251,7 +1257,12 @@ function draw() {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
-  if (msgT > 0) { ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,14,30,.75)'; const tw = ctx.measureText(msg).width; ctx.fillRect(HW / 2 - tw / 2 - 12, 108, tw + 24, 32); ctx.fillStyle = '#ffd86e'; ctx.fillText(msg, HW / 2, 130); ctx.textAlign = 'left'; }
+  if (msgT > 0) {
+    const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
+    const tw = Math.max(...lines.map(line => ctx.measureText(line).width)), bh = lines.length * 23 + 10, by = 108 - (bh - 32) / 2;
+    ctx.fillStyle = 'rgba(20,14,30,.78)'; ctx.fillRect(HW / 2 - tw / 2 - 12, by, tw + 24, bh);
+    ctx.fillStyle = '#ffd86e'; lines.forEach((line, i) => ctx.fillText(line, HW / 2, by + 22 + i * 23)); ctx.textAlign = 'left';
+  }
   drawResult(HW, HH);
 }
 
@@ -1571,85 +1582,10 @@ function drawHero() {
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
-// ---------- 旗手的大旗：旗杆、横杆、枪头用代码画，旗面贴图切成横条做随风飘动 ----------
-// 每帧旗杆的位置：图里人物手上已经画了一截杆子，代码画的长旗杆沿着这截杆子延长，两者重合成一根。
-// [杆底 x, 杆底 y（精灵像素，取画出来那截杆子靠"杆底"一端）, 倾角（度，0=竖直向上，正=杆顶朝前，负=朝后）]
-// 每帧旗杆底部 = 前手（朝右那只手）的精灵像素坐标，从新旗手图上量出来的
-// 每帧旗杆底部 = 前手（朝右那只手）的精灵像素坐标，从旗手图上量出来的
-const BANNER_POLE = {
-  idle: [33, 28, 0],
-  walk1: [33, 24, 0],
-  walk2: [34, 28, 0],
-  wind: [41, 25, -80],
-  strike: [45, 21, -50],
-  hurt: [38, 28, 0],
-};
-const BANNER = { pole: 66, clothW: 15, clothH: 31, bar: 19, w: 1.3 };   // 世界单位：旗杆约 2.3 个人高
-let flagDark = null;
-function bannerTex() {
-  const tex = IMG.ui_flag_cloth; if (!tex || !tex.complete || !tex.width) return null;
-  if (!flagDark) {   // 预先做一张压暗的旗面，用来画布料褶皱的背光面
-    const c = document.createElement('canvas'); c.width = tex.width; c.height = tex.height; const g = c.getContext('2d');
-    g.drawImage(tex, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(60,30,10,.55)'; g.fillRect(0, 0, c.width, c.height); flagDark = c;
-  }
-  return tex;
-}
-function drawBanner(z, alpha) {
-  if (!bannerTex()) return;
-  const fr = zFrame(z), P = BANNER_POLE[fr], ch = CH[z.sprite] && CH[z.sprite][fr];
-  const t = performance.now() / 1000 + (z.slot || 0) * .7;
-  ctx.save(); ctx.globalAlpha = alpha * (z.st === 'gone' ? .8 : 1);
-  if (!P || !ch) {   // 被打飞/倒地：旗掉在地上，躺平
-    if (z.flagX == null) { z.flagX = z.x; z.flagY = z.y; }
-    ctx.translate(z.flagX - z.f * 30, z.flagY + 1); ctx.rotate(Math.PI / 2 * z.f);
-    flagPole(0, 0, BANNER.pole); clothStrips(0, -BANNER.pole + 4, t, 0, 0, true);
-    ctx.restore(); return;
-  }
-  z.flagX = null;
-  const k = PX * (z.sc || 1);
-  const bx = z.x + (P[0] - ch.ax) * k * z.f, by = z.y - (z.z || 0) - (ch.ay - P[1]) * k;
-  const ang = P[2] * Math.PI / 180 * z.f;
-  // 旗杆转动的速度：挥动时旗面被甩向反方向
-  const prev = z.flagAng == null ? ang : z.flagAng; z.flagSwing = ((z.flagSwing || 0) * .85) + (ang - prev) * 6; z.flagAng = ang;
-  ctx.save(); ctx.translate(bx, by); ctx.rotate(ang); flagPole(0, 0, BANNER.pole); ctx.restore();
-  // 旗面挂在横杆下，受重力始终朝下垂（字保持正向），风和挥动让它摆
-  const tx = bx + Math.sin(ang) * (BANNER.pole - 4), ty = by - Math.cos(ang) * (BANNER.pole - 4);
-  const lean = -z.f * (z.moving ? 1 : .4) - z.flagSwing;
-  clothStrips(tx, ty, t, z.moving ? 1.4 : 1, lean, false);
-  ctx.restore();
-}
-// 以杆底为原点、杆朝上（-y）画旗杆、枪头、横杆
-function flagPole(x, y, L) {
-  const top = y - L, w = BANNER.w, P = BANNER;
-  ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - w / 2 - .4, top, w + .8, L);
-  ctx.fillStyle = '#7a4e2a'; ctx.fillRect(x - w / 2, top, w, L);
-  ctx.fillStyle = '#a8743f'; ctx.fillRect(x - w / 2, top, w * .35, L);
-  ctx.fillStyle = '#2a2430'; ctx.beginPath(); ctx.moveTo(x, top - 7); ctx.lineTo(x - 2, top - 1); ctx.lineTo(x + 2, top - 1); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#b8bcc8'; ctx.beginPath(); ctx.moveTo(x, top - 6); ctx.lineTo(x - 1.1, top - 1.4); ctx.lineTo(x + .4, top - 1.4); ctx.closePath(); ctx.fill();
-  const by = top + 4;
-  ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - P.bar / 2, by - 1.1, P.bar, 2.2);
-  ctx.fillStyle = '#7a4e2a'; ctx.fillRect(x - P.bar / 2 + .4, by - .6, P.bar - .8, 1.2);
-}
-// 旗面：(cx, top) 是横杆中点，切成横条往下垂，越往下摆幅越大
-function clothStrips(cx, top, t, sway, lean, limp) {
-  const tex = IMG.ui_flag_cloth, N = 28, w = BANNER.clothW, h = BANNER.clothH, sh = tex.height / N;
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  for (let i = 0; i < N; i++) {
-    const v = i / N, ph = t * 4.2 - v * 5.5;
-    const off = limp ? 0 : (Math.sin(ph) * 2.2 * sway + Math.max(-3, Math.min(3, lean)) * 3.2) * v * v + Math.sin(ph * .5) * .4 * v;
-    const squeeze = limp ? 1 : 1 - .08 * Math.abs(Math.cos(ph)) * v;   // 布面翻转时略变窄
-    const ww = w * squeeze, sx = cx - ww / 2 + off, sy = top + 1 + v * h;
-    ctx.drawImage(tex, 0, i * sh, tex.width, sh + .5, sx, sy, ww, h / N + .35);
-    const dk = limp ? .15 : Math.max(0, Math.cos(ph)) * .55 * v + .05;   // 褶皱背光面
-    if (dk > .02) { ctx.globalAlpha *= dk; ctx.drawImage(flagDark, 0, i * sh, tex.width, sh + .5, sx, sy, ww, h / N + .35); ctx.globalAlpha /= dk; }
-  }
-  ctx.imageSmoothingEnabled = false;
-}
 function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); if (z.celebrating) drawCheer(z); return; }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
-  if (z.T.banner) drawBanner(z, a);   // 旗画在人后面
   const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
   drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
   if (z.celebrating) drawCheer(z);
@@ -1676,8 +1612,7 @@ function drawZ(z) {
   }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   const barW = z.T.elite ? 26 : 18;
-  // 旗手的血条放到脚下：头顶那块是旗面，压上去会挡住"苍天已死"的字
-  const barY = z.T.banner ? z.y + 4 : top;
+  const barY = top;
   ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, barY, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, barY + 1, (barW - 2) * z.hp / z.T.hp, 1);
 }
 function drawCheer(z) {
