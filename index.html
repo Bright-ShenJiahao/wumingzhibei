@@ -2765,7 +2765,7 @@ const WEAP = {
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
-  staff: { name: '棍', reach: 40, dy: 13, move: .5, freeze: .062, combo: [
+  staff: { name: '棍', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
@@ -2774,7 +2774,7 @@ const WEAP = {
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
   // move: 0：出手期间站定不动（只保留开头那一下前冲），砸下去人不能跟着滑，重量感更足
-  hammer: { name: '锤子', reach: 25, dy: 10, snd: 'staff', lunge: 110, lungeT: .12, interrupt: true, move: 0, combo: [
+  hammer: { name: '锤子', reach: 25, dy: 15, snd: 'staff', lunge: 80, lungeT: .12, interrupt: true, move: 0, combo: [
     { f: ['hammer_1a', 'hammer_1b'], d: [.14, .24], dmg: 1.5, kb: 30 },                           // 举锤下砸
     { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
@@ -3195,7 +3195,13 @@ function heroUpdate(dt) {
     }
     if (ix && a.fi === 0) h.f = Math.sign(ix);
     // 锤子这类重型武器出手时朝面向方向前冲一小段（整段动作只冲一次），补足它短得可怜的攻击距离
-    if (W2.lunge && a.lg < W2.lungeT) moveEnt(h, h.f * W2.lunge * dt, 0);
+    if (W2.lunge && a.lg < W2.lungeT) {
+      // 前方已经有敌人贴得够近就别再冲，避免从敌人身上穿过去导致打空
+      const tooClose = zs.some(z => !z.dead && Math.sign(z.x - h.x) === h.f
+        && Math.abs(z.y - h.y) < W2.dy + 8
+        && Math.abs(z.x - h.x) - (z.T.w || 0) / 2 < W2.reach * .6);
+      if (!tooClose) moveEnt(h, h.f * W2.lunge * dt, 0);
+    }
     // 出手时的移动：默认压到 15（有僵直）；像石子这种设了 move 的，按走路速度边走边扔（move = 1 即全速）
     const mvq = charging ? .2 : 1;   // 蓄力时只能极慢挪动
   if (W2.move != null) moveEnt(h, ix * 70 * W2.move * mvq * dt, iy * 52 * W2.move * mvq * dt);
@@ -3505,7 +3511,8 @@ function strike() {
     const dx = (z.x - h.x) * h.f;
     const bw = z.T.w || 0;
     const inAoE = aoe > 0 && dx > -aoe - bw && dx < aoe + bw && Math.abs(z.y - h.y) < W.dy + 12;
-    const inRange = inAoE || (C.both ? Math.abs(dx) < rch + bw : dx > -4 - bw && dx < rch + bw);
+    const backTol = Math.max(16, rch * .6);   // 贴身/刚冲过头也算命中
+    const inRange = inAoE || (C.both ? Math.abs(dx) < rch + bw : dx > -backTol - bw && dx < rch + bw);
     if (inRange && Math.abs(z.y - h.y) < W.dy + (inAoE ? 12 : 0)) {
       landed = hitEnemy = true;
       // 背刺：从敌人背后打 ×1.5；补刀：敌人倒地中 ×2；完美闪避暴击 ×2
