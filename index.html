@@ -2406,7 +2406,7 @@ const TYPES = {
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
-  priest:  { name: '黄巾方士', hp: 5, spd: 24, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速
+  priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 比小兵快，跑位躲后排   // 不打人，念咒奶人+加速
 banner:  { name: '旗手', hp: 4, spd: 26, wind: .6, reach: 22, dmg: 1, banner: true, sprite: 'banner', scale: .86 },                     // 旗手：给周围小兵加速，优先击杀目标
 };
 const WAVES = [
@@ -2517,8 +2517,18 @@ function moveEnt(e, dx, dy) {
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
+  // 水平被道具挡住、又没有纵向位移时，自己上下挪一点绕过去（否则会顶着草垛不动）
+  if (e.bx && Math.abs(dy) < .01) {
+    if (e.slideDir == null) e.slideDir = Math.random() < .5 ? -1 : 1;
+    const ny = e.y + e.slideDir * 28 * (Math.abs(dx) > .001 ? 1 : 0);
+    if (ny > M.top + 4 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
+    else e.slideDir *= -1;
+  } else e.slideDir = null;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
-  if (e === hero && lockR < Infinity) e.x = Math.max(cam.x + 12, Math.min(e.x, cam.x + viewW() - 12));
+  if (lockR < Infinity) {
+    const lo = cam.x + (e === hero ? 12 : 10), hi = Math.min(lockR, cam.x + viewW()) - (e === hero ? 12 : 10);
+    e.x = Math.max(lo, Math.min(e.x, Math.max(lo, hi)));   // 敌人也不许被打出场外（否则打不到、卡关）
+  }
 }
 
 // ---------- 刷怪 ----------
@@ -2565,7 +2575,7 @@ function summonArchers(bz) {
 function spawn(type, x, y, sleeping = false) {
   const T = TYPES[type];
   // 出生点避开道具：卡在水井/推车里的怪既打不到也打不了你
-  for (let tries = 0; tries < 14; tries++) {
+  for (let tries = 0; sleeping ? false : tries < 14; tries++) {
     const bad = props.some(p => !p.broken && Math.abs(p.x - x) < (p.w || 10) / 2 + 11 && Math.abs(p.y - y) < (p.h || 10) / 2 + 13);
     if (!bad) break;
     y = rnd(M.top + 8, M.bot - 6);
@@ -2573,6 +2583,11 @@ function spawn(type, x, y, sleeping = false) {
   }
   zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: sleeping ? 'sleep' : 'move', t: sleeping ? 0 : rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
     sc: T.scale || 1, dark: false });
+  const z0 = zs[zs.length - 1];
+  if (sleeping) {
+    const h = props.find(p => p.g === 'hay' && !p.broken && Math.abs(p.x - x) < 70 && Math.abs(p.y - y) < 40);
+    if (h) { z0.hidden = true; z0.hx = h.x; }
+  }
 }
 function startVillagers(edgeX) {
   if (villagersStarted) return;
@@ -2664,8 +2679,13 @@ function waves() {
     list.forEach((u, i) => {
       const left = i === list.length - 1 && list.length > 3 && !TYPES[u].ranged;   // 最后一个近战从左边包过来
       const sleeping = (W.sleepers && W.sleepers.includes(i)) || (W.sleepy && i >= list.length - W.sleepy);
-      const y = sleeping ? (gateI % 2 ? M.bot - 14 : M.top + 14) : rnd(M.top + 6, M.bot - 6);
-      spawn(u, left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8, y, sleeping);
+      let y = sleeping ? (gateI % 2 ? M.bot - 14 : M.top + 14) : rnd(M.top + 6, M.bot - 6);
+      let sx = left ? cam.x + 5 : lockR - rnd(5, 40) - i * 8;
+      if (sleeping) {
+        const hay = props.find(p => p.g === 'hay' && !p.broken && Math.abs(p.x - sx) < 240);
+        if (hay) { sx = hay.x + (Math.random() < .5 ? -24 : 24); y = hay.y; }   // 躲在草垛边上
+      }
+      spawn(u, sx, y, sleeping);
     });
     say(W.say, 4);
     if (gateI === 0) startVillagers(lockR);
@@ -2993,6 +3013,7 @@ function chargedAttack(power) {
   }
   for (const z of zs) {
     if (z.dead) continue;
+    if (z.hidden && Math.hypot(hero.x - z.x, hero.y - z.y) > 88) continue;   // 还藏着的伏兵不画
     const dx = (z.x - h.x) * h.f, dy = z.y - h.y;
     if (Math.abs(dy) > 26) continue;
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
@@ -3116,11 +3137,26 @@ function zUpdate(z, dt) {
       return;
     }
     if (z.chantCd <= 0 && Math.abs(z.tok ? 1 : 1)) { set(z, 'chant'); return; }
-    const pdx = hero.x - z.x;
+    const pdx = hero.x - z.x, pad = Math.abs(pdx);
     if (pdx) z.f = Math.sign(pdx);
-    const keep = 100;
-    if (Math.abs(pdx) < keep) { z.moving = true; moveEnt(z, -Math.sign(pdx) * T.spd * dt, 0); }
-    else z.moving = false;
+    let tx = z.x, ty = z.y, moving = false;
+    if (pad < 110) { tx = z.x - Math.sign(pdx) * 40; moving = true; }          // 太近：快速后退
+    else if (pad > 170) { tx = z.x + Math.sign(pdx) * 40; moving = true; }     // 太远：靠回战场（防被弹飞后卡住）
+    else {                                                                     // 合适距离：躲到最近的友军身后
+      let ally = null, bd = 1e9;
+      for (const o of zs) {
+        if (o === z || o.dead || o.T.priest || o.T.boss) continue;
+        const d = Math.hypot(o.x - z.x, o.y - z.y);
+        if (d < bd) { bd = d; ally = o; }
+      }
+      if (ally && bd > 46) { tx = ally.x - Math.sign(pdx) * 20; ty = ally.y; moving = true; }
+    }
+    z.moving = moving;
+    if (moving) {
+      const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my) || 1;
+      moveEnt(z, mx / l * T.spd * dt, my / l * T.spd * dt);
+      if (Math.abs(mx) > 2) z.f = Math.sign(mx) || z.f;
+    }
     return;
   }
   if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
@@ -3167,7 +3203,7 @@ function zUpdate(z, dt) {
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
   if (z.st === 'sleep') {
-    if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); sfx('wake', z.x); }
+    if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); z.hidden = false; sfx('wake', z.x); }
     return;
   }
   if (z.st === 'wake') { if (z.t > (z.T.elite ? 1.0 : .55)) set(z, 'move'); else return; }
