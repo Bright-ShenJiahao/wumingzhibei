@@ -3179,39 +3179,6 @@ function zUpdate(z, dt) {
       if (hero.inv <= 0 && Math.abs(hx) < 60 && Math.abs(hero.y - z.y) < 20 && hx * z.f > -10) dmgHero(2, { x: z.x });
     }
   }
-  if (T.priest) {                        // 方士：远离玩家 → 念咒 2 秒 → 回血+加速，念咒可被打断
-    if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
-    if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; if (z.stun <= 0) set(z, 'idle'); return; }
-    if (z.st === 'hurt') set(z, 'idle');
-    if (z.chantCd == null) z.chantCd = 1.5;
-    z.chantCd -= dt;
-    if (z.st === 'chant') {
-      if (z.t >= 2) { priestCast(z); set(z, 'idle'); z.chantCd = 8; }
-      return;
-    }
-    if (z.chantCd <= 0 && Math.abs(z.tok ? 1 : 1)) { set(z, 'chant'); return; }
-    const pdx = hero.x - z.x, pad = Math.abs(pdx);
-    if (pdx) z.f = Math.sign(pdx);
-    let tx = z.x, ty = z.y, moving = false;
-    if (pad < 110) { tx = z.x - Math.sign(pdx) * 40; moving = true; }          // 太近：快速后退
-    else if (pad > 170) { tx = z.x + Math.sign(pdx) * 40; moving = true; }     // 太远：靠回战场（防被弹飞后卡住）
-    else {                                                                     // 合适距离：躲到最近的友军身后
-      let ally = null, bd = 1e9;
-      for (const o of zs) {
-        if (o === z || o.dead || o.T.priest || o.T.boss) continue;
-        const d = Math.hypot(o.x - z.x, o.y - z.y);
-        if (d < bd) { bd = d; ally = o; }
-      }
-      if (ally && bd > 46) { tx = ally.x - Math.sign(pdx) * 20; ty = ally.y; moving = true; }
-    }
-    z.moving = moving;
-    if (moving) {
-      const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my) || 1;
-      moveEnt(z, mx / l * T.spd * dt, my / l * T.spd * dt);
-      if (Math.abs(mx) > 2) z.f = Math.sign(mx) || z.f;
-    }
-    return;
-  }
   if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
     if (z.dead || z.air || z.stun > 0 || z.daze > 0) { z.adds = null; return; }
     if (z.st === 'addwalk') {
@@ -3260,6 +3227,39 @@ function zUpdate(z, dt) {
     return;
   }
   if (z.st === 'wake') { if (z.t > (z.T.elite ? 1.0 : .55)) set(z, 'move'); else return; }
+  if (T.priest) {                        // 方士：远离玩家 → 念咒 2 秒 → 回血+加速，念咒可被打断
+    if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
+    if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; if (z.stun <= 0) set(z, 'idle'); return; }
+    if (z.st === 'hurt') set(z, 'idle');
+    if (z.chantCd == null) z.chantCd = 1.5;
+    z.chantCd -= dt;
+    if (z.st === 'chant') {
+      if (z.t >= 2) { priestCast(z); set(z, 'idle'); z.chantCd = 8; }
+      return;
+    }
+    if (z.chantCd <= 0 && Math.abs(z.tok ? 1 : 1)) { set(z, 'chant'); return; }
+    const pdx = hero.x - z.x, pad = Math.abs(pdx);
+    if (pdx) z.f = Math.sign(pdx);
+    let tx = z.x, ty = z.y, moving = false;
+    if (pad < 110) { tx = z.x - Math.sign(pdx) * 40; moving = true; }          // 太近：快速后退
+    else if (pad > 170) { tx = z.x + Math.sign(pdx) * 40; moving = true; }     // 太远：靠回战场（防被弹飞后卡住）
+    else {                                                                     // 合适距离：躲到最近的友军身后
+      let ally = null, bd = 1e9;
+      for (const o of zs) {
+        if (o === z || o.dead || o.T.priest || o.T.boss) continue;
+        const d = Math.hypot(o.x - z.x, o.y - z.y);
+        if (d < bd) { bd = d; ally = o; }
+      }
+      if (ally && bd > 46) { tx = ally.x - Math.sign(pdx) * 20; ty = ally.y; moving = true; }
+    }
+    z.moving = moving;
+    if (moving) {
+      const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my) || 1;
+      moveEnt(z, mx / l * T.spd * dt, my / l * T.spd * dt);
+      if (Math.abs(mx) > 2) z.f = Math.sign(mx) || z.f;
+    }
+    return;
+  }
   if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }   // 晕眩：站着不动
   if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
   if (Math.abs(z.vx) > 1) { moveEnt(z, z.vx * dt, 0); z.vx *= .85; }
