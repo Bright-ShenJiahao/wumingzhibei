@@ -12,6 +12,8 @@ const MAX_KILLS = 200;
 const RATE_WINDOW = 60;     // 同一 IP 60 秒内最多 3 次提交
 const RATE_MAX = 3;
 const TOP_N = 20;
+// 清理口令：只有知道这一句的人能删记录 / 列出内部 key（普通玩家拿不到）
+const ADMIN = 'wzb-qingli-2026';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -49,6 +51,11 @@ export default async function handler(req, context) {
   if (req.method === 'GET') {
     try {
       const all = await readAll(store);
+      const u = new URL(req.url);
+      // 管理员视角：?admin=口令 → 附带内部 key，方便精确删除
+      if (u.searchParams.get('admin') === ADMIN) {
+        return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, at: x.at, cheat: x.cheat })) });
+      }
       const clean = all.filter(x => !x.cheat);
       const kills = [...clean].sort((a, b) => b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
       const speed = [...clean].sort((a, b) => a.t - b.t || b.kills - a.kills).slice(0, TOP_N);
@@ -63,10 +70,15 @@ export default async function handler(req, context) {
   let body;
   try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'bad json' }, 400); }
 
-  // 维护用：删除某条记录（需要环境变量 BOARD_KEY 与之匹配；没设就禁用）
-  if (body && body.op === 'del') {
-    if (!process.env.BOARD_KEY || body.token !== process.env.BOARD_KEY) return json({ ok: false, error: 'forbidden' }, 403);
-    try { await store.delete(String(body.key)); return json({ ok: true }); } catch (e) { return json({ ok: false, error: 'del failed' }, 500); }
+  // 维护用：删单条 / 清空（口令写在代码里，只有维护者知道）
+  if (body && (body.op === 'del' || body.op === 'purge')) {
+    if (body.token !== ADMIN) return json({ ok: false, error: 'forbidden' }, 403);
+    try {
+      if (body.op === 'del') { await store.delete(String(body.key)); return json({ ok: true, deleted: 1 }); }
+      const list = await store.list({ prefix: 'run:' });
+      for (const b of list.blobs || []) await store.delete(b.key);
+      return json({ ok: true, deleted: (list.blobs || []).length });
+    } catch (e) { return json({ ok: false, error: 'del failed' }, 500); }
   }
 
   const name = cleanName(body.name);
