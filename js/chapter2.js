@@ -4,15 +4,23 @@
   const unlocked = false;
   let selectedRoute = null;
   const battles = Object.freeze([
-    Object.freeze({ number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼', map: MAP, status: 'locked' }),
-    Object.freeze({ number: 2, title: '黄巾后阵', encounter: '远程兵种为主', map: MAP, status: 'locked' }),
-    Object.freeze({ number: 3, title: '正面突击：追击张梁', map: MAP, route: 'zhang-liang', status: 'locked' }),
-    Object.freeze({ number: 4, title: '迂回包抄：追击张宝', map: MAP, route: 'zhang-bao', status: 'locked' }),
+    Object.freeze({ number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼', units: ['yellow-heavy'], map: MAP, status: 'locked' }),
+    Object.freeze({ number: 2, title: '黄巾后阵', encounter: '远程兵种为主', units: ['yellow-shield'], map: MAP, status: 'locked' }),
+    Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear'], map: MAP, route: 'zhang-liang', status: 'locked' }),
+    Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-catapult'], map: MAP, route: 'zhang-bao', status: 'locked' }),
     Object.freeze({ number: 5, title: '祭台决战', map: null, status: 'map-pending' }),
   ]);
   const routes = Object.freeze([
     Object.freeze({ id: 'zhang-liang', label: '正面突击：追击张梁', battle: 3 }),
     Object.freeze({ id: 'zhang-bao', label: '迂回包抄：追击张宝', battle: 4 }),
+  ]);
+  // 第二章专属兵种资料。整章仍锁定；这些条目先固定美术、职责与登场关卡，
+  // 后续接入战斗时按 id 读取，避免混进第一章现有敌军波次。
+  const units = Object.freeze([
+    Object.freeze({ id: 'yellow-heavy', name: '黄巾大刀兵', sprite: 'yellow_heavy', kind: 'heavy-melee', role: '慢速大范围劈砍；明显蓄力后攻击，适合正面突击路线。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 1 }),
+    Object.freeze({ id: 'yellow-shield', name: '黄巾盾兵', sprite: 'yellow_shield', kind: 'shield-frontline', role: '持大盾掩护后排；正面格挡远程攻击，侧后方可突破。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 2 }),
+    Object.freeze({ id: 'yellow-spear', name: '黄巾枪兵', sprite: 'yellow_spear', kind: 'long-melee', role: '预备后直线突刺，攻击距离较长；横向走位躲开后反击。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
+    Object.freeze({ id: 'yellow-catapult', name: '投石车', sprite: 'yellow_catapult', kind: 'siege', role: '固定远程攻城器械；地面预警后投石砸击范围区域，可作为优先破坏目标。', actions: ['idle', 'load', 'fire', 'recoil', 'break', 'wreck'], firstBattle: 4 }),
   ]);
   const completed = new Set();
   const canEnterBattle = number => {
@@ -30,6 +38,7 @@
     title: '黄巾决战',
     unlocked,
     battles,
+    units,
     routeChoiceAfter: 2,
     routes,
     canEnter: () => unlocked,
