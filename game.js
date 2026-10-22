@@ -182,13 +182,21 @@ function moveEnt(e, dx, dy) {
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
-  // 水平被道具挡住、又没有纵向位移时，自己上下挪一点绕过去（否则会顶着草垛不动）
-  if (e !== hero && e.bx && Math.abs(dy) < .01) {   // 只有敌人会绕开道具，玩家仍然会被道具挡住
-    if (e.slideDir == null) e.slideDir = Math.random() < .5 ? -1 : 1;
-    const ny = e.y + e.slideDir * Math.min(2, .5 + Math.abs(dx) * .6);   // 每帧只挪一点点，别瞬移
-    if (ny > M.top + 4 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
-    else e.slideDir *= -1;
-  } else e.slideDir = null;
+  // 被道具挡住时"先往旁边走、绕过道具边缘，再继续前进"（只对敌人；玩家仍会被挡住）
+  if (e !== hero) {
+    const dir = Math.sign(dx) || e.f || 1;
+    const p = props.find(q => q.solid && !q.broken &&
+      Math.abs(q.x - (e.x + dir * 16)) < q.w / 2 + 14 && Math.abs(e.y - q.y) < 20);
+    if (p) {
+      if (e.avoidDir == null) e.avoidDir = (e.y <= p.y ? -1 : 1);      // 往离得近的那一侧绕
+      const goalY = p.y + e.avoidDir * 22;                              // 让开 22，能看出是绕过去
+      const vs = Math.min(3, ((e.T && e.T.spd) || 40) / 60 * 1.7);      // 侧向走速（比它正常速度快一点）
+      const ny = e.y + Math.sign(goalY - e.y) * vs;
+      if (ny > M.top + 3 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
+      else e.avoidDir *= -1;
+      if (Math.abs(e.y - goalY) < 1.5) e.avoidDir = null;               // 已经让开了，下次正常走
+    }
+  } else e.avoidDir = null;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
   if (lockR < Infinity) {
     const lo = cam.x + (e === hero ? 12 : 10), hi = Math.min(lockR, cam.x + viewW()) - (e === hero ? 12 : 10);
