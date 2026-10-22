@@ -52,8 +52,7 @@ export default async function handler(req, context) {
       const clean = all.filter(x => !x.cheat);
       const kills = [...clean].sort((a, b) => b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
       const speed = [...clean].sort((a, b) => a.t - b.t || b.kills - a.kills).slice(0, TOP_N);
-      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub),
-        _dbg: { raw: all.length, first: all[0] || null, keys: (await store.list({ prefix: 'run:' })).blobs.map(b => b.key).slice(0, 5) } });
+      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub), });
     } catch (e) {
       return json({ ok: false, error: 'read failed' }, 500);
     }
@@ -63,6 +62,12 @@ export default async function handler(req, context) {
 
   let body;
   try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'bad json' }, 400); }
+
+  // 维护用：删除某条记录（需要环境变量 BOARD_KEY 与之匹配；没设就禁用）
+  if (body && body.op === 'del') {
+    if (!process.env.BOARD_KEY || body.token !== process.env.BOARD_KEY) return json({ ok: false, error: 'forbidden' }, 403);
+    try { await store.delete(String(body.key)); return json({ ok: true }); } catch (e) { return json({ ok: false, error: 'del failed' }, 500); }
+  }
 
   const name = cleanName(body.name);
   const kills = Math.round(Number(body.kills));
