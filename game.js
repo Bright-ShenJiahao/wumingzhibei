@@ -121,7 +121,7 @@ function reset() {
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false;
-  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
+  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
@@ -441,6 +441,7 @@ function heroUpdate(dt) {
   let ix = (key.KeyD || key.ArrowRight ? 1 : 0) - (key.KeyA || key.ArrowLeft ? 1 : 0), iy = (key.KeyS || key.ArrowDown ? 1 : 0) - (key.KeyW || key.ArrowUp ? 1 : 0);
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
+  h.ix = ix; h.iy = iy;   // 记下方向输入：跑动中扔石子会偏
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
   if (atkHeldSince && !charging && performance.now() - atkHeldSince >= CHARGE_MS && !h.air && h.st !== 'down' && h.st !== 'hurt') {
@@ -730,7 +731,8 @@ function chargedAttack(power) {
   if (weapon === 'stone') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {
       const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force, spd: 240, life: .8 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
+      const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
+      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
     }
     return;
   }
@@ -764,10 +766,12 @@ function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
-    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
+    const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
+    const sOff = running ? rnd(-13, 13) : 0;                  // 跑动中弹道偏 ±13，站定不偏
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
     if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：石子·连击（第二颗只有一半伤害）
       const C2 = Object.assign({}, C, { dmg: C.dmg * .5, kb: C.kb * .6 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [] });
+      shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [] });
     }
     return;
   }
@@ -1024,8 +1028,10 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);
-      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * .4 : s.C.dmg;   // 穿透后面的敌人只吃 40%
+      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);   // 最后 true = 远程，管亥可能拨开
+      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
+      hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
       if (!s.C.pierce) s.life = 0;
     }
   }
