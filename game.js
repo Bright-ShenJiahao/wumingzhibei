@@ -134,7 +134,7 @@ function reset() {
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
-  ];   // 提示对所有人显示（教学模式只影响伤害，不影响提示）
+  ];   // 提示对所有人显示（简单模式只影响伤害，不影响提示）
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
@@ -386,7 +386,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
-  if (noviceMode()) dmg *= 2;   // 教学模式：只影响伤害，提示文案始终显示
+  if (noviceMode()) dmg *= 2;   // 简单模式：只影响伤害，提示文案始终显示
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }

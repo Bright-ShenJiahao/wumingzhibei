@@ -1236,7 +1236,7 @@ function hit(z, dmg, dir, ranged) {
     document.body.appendChild(box);
   }
 
-  // 放在「英雄榜」上方，避开输入框 / 教学模式 / 开始游戏
+  // 放在「英雄榜」上方，避开输入框 / 简单模式 / 开始游戏
   function place() {
     if (!box) return;
     const anchor = document.getElementById('tBoard') || document.getElementById('tName') || document.getElementById('tStart');
@@ -2384,7 +2384,7 @@ function hit(z, dmg, dir, ranged) {
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
-    dom.novice = mk('label', 'tNovice', '教学模式');
+    dom.novice = mk('label', 'tNovice', '简单模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
     dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后敌人受到的伤害翻倍（操作提示始终显示）';
     dom.board = mk('button', 'tBoard', '英雄榜');
@@ -2486,10 +2486,10 @@ function hit(z, dmg, dir, ranged) {
     if (dom.hintOff) {
       const s = dom.hintOff.style;
       s.height = '24px'; s.width = '104px';
-      if (!L._narrow) {                                  // 教学模式下面
+      if (!L._narrow) {                                  // 简单模式下面
         s.left = ((w + L.inW) / 2 + 10) + 'px';
         s.top = (L.inY + L.inH + 4) + 'px';
-      } else {                                           // 窄屏：跟在教学模式右边，别再往下堆
+      } else {                                           // 窄屏：跟在简单模式右边，别再往下堆
         s.left = Math.round(w / 2 + 52) + 'px';
         s.top = (L.inY + L.inH + 8) + 'px';
       }
@@ -2863,7 +2863,7 @@ function reset() {
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
-  ];   // 提示对所有人显示（教学模式只影响伤害，不影响提示）
+  ];   // 提示对所有人显示（简单模式只影响伤害，不影响提示）
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
@@ -3115,7 +3115,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
-  if (noviceMode()) dmg *= 2;   // 教学模式：只影响伤害，提示文案始终显示
+  if (noviceMode()) dmg *= 2;   // 简单模式：只影响伤害，提示文案始终显示
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }

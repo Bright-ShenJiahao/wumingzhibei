@@ -216,7 +216,7 @@
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
-    dom.novice = mk('label', 'tNovice', '教学模式');
+    dom.novice = mk('label', 'tNovice', '简单模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
     dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后敌人受到的伤害翻倍（操作提示始终显示）';
     dom.board = mk('button', 'tBoard', '英雄榜');
@@ -318,10 +318,10 @@
     if (dom.hintOff) {
       const s = dom.hintOff.style;
       s.height = '24px'; s.width = '104px';
-      if (!L._narrow) {                                  // 教学模式下面
+      if (!L._narrow) {                                  // 简单模式下面
         s.left = ((w + L.inW) / 2 + 10) + 'px';
         s.top = (L.inY + L.inH + 4) + 'px';
-      } else {                                           // 窄屏：跟在教学模式右边，别再往下堆
+      } else {                                           // 窄屏：跟在简单模式右边，别再往下堆
         s.left = Math.round(w / 2 + 52) + 'px';
         s.top = (L.inY + L.inH + 8) + 'px';
       }

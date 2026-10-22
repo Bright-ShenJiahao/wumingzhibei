@@ -62,7 +62,7 @@
     document.body.appendChild(box);
   }
 
-  // 放在「英雄榜」上方，避开输入框 / 教学模式 / 开始游戏
+  // 放在「英雄榜」上方，避开输入框 / 简单模式 / 开始游戏
   function place() {
     if (!box) return;
     const anchor = document.getElementById('tBoard') || document.getElementById('tName') || document.getElementById('tStart');
