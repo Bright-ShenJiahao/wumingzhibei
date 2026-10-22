@@ -1192,9 +1192,28 @@ function hit(z, dmg, dir, ranged) {
     try { const t = Number(localStorage.getItem(KEY) || 0); return t && Date.now() - t < WEEK; } catch (e) { return false; }
   }
 
+  // 常见 App 的内置浏览器（它们的菜单里没有"添加到主屏幕"，必须先"在浏览器打开"）
+  const INAPP = [
+    [/MicroMessenger/i, '微信'],
+    [/AlipayClient/i, '支付宝'],
+    [/Weibo/i, '微博'],
+    [/aweme|ByteLocale|BytedanceWebview|TikTok/i, '抖音'],
+    [/DingTalk/i, '钉钉'],
+    [/xhsdiscover|XHS/i, '小红书'],
+    [/Kwai|Kuaishou/i, '快手'],
+    [/baiduboxapp/i, '百度'],
+    [/QQ\/|QQBrowser/i, 'QQ'],
+  ];
+  function inAppName() {
+    const u = ua();
+    for (const [re, name] of INAPP) if (re.test(u)) return name;
+    return '';
+  }
+
   function text() {
     const u = ua();
-    if (/MicroMessenger/i.test(u)) return '微信里玩会留黑边：点右上角「···」→「在浏览器中打开」→ 浏览器菜单里「添加到主屏幕」，之后从桌面图标进入才是全屏。';
+    const app = inAppName();
+    if (app) return app + '里玩会留黑边：点右上角「···」→「在浏览器打开」→ 浏览器菜单里「添加到主屏幕」，之后从桌面图标进入才是全屏。';
     if (/Android/i.test(u)) return '加到主屏幕才能全屏：浏览器右上角「⋮」→「添加到主屏幕」，之后从桌面图标进入。';
     if (/iPhone|iPad|iPod/i.test(u)) return '加到主屏幕才能全屏：底部「分享」→「添加到主屏幕」，之后从桌面图标进入。';
     return '加到主屏幕才能全屏：浏览器菜单里选「添加到主屏幕」，之后从桌面图标进入。';
