@@ -2746,6 +2746,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false) {
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
+  if (noviceMode()) dmg *= 2;   // 新手模式：敌人受到的伤害翻倍
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
@@ -3640,7 +3641,21 @@ function draw() {
     ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14 + bw + 6, 64, nw + 14, 18);
     ctx.fillStyle = '#ffd86e'; ctx.fillText(pnm, 14 + bw + 13, 78);
   }
-  ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(14, 84, 330, 22); ctx.fillStyle = '#222'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(`击倒 ${kills}   武器：${WEAP[weapon].name}   用时 ${fmtTime(runT)}`, 20, 100);
+  // 用时：顶部正中的小牌子（原来那一行"击倒/武器/用时"已去掉）
+  {
+    const tstr = fmtTime(runT);
+    ctx.save();
+    ctx.font = 'bold 18px "PingFang SC","Noto Sans CJK SC",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(tstr).width, bw2 = tw + 30, bx2 = HW / 2 - bw2 / 2, by2 = 8;
+    ctx.fillStyle = 'rgba(20,14,30,.62)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx2, by2, bw2, 26, 13); else ctx.rect(bx2, by2, bw2, 26);
+    ctx.fill();
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillText(tstr, HW / 2, by2 + 14);
+    ctx.restore();
+  }
   if (lockR < Infinity) { const n = zs.filter(z => !z.dead).length; ctx.fillStyle = 'rgba(200,40,30,.85)'; ctx.fillRect(14, 110, 200, 22); ctx.fillStyle = '#fff'; ctx.fillText(`本区域剩余敌人：${n}`, 20, 126); }
   if (!over && lockR === Infinity && gateI > 0 && gateI < M.gates.length && Math.floor(performance.now() / 500) % 2 === 0) {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
