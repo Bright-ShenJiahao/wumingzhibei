@@ -570,9 +570,17 @@ function drawDrop(d) {
 }
 function drawFloaters() {
   for (const f of floaters) {
+    const emph = f.big || f.dodge;
     ctx.globalAlpha = Math.max(0, 1 - f.t / 1.1);
-    ctx.font = 'bold 13px "PingFang SC","Noto Sans CJK SC",sans-serif';
-    ctx.fillStyle = '#8ef07a'; ctx.textAlign = 'center';
+    ctx.font = 'bold ' + (emph ? 17 : 13) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';
+    ctx.textAlign = 'center';
+    if (f.dodge) {
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(40,24,10,.85)'; ctx.lineJoin = 'round';
+      ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
+      ctx.fillStyle = '#ffe27a';
+    } else {
+      ctx.fillStyle = '#8ef07a';
+    }
     ctx.fillText(f.txt, f.x, f.y - f.t * 26);
   }
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
@@ -740,7 +748,7 @@ function strike() {
       if (behind) mult *= 1.5;
       if (downed) mult *= 2;
       if (critT > 0) mult *= 2;
-      if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背刺！', big: true });
+      if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
       hit(z, C.dmg * fin * mult, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
       if (!C.multi && !aoe) break;
     }
@@ -910,6 +918,7 @@ function zUpdate(z, dt) {
       if (rem > 0 && rem < .18 && hero.st === 'roll' && hero.t < .22 && pdCd <= 0 &&
           Math.abs(z.x - hero.x) < 130 && Math.abs(z.y - hero.y) < 40) {
         z.pd = true; pdCd = 1.5; slowT = .3; critT = 1.0;
+        floaters.push({ x: hero.x, y: hero.y - 30, t: 0, txt: '闪避！', dodge: true });
         sfx('perfect', hero.x); shake = Math.max(shake, .12);
         for (let i = 1; i <= 3; i++) ghosts.push({ x: hero.x - hero.rx * i * 9, y: hero.y - (hero.ry || 0) * i * 9, f: hero.f, a: .45 - i * .1, t: 0 });
       }
