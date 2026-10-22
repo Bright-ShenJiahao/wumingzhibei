@@ -16,7 +16,7 @@ if len(xs) == 0:
     raise RuntimeError('去除灰底后没有剩余图像内容')
 img = Image.fromarray(rgba).crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
 W, H = img.size
-font = ImageFont.truetype(str(font_path), int(W * 0.26))
+font = ImageFont.truetype(str(font_path), int(W * 0.28))
 draw = ImageDraw.Draw(img)
 chars = '苍天已死'
 center_x = W * 0.44
@@ -28,7 +28,8 @@ for i, ch in enumerate(chars):
     glyph_w = box[2] - box[0]
     x = center_x - glyph_w / 2 - box[0]
     y = first_top + step * i - box[1]
-    draw.text((round(x), round(y)), ch, font=font, fill=(122, 20, 14, 255))
+    # 轻微透出布面纹理，让汉隶字像写在旗布上，不像后贴的纯色字块。
+    draw.text((round(x), round(y)), ch, font=font, fill=(122, 20, 14, 232))
     ink = draw.textbbox((round(x), round(y)), ch, font=font)
     cloth_left, cloth_right = W * 0.14, W * 0.88
     if ink[0] < cloth_left + 8 or ink[2] > cloth_right - 8:
