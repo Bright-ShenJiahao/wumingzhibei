@@ -183,7 +183,7 @@ function moveEnt(e, dx, dy) {
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
   // 水平被道具挡住、又没有纵向位移时，自己上下挪一点绕过去（否则会顶着草垛不动）
-  if (e.bx && Math.abs(dy) < .01) {
+  if (e !== hero && e.bx && Math.abs(dy) < .01) {   // 只有敌人会绕开道具，玩家仍然会被道具挡住
     if (e.slideDir == null) e.slideDir = Math.random() < .5 ? -1 : 1;
     const ny = e.y + e.slideDir * Math.min(2, .5 + Math.abs(dx) * .6);   // 每帧只挪一点点，别瞬移
     if (ny > M.top + 4 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
