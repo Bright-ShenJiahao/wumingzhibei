@@ -20,7 +20,7 @@ const Boss = (() => {
   function start(rightEdge) {
     WX = Math.random() < .5 ? ['rain', 'snow', 'wind'][Math.floor(Math.random() * 3)] : null;
     if (WX && WX_ID[WX]) setTimeout(() => say(WX_ID[WX], 3), 500);
-    if (typeof arenaL !== 'undefined') arenaL = rightEdge - (typeof viewW === 'function' ? viewW() : 530) * 1.2;   // 决斗场：1.2 个屏幕宽
+    if (typeof arenaL !== 'undefined') arenaL = rightEdge - (typeof viewW === 'function' ? viewW() : 530) * 1.0;   // 决斗场：1 个屏幕宽
     const z = { type: 'guanhai_horse', T, x: rightEdge + 60, y: (M.top + M.bot) / 2, f: -1, hp: HP, st: 'intro', t: 0, phase: 1,
       flash: 0, vx: 0, poise: 0, cd: 1.2, called: false, slot: 0, z: 0 };
     zs.push(z); fx = []; horse = null;
