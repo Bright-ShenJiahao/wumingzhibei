@@ -296,7 +296,7 @@ function hit(z, dmg, dir, ranged) {
     if (S === 'throw_a') return 'chop_a';
     return { idle: 'idle', roar: 'roar', stagger: 'stagger', dizzy: 'dizzy', chop_a: 'chop_a', chop_b: 'chop_b', thrust_a: 'thrust_a', thrust_b: 'thrust_b', kneel: 'kneel', down: 'down' }[S] || 'idle';
   }
-  // 出招前的预警：地面上的红条（先淡淡画出整个危险区，再被亮色填满）+ 头顶「!」
+  // 出招前的预警：短促攻击用头顶「!」；地面预告在 drawGround() 中画成土色尘痕/落点标记。
   function telegraph(z) {
     const S = z.st;
     let len = 0, tmax = 1;
@@ -347,10 +347,61 @@ function hit(z, dmg, dir, ranged) {
   function drawGround() {
     const [L, Rr] = view();
     for (const e of fx) {
-      if (e.k === 'lane') { const p = e.t / e.T; ctx.fillStyle = `rgba(230,40,30,${.12 + .25 * Math.abs(Math.sin(e.t * 14))})`; const a = Math.min(e.x0, e.x1), b = Math.max(e.x0, e.x1); ctx.fillRect(a, e.y - 9, b - a, 18);
-        ctx.fillStyle = `rgba(255,80,60,${.5 * p})`; ctx.fillRect(a, e.y - 1, b - a, 2); }
-      if (e.k === 'ring') { const p = Math.min(1, e.t / e.T); ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.ellipse(e.x, e.y, 40 * (1.3 - .3 * p), 14 * (1.3 - .3 * p), 0, 0, 7); ctx.stroke(); }
+      if (e.k === 'lane') {
+        const p = Math.min(1, e.t / e.T), a = Math.min(e.x0, e.x1), b = Math.max(e.x0, e.x1), dir = Math.sign(e.x1 - e.x0) || 1;
+        const sweep = e.x0 + (e.x1 - e.x0) * p, end = Math.max(a, Math.min(b, sweep));
+        const pulse = .72 + .28 * Math.sin(e.t * 16);
+        ctx.save(); ctx.lineCap = 'round';
+        // 整条危险走廊像被马蹄扬起的尘土轻轻压暗，边缘自然淡出，不画硬邦邦的色条。
+        const dustBand = ctx.createLinearGradient(0, e.y - 10, 0, e.y + 10);
+        dustBand.addColorStop(0, 'rgba(119,79,37,0)'); dustBand.addColorStop(.5, `rgba(119,79,37,${.17 * pulse})`); dustBand.addColorStop(1, 'rgba(119,79,37,0)');
+        ctx.fillStyle = dustBand; ctx.fillRect(a, e.y - 10, b - a, 20);
+        for (let k = 1; k <= 10; k++) {
+          const x = a + (b - a) * k / 11, yy = e.y + Math.sin(k * 2.3 + e.t * 2) * 2.5, r = 5 + (k % 3) * 1.5;
+          ctx.fillStyle = `rgba(139,96,47,${.09 * pulse})`; ctx.beginPath(); ctx.ellipse(x, yy, r, 2.8, .08 * (k % 2 ? 1 : -1), 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(255,221,157,${.10 * pulse})`; ctx.beginPath(); ctx.ellipse(x - 1, yy - 1, r * .55, .8, -.08, 0, Math.PI * 2); ctx.fill();
+        }
+        // 金砂色亮尘沿冲锋方向推进，保持预警清晰，但不再像 UI 红色长条。
+        if (Math.abs(end - e.x0) > 1) {
+          const grad = ctx.createLinearGradient(e.x0, 0, end, 0);
+          grad.addColorStop(0, 'rgba(237,190,105,.10)'); grad.addColorStop(1, `rgba(255,224,157,${.42 * pulse})`);
+          ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(e.x0, e.y); ctx.lineTo(end, e.y); ctx.stroke();
+          // 前沿的小尘团让玩家读出冲锋方向与蓄势进度。
+          ctx.fillStyle = `rgba(255,226,164,${.42 * pulse})`;
+          for (let k = 0; k < 3; k++) {
+            const wobble = Math.sin(e.t * 24 + k * 2.1) * (2 + k);
+            ctx.beginPath(); ctx.ellipse(end - dir * k * 4, e.y + wobble, 2.2 - k * .35, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        // 错落的双蹄印和两端短刻痕把路线读成地面痕迹，并标出横向冲锋范围。
+        for (let k = 1; k <= 12; k++) {
+          const x = a + (b - a) * k / 13, stagger = k % 2 ? 2.6 : -2.6, fade = .34 + .12 * Math.sin(e.t * 9 + k);
+          ctx.fillStyle = `rgba(105,72,38,${fade})`;
+          for (const side of [-1, 1]) {
+            ctx.beginPath(); ctx.ellipse(x + stagger + side * 2, e.y + side * 2.4, 2, 1.2, dir * .25, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        ctx.strokeStyle = `rgba(119,79,37,${.42 * pulse})`; ctx.lineWidth = 1.5;
+        for (const x of [e.x0, e.x1]) { ctx.beginPath(); ctx.moveTo(x, e.y - 7); ctx.lineTo(x, e.y + 7); ctx.stroke(); }
+        ctx.restore();
+      }
+      if (e.k === 'ring') {
+        const p = Math.min(1, e.t / e.T), pulse = .78 + .22 * Math.sin(e.t * 13), rx = 40 * (1.3 - .3 * p), ry = 14 * (1.3 - .3 * p);
+        ctx.save();
+        // 落点圈像压在土路上的暗金粉笔印，内外双层增强亮地面上的辨识度。
+        ctx.fillStyle = `rgba(90,61,30,${.09 * pulse})`; ctx.beginPath(); ctx.ellipse(e.x, e.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(82,56,30,${.48 * pulse})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(e.x, e.y, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = `rgba(244,205,129,${.82 * pulse})`; ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.ellipse(e.x, e.y, rx - 1.5, ry - 1.5, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        // 四个短刻痕标明危险边界，中心小点固定目标，不用刺眼的红色准星。
+        ctx.strokeStyle = `rgba(255,226,166,${.72 * pulse})`; ctx.lineWidth = 1.5;
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+          const x = e.x + sx * (rx - 2), y = e.y + sy * (ry - 1.5);
+          ctx.beginPath(); ctx.moveTo(x - sx * 3, y - sy * 1.5); ctx.lineTo(x + sx * 1.5, y + sy * .5); ctx.stroke();
+        }
+        ctx.fillStyle = `rgba(255,225,163,${.66 * pulse})`; ctx.beginPath(); ctx.arc(e.x, e.y, 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
       if (e.k === 'dust') { const p = e.t / e.T; ctx.fillStyle = 'rgba(196,164,112,' + (.45 * (1 - p)) + ')';
         ctx.beginPath(); ctx.ellipse(e.x, e.y, 10 + 24 * p, 4 + 9 * p, 0, 0, 7); ctx.fill(); }
       if (e.k === 'quake') { const p = e.t / e.T; ctx.strokeStyle = `rgba(120,80,40,${.6 * (1 - p)})`; ctx.lineWidth = 3;
