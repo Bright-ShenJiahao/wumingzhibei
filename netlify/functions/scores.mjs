@@ -71,9 +71,18 @@ export default async function handler(req, context) {
         return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, at: x.at, cheat: x.cheat })) });
       }
       const clean = all.filter(x => !x.cheat).map(pub);
+      // 同一个名字只留最好的那一条（评分高的优先；同分比击杀，再比用时）
+      const best = new Map();
+      for (const r of clean) {
+        const cur = best.get(r.name);
+        if (!cur || r.score > cur.score ||
+            (r.score === cur.score && (r.kills > cur.kills || (r.kills === cur.kills && r.t < cur.t)))) {
+          best.set(r.name, r);
+        }
+      }
       // 只按评分排；同分时击杀多者靠前，再同则用时短者靠前
-      const list = clean.sort((a, b) => b.score - a.score || b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
-      return json({ ok: true, season: SEASON, total: clean.length, list });
+      const list = [...best.values()].sort((a, b) => b.score - a.score || b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
+      return json({ ok: true, season: SEASON, total: best.size, list });
     } catch (e) {
       return json({ ok: false, error: 'read failed' }, 500);
     }
