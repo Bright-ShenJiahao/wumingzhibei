@@ -148,7 +148,7 @@
       body.wzb-title #wp button[data-w] { display: none !important; }
       body.wzb-intro #wp, body.wzb-intro #bMute { display: none !important; }
       #tStyle0 { display: none; }
-      #tName, #tStart, #tHelp, #tNovice {
+      #tName, #tStart, #tHelp, #tNovice, #tBoard {
         position: fixed; z-index: 7; font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
         box-sizing: border-box; -webkit-tap-highlight-color: transparent;
       }
@@ -180,6 +180,12 @@
         color: #fff; font-size: 15px; font-weight: 700; text-shadow: 0 1px 2px #000; cursor: pointer;
       }
       #tHelp:active { background: rgba(255,255,255,.25); }
+      #tBoard {
+        background: rgba(20,14,30,.62); border: 1.5px solid #c9971f; border-radius: 9px;
+        color: #ffd86e; font-size: 14px; font-weight: 800; letter-spacing: .08em;
+        text-shadow: 0 1px 3px #000; cursor: pointer; padding: 6px 14px;
+      }
+      #tBoard:active { background: rgba(255,216,110,.22); }
       #tTip {
         position: fixed; z-index: 8; color: #ff8f7a; font: 700 14px/1.4 "PingFang SC",sans-serif;
         text-shadow: 0 1px 3px #000; transform: translate(-50%,0); pointer-events: none; opacity: 0;
@@ -208,6 +214,8 @@
     dom.novice = mk('label', 'tNovice', '新手模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
     dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后显示操作、武器、蓄力和敌人提示';
+    dom.board = mk('button', 'tBoard', '英雄榜');
+    dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
     dom.help = mk('button', 'tHelp', '?');
     dom.help.title = '操作说明'; dom.help.setAttribute('aria-label', '操作说明');
     dom.tip = mk('div', 'tTip', '请输入名字');

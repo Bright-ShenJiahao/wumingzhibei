@@ -1,0 +1,8 @@
+{
+  "name": "wumingzhibei",
+  "private": true,
+  "description": "无名之辈 · 英雄榜后端依赖",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

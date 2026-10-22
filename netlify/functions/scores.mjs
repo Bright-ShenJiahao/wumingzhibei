@@ -1,0 +1,88 @@
+// 英雄榜接口：GET /api/scores 取榜，POST /api/scores 提交一局成绩
+// 存储：Netlify Blobs（每局一个 run:xxx，避免并发写入互相覆盖）
+import { getStore } from '@netlify/blobs';
+
+export const config = { path: '/api/scores' };
+
+const STORE = 'wumingzhibei-board';
+const SEASON = 's1';        // 换赛季只改这里（旧数据自动被忽略）
+const NAME_MAX = 8;
+const MIN_TIME = 90;        // 用时低于 90 秒视为异常（正常通关要几分钟）
+const MAX_KILLS = 200;
+const RATE_WINDOW = 60;     // 同一 IP 60 秒内最多 3 次提交
+const RATE_MAX = 3;
+const TOP_N = 20;
+
+const json = (obj, status = 200) =>
+  new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+
+function cleanName(raw) {
+  let s = String(raw == null ? '' : raw).replace(/[\u0000-\u001f<>\\"'`]/g, '').trim();
+  if (!s) s = '无名氏';
+  return Array.from(s).slice(0, NAME_MAX).join('');
+}
+
+// 读取全部成绩（只读当前赛季）
+async function readAll(store) {
+  const list = await store.list({ prefix: 'run:' });
+  const items = await Promise.all(
+    (list.blobs || []).map(async b => {
+      try {
+        const raw = await store.get(b.key);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    })
+  );
+  return items.filter(x => x && x.season === SEASON && Number.isFinite(x.kills) && Number.isFinite(x.t));
+}
+
+function pub(x) {
+  return { name: x.name, kills: x.kills, t: x.t, at: x.at };
+}
+
+export default async function handler(req, context) {
+  const store = getStore(STORE);
+
+  if (req.method === 'GET') {
+    try {
+      const all = await readAll(store);
+      const clean = all.filter(x => !x.cheat);
+      const kills = [...clean].sort((a, b) => b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
+      const speed = [...clean].sort((a, b) => a.t - b.t || b.kills - a.kills).slice(0, TOP_N);
+      return json({ ok: true, season: SEASON, total: clean.length, kills: kills.map(pub), speed: speed.map(pub) });
+    } catch (e) {
+      return json({ ok: false, error: 'read failed' }, 500);
+    }
+  }
+
+  if (req.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
+
+  let body;
+  try { body = await req.json(); } catch (e) { return json({ ok: false, error: 'bad json' }, 400); }
+
+  const name = cleanName(body.name);
+  const kills = Math.round(Number(body.kills));
+  const t = Math.round(Number(body.t));
+  if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
+  if (t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);
+  if (kills < 0 || kills > MAX_KILLS) return json({ ok: false, error: 'bad kills' }, 400);
+
+  const ip = (context && context.ip) || req.headers.get('x-nf-client-connection-ip') || 'unknown';
+  const now = Date.now();
+
+  try {
+    // 简单限流：同一 IP 最近 60 秒的提交数
+    const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
+    if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
+
+    const rec = { name, kills, t, at: now, season: SEASON, ip, cheat: 0 };
+    const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
+    await store.set(key, JSON.stringify(rec));
+    return json({ ok: true, key });
+  } catch (e) {
+    return json({ ok: false, error: 'write failed' }, 500);
+  }
+}
