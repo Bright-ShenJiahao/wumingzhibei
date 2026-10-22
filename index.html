@@ -3826,7 +3826,7 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, endT, zoneNow, won), rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      score: scoreOfRun(kills, Math.round(endT), zoneNow, won),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     if (!boardSent) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
