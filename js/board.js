@@ -57,7 +57,7 @@
         <div class="hd"><h2>英雄榜</h2><button class="x" type="button">关闭</button></div>
         <div class="tabs"><button type="button" class="on" style="cursor:default">积分榜</button></div>
         <div class="body"></div>
-        <div class="foot">评分 = 击杀×10 + 通关数×100 + 时间分 + 无伤分 · 只显示前 20</div>
+        <div class="foot">评分 = 击杀×10 + 通关区域数×100 + 时间分 + 无伤分 · 共 6 个区域</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
@@ -90,7 +90,7 @@
     }).join('');
     body.innerHTML = `<table>
       <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
-      <th style="text-align:right">击杀</th><th style="text-align:right">通关数</th>
+      <th style="text-align:right">击杀</th><th style="text-align:right">通关区域数</th>
       <th style="text-align:right">用时</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
