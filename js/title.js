@@ -218,7 +218,7 @@
     dom.start = mk('button', 'tStart', '开始游戏');
     dom.novice = mk('label', 'tNovice', '教学模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
-    dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后显示操作、武器、蓄力和敌人提示';
+    dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后敌人受到的伤害翻倍（操作提示始终显示）';
     dom.board = mk('button', 'tBoard', '英雄榜');
     dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
     dom.hintOff = mk('label', 'tHintOff', '关闭提醒');

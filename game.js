@@ -130,11 +130,11 @@ function reset() {
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
     props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
   }
-  tutorialQueue = window.TITLE && TITLE.noviceMode && TITLE.noviceMode() ? [
+  tutorialQueue = [
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
-  ] : [];
+  ];   // 提示对所有人显示（教学模式只影响伤害，不影响提示）
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
@@ -363,7 +363,7 @@ function waves() {
       }
       spawn(u, sx, y, sleeping);
     });
-    if (W.say && noviceMode()) say(W.say, 4);
+    if (W.say) say(W.say, 4);
     if (gateI === 0) startVillagers(lockR);
   }
 }
@@ -386,7 +386,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   dmg *= R_('dmg');   // 锦囊：造成伤害倍率
-  if (noviceMode()) dmg *= 2;   // 教学模式：敌人受到的伤害翻倍
+  if (noviceMode()) dmg *= 2;   // 教学模式：只影响伤害，提示文案始终显示
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
   if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
@@ -1080,7 +1080,7 @@ function update(dt) {
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
-  if (msgT <= 0 && tutorialQueue.length && noviceMode()) { const tip = tutorialQueue.shift(); say(tip.text, tip.time); }
+  if (msgT <= 0 && tutorialQueue.length) { const tip = tutorialQueue.shift(); say(tip.text, tip.time); }
   if (toastT > 0) toastT -= dt;
   // 失败时等主角落地、敌人庆祝一会儿后再显示结算。
   const deathResultReady = over && deathLandedAt != null && gameT >= deathLandedAt + 1.5;
