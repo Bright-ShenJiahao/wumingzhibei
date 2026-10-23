@@ -429,7 +429,7 @@
       <section id="tChapterPanel" aria-label="整军备战">
         <header id="tPrepHeader"><h2>整军备战</h2><p id="tPrepTarget"></p></header>
         <div id="tPrepMain">
-          <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="320" height="320"></canvas><small>点击预览攻击</small></button>
+          <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
           <div id="tPrepSlots"></div>
         </div>
         <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 拖回卸下</small></div>
@@ -834,10 +834,9 @@
       return;
     }
     if (!frame.img.naturalWidth) return;
-    const baseH = 74;   // 以主角身高为基准，所有武器待机统一比例（棍子原来的大小）
-    const natural = Math.min(2, canvas.height * .78 / baseH);
-    const widthCap = canvas.width * .92 / Math.max(baseH, frame.w);
-    const scale = Math.max(1, Math.floor(Math.min(natural, widthCap)));
+    const baseH = 74;   // 以主角身高为基准，所有武器/攻击帧统一比例
+    // 不能用 frame.w（武器长度）限制缩放，否则长戟攻击帧会把人物缩小，预览忽大忽小。
+    const scale = Math.max(1, Math.min(2, Math.floor(canvas.height * .78 / baseH)));
     const x = Math.round(canvas.width / 2 - frame.ax * scale);
     const y = Math.round(canvas.height - 28 - frame.ay * scale);
     g.imageSmoothingEnabled = false;
