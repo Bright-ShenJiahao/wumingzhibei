@@ -7,6 +7,7 @@
   const NAME_KEY = 'wzb-name';
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
   const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
+  const ARMORY_KEY = 'wzb-armory-v1'; // 武器仓库，与章节进度和积分分开保存
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0, chapterReturn: false };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
@@ -21,7 +22,35 @@
   function markCleared(n, chapter = 1) {
     const k = playerKey(n); if (!k) return false;
     const progress = readCampaign(); progress[k] = Object.assign({}, progress[k], { [chapter]: true });
-    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; }
+    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); } catch (e) { return false; }
+    if (chapter === 1) {
+      const loadouts = readLoadouts();
+      loadouts[k] = loadouts[k] || { owned: ['staff', 'hammer', 'stone'], long: 'staff' };
+      if (!loadouts[k].owned.includes('halberd')) loadouts[k].owned.push('halberd');
+      writeLoadouts(loadouts);
+    }
+    return true;
+  }
+  function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function playerLoadout(n = S.name) {
+    const k = playerKey(n), all = readLoadouts();
+    if (!k) return { owned: ['staff', 'hammer', 'stone'], long: 'staff' };
+    const p = all[k] || { owned: ['staff', 'hammer', 'stone'], long: 'staff' };
+    p.owned = Array.isArray(p.owned) ? p.owned : ['staff', 'hammer', 'stone'];
+    if (!p.owned.includes('staff')) p.owned.push('staff');
+    if (!p.owned.includes('hammer')) p.owned.push('hammer');
+    if (!p.owned.includes('stone')) p.owned.push('stone');
+    if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
+    if (!p.owned.includes(p.long) || !['staff', 'halberd'].includes(p.long)) p.long = 'staff';
+    return p;
+  }
+  function writeLoadouts(all) { try { localStorage.setItem(ARMORY_KEY, JSON.stringify(all)); return true; } catch (e) { return false; } }
+  function equipLong(item) {
+    const k = playerKey(S.name), p = playerLoadout();
+    if (!k || !['staff', 'halberd'].includes(item) || !p.owned.includes(item)) return false;
+    p.long = item;
+    const all = readLoadouts(); all[k] = p;
+    return writeLoadouts(all);
   }
   function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
   function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
@@ -248,6 +277,17 @@
       .tChapterOption:disabled { border-color: #625647; color: #92836e; background: rgba(50,43,36,.8); cursor: default; }
       .tChapterOption:disabled strong,.tChapterOption:disabled small { color: #92836e; }
       #tChapterBack { margin-top: 8px; padding: 8px 20px; border-color: #82705a; color: #d3c09e; }
+      #tPrepSlots { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; }
+      .tPrepSlot { min-height:64px; box-sizing:border-box; border:1px solid #a77b3e; border-radius:9px; padding:9px 11px; text-align:left; background:linear-gradient(145deg,rgba(89,62,36,.92),rgba(43,32,25,.96)); }
+      .tPrepSlot b { display:block; color:#f3d37b; font-size:13px; margin-bottom:4px; }
+      .tPrepSlot span { color:#f3e5c8; font-size:14px; }
+      #tPrepLong { display:flex; gap:7px; margin:8px 0 12px; }
+      .tPrepChoice { flex:1; min-width:0; padding:8px 6px; border:1px solid #ad884c; border-radius:8px; background:rgba(30,23,19,.72); color:#eee0c1; cursor:pointer; }
+      .tPrepChoice.selected { border-color:#ffda78; background:rgba(154,106,37,.52); color:#ffe49c; box-shadow:inset 0 0 12px rgba(255,205,93,.16); }
+      #tPrepStorage { color:#cdb994; font-size:12px; margin:6px 0 13px; }
+      #tPrepActions { display:flex; justify-content:center; gap:10px; }
+      #tPrepActions .tChapterOption { width:auto; flex:1; text-align:center; }
+      @media(max-width:520px){ #tChapterPanel.prep { padding:16px 14px; } #tPrepSlots { gap:6px; } .tPrepSlot { padding:8px; min-height:58px; } }
     `;
     document.head.appendChild(st);
     setNoviceClass();
@@ -298,11 +338,20 @@
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
     dom.chapter = mk('div', 'tChapter', '');
-    dom.chapter.innerHTML = `<div id="tChapterPanel"><h2>选择关卡</h2><p></p>
-      <button class="tChapterOption" data-chapter="1"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
-      <button class="tChapterOption" data-chapter="2" disabled><strong>第二章　黄巾决战　未开放</strong><small>战场仍在筹备中</small></button>
-      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div>`;
-    dom.chapter.querySelector('[data-chapter="1"]').addEventListener('click', () => finish({ skipWake: true }));
+    dom.chapter.innerHTML = `<div id="tChapterPanel" class="prep"><h2>整军备战</h2><p id="tPrepNote"></p>
+      <div id="tPrepSlots">
+        <div class="tPrepSlot"><b>长武器</b><span id="tPrepLongName"></span></div>
+        <div class="tPrepSlot"><b>短武器</b><span>锤子</span></div>
+        <div class="tPrepSlot"><b>远程武器</b><span>石子</span></div>
+        <div class="tPrepSlot"><b>法器</b><span>暂缺</span></div>
+      </div>
+      <div id="tPrepLong"></div><div id="tPrepStorage"></div>
+      <small id="tPrepArtNote">长戟暂沿用棍子连招与动作；后续补齐主角持戟帧后即可替换。</small>
+      <div id="tPrepActions"><button class="tChapterOption" id="tPrepGo" type="button"><strong>出征</strong><small>重返第一章，不再播放醒来开场</small></button>
+      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div></div>`;
+    dom.prepLong = dom.chapter.querySelector('#tPrepLong');
+    dom.prepLong.addEventListener('click', e => { const b = e.target.closest('[data-long-item]'); if (b && equipLong(b.dataset.longItem)) renderPreparation(); });
+    dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => finish({ skipWake: true }));
     dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
@@ -548,9 +597,25 @@
     S.mode = 'chapter'; S.chapterReturn = true;
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
-    const note = dom.chapter.querySelector('p');
-    if (note) note.textContent = `将以「${S.name}」的名义继续征战`;
+    renderPreparation();
     dom.chapter.classList.add('open');
+  }
+
+  function renderPreparation() {
+    const p = playerLoadout(), longName = p.long === 'halberd' ? '管亥的长戟' : '棍子';
+    const note = dom.chapter.querySelector('#tPrepNote');
+    if (note) note.textContent = `「${S.name}」的装备`;
+    dom.chapter.querySelector('#tPrepLongName').textContent = longName;
+    dom.prepLong.innerHTML = '';
+    for (const item of ['staff', 'halberd']) {
+      if (!p.owned.includes(item)) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.longItem = item;
+      b.className = 'tPrepChoice' + (p.long === item ? ' selected' : '');
+      b.textContent = (item === 'staff' ? '棍子' : '管亥的长戟') + (p.long === item ? ' · 已装备' : ' · 装备');
+      dom.prepLong.appendChild(b);
+    }
+    const stored = p.owned.filter(item => item !== p.long).map(item => item === 'staff' ? '棍子' : item === 'halberd' ? '管亥的长戟' : '').filter(Boolean);
+    dom.chapter.querySelector('#tPrepStorage').textContent = '武器仓库：' + (stored.length ? stored.join('、') : '暂无替换武器');
   }
 
   function closeChapterSelect() {
@@ -594,6 +659,7 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
+    preparedWeapon: () => hasCleared(S.name, 1) ? playerLoadout().long : null,
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏

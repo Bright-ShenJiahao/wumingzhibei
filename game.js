@@ -62,6 +62,8 @@ const WEAP = {
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
+// 管亥长戟暂沿用棍子的连招参数；主角专用持戟动作帧补齐后再替换显示帧。
+WEAP.halberd = Object.assign({}, WEAP.staff, { name: '长戟' });
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
@@ -121,6 +123,8 @@ const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
+  weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
+  ui();
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
@@ -162,7 +166,7 @@ addEventListener('keydown', e => {
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
   if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley();
-  if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
+  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
 });
@@ -179,15 +183,17 @@ document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); }
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
-document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w); }));
+document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w === 'staff' ? longWeapon() : b.dataset.w); }));
+function longWeapon() { return (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'staff'; }
 const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
-  const i = WEAPON_ORDER.indexOf(weapon);
-  setW(WEAPON_ORDER[(i + 1) % WEAPON_ORDER.length]);
+  const order = [longWeapon(), 'hammer', 'stone'];
+  const i = order.indexOf(weapon);
+  setW(order[(i + 1) % order.length]);
 });
 function setW(w) { weapon = w; ui(); }
-function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === weapon)); }
+function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === (weapon === 'halberd' ? 'staff' : weapon))); }
 
 // ---------- 碰撞 ----------
 function blocked(x, y) {
@@ -1197,7 +1203,7 @@ function update(dt) {
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8)),
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
-      line: won ? '' : deathLine(), s1: 0, s2: 0 };
+      line: won ? '获得管亥的长戟，可在整备界面选择装备。' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
@@ -1240,13 +1246,14 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
+  const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
   if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
   if (h.st === 'bounce' || h.st === 'getup') return h.st;
-  if (h.st === 'walk') return weapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'walk') return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
   if (h.st === 'hurt') return 'hurt'; if (h.st === 'down') return 'down';
-  return weapon + '0';
+  return frameWeapon + '0';
 }
 function zFrame(z) {
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
