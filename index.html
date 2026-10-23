@@ -2330,6 +2330,7 @@ function hit(z, dmg, dir, ranged) {
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0, chapterReturn: false };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
+  let selectedChapter = 1;   // 关卡选择后进入整军备战，出征时按这个章节启动
   let hardMode = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
@@ -2577,7 +2578,7 @@ function hit(z, dmg, dir, ranged) {
         padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center,rgba(34,22,17,.68),rgba(12,8,10,.88));
       }
       #tChapter.open { display: flex; }
-      #tChapterPanel {
+      #tChapterPanel, #tChapterPick {
         width: min(560px, 92vw); max-height: 86vh; overflow: auto; box-sizing: border-box; padding: 22px 24px 20px;
         border: 2px solid #b98a38; border-radius: 14px; color: #f3dfb6; text-align: center;
         background: linear-gradient(145deg,rgba(55,36,23,.97),rgba(24,18,18,.98));
@@ -2607,7 +2608,7 @@ function hit(z, dmg, dir, ranged) {
       #tPrepStorage { color:#cdb994; font-size:12px; margin:6px 0 13px; }
       #tPrepActions { display:flex; justify-content:center; gap:10px; }
       #tPrepActions .tChapterOption { width:auto; flex:1; text-align:center; }
-      @media(max-width:520px){ #tChapterPanel.prep { padding:16px 14px; } #tPrepSlots { gap:6px; } .tPrepSlot { padding:8px; min-height:58px; } }
+      @media(max-width:520px){ #tChapterPanel.prep, #tChapterPick { padding:16px 14px; } #tPrepSlots { gap:6px; } .tPrepSlot { padding:8px; min-height:58px; } }
     `;
     document.head.appendChild(st);
     setNoviceClass();
@@ -2661,7 +2662,13 @@ function hit(z, dmg, dir, ranged) {
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
     dom.chapter = mk('div', 'tChapter', '');
-    dom.chapter.innerHTML = `<div id="tChapterPanel" class="prep"><h2>整军备战</h2><p id="tPrepNote"></p>
+    dom.chapter.innerHTML = `<div id="tChapterPick">
+      <h2>选择关卡</h2><p>选好章节，再整军备战</p>
+      <button class="tChapterOption" id="tPickCh1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
+      <button class="tChapterOption" id="tPickCh2" type="button"><strong>第二章　黄巾决战</strong><small>黄巾后阵 · 追击张梁或张宝</small></button>
+      <button class="tChapterOption" id="tChapterPickBack" type="button">返回</button>
+    </div>
+    <div id="tChapterPanel" class="prep" hidden><h2>整军备战</h2><p id="tPrepNote"></p>
       <div id="tPrepSlots">
         <div class="tPrepSlot"><b>长武器</b><span id="tPrepLongName"></span></div>
         <div class="tPrepSlot"><b>短武器</b><span>锤子</span></div>
@@ -2671,21 +2678,21 @@ function hit(z, dmg, dir, ranged) {
       <div id="tPrepLong"></div><div id="tPrepStorage"></div>
       <small id="tPrepArtNote">长戟暂沿用棍子连招与动作；后续补齐主角持戟帧后即可替换。</small>
       <div id="tPrepActions">
-        <button class="tChapterOption" id="tPrepGo" type="button"><strong>出征</strong><small>第一章 · 重返村庄</small></button>
-        <button class="tChapterOption" id="tPrepC2" type="button"><strong>第二章</strong><small>黄巾决战 · 第一战</small></button>
+        <button class="tChapterOption" id="tPrepGo" type="button"><strong>出征</strong><small id="tPrepGoSub">第一章 · 重返村庄</small></button>
         <button class="tChapterOption" id="tChapterBack" type="button">返回</button>
       </div></div>`;
+    dom.pick = dom.chapter.querySelector('#tChapterPick');
+    dom.prep = dom.chapter.querySelector('#tChapterPanel');
     dom.prepLong = dom.chapter.querySelector('#tPrepLong');
     dom.prepLong.addEventListener('click', e => { const b = e.target.closest('[data-long-item]'); if (b && equipLong(b.dataset.longItem)) renderPreparation(); });
-    dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => finish({ skipWake: true }));
-    dom.chapter.querySelector('#tPrepC2').addEventListener('click', () => {
+    dom.chapter.querySelector('#tPickCh1').addEventListener('click', () => openPreparation(1));
+    dom.chapter.querySelector('#tPickCh2').addEventListener('click', () => {
       if (!window.CHAPTER2 || !CHAPTER2.canEnter()) return;
-      dom.chapter.classList.remove('open');
-      document.body.classList.remove('wzb-intro');
-      if (typeof startChapter2 === 'function') startChapter2();
-      else if (typeof startChapter2Debug === 'function') startChapter2Debug();
+      openPreparation(2);
     });
-    dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
+    dom.chapter.querySelector('#tChapterPickBack').addEventListener('click', () => closeChapterSelect());
+    dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
+    dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => openChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
       if (e.key === 'Enter') start();
@@ -2932,14 +2939,40 @@ function hit(z, dmg, dir, ranged) {
     S.mode = 'chapter'; S.chapterReturn = true;
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
+    if (dom.pick) dom.pick.hidden = false;
+    if (dom.prep) dom.prep.hidden = true;
+    const c2 = dom.chapter.querySelector('#tPickCh2');
+    if (c2) c2.disabled = !(window.CHAPTER2 && CHAPTER2.canEnter());
+    dom.chapter.classList.add('open');
+  }
+
+  function openPreparation(chapter) {
+    selectedChapter = chapter === 2 ? 2 : 1;
+    if (dom.pick) dom.pick.hidden = true;
+    if (dom.prep) dom.prep.hidden = false;
     renderPreparation();
     dom.chapter.classList.add('open');
   }
 
+  function startSelectedChapter() {
+    if (selectedChapter === 2) {
+      if (!window.CHAPTER2 || !CHAPTER2.canEnter()) return;
+      dom.chapter.classList.remove('open');
+      document.body.classList.remove('wzb-intro');
+      if (typeof startChapter2 === 'function') startChapter2();
+      else if (typeof startChapter2Debug === 'function') startChapter2Debug();
+      return;
+    }
+    finish({ skipWake: true });   // 第一章重玩：跳过出生/醒来开场
+  }
+
   function renderPreparation() {
     const p = playerLoadout(), longName = p.long === 'halberd' ? '管亥的长戟' : '棍子';
+    const chapterName = selectedChapter === 2 ? '第二章 · 黄巾决战' : '第一章 · 重返村庄';
     const note = dom.chapter.querySelector('#tPrepNote');
-    if (note) note.textContent = `「${S.name}」的装备`;
+    if (note) note.textContent = `「${S.name}」的装备 · ${chapterName}`;
+    const goSub = dom.chapter.querySelector('#tPrepGoSub');
+    if (goSub) goSub.textContent = chapterName;
     dom.chapter.querySelector('#tPrepLongName').textContent = longName;
     dom.prepLong.innerHTML = '';
     for (const item of ['staff', 'halberd']) {
