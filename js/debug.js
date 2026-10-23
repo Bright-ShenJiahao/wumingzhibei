@@ -3,6 +3,7 @@
 //   ?debug=boss   直接进管亥一阶段（骑马）
 //   ?debug=boss2  直接进管亥二阶段（步战）
 //   ?debug=chapter2  直接测试第二章战斗流程（玩家章节入口保持锁定）
+//   ?debug=chapter2altar  直接预览第五战祭台地图（张角 Boss 尚未接入）
 // 桌面也可以按 F2 开/关面板，F3 跳 Boss 一阶段，F4 跳二阶段。
 (() => {
   const m = /[?&]debug(?:=([a-z0-9]+))?/.exec(location.search);
@@ -56,6 +57,10 @@
     const godBtn = btn(god ? '无敌：开' : '无敌：关', 'off', () => { god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off'; });
     btn('复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
     btn('测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
+    btn('第五战地图', 'alt', () => {
+      if (typeof startChapter2Debug === 'function') startChapter2Debug();
+      if (typeof startChapter2Battle === 'function') startChapter2Battle(5);
+    });
     btn('隐藏面板 (F2)', '', () => { panel.style.display = 'none'; });
     const info = document.createElement('i'); panel.appendChild(info);
     setInterval(() => {
@@ -109,7 +114,10 @@
     last = performance.now();
     requestAnimationFrame(tick);
     if (auto === 'boss' || auto === 'boss2') setTimeout(() => jumpBoss(auto === 'boss2'), 900);
-    if (auto === 'chapter2') setTimeout(() => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); }, 900);
+    if (auto === 'chapter2' || auto === 'chapter2altar') setTimeout(() => {
+      if (typeof startChapter2Debug === 'function') startChapter2Debug();
+      if (auto === 'chapter2altar' && typeof startChapter2Battle === 'function') startChapter2Battle(5);
+    }, 900);
     console.log('%c[开发者模式] 已开启', 'color:#8ef07a;font-weight:bold', 'F2 面板 / F3 Boss一阶段 / F4 Boss二阶段');
   }
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot); else boot();

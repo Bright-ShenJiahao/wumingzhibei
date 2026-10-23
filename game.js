@@ -444,6 +444,10 @@ function startChapter2Battle(number) {
       z.cd = [2.4, 5.1, 7.7][i]; z.catapultIndex = i;
     }
     say('第二战：盾兵护住枪阵，右侧有三台投石车！', 4);
+  } else if (number === 5) {
+    // 张角 Boss 尚未接入：第五战先作为祭台地图预览，不刷敌人、不自动结算。
+    chapter2Run.mode = 'preview';
+    say('第五战：祭台决战（张角战待接入）', 4);
   } else {
     const name = number === 3 ? 'zhang_liang' : 'zhang_bao';
     const y = (M.top + M.bot) / 2;
