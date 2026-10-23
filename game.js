@@ -1568,6 +1568,12 @@ function heroFrame(h) {
   if (h.st === 'hurt') return 'hurt'; if (h.st === 'down') return 'down';
   return frameWeapon + '0';
 }
+// 通关第一章后换披甲皮肤；每把武器有独立动作集，避免挥戟时变成棍子
+function heroSkinName() {
+  if (!(window.TITLE && TITLE.hasCleared && TITLE.hasCleared(1))) return 'hero';
+  const n = 'hero_armor_' + (weapon === 'halberd' ? 'halberd' : weapon);
+  return typeof CH !== 'undefined' && CH[n] ? n : 'hero';
+}
 function zFrame(z) {
   if (z.T.siege) {
     if (z.dead) return 'wreck';
@@ -2260,7 +2266,7 @@ function drawHero() {
   if (h.shieldFlash > 0) { ctx.save(); ctx.globalAlpha = h.shieldFlash / .22; ctx.fillStyle = '#ffe79b'; ctx.beginPath(); ctx.arc(h.x, h.y - 15, 17, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
-  drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
+  drawChar(heroSkinName(), heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }

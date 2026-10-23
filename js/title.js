@@ -811,7 +811,8 @@
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = 'rgba(12,9,7,.3)';
     g.beginPath(); g.ellipse(canvas.width / 2, canvas.height - 27, 60, 9, 0, 0, Math.PI * 2); g.fill();
-    const frame = CH.hero && CH.hero[frameName];
+    const skin = hasCleared(S.name, 1) ? 'hero_armor_' + (previewWeapon === 'halberd' ? 'halberd' : previewWeapon) : 'hero';
+    const frame = (CH[skin] && CH[skin][frameName]) || (CH.hero && CH.hero[frameName]);
     if (!frame) return;
     if (!frame.img.complete) {
       if (!frame.previewPending) {
