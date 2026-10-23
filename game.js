@@ -10,9 +10,57 @@ function keyChapter2Map(image) {
     const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
     const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
-    for (let i = 0; i < p.length; i += 4) if (p[i + 1] > 130 && p[i + 1] > p[i] * 1.28 && p[i + 1] > p[i + 2] * 1.2) p[i + 3] = 0;
+    const count = c.width * c.height, reached = new Uint8Array(count), queue = new Int32Array(count);
+    let head = 0, tail = 0;
+    const greenPixel = i => {
+      const j = i * 4, r = p[j], gg = p[j + 1], b = p[j + 2];
+      return gg > 40 && gg > r * 1.08 + 8 && gg > b * 1.08 + 8;
+    };
+    const add = i => {
+      if (i < 0 || i >= count || reached[i] || !greenPixel(i)) return;
+      reached[i] = 1; queue[tail++] = i;
+    };
+    for (let x = 0; x < c.width; x++) { add(x); add((c.height - 1) * c.width + x); }
+    for (let y = 1; y < c.height - 1; y++) { add(y * c.width); add(y * c.width + c.width - 1); }
+    while (head < tail) {
+      const i = queue[head++], x = i % c.width, y = (i / c.width) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        if ((dx < 0 && x === 0) || (dx > 0 && x === c.width - 1) ||
+            (dy < 0 && y === 0) || (dy > 0 && y === c.height - 1)) continue;
+        add(i + dy * c.width + dx);
+      }
+    }
+    for (let i = 0; i < count; i++) {
+      const j = i * 4, r = p[j], gg = p[j + 1], b = p[j + 2];
+      const strongGreen = gg > 145 && gg > r * 1.3 && gg > b * 1.3;
+      if (!strongGreen && !reached[i]) continue;
+      const alpha = strongGreen ? 0 : Math.max(0, Math.min(1, 1 - (gg - Math.max(r, b)) / 255));
+      if (alpha < .06) { p[j] = 0; p[j + 1] = 0; p[j + 2] = 0; p[j + 3] = 0; continue; }
+      p[j] = Math.min(255, Math.round(r / alpha));
+      p[j + 1] = Math.max(0, Math.min(255, Math.round((gg - (1 - alpha) * 255) / alpha)));
+      p[j + 2] = Math.min(255, Math.round(b / alpha));
+      p[j + 3] = Math.round(p[j + 3] * alpha);
+    }
     g.putImageData(d, 0, 0); image.keyedCanvas = c;
   };
+}
+
+function drawChapter2TiledMap(image, tileW, tileH, left, right) {
+  const blendW = 88, step = tileW - blendW;
+  const start = Math.max(0, Math.ceil((left - tileW) / step) * step);
+  for (let x = start; x < right; x += step) {
+    if (x === 0) { ctx.drawImage(image, x, 0, tileW, tileH); continue; }
+    const strips = 24, stripW = blendW / strips;
+    for (let i = 0; i < strips; i++) {
+      ctx.globalAlpha = (i + 1) / strips;
+      ctx.drawImage(image, i * image.width / strips, 0, image.width / strips + 1, image.height,
+        x + i * stripW, 0, stripW + .5, tileH);
+    }
+    ctx.globalAlpha = 1;
+    ctx.drawImage(image, blendW * image.width / tileW, 0, image.width - blendW * image.width / tileW, image.height,
+      x + blendW, 0, tileW - blendW, tileH);
+  }
 }
 if (ASSETS.chapter2) {
   if (ASSETS.chapter2.battlefield) keyChapter2Map(load('chapter2_battlefield', ASSETS.chapter2.battlefield));
@@ -1607,7 +1655,11 @@ function draw() {
     if (keyed) {
       ctx.imageSmoothingEnabled = true;
       const tileW = bossMap ? M.W : 1080, tileH = 300;
-      for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
+      if (bossMap) {
+        for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
+      } else {
+        drawChapter2TiledMap(keyed, tileW, tileH, cam.x, cam.x + vw + tileW);
+      }
       ctx.imageSmoothingEnabled = false;
     }
     ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
