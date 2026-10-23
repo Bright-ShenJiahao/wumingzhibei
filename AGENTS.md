@@ -76,10 +76,14 @@
   逻辑在 js/boss.js（`Boss.wx()` `wxMove()` `wxAspd()` `wxProj()` `wxDraw()`）。
 - 波次：`WAVES` 里 `core` 是固定教学骨架（新兵种首次登场永远在这），`budget`+`pool` 是随机填充，
   威胁值见 `THREAT`（喽啰1/刀手2/投石手2/弓手2/老卒4）。
+- 非 Boss 战最多后退 **1.2 个屏幕**（`RETREAT_SCREENS`，`setRetreatLimit()` 设 `arenaL`），清完区域后
+  自动解除，方便回头捡掉落；Boss 战仍由 `Boss.start()` 设 1 屏决斗场。
+  第二章没有右侧闸门，`arenaL` 会跟着英雄推进向前滚动，始终只留 1.2 屏回头路。
 
 ## 开发者模式（调试用，普通玩家看不到）
 - 新增 `js/debug.js`：网址带 `?debug` 才启用。
   - `?debug` 显示调试面板；`?debug=boss` 直接进管亥一阶段；`?debug=boss2` 直接进二阶段。
+  - `?debug=chapter2` 直接测试第二章战斗流程；`?debug=chapter2altar` 预览第五战祭台地图（张角 Boss 尚未接入，不刷敌人）。
   - 面板按钮：Boss 一阶段 / 二阶段、清空本区域、跳到下一关、回满血、无敌、复活次数 +1、隐藏面板。
   - 桌面快捷键：F2 开关面板、F3 Boss 一阶段、F4 二阶段。
 - 原理：把 `gateI` 设成最后一个区域，把主角挪到触发点，让 `waves()` 正常走 `Boss.start()`；二阶段是随后强行改 `z.phase/type`。

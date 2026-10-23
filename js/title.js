@@ -351,11 +351,21 @@
       </div>
       <div id="tPrepLong"></div><div id="tPrepStorage"></div>
       <small id="tPrepArtNote">长戟暂沿用棍子连招与动作；后续补齐主角持戟帧后即可替换。</small>
-      <div id="tPrepActions"><button class="tChapterOption" id="tPrepGo" type="button"><strong>出征</strong><small>重返第一章，不再播放醒来开场</small></button>
-      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div></div>`;
+      <div id="tPrepActions">
+        <button class="tChapterOption" id="tPrepGo" type="button"><strong>出征</strong><small>第一章 · 重返村庄</small></button>
+        <button class="tChapterOption" id="tPrepC2" type="button"><strong>第二章</strong><small>黄巾决战 · 第一战</small></button>
+        <button class="tChapterOption" id="tChapterBack" type="button">返回</button>
+      </div></div>`;
     dom.prepLong = dom.chapter.querySelector('#tPrepLong');
     dom.prepLong.addEventListener('click', e => { const b = e.target.closest('[data-long-item]'); if (b && equipLong(b.dataset.longItem)) renderPreparation(); });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => finish({ skipWake: true }));
+    dom.chapter.querySelector('#tPrepC2').addEventListener('click', () => {
+      if (!window.CHAPTER2 || !CHAPTER2.canEnter()) return;
+      dom.chapter.classList.remove('open');
+      document.body.classList.remove('wzb-intro');
+      if (typeof startChapter2 === 'function') startChapter2();
+      else if (typeof startChapter2Debug === 'function') startChapter2Debug();
+    });
     dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
