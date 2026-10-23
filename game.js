@@ -1630,6 +1630,7 @@ function draw() {
     ctx.fillStyle = '#ffd86e'; lines.forEach((line, i) => ctx.fillText(line, HW / 2, by + 22 + i * 23)); ctx.textAlign = 'left';
   }
   drawResult(HW, HH);
+  if (chapter2Run && chapter2Run.mode === 'choice') drawChapter2Choice(HW, HH);
 }
 
 // ---------- 结算板（通关 / 倒下） ----------
@@ -1856,9 +1857,10 @@ function drawResult(HW, HH) {
 }
 function drawChapter2Choice(HW, HH) {
   uiBtns = [];
-  ctx.save(); ctx.fillStyle = 'rgba(15,10,10,.72)'; ctx.fillRect(0, 0, HW, HH);
+  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(15,10,10,.72)'; ctx.fillRect(0, 0, HW, HH);
   const pw = Math.min(600, HW * .88), ph = Math.min(230, HH * .72), x = (HW - pw) / 2, y = (HH - ph) / 2;
   ctx.fillStyle = 'rgba(50,32,22,.97)'; ctx.strokeStyle = '#c49a54'; ctx.lineWidth = 2;
+  ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, pw, ph, 12); else ctx.rect(x, y, pw, ph); ctx.fill(); ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f3d37b'; ctx.font = 'bold 22px sans-serif';
   ctx.fillText('张梁、张宝分兵突围', HW / 2, y + 35);
@@ -1869,6 +1871,7 @@ function drawChapter2Choice(HW, HH) {
     { x: x + 24 + bw + gap, label: '2  迂回包抄：追击张宝', act: 'zhang-bao' },
   ];
   for (const o of options) {
+    ctx.beginPath();
     ctx.fillStyle = '#8a542c'; ctx.strokeStyle = '#d2ad69'; ctx.lineWidth = 1.5;
     if (ctx.roundRect) ctx.roundRect(o.x, by, bw, bh, 8); else ctx.rect(o.x, by, bw, bh); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff0cc'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(o.label, o.x + bw / 2, by + bh / 2);
