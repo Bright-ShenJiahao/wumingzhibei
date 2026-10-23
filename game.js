@@ -139,7 +139,8 @@ function reset() {
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
-function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }
+function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 敌人受双倍伤害
+function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
@@ -1114,14 +1115,14 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus,   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1.5 : 1)),   // 困难模式 ×1.5   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy' });
       }
     }
     uiBtns = [];

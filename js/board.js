@@ -80,7 +80,7 @@
       const cl = r.cleared == null ? '—' : String(r.cleared);
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
-        <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
+        <td class="rowName" title="${esc(r.name)}">${esc(r.name)}${r.diff === 'hard' ? ' <span style="color:#e0703a;font-size:11px;font-weight:700">难</span>' : ''}</td>
         <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
         <td class="num">${r.kills} 杀</td>
         <td class="num">${cl}</td>
@@ -119,7 +119,7 @@
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
     const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
-      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
+      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus, diff: rec && rec.diff };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

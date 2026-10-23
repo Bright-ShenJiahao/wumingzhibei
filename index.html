@@ -544,7 +544,7 @@ body.wzb-pro #help{display:none}
       const cl = r.cleared == null ? '—' : String(r.cleared);
       return `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
-        <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
+        <td class="rowName" title="${esc(r.name)}">${esc(r.name)}${r.diff === 'hard' ? ' <span style="color:#e0703a;font-size:11px;font-weight:700">难</span>' : ''}</td>
         <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
         <td class="num">${r.kills} 杀</td>
         <td class="num">${cl}</td>
@@ -583,7 +583,7 @@ body.wzb-pro #help{display:none}
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
     const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
-      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
+      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus, diff: rec && rec.diff };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -2226,20 +2226,20 @@ function hit(z, dmg, dir, ranged) {
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
-  const NOVICE_KEY = 'wzb-novice-mode';
+  const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
-  let noviceMode = false;
+  let hardMode = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
-  function readNovice() { try { const v = localStorage.getItem(NOVICE_KEY); return v == null ? false : v === '1'; } catch (e) { return true; } }
-  function setNoviceClass() { document.body.classList.toggle('wzb-pro', !noviceMode); }
-  function writeNovice(v) { noviceMode = !!v; setNoviceClass(); try { localStorage.setItem(NOVICE_KEY, noviceMode ? '1' : '0'); } catch (e) {} }
+  function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
+  function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
+  function writeNovice(v) { hardMode = !!v; setNoviceClass(); try { localStorage.setItem(HARD_KEY, hardMode ? '1' : '0'); } catch (e) {} }
   S.name = readName();
-  noviceMode = readNovice();
+  hardMode = readHard();
 
   // ---------- 演示用的迷你世界（离屏 canvas） ----------
   const D = { camX: 0, t: 0, hero: null, foes: [], props: [], loop: 0, over: 0 };
@@ -2437,9 +2437,9 @@ function hit(z, dmg, dir, ranged) {
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
-    dom.novice = mk('label', 'tNovice', '简单模式');
-    dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
-    dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后敌人受到的伤害翻倍（操作提示始终显示）';
+    dom.novice = mk('label', 'tNovice', '困难模式');
+    dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = hardMode;
+    dom.novice.prepend(dom.noviceInput); dom.novice.title = '敌人不再受双倍伤害（更难），但排行榜评分 ×1.5';
     dom.board = mk('button', 'tBoard', '英雄榜');
     dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
     dom.hintOff = mk('label', 'tHintOff', '关闭提醒');
@@ -2641,7 +2641,7 @@ function hit(z, dmg, dir, ranged) {
     c.fillText('序章 · 幻想三国录', pad + 4, y + L.sub * 1.9);
     // 角落的小字：操作提示（电脑/手机自适应）
     const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
-    if (noviceMode) {
+    if (true) {   // 角落操作提示始终显示
       c.font = '600 12px "PingFang SC",sans-serif'; c.fillStyle = 'rgba(242,230,201,.5)';
       c.fillText(coarse ? '手机：左下摇杆移动 · 右下攻击/翻滚' : 'WASD 移动 · J 攻击 · K 翻滚 · 1/2/3 换武器', pad, L.h - 10);
     }
@@ -2728,7 +2728,8 @@ function hit(z, dmg, dir, ranged) {
     blocks: () => S.mode !== 'game',            // true = 游戏逻辑不推进
     draw: () => draw(),                          // 返回 true = 这一帧由标题界面接管
     playerName: () => S.name,
-    noviceMode: () => noviceMode,
+    hardMode: () => hardMode,
+    noviceMode: () => !hardMode,
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏
@@ -2921,7 +2922,8 @@ function reset() {
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
-function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }
+function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 敌人受双倍伤害
+function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
@@ -3896,14 +3898,14 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus,   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1.5 : 1)),   // 困难模式 ×1.5   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy' });
       }
     }
     uiBtns = [];

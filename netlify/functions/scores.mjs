@@ -60,8 +60,10 @@ function pub(x) {
   const win = !!x.win;
   const hits = Number.isFinite(x.hits) ? x.hits : 0;
   const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
-  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at,
-    score: scoreOf(x.kills, x.t, cleared, win, hits, x.bonus) };
+  const diff = x.diff === 'hard' ? 'hard' : 'easy';
+  const base = scoreOf(x.kills, x.t, cleared, win, hits, x.bonus);
+  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff,
+    score: Math.round(base * (diff === 'hard' ? 1.5 : 1)) };   // 困难模式评分 ×1.5
 }
 
 export default async function handler(req, context) {
@@ -116,6 +118,7 @@ export default async function handler(req, context) {
   const zone = Math.round(Number(body.zone)) || 0;
   const hits = Math.max(0, Math.min(99, Math.round(Number(body.hits)) || 0));
   const bonus = Math.max(0, Math.min(200, Math.round(Number(body.bonus)) || 0));
+  const diff = body.diff === 'hard' ? 'hard' : 'easy';
   if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
   if (win && t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);      // 通关不可能这么快
   if (!win && t < 10) return json({ ok: false, error: 'too fast' }, 400);
@@ -130,7 +133,7 @@ export default async function handler(req, context) {
     const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
     if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
 
-    const rec = { name, kills, t, zone, win, hits, bonus, at: now, season: SEASON, ip, cheat: 0 };
+    const rec = { name, kills, t, zone, win, hits, bonus, diff, at: now, season: SEASON, ip, cheat: 0 };
     const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
     await store.set(key, JSON.stringify(rec));
     return json({ ok: true, key });
