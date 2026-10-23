@@ -5377,13 +5377,15 @@ function drawResult(HW, HH) {
   const btnFade = Math.min(1, Math.max(0, (raw - .62) / .3));
   ctx.globalAlpha = btnFade;
   const gap = pw * .035;
-  const bw = (pw * .84 - gap * 3) / 4, bh = bw / 1.66;
+  const actionCount = result.win ? 4 : 3;
+  const bw = (pw * .84 - gap * (actionCount - 1)) / actionCount, bh = bw / 1.66;
   const byy = sy + sh * .755;
-  const bx0 = px0 + (pw - (bw * 4 + gap * 3)) / 2;
-  // 先按最长的标签算一个统一字号，三块牌子字一样大
+  const bx0 = px0 + (pw - (bw * actionCount + gap * (actionCount - 1))) / 2;
+  // 按当前结算按钮中的最长标签计算统一字号
   let ufs = Math.round(bh * .46);
   ctx.font = ufs + 'px ' + BRUSH;
-  const longest = Math.max(...['分享', '返回首页', '再来一局', '下一关'].map(t => ctx.measureText(t).width));
+  const actionLabels = result.win ? ['分享', '返回首页', '再来一局', '第二章'] : ['分享', '返回首页', '再来一局'];
+  const longest = Math.max(...actionLabels.map(t => ctx.measureText(t).width));
   if (longest > bw * .78) ufs = Math.max(8, Math.floor(ufs * bw * .78 / longest));
   const plank = (i, label, act, red, off) => {
     const x = bx0 + i * (bw + gap);
@@ -5406,8 +5408,10 @@ function drawResult(HW, HH) {
   plank(0, '分享', 'share', false);
   plank(1, '返回首页', 'home', false);
   plank(2, '再来一局', 'restart', true);
-  const chapter2Locked = !window.CHAPTER2 || !CHAPTER2.canEnter();
-  plank(3, '第二章', 'next', false, chapter2Locked);
+  if (result.win) {
+    const chapter2Locked = !window.CHAPTER2 || !CHAPTER2.canEnter();
+    plank(3, '第二章', 'next', false, chapter2Locked);
+  }
 
   // 复活按钮
   if (!result.win && raw > .8) {
