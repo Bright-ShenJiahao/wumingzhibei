@@ -20,15 +20,17 @@
     { id: 'wave', name: '冲击波', school: '长武器', w: 6, desc: '第三段附带直线冲击波，略增伤害；命中减防 10%，持续 0.5 秒', apply: () => { S.staffWave = 1; S.waveBonus = 1.15; } },
     { id: 'crit', name: '致命一击', school: '暴击', w: 6, desc: '主动攻击有 10% 概率造成 150% 伤害', apply: () => { S.crit = .1; } },
     { id: 'poison', name: '淬毒', school: '持续伤害', w: 6, desc: '主动攻击使敌人中毒 2 秒；再次命中可叠至 2 层，每层每秒造成 0.25 伤害', apply: () => { S.poison = 1; } },
-    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；每局 2 次，冷却 30 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
-    { id: 'fire', name: '献祭', school: '范围伤害', w: 6, desc: '微弱火焰灼烧近身敌人：每名敌人每 0.5 秒受到 0.2 伤害', apply: () => { S.fireAura = 1; } },
+    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；30 秒冷却，无次数限制', apply: () => { S.summon = 1; summonCd = 0; updateSkillButton(); } },
+    { id: 'fire', name: '献祭', school: '范围伤害', w: 6, desc: '贴身敌人每 0.5 秒受 0.2 伤害；每秒叠 1 层（最多 3 层），每层 +50%', apply: () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; } },
     { id: 'split', name: '分裂', school: '近战', w: 6, desc: '近战命中后，对半径 45 内其他敌人造成本次伤害的 30%', apply: () => { S.split = 1; } },
-    { id: 'catapult', name: '投石车', school: '主动技能', w: 5, desc: '从左方召来 3 台投石车，各投一块燃烧石：落地 1.5 伤害，留下 4 秒火场（每 0.5 秒 0.3 伤害）；每局 1 次', apply: () => { S.catapult = 1; } },
+    { id: 'catapult', name: '投石车', school: '主动技能', w: 5, desc: '召来 3 台投石车，各投燃烧石：落地 1.5 伤害，4 秒火场；30 秒冷却，无次数限制', apply: () => { S.catapult = 1; catapultCd = 0; updateSkillButton(); } },
   { id: 'scatter', name: '散射', school: '远程', w: 6, desc: '远程攻击增加上下各 30° 的副弹，各造成普通伤害的 10%', apply: () => { S.scatter = 1; } },
   ];
   const stacks = {};
   let open = false, offer = [], anim = 0, rects = [], rerollToken = false, rerollRect = null;
-  let inputLockT = 0, shieldReady = false, shieldTimer = 10, summonUses = 0, summonCd = 0, catapultUses = 0;
+  let inputLockT = 0, shieldReady = false, shieldTimer = 10, summonCd = 0, catapultCd = 0;
+  // 献祭：敌人贴身时每秒叠 1 层，最多 3 层；层数越高灼烧越痛、身上红晕越亮。
+  let auraStacks = 0, auraHold = 0, auraIdle = 0;
 
   const WEAPON_CARD = { long: 'wave', short: 'quake', ranged: 'combo' };
   const weightOf = c => {
@@ -52,24 +54,24 @@
     document.body.classList.toggle('wzb-summon', !!S.summon);
     const b = document.getElementById('bSkill');
     if (b) {
-      const left = Math.max(0, 2 - summonUses);
-      b.textContent = summonCd > 0 ? `万箭齐发 ${left} · ${Math.ceil(summonCd)}s` : `万箭齐发 ${left}`;
-      b.disabled = summonCd > 0 || left <= 0;
+      b.textContent = summonCd > 0 ? `万箭齐发 · ${Math.ceil(summonCd)}s` : '万箭齐发';
+      b.disabled = summonCd > 0;
       b.style.opacity = b.disabled ? '.52' : '1';
     }
-    // 投石车：独立按钮，每局一次
+    // 投石车：独立按钮，30 秒冷却、无次数限制
     document.body.classList.toggle('wzb-catapult', !!S.catapult);
     const c = document.getElementById('bCatapult');
     if (c) {
-      const cle = Math.max(0, 1 - catapultUses);
-      c.textContent = cle > 0 ? '投石车 1' : '投石车 0';
-      c.disabled = cle <= 0;
+      c.textContent = catapultCd > 0 ? `投石车 · ${Math.ceil(catapultCd)}s` : '投石车';
+      c.disabled = catapultCd > 0;
       c.style.opacity = c.disabled ? '.52' : '1';
     }
   }
   function offerCards() {
-    // 已获得卡从本局卡池移除，不会再次出现；每次最多三张，且优先保持不同流派。
-    const avail = CARDS.filter(c => !stacks[c.id]);
+    // 已获得卡从本局卡池移除，不会再次出现；投石车 / 万箭齐发 互斥，只能二选一。
+    const avail = CARDS.filter(c => !stacks[c.id]
+      && !(c.id === 'summon' && stacks.catapult)
+      && !(c.id === 'catapult' && stacks.summon));
     offer = pickN(avail, 3);
     anim = 0; setOpen(true); inputLockT = performance.now() + 350;
     try { if (typeof joy !== 'undefined' && joy) joy = null; } catch (_) {}
@@ -82,12 +84,12 @@
     if (typeof say === 'function') say('获得「' + c.name + '」—— ' + c.desc, 3);
   }
   function useCatapult() {
-    if (!S.catapult || catapultUses >= 1) return false;
-    catapultUses++; updateSkillButton(); return true;
+    if (!S.catapult || catapultCd > 0) return false;
+    catapultCd = 30; updateSkillButton(); return true;
   }
   function useSummon() {
-    if (!S.summon || summonUses >= 2 || summonCd > 0) return false;
-    summonUses++; summonCd = 30; updateSkillButton(); return true;
+    if (!S.summon || summonCd > 0) return false;
+    summonCd = 30; updateSkillButton(); return true;
   }
   function absorbHit() {
     if (!S.shield || !shieldReady) return false;
@@ -99,11 +101,27 @@
     if (typeof zs !== 'undefined') for (const z of zs) if (z && z.defDownT > 0) z.defDownT = Math.max(0, z.defDownT - dt);
     if (S.shield && !shieldReady) { shieldTimer -= dt; if (shieldTimer <= 0) { shieldReady = true; shieldTimer = 0; } }
     if (summonCd > 0) { summonCd = Math.max(0, summonCd - dt); updateSkillButton(); }
+    if (catapultCd > 0) { catapultCd = Math.max(0, catapultCd - dt); updateSkillButton(); }
     if (S.fireAura && typeof zs !== 'undefined') {
+      let near = false;
+      const lv = Math.max(1, auraStacks);
       for (const z of zs) {
         if (!z || z.dead || z.air || Math.hypot(z.x - hero.x, z.y - hero.y) > 24) continue;
+        near = true;
         z.fireTick = (z.fireTick || 0) - dt;
-        if (z.fireTick <= 0) { z.fireTick = .5; rogueHit(z, .2, { secondary: true, scaled: true, dot: true }); }
+        if (z.fireTick <= 0) {
+          z.fireTick = .5;
+          rogueHit(z, .2 * (1 + .5 * (lv - 1)), { secondary: true, scaled: true, dot: true });
+        }
+      }
+      // 敌人贴身站着：每秒叠 1 层（最多 3 层）；离开约 1.2 秒后逐层回落。
+      if (near) {
+        auraHold += dt; auraIdle = 0;
+        if (auraHold >= 1) { auraHold -= 1; auraStacks = Math.min(3, auraStacks + 1); }
+      } else {
+        auraHold = Math.max(0, auraHold - dt);
+        auraIdle += dt;
+        if (auraIdle >= 1.2 && auraStacks > 1) { auraIdle = 0; auraStacks--; }
       }
     }
     if (S.poison && typeof zs !== 'undefined') for (const z of zs) {
@@ -163,9 +181,11 @@
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, update, tick, choose, useSummon, useCatapult, absorbHit,
     shieldReady: () => !!S.shield && shieldReady,
-    summonState: () => ({ uses: summonUses, cooldown: summonCd }),
+    summonState: () => ({ cooldown: summonCd }),
+    catapultState: () => ({ cooldown: catapultCd }),
+    fireAura: () => ({ active: !!S.fireAura, stacks: S.fireAura ? auraStacks : 0 }),
     grantReroll() { if (rerollToken) return false; rerollToken = true; return true; },
     rerolls: () => rerollToken, pickedUp: () => stacks, cards: () => offer,
-    reset() { setOpen(false); offer = []; rerollToken = false; rerollRect = null; shieldReady = false; shieldTimer = 10; summonUses = 0; summonCd = 0; for (const k in stacks) delete stacks[k]; for (const k in DEFAULT) S[k] = DEFAULT[k]; updateSkillButton(); },
+    reset() { setOpen(false); offer = []; rerollToken = false; rerollRect = null; shieldReady = false; shieldTimer = 10; summonCd = 0; catapultCd = 0; auraStacks = 0; auraHold = 0; auraIdle = 0; for (const k in stacks) delete stacks[k]; for (const k in DEFAULT) S[k] = DEFAULT[k]; updateSkillButton(); },
   };
 })();

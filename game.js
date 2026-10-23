@@ -1219,14 +1219,6 @@ function updateCatapults(dt) {
   allyFires = allyFires.filter(f => f.t > 0);
 }
 function drawCatapults() {
-  for (const f of allyFires) {
-    const a = Math.min(1, f.t / .6) * (.35 + .12 * Math.sin(performance.now() / 90));
-    const gd = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r);
-    gd.addColorStop(0, 'rgba(255,170,60,' + a + ')');
-    gd.addColorStop(1, 'rgba(255,90,20,0)');
-    ctx.fillStyle = gd;
-    ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .45, 0, 0, 7); ctx.fill();
-  }
   for (const c of catapults) {
     if (c.t < 0) continue;
     const fr = c.phase === 'fire' ? 'fire' : c.phase === 'aim' ? 'load' : 'idle';
@@ -1241,6 +1233,53 @@ function drawCatapults() {
     ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,150,40,.9)';
     ctx.beginPath(); ctx.arc(s.x, s.y, 2.4, 0, 7); ctx.fill();
+  }
+}
+
+// 投石车火场：复用弓箭手地面火苗的 4 帧，整体调成偏朱红，和黄橙色的火箭火区分开。
+const allyFireTint = [];
+function allyFireFrame(k) {
+  if (allyFireTint[k]) return allyFireTint[k];
+  const im = IMG['ui_fire' + k];   // 打包时 UI 图统一加 ui_ 前缀
+  if (!im || !im.complete || !im.naturalWidth) return null;
+  const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const px = g.getImageData(0, 0, c.width, c.height), d = px.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const lum = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114;
+    d[i] = Math.min(255, d[i] * .92 + 16);                 // 红
+    d[i + 1] = Math.min(255, d[i + 1] * .42 + lum * .08);  // 压掉黄绿
+    d[i + 2] = Math.min(255, d[i + 2] * .58 + lum * .12);  // 蓝略抬，偏朱红
+  }
+  g.putImageData(px, 0, 0);
+  allyFireTint[k] = c;
+  return c;
+}
+function drawAllyFire() {
+  const now = performance.now() / 90;
+  for (const f of allyFires) {
+    const fade = Math.min(1, f.t / .6);
+    const a = Math.min(1, (4 - f.t) / .25) * fade;
+    if (a <= 0) continue;
+    // 地面被烤红的一圈（和伤害范围一致）
+    const gd = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r);
+    gd.addColorStop(0, 'rgba(255,120,70,' + (.26 * a) + ')');
+    gd.addColorStop(1, 'rgba(210,40,20,0)');
+    ctx.fillStyle = gd;
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .45, 0, 0, 7); ctx.fill();
+    // 三簇火苗，错开相位和高度
+    const seeds = [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];
+    for (let i = 0; i < seeds.length; i++) {
+      const [ox, sc, ph] = seeds[i];
+      const im = allyFireFrame(Math.floor(now + ph * 4) % 4);
+      if (!im) continue;
+      const FH = 32 * sc, FW = FH * im.width / im.height;
+      ctx.globalAlpha = a * (.86 + .14 * Math.sin(now * .6 + i));
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6), FW, FH);
+      ctx.globalAlpha = 1;
+    }
   }
 }
 
@@ -1495,6 +1534,7 @@ function draw() {
       ctx.globalAlpha = 1;
     }
   }
+  drawAllyFire();   // 投石车留下的火场（和弓箭手的火共用帧，颜色偏朱红）
   // 火箭落点预警
   for (const s of eshots) if (s.k === 'arrow') {
     const d = Math.sign(s.vx) || 1;
@@ -1933,8 +1973,55 @@ function drawChargeAura(h) {
   ctx.restore();
 }
 
+// 献祭：主角身上一层淡红色光晕；敌人贴身每秒叠 1 层（最多 3 层），层数越高红光越亮、光环越多。
+function drawFireAura(h) {
+  if (!window.ROGUE || !ROGUE.fireAura) return;
+  const A = ROGUE.fireAura(); if (!A.active) return;
+  const lv = Math.max(1, Math.min(3, A.stacks || 1));
+  const t = performance.now() / 1000, pulse = .5 + .5 * Math.sin(t * 2.6);
+  const R = 26 + lv * 6;
+  // 外层柔光：正常混合压暗一点背景，浅色地面上也能看见
+  ctx.save();
+  const g = ctx.createRadialGradient(h.x, h.y - 18, 3, h.x, h.y - 18, R);
+  g.addColorStop(0, `rgba(255,86,66,${.20 + lv * .035 + pulse * .02})`);
+  g.addColorStop(.55, `rgba(214,42,44,${.13 + lv * .025})`);
+  g.addColorStop(1, 'rgba(140,16,26,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(h.x, h.y - 18, R * .9, R * 1.05, 0, 0, 7); ctx.fill();
+  ctx.restore();
+  // 贴身光晕：每层一圈淡红光环（1~3 层），最内圈最亮
+  for (let i = 0; i < lv; i++) {
+    const rx = 15 + i * 3.2, ry = 20 + i * 3.2;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,104,82,${.26 - i * .05 + pulse * .03})`;
+    ctx.lineWidth = 1.4;
+    ctx.shadowColor = 'rgba(255,70,50,.55)';
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y - 17, rx, ry, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  // 贴地范围圈：淡红，尽量不抢画面
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,96,78,${.12 + lv * .04})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(h.x, h.y, 24, 10, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+  // 缓缓上升的火星
+  ctx.save();
+  for (let i = 0; i < lv * 4; i++) {
+    const ph = (t * (.32 + i * .045) + i * .37) % 1;
+    const x = h.x + Math.sin(t * 1.6 + i * 2.3) * (9 + lv * 2.4);
+    const y = h.y - 7 - ph * (26 + lv * 6);
+    ctx.globalAlpha = (1 - ph) * (.30 + lv * .09);
+    ctx.fillStyle = i % 2 ? '#ff9a64' : '#ff4a3a';
+    ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
+  }
+  ctx.restore();
+}
+
 function drawHero() {
   const h = hero; shadow(h.x, h.y, 10);
+  if (!over && h.st !== 'down') drawFireAura(h);
   h.shieldFlash = Math.max(0, (h.shieldFlash || 0) - 1 / 60);
   if (window.ROGUE && ROGUE.shieldReady && ROGUE.shieldReady()) {
     const pulse = .72 + .18 * Math.sin(performance.now() / 230);

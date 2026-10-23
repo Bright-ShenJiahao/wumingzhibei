@@ -35,6 +35,7 @@ body.wzb-catapult #bCatapult{display:block}
 body.wzb-summon #bSkill:disabled{filter:saturate(.6)}
 #help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 body.wzb-rogue #top,body.wzb-rogue #wp,body.wzb-rogue #joy,body.wzb-rogue .big,body.wzb-rogue #help{display:none}
+body.wzb-rogue #bSkill,body.wzb-rogue #bCatapult{display:none!important}
 @media (max-width:600px){#wp{gap:3px}#wp button[data-w]{width:42px;height:44px}#wp button[data-w] img{width:36px;height:36px}#bWeapon{width:38px;height:38px}#bMute{min-width:36px;height:38px}}
 body.wzb-pro #help{display:none}
 #rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
@@ -48,6 +49,6 @@ body.wzb-pro #help{display:none}
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
 <div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换武器">↻</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
-<button class="big" id="bR">翻滚</button><button class="big" id="bCatapult" type="button">投石车 1</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">召唤 2</button>
-<div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K/空格 翻滚 · U 召唤 · 1/2/3 换武器 · R 重来</div>
+<button class="big" id="bR">翻滚</button><button class="big" id="bCatapult" type="button">投石车</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">万箭齐发</button>
+<div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K/空格 翻滚 · U 万箭齐发 · 1/2/3 换武器 · R 重来</div>
 <script>const ASSETS=__ASSETS__;</script><script>const BG=__BG__;</script><script>__GAME__</script></body></html>
