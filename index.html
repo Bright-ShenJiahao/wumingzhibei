@@ -2313,10 +2313,26 @@ function hit(z, dmg, dir, ranged) {
   const NAME_KEY = 'wzb-name';
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
   const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
+  const ARMORY_KEY = 'wzb-armory-v1';
+  const ITEMS = Object.freeze({
+    staff: Object.freeze({ name: '棍子', slot: 'long', icon: 'w_staff' }),
+    halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'halberd' }),
+    hammer: Object.freeze({ name: '锤子', slot: 'short', icon: 'w_hammer' }),
+    stone: Object.freeze({ name: '石子', slot: 'ranged', icon: 'w_stone' }),
+  });
+  const EQUIPMENT_SLOTS = Object.freeze([
+    Object.freeze({ id: 'long', name: '长武器', combat: true }),
+    Object.freeze({ id: 'short', name: '短武器', combat: true }),
+    Object.freeze({ id: 'ranged', name: '远程', combat: true }),
+    Object.freeze({ id: 'talisman', name: '法器', combat: true }),
+    Object.freeze({ id: 'artifact', name: '神器', combat: false }),
+    Object.freeze({ id: 'fashion', name: '时装', combat: false }),
+  ]);
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0, chapterReturn: false };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
   let hardMode = false;
+  let selectedChapter = 1, pointerDrag = null, suppressItemClick = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
@@ -2327,7 +2343,51 @@ function hit(z, dmg, dir, ranged) {
   function markCleared(n, chapter = 1) {
     const k = playerKey(n); if (!k) return false;
     const progress = readCampaign(); progress[k] = Object.assign({}, progress[k], { [chapter]: true });
-    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; }
+    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); } catch (e) { return false; }
+    if (chapter === 1) {
+      const p = playerLoadout(n);
+      if (!p.owned.includes('halberd')) p.owned.push('halberd');
+      saveLoadout(n, p);
+    }
+    return true;
+  }
+  function defaultLoadout() {
+    return { owned: ['staff', 'hammer', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
+  }
+  function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function saveLoadout(n, p) {
+    const k = playerKey(n); if (!k) return false;
+    const all = readLoadouts();
+    if (!all[k] && (Array.isArray(all.owned) || Object.prototype.hasOwnProperty.call(all, 'long'))) {
+      delete all.owned; delete all.long; delete all.equipped;
+    }
+    all[k] = p;
+    try { localStorage.setItem(ARMORY_KEY, JSON.stringify(all)); return true; } catch (e) { return false; }
+  }
+  function playerLoadout(n = S.name) {
+    const k = playerKey(n), all = readLoadouts();
+    const legacy = k && !all[k] && (Array.isArray(all.owned) || Object.prototype.hasOwnProperty.call(all, 'long')) ? all : null;
+    const raw = k ? (all[k] || legacy) : null;
+    const p = raw && typeof raw === 'object' ? raw : defaultLoadout();
+    p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
+    for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
+    if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
+    const oldLong = p.long;
+    const saved = p.equipped && typeof p.equipped === 'object' ? p.equipped : {};
+    const restored = (slot, fallback) => Object.prototype.hasOwnProperty.call(saved, slot) ? saved[slot] : fallback;
+    p.equipped = {
+      long: restored('long', oldLong || 'staff'), short: restored('short', 'hammer'), ranged: restored('ranged', 'stone'),
+      talisman: restored('talisman', null), artifact: restored('artifact', null), fashion: restored('fashion', null),
+    };
+    for (const slot of EQUIPMENT_SLOTS) {
+      const id = p.equipped[slot.id];
+      if (!ITEMS[id] || ITEMS[id].slot !== slot.id || !p.owned.includes(id)) p.equipped[slot.id] = null;
+    }
+    if (!k) return p;
+    const changed = !raw || !raw.equipped || raw.long !== p.equipped.long || JSON.stringify(raw.equipped) !== JSON.stringify(p.equipped) || JSON.stringify(raw.owned) !== JSON.stringify(p.owned);
+    p.long = p.equipped.long || null;
+    if (changed) saveLoadout(n, p);
+    return p;
   }
   function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
   function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
@@ -2530,30 +2590,69 @@ function hit(z, dmg, dir, ranged) {
         transition: opacity .3s ease-out;
       }
       #tChapter {
-        position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
-        padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center,rgba(34,22,17,.68),rgba(12,8,10,.88));
+        position:fixed; inset:0; z-index:9; display:none; box-sizing:border-box; padding:clamp(8px,1.8vw,22px);
+        background:#1c1712; color:#ead9b8; font-family:"MaShanZheng","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
       }
-      #tChapter.open { display: flex; }
-      #tChapterPanel {
-        width: min(560px, 92vw); max-height: 86vh; overflow: auto; box-sizing: border-box; padding: 22px 24px 20px;
-        border: 2px solid #b98a38; border-radius: 14px; color: #f3dfb6; text-align: center;
-        background: linear-gradient(145deg,rgba(55,36,23,.97),rgba(24,18,18,.98));
-        box-shadow: 0 16px 50px rgba(0,0,0,.7), inset 0 0 24px rgba(206,154,64,.12);
-        font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+      #tChapter.open { display:flex; }
+      #tChapter [hidden] { display:none !important; }
+      #tChapterShell { display:grid; grid-template-columns:minmax(205px,35%) minmax(0,65%); width:100%; min-height:0; overflow:hidden; border:2px solid #98713e; border-radius:12px; background:linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:inset 0 0 0 1px rgba(227,194,132,.16); }
+      #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,2vw,24px); }
+      #tChapterPick { display:flex; flex-direction:column; border-right:2px solid #8b693c; background:linear-gradient(90deg,rgba(26,20,16,.3),rgba(15,12,10,.12)); }
+      #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
+      #tChapter h2 { margin:0; color:#f0d58f; font-size:clamp(19px,2.4vw,29px); letter-spacing:.08em; }
+      #tChapter p { margin:3px 0 0; color:#c4b18e; font-size:clamp(11px,1.2vw,14px); }
+      .tChapterCard { width:100%; min-height:clamp(91px,17vh,150px); margin-top:clamp(8px,1.5vh,15px); padding:clamp(11px,1.5vw,18px); box-sizing:border-box; border:1px solid #9d7845; border-radius:9px; color:#e9d8b7; text-align:left; background:repeating-linear-gradient(4deg,rgba(225,187,121,.035) 0 2px,transparent 2px 12px),linear-gradient(145deg,#62462c,#382a20); cursor:pointer; touch-action:manipulation; }
+      .tChapterCard strong { display:block; color:#f4d88e; font-size:clamp(15px,1.7vw,20px); }
+      .tChapterCard small { display:block; margin-top:8px; color:#c8b590; font-size:clamp(10px,1.1vw,13px); }
+      .tChapterCard.selected { border:2px solid #e0b86c; box-shadow:inset 0 0 0 1px #76572f,0 0 14px rgba(223,177,93,.22); }
+      .tChapterCard:disabled { filter:grayscale(.8); opacity:.56; cursor:default; }
+      #tChapterPickBack { margin-top:auto; width:100%; padding:10px; }
+      .tChapterButton { border:1px solid #b18a4b; border-radius:8px; color:#f0dfbd; background:linear-gradient(#715233,#3b2b20); font-weight:700; cursor:pointer; touch-action:manipulation; }
+      .tChapterButton:active:not(:disabled) { filter:brightness(1.25); transform:translateY(1px); }
+      .tChapterButton:disabled { opacity:.45; color:#a89c88; cursor:default; }
+      #tPrepHeader { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+      #tPrepTarget { text-align:right; white-space:nowrap; }
+      #tPrepSlots { flex:1; min-height:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(5px,1vw,12px); }
+      .tPrepSlot { min-width:0; min-height:0; display:grid; grid-template-columns:minmax(42px,30%) minmax(0,1fr); grid-template-rows:auto 1fr; gap:3px 8px; align-items:center; padding:clamp(6px,1vw,12px); box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); }
+      .tPrepSlot > b { grid-column:1/-1; color:#eccd87; font-size:clamp(11px,1.3vw,16px); }
+      .tPrepIcon { width:100%; height:100%; max-height:70px; min-height:35px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
+      .tPrepIcon img,.tBagIcon img { width:80%; height:80%; object-fit:contain; image-rendering:pixelated; }
+      .tPrepName { overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); text-overflow:ellipsis; }
+      .tPrepName small { display:block; margin-top:4px; color:#c3ae88; font-size:10px; }
+      .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
+      .tPrepSlot.drag-incompatible { border-color:#a78049; }
+      #tPrepBagTitle { display:flex; align-items:center; justify-content:space-between; color:#e7d5af; font-size:clamp(12px,1.4vw,16px); font-weight:700; }
+      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(4px,.7vw,8px); height:clamp(52px,12vh,82px); }
+      .tBagItem,.tBagEmpty { min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; border:1px solid #9f7945; border-radius:6px; background:#292119; color:#e8d7b3; touch-action:none; }
+      .tBagItem { cursor:grab; }
+      .tBagItem:active { cursor:grabbing; }
+      .tBagIcon { width:58%; height:55%; display:flex; align-items:center; justify-content:center; }
+      .tBagItem span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(9px,1vw,12px); }
+      .tBagEmpty { border-style:dashed; border-color:#66533a; color:#81745d; font-size:12px; }
+      #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
+      #tPrepStatus { min-width:0; color:#cbb894; font-size:clamp(10px,1.1vw,13px); }
+      #tPrepGo { min-width:clamp(110px,16vw,180px); padding:9px 18px; font-size:clamp(15px,1.7vw,20px); }
+      #tPrepGo:not(:disabled) { border-color:#d3a95f; color:#ffe8b0; }
+      #tPrepGhost { position:fixed; z-index:30; pointer-events:none; width:90px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #f0cf81; border-radius:8px; background:rgba(42,31,22,.94); color:#f4e2bb; box-shadow:0 8px 24px #0009; transform:translate(-50%,-50%); }
+      #tPrepGhost img { width:48px; height:42px; object-fit:contain; image-rendering:pixelated; }
+      @media(max-width:600px) and (orientation:landscape) {
+        #tChapter { padding:6px; }
+        #tChapterShell { grid-template-columns:minmax(150px,31%) minmax(0,69%); }
+        #tChapterPick,#tChapterPanel { padding:8px; }
+        #tChapterPick .tChapterCard { min-height:76px; margin-top:7px; padding:8px; }
+        #tChapterPickBack { padding:7px; }
+        #tChapterPanel { gap:5px; }
+        #tPrepSlots { gap:4px; }
+        .tPrepSlot { grid-template-columns:minmax(30px,26%) minmax(0,1fr); gap:2px 4px; padding:5px; }
+        .tPrepIcon { min-height:28px; }
+        #tPrepBag { height:50px; gap:3px; }
+        .tBagIcon { height:45%; }
+        #tPrepGo { padding:6px 12px; }
       }
-      #tChapter h2 { margin: 0 0 5px; color: #f3d37b; font-size: clamp(21px,4vw,30px); letter-spacing: .12em; }
-      #tChapter p { margin: 0 0 16px; color: #cbb894; font-size: 13px; }
-      .tChapterOption {
-        display: block; width: 100%; margin: 10px 0; padding: 13px 15px; box-sizing: border-box;
-        border: 1px solid #b98a38; border-radius: 9px; color: #f8e8c6; text-align: left;
-        background: linear-gradient(180deg,rgba(118,79,37,.9),rgba(62,43,29,.96)); cursor: pointer;
+      @media(max-height:420px) and (orientation:landscape) {
+        #tChapterPick .tChapterCard { min-height:68px; margin-top:5px; }
+        #tPrepBag { height:44px; }
       }
-      .tChapterOption strong { display: block; color: #ffdc82; font-size: 16px; }
-      .tChapterOption small { display: block; margin-top: 4px; color: #d3c09e; font-size: 12px; }
-      .tChapterOption:active:not(:disabled) { transform: translateY(2px); filter: brightness(1.15); }
-      .tChapterOption:disabled { border-color: #625647; color: #92836e; background: rgba(50,43,36,.8); cursor: default; }
-      .tChapterOption:disabled strong,.tChapterOption:disabled small { color: #92836e; }
-      #tChapterBack { margin-top: 8px; padding: 8px 20px; border-color: #82705a; color: #d3c09e; }
     `;
     document.head.appendChild(st);
     setNoviceClass();
@@ -2604,12 +2703,42 @@ function hit(z, dmg, dir, ranged) {
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
     dom.chapter = mk('div', 'tChapter', '');
-    dom.chapter.innerHTML = `<div id="tChapterPanel"><h2>选择关卡</h2><p></p>
-      <button class="tChapterOption" data-chapter="1"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
-      <button class="tChapterOption" data-chapter="2" disabled><strong>第二章　黄巾决战　未开放</strong><small>战场仍在筹备中</small></button>
-      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div>`;
-    dom.chapter.querySelector('[data-chapter="1"]').addEventListener('click', () => finish({ skipWake: true }));
-    dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
+    dom.chapter.innerHTML = `<div id="tChapterShell">
+      <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
+        <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
+        <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
+        <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
+      </section>
+      <section id="tChapterPanel" aria-label="整军备战">
+        <header id="tPrepHeader"><div><h2>整军备战</h2><p id="tPrepNote"></p></div><p id="tPrepTarget"></p></header>
+        <div id="tPrepSlots"></div>
+        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 拖回卸下</small></div>
+        <div id="tPrepBag"></div>
+        <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+      </section></div>`;
+    dom.pick = dom.chapter.querySelector('#tChapterPick');
+    dom.prep = dom.chapter.querySelector('#tChapterPanel');
+    dom.chapter.querySelector('#tChapterPickBack').addEventListener('click', () => closeChapterSelect());
+    dom.chapter.addEventListener('click', e => {
+      if (suppressItemClick) { suppressItemClick = false; return; }
+      const chapter = e.target.closest('[data-chapter]');
+      if (chapter) {
+        const id = Number(chapter.dataset.chapter);
+        if (id === 2 && (!window.CHAPTER2 || !CHAPTER2.canEnter())) return;
+        selectedChapter = id === 2 ? 2 : 1;
+        renderPreparation();
+        return;
+      }
+      const item = e.target.closest('[data-item]');
+      if (item) { equipItem(item.dataset.item); return; }
+      const slot = e.target.closest('[data-slot]');
+      if (slot) unequipSlot(slot.dataset.slot);
+    });
+    dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
+    dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
+    document.addEventListener('pointermove', moveLoadoutPointer, { passive: false });
+    document.addEventListener('pointerup', endLoadoutPointer);
+    document.addEventListener('pointercancel', cancelLoadoutPointer);
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
       if (e.key === 'Enter') start();
@@ -2854,8 +2983,10 @@ function hit(z, dmg, dir, ranged) {
     S.mode = 'chapter'; S.chapterReturn = true;
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
-    const note = dom.chapter.querySelector('p');
+    const note = dom.chapter.querySelector('#tChapterNote');
     if (note) note.textContent = `将以「${S.name}」的名义继续征战`;
+    selectedChapter = 1;
+    renderPreparation();
     dom.chapter.classList.add('open');
   }
 
@@ -2864,6 +2995,158 @@ function hit(z, dmg, dir, ranged) {
     document.body.classList.remove('wzb-intro');
     S.mode = 'title'; S.chapterReturn = false;
     setDomVisible(true);
+  }
+
+  function itemIconSrc(id) {
+    const item = ITEMS[id];
+    if (!item) return '';
+    if (item.icon === 'halberd') {
+      return 'art/sprites/guanhai/halberd.png';
+    }
+    if (typeof ASSETS === 'undefined') return '';
+    return ASSETS.ui && ASSETS.ui[item.icon] ? ASSETS.ui[item.icon] : '';
+  }
+
+  function itemIcon(id) {
+    const src = itemIconSrc(id);
+    return src ? `<img src="${src}" alt="${ITEMS[id].name}" draggable="false">` : '<span aria-hidden="true">—</span>';
+  }
+
+  function renderPreparation(status = '') {
+    if (!dom.chapter) return;
+    const p = playerLoadout();
+    const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
+    const c2 = dom.chapter.querySelector('[data-chapter="2"]');
+    const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
+    if (c2) {
+      c2.disabled = !canEnter2;
+      c2.classList.toggle('selected', selectedChapter === 2);
+      const state = dom.chapter.querySelector('#tChapter2State');
+      if (state) state.textContent = canEnter2 ? '选择后可整备出征' : '未开放';
+    }
+    const c1 = dom.chapter.querySelector('[data-chapter="1"]');
+    if (c1) c1.classList.toggle('selected', selectedChapter === 1);
+    const chapterNote = dom.chapter.querySelector('#tChapterNote');
+    if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
+    const note = dom.chapter.querySelector('#tPrepNote');
+    if (note) note.textContent = `玩家：${S.name || '未命名'}`;
+    const target = dom.chapter.querySelector('#tPrepTarget');
+    if (target) target.textContent = `出征目标：${chapterName}`;
+
+    const slots = dom.chapter.querySelector('#tPrepSlots');
+    slots.innerHTML = EQUIPMENT_SLOTS.map(slot => {
+      const id = p.equipped[slot.id], item = ITEMS[id];
+      const display = item ? item.name : (slot.id === 'artifact' ? '未装备' : '空');
+      const extra = slot.id === 'fashion' && !item ? '<small>联系作者购买</small>' : '';
+      const icon = item ? itemIcon(id) : '<span aria-hidden="true">—</span>';
+      return `<div class="tPrepSlot" data-slot="${slot.id}" data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}">
+        <b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}${extra}</span></div>`;
+    }).join('');
+
+    const equipped = new Set(Object.values(p.equipped).filter(Boolean));
+    const items = p.owned.filter(id => ITEMS[id] && !equipped.has(id));
+    const bag = dom.chapter.querySelector('#tPrepBag');
+    bag.innerHTML = Array.from({ length: 6 }, (_, i) => {
+      const id = items[i];
+      return id
+        ? `<button class="tBagItem" type="button" data-item="${id}" data-inventory-drop="item" aria-label="${ITEMS[id].name}，点击装备或拖动"><span class="tBagIcon">${itemIcon(id)}</span><span>${ITEMS[id].name}</span></button>`
+        : '<div class="tBagEmpty" data-inventory-drop="empty" aria-hidden="true">空</div>';
+    }).join('');
+    const ready = EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id]);
+    const go = dom.chapter.querySelector('#tPrepGo');
+    go.disabled = !ready || (selectedChapter === 2 && !canEnter2);
+    const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
+    dom.chapter.querySelector('#tPrepStatus').textContent = message;
+  }
+
+  function saveEquipment(p) {
+    p.long = p.equipped.long || null;
+    const ok = saveLoadout(S.name, p);
+    renderPreparation(ok ? '' : '保存失败，请检查浏览器存储设置');
+    return ok;
+  }
+
+  function equipItem(id) {
+    const item = ITEMS[id], p = playerLoadout();
+    if (!item || !p.owned.includes(id)) return false;
+    p.equipped[item.slot] = id;
+    return saveEquipment(p);
+  }
+
+  function unequipSlot(slot) {
+    if (!EQUIPMENT_SLOTS.some(s => s.id === slot)) return false;
+    const p = playerLoadout();
+    if (!p.equipped[slot]) return false;
+    p.equipped[slot] = null;
+    return saveEquipment(p);
+  }
+
+  function beginLoadoutPointer(e) {
+    if (!dom.prep || !dom.prep.contains(e.target)) return;
+    const itemNode = e.target.closest('[data-item]');
+    const slotNode = e.target.closest('[data-slot]');
+    const p = playerLoadout();
+    const itemId = itemNode ? itemNode.dataset.item : slotNode ? p.equipped[slotNode.dataset.slot] : null;
+    if (!itemId || !ITEMS[itemId]) return;
+    pointerDrag = { id: itemId, source: itemNode ? 'bag' : 'slot', sourceSlot: slotNode && slotNode.dataset.slot, pointerId: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+
+  function moveLoadoutPointer(e) {
+    if (!pointerDrag || e.pointerId !== pointerDrag.pointerId) return;
+    const drag = pointerDrag, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 7) return;
+    drag.moved = true; e.preventDefault();
+    if (!dom.chapter.querySelector('#tPrepGhost')) {
+      const ghost = document.createElement('div'); ghost.id = 'tPrepGhost'; ghost.innerHTML = `${itemIcon(drag.id)}<span>${ITEMS[drag.id].name}</span>`; document.body.appendChild(ghost);
+    }
+    const ghost = dom.chapter.querySelector('#tPrepGhost');
+    ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px';
+    dom.chapter.querySelectorAll('.tPrepSlot.drop-ok').forEach(el => el.classList.remove('drop-ok'));
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const slot = target && target.closest('[data-slot]');
+    if (slot && slot.dataset.slot === ITEMS[drag.id].slot) slot.classList.add('drop-ok');
+  }
+
+  function endLoadoutPointer(e) {
+    if (!pointerDrag || (e.pointerId !== undefined && e.pointerId !== pointerDrag.pointerId)) return;
+    const drag = pointerDrag; pointerDrag = null;
+    const ghost = dom.chapter && dom.chapter.querySelector('#tPrepGhost');
+    if (ghost) ghost.remove();
+    if (dom.chapter) dom.chapter.querySelectorAll('.tPrepSlot.drop-ok').forEach(el => el.classList.remove('drop-ok'));
+    if (!drag.moved) return;
+    suppressItemClick = true; setTimeout(() => { suppressItemClick = false; }, 0);
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const targetSlot = target && target.closest('[data-slot]');
+    const targetBag = target && target.closest('#tPrepBag');
+    const p = playerLoadout(), item = ITEMS[drag.id];
+    if (targetSlot && targetSlot.dataset.slot === item.slot) p.equipped[item.slot] = drag.id;
+    else if (targetBag && drag.source === 'slot') p.equipped[drag.sourceSlot] = null;
+    else return;
+    saveEquipment(p);
+  }
+
+  function cancelLoadoutPointer(e) {
+    if (!pointerDrag || e.pointerId !== pointerDrag.pointerId) return;
+    pointerDrag = null;
+    const ghost = dom.chapter && dom.chapter.querySelector('#tPrepGhost');
+    if (ghost) ghost.remove();
+    if (dom.chapter) dom.chapter.querySelectorAll('.tPrepSlot.drop-ok').forEach(el => el.classList.remove('drop-ok'));
+  }
+
+  function startSelectedChapter() {
+    const p = playerLoadout();
+    if (!EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id])) { renderPreparation('至少装备一件武器'); return; }
+    if (selectedChapter === 2) {
+      if (!window.CHAPTER2 || !CHAPTER2.canEnter()) { renderPreparation('第二章未开放'); return; }
+      const begin = window.startChapter2 || window.startChapter2Debug;
+      if (typeof begin !== 'function') { renderPreparation('第二章战斗入口尚未接入'); return; }
+      dom.chapter.classList.remove('open'); S.mode = 'game';
+      document.body.classList.remove('wzb-title', 'wzb-intro');
+      begin();
+      return;
+    }
+    finish({ skipWake: true });
   }
 
   function finish(options = {}) {
