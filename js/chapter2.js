@@ -24,22 +24,23 @@
       ],
       map: MAP, status: 'locked',
     }),
-    Object.freeze({ number: 2, title: '黄巾后阵', encounter: '远程兵种为主', units: ['yellow-shield'], map: MAP, status: 'locked' }),
-    Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear'], map: MAP, route: 'zhang-liang', status: 'locked' }),
-    Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-catapult'], map: MAP, route: 'zhang-bao', status: 'locked' }),
+    Object.freeze({ number: 2, title: '黄巾后阵', encounter: '四名盾兵、四名枪兵、三台固定投石车', units: ['yellow-shield', 'yellow-spear', 'yellow-catapult'], enemyCount: 11, map: MAP, status: 'locked' }),
+    Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear', 'zhang-liang'], map: MAP, route: 'zhang-liang', status: 'locked' }),
+    Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-spear', 'zhang-bao'], map: MAP, route: 'zhang-bao', status: 'locked' }),
     Object.freeze({ number: 5, title: '祭台决战', map: null, status: 'map-pending' }),
   ]);
   const routes = Object.freeze([
     Object.freeze({ id: 'zhang-liang', label: '正面突击：追击张梁', battle: 3 }),
     Object.freeze({ id: 'zhang-bao', label: '迂回包抄：追击张宝', battle: 4 }),
   ]);
-  // 第二章专属兵种资料。整章仍锁定；这些条目先固定美术、职责与登场关卡，
-  // 后续接入战斗时按 id 读取，避免混进第一章现有敌军波次。
+  // 第二章专属兵种资料。整章仍锁定；战斗素材已接入独立的第二章战斗流程。
   const units = Object.freeze([
     Object.freeze({ id: 'yellow-heavy', name: '黄巾大刀兵', sprite: 'yellow_heavy', kind: 'heavy-melee', role: '慢速大范围劈砍；明显蓄力后攻击，适合正面突击路线。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 1 }),
     Object.freeze({ id: 'yellow-shield', name: '黄巾盾兵', sprite: 'yellow_shield', kind: 'shield-frontline', role: '持大盾掩护后排；正面格挡远程攻击，侧后方可突破。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 2 }),
     Object.freeze({ id: 'yellow-spear', name: '黄巾枪兵', sprite: 'yellow_spear', kind: 'long-melee', role: '预备后直线突刺，攻击距离较长；横向走位躲开后反击。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
-    Object.freeze({ id: 'yellow-catapult', name: '投石车', sprite: 'yellow_catapult', kind: 'siege', role: '固定远程攻城器械；地面预警后投石砸击范围区域，可作为优先破坏目标。', actions: ['idle', 'load', 'fire', 'recoil', 'break', 'wreck'], firstBattle: 4 }),
+    Object.freeze({ id: 'yellow-catapult', name: '投石车', sprite: 'yellow_catapult', kind: 'siege', role: '固定远程攻城器械；慢速向左投掷燃烧石块，落点预警后形成大范围火场。', actions: ['idle', 'load', 'fire', 'recoil', 'break', 'wreck'], firstBattle: 2 }),
+    Object.freeze({ id: 'zhang-liang', name: '人公将军·张梁', sprite: 'zhang_liang', kind: 'boss', role: '正面突击路线首领；重型大刀近战。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
+    Object.freeze({ id: 'zhang-bao', name: '地公将军·张宝', sprite: 'zhang_bao', kind: 'boss', role: '迂回包抄路线首领；快速近战并压迫玩家走位。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 4 }),
     Object.freeze({ id: 'yellow-priest', name: '黄巾方士', sprite: 'priest', kind: 'support', role: '沿用第一章方士；在后排为黄巾兵提供支援。', firstBattle: 1 }),
     Object.freeze({ id: 'yellow-slinger', name: '黄巾投石手', sprite: 'slinger', kind: 'ranged', role: '沿用第一章投石手；左右错开发射，避免同时压中玩家。', firstBattle: 1 }),
   ]);
