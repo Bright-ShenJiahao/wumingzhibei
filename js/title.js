@@ -846,6 +846,8 @@
   function idlePreviewFrame(id) {
     if (id === 'halberd') return 'arm_idle';
     if (id === 'hammer') return 'arm_hammer0';
+    if (id === 'staff') return 'arm_staff0';
+    if (id === 'stone') return 'arm_stone0';
     return id + '0';
   }
 

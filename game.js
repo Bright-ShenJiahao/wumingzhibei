@@ -87,10 +87,10 @@ const WEAP = {
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
-    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
-    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
-    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
+    { f: ['arm_staff_1a', 'arm_staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
+    { f: ['arm_staff_2a', 'arm_staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
+    { f: ['arm_staff_3a', 'arm_staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
+    { f: ['arm_staffp_a', 'arm_staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -103,9 +103,9 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
+    { f: ['arm_stone_1a', 'arm_stone_1b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['arm_stone_2a', 'arm_stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['arm_stone_3a', 'arm_stone_3b', 'arm_stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
 // 管亥长戟暂沿用棍子的连招参数；主角专用持戟动作帧补齐后再替换显示帧。
@@ -1617,16 +1617,19 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
-  const armor = weapon === 'halberd' || weapon === 'hammer';
+  const armor = weapon === 'halberd' || weapon === 'hammer' || weapon === 'staff' || weapon === 'stone';
   const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return armor ? (Math.floor(h.t * 15) % 2 ? 'arm_roll2' : 'arm_roll1') : (Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1');
   if (h.air) return armor ? (h.vz > 0 ? 'arm_fly1' : 'arm_fly2') : (h.vz > 0 ? 'fly1' : 'fly2');
   if (h.st === 'bounce' || h.st === 'getup') return armor ? 'arm_' + h.st : h.st;
-  if (h.st === 'walk') return armor ? (weapon === 'hammer' ? 'arm_hammerw' : 'arm_w') + [1, 2, 3, 2][Math.floor(h.t * 8) % 4] : frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'walk') {
+    if (armor) return (weapon === 'halberd' ? 'arm_w' : weapon === 'hammer' ? 'arm_hammerw' : weapon === 'staff' ? 'arm_staffw' : 'arm_stonew') + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+    return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  }
   if (h.st === 'hurt') return armor ? 'arm_hurt' : 'hurt';
   if (h.st === 'down') return armor ? 'arm_down' : 'down';
-  return armor ? (weapon === 'hammer' ? 'arm_hammer0' : 'arm_idle') : frameWeapon + '0';
+  return armor ? (weapon === 'halberd' ? 'arm_idle' : weapon === 'hammer' ? 'arm_hammer0' : weapon === 'staff' ? 'arm_staff0' : 'arm_stone0') : frameWeapon + '0';
 }
 function zFrame(z) {
   if (z.T.siege) {
