@@ -318,14 +318,14 @@
       #tPrepPreview canvas { position:static; inset:auto; width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
       #tPrepPreview small { font-size:10px; }
       #tPrepSlots { min-width:0; min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); gap:clamp(5px,.8vw,10px); }
-      .tPrepSlot { min-width:0; min-height:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; align-items:stretch; gap:2px; padding:clamp(5px,.8vw,9px); border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); cursor:pointer; touch-action:none; }
-      .tPrepSlot > b { flex:none; min-width:0; padding:0 1px 4px; box-sizing:border-box; color:#eccd87; font-size:clamp(11px,1.2vw,15px); line-height:1.15; }
-      .tPrepIcon { box-sizing:border-box; width:100%; flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
-      .tPrepIcon img,.tBagIcon img { display:block; width:auto; height:auto; max-width:78%; max-height:78%; object-fit:contain; image-rendering:pixelated; }
-      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { max-width:88%; max-height:60%; transform:none; }
-      .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { max-width:64%; max-height:64%; }
-      .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { max-width:52%; max-height:52%; }
-      .tPrepName { flex:none; min-width:0; max-width:100%; overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
+      .tPrepSlot { min-width:0; min-height:0; box-sizing:border-box; overflow:hidden; display:grid; grid-template-columns:52px minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:2px 6px; align-items:center; padding:clamp(5px,.8vw,9px); border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); cursor:pointer; touch-action:none; }
+      .tPrepSlot > b { grid-column:1/-1; min-width:0; padding:0 1px 1px; box-sizing:border-box; color:#eccd87; font-size:clamp(11px,1.2vw,15px); line-height:1.15; }
+      .tPrepIcon { box-sizing:border-box; width:52px; height:100%; max-height:34px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
+      .tPrepIcon img,.tBagIcon img { display:block; width:auto; height:auto; max-width:92%; max-height:88%; object-fit:contain; image-rendering:pixelated; }
+      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { max-width:100%; max-height:50%; transform:none; }
+      .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { max-width:70%; max-height:70%; }
+      .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { max-width:48%; max-height:48%; }
+      .tPrepName { min-width:0; max-width:100%; overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepName small { display:block; max-width:100%; margin-top:2px; overflow:hidden; color:#c3ae88; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
       .tPrepSlot.drag-incompatible { border-color:#a78049; }
@@ -353,7 +353,8 @@
         #tPrepMain { min-height:120px; flex:1 1 120px; grid-template-columns:clamp(92px,16vw,120px) minmax(0,1fr); gap:6px; }
         #tPrepPreview { width:clamp(92px,16vw,120px); height:100%; min-height:120px; }
         #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:4px; }
-        .tPrepSlot { gap:2px; padding:4px; }
+        .tPrepSlot { grid-template-columns:44px minmax(0,1fr); gap:2px 4px; padding:4px; }
+        .tPrepIcon { width:44px; }
         #tPrepBag { height:clamp(78px,22vh,94px); gap:3px; }
         .tBagIcon { height:48%; }
         #tPrepGo { padding:6px 12px; }
