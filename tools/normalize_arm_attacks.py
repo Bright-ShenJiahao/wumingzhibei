@@ -11,7 +11,11 @@ R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERO = os.path.join(R, 'art', 'sprites', 'hero')
 ATLAS = os.path.join(R, 'art', 'sprites', 'atlas.json')
 TARGET = 74
-NAMES = ['arm_h1a', 'arm_h1b', 'arm_h2a', 'arm_h2b', 'arm_h3a', 'arm_h3b', 'arm_h4a', 'arm_h4b']
+NAMES = [
+    'arm_h1a', 'arm_h1b', 'arm_h2a', 'arm_h2b', 'arm_h3a', 'arm_h3b', 'arm_h4a', 'arm_h4b',
+    'arm_hammer_1a', 'arm_hammer_1b', 'arm_hammer_2a', 'arm_hammer_2b',
+    'arm_hammer_3a', 'arm_hammer_3b', 'arm_hammer_3c',
+]
 
 atlas = json.load(open(ATLAS, encoding='utf-8'))
 for name in NAMES:
