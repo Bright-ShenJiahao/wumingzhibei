@@ -8,7 +8,12 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 #top{position:fixed;left:0;right:0;top:0;display:flex;gap:6px;padding:8px calc(10px + env(safe-area-inset-left));align-items:center;flex-wrap:wrap;z-index:2;pointer-events:none}
 button{font:inherit;font-size:13px;font-weight:700;border:1.5px solid rgba(255,255,255,.55);background:rgba(20,14,30,.35);color:#fff;text-shadow:0 1px 2px #000;border-radius:7px;padding:4px 8px;touch-action:none}
 button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border-color:#ffd86e}
-#wp{position:fixed;right:calc(8px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;gap:5px;z-index:3}
+#wp{position:fixed;right:calc(8px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;gap:5px;z-index:3;align-items:center}
+#wp button[data-w]{width:48px;height:48px;padding:4px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#wp button[data-w] img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated;pointer-events:none}
+#bWeapon{width:42px;height:42px;padding:0;border-radius:50%;font-size:22px;line-height:1;color:#f3d37b;border-color:rgba(224,184,99,.8);background:rgba(54,38,24,.76)}
+#bWeapon:active{background:rgba(130,91,43,.92);transform:rotate(30deg)}
+#bMute{min-width:40px;height:42px;padding:0 7px}
 #joy{position:fixed;left:0;bottom:0;width:50%;height:70%;z-index:1;touch-action:none}
 #base{position:absolute;left:calc(14px + env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.35)}
 #knob{position:absolute;left:25px;top:25px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.4)}
@@ -27,6 +32,7 @@ body.wzb-summon #bSkill{display:flex}
 body.wzb-summon #bSkill:disabled{filter:saturate(.6)}
 #help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 body.wzb-rogue #top,body.wzb-rogue #wp,body.wzb-rogue #joy,body.wzb-rogue .big,body.wzb-rogue #help{display:none}
+@media (max-width:600px){#wp{gap:3px}#wp button[data-w]{width:42px;height:44px}#wp button[data-w] img{width:36px;height:36px}#bWeapon{width:38px;height:38px}#bMute{min-width:36px;height:38px}}
 body.wzb-pro #help{display:none}
 #rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
 @media (pointer:coarse){#help{display:none}}
@@ -37,7 +43,7 @@ body.wzb-pro #help{display:none}
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
-<div id="wp"><button data-w="staff">棍</button><button data-w="hammer">锤子</button><button data-w="stone">石子</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
+<div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换武器">↻</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
 <button class="big" id="bR">翻滚</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">召唤 2</button>
 <div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K/空格 翻滚 · U 召唤 · 1/2/3 换武器 · R 重来</div>
@@ -1911,7 +1917,7 @@ function hit(z, dmg, dir, ranged) {
   // ---------- 样式：开场只留摇杆和静音 ----------
   const style = document.createElement('style');
   style.textContent = `
-    body.wzb-room #top, body.wzb-room #wp button[data-w], body.wzb-room #bA,
+    body.wzb-room #top, body.wzb-room #wp button[data-w], body.wzb-room #bWeapon, body.wzb-room #bA,
     body.wzb-room #bR, body.wzb-room #help { display: none !important; }
     body.wzb-wake #joy { display: none !important; }
     body.wzb-wake #bA, body.wzb-wake #bR { display: none !important; }
@@ -2267,7 +2273,8 @@ function hit(z, dmg, dir, ranged) {
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
-  const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
+  const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
+  const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0, chapterReturn: false };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
   let hardMode = false;
@@ -2275,6 +2282,14 @@ function hit(z, dmg, dir, ranged) {
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
+  function readCampaign() { try { const v = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function playerKey(n) { return String(n || '').trim().slice(0, 8); }
+  function hasCleared(n, chapter = 1) { const k = playerKey(n); return !!(k && readCampaign()[k] && readCampaign()[k][chapter]); }
+  function markCleared(n, chapter = 1) {
+    const k = playerKey(n); if (!k) return false;
+    const progress = readCampaign(); progress[k] = Object.assign({}, progress[k], { [chapter]: true });
+    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; }
+  }
   function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
   function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
   function writeNovice(v) { hardMode = !!v; setNoviceClass(); try { localStorage.setItem(HARD_KEY, hardMode ? '1' : '0'); } catch (e) {} }
@@ -2406,8 +2421,8 @@ function hit(z, dmg, dir, ranged) {
     st.textContent = `
       body.wzb-title #top, body.wzb-title #help, body.wzb-title #joy,
       body.wzb-title #bA, body.wzb-title #bR { display: none !important; }
-      body.wzb-title #wp button[data-w] { display: none !important; }
-      body.wzb-intro #wp, body.wzb-intro #bMute { display: none !important; }
+      body.wzb-title #wp button[data-w], body.wzb-title #bWeapon { display: none !important; }
+      body.wzb-intro #wp, body.wzb-intro #bMute, body.wzb-intro #bWeapon { display: none !important; }
       #tStyle0 { display: none; }
       #tName, #tStart, #tHelp, #tNovice, #tBoard, #tHintOff {
         position: fixed; z-index: 7; font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
@@ -2475,6 +2490,31 @@ function hit(z, dmg, dir, ranged) {
         position: fixed; inset: 0; z-index: 10; background: #fff; opacity: 1; pointer-events: none;
         transition: opacity .3s ease-out;
       }
+      #tChapter {
+        position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
+        padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center,rgba(34,22,17,.68),rgba(12,8,10,.88));
+      }
+      #tChapter.open { display: flex; }
+      #tChapterPanel {
+        width: min(560px, 92vw); max-height: 86vh; overflow: auto; box-sizing: border-box; padding: 22px 24px 20px;
+        border: 2px solid #b98a38; border-radius: 14px; color: #f3dfb6; text-align: center;
+        background: linear-gradient(145deg,rgba(55,36,23,.97),rgba(24,18,18,.98));
+        box-shadow: 0 16px 50px rgba(0,0,0,.7), inset 0 0 24px rgba(206,154,64,.12);
+        font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+      }
+      #tChapter h2 { margin: 0 0 5px; color: #f3d37b; font-size: clamp(21px,4vw,30px); letter-spacing: .12em; }
+      #tChapter p { margin: 0 0 16px; color: #cbb894; font-size: 13px; }
+      .tChapterOption {
+        display: block; width: 100%; margin: 10px 0; padding: 13px 15px; box-sizing: border-box;
+        border: 1px solid #b98a38; border-radius: 9px; color: #f8e8c6; text-align: left;
+        background: linear-gradient(180deg,rgba(118,79,37,.9),rgba(62,43,29,.96)); cursor: pointer;
+      }
+      .tChapterOption strong { display: block; color: #ffdc82; font-size: 16px; }
+      .tChapterOption small { display: block; margin-top: 4px; color: #d3c09e; font-size: 12px; }
+      .tChapterOption:active:not(:disabled) { transform: translateY(2px); filter: brightness(1.15); }
+      .tChapterOption:disabled { border-color: #625647; color: #92836e; background: rgba(50,43,36,.8); cursor: default; }
+      .tChapterOption:disabled strong,.tChapterOption:disabled small { color: #92836e; }
+      #tChapterBack { margin-top: 8px; padding: 8px 20px; border-color: #82705a; color: #d3c09e; }
     `;
     document.head.appendChild(st);
     setNoviceClass();
@@ -2524,6 +2564,13 @@ function hit(z, dmg, dir, ranged) {
       <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
+    dom.chapter = mk('div', 'tChapter', '');
+    dom.chapter.innerHTML = `<div id="tChapterPanel"><h2>选择关卡</h2><p></p>
+      <button class="tChapterOption" data-chapter="1"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
+      <button class="tChapterOption" data-chapter="2" disabled><strong>第二章　黄巾决战　未开放</strong><small>战场仍在筹备中</small></button>
+      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div>`;
+    dom.chapter.querySelector('[data-chapter="1"]').addEventListener('click', () => finish({ skipWake: true }));
+    dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
       if (e.key === 'Enter') start();
@@ -2757,17 +2804,36 @@ function hit(z, dmg, dir, ranged) {
       return;
     }
     S.name = n; writeName(n);
+    if (hasCleared(n, 1)) { openChapterSelect(); return; }
     S.mode = 'intro'; S.intro = 0;
     document.body.classList.add('wzb-intro');
     S.msgT = 0; if (dom.tip) dom.tip.style.opacity = 0;   // 清掉“请输入名字”
     setDomVisible(false);   // 输入框/按钮先藏起来；游戏 UI 等真正进场再放出来
   }
 
-  function finish() {
+  function openChapterSelect() {
+    S.mode = 'chapter'; S.chapterReturn = true;
+    document.body.classList.add('wzb-intro');
+    setDomVisible(false);
+    const note = dom.chapter.querySelector('p');
+    if (note) note.textContent = `将以「${S.name}」的名义继续征战`;
+    dom.chapter.classList.add('open');
+  }
+
+  function closeChapterSelect() {
+    dom.chapter.classList.remove('open');
+    document.body.classList.remove('wzb-intro');
+    S.mode = 'title'; S.chapterReturn = false;
+    setDomVisible(true);
+  }
+
+  function finish(options = {}) {
+    dom.chapter.classList.remove('open');
     S.mode = 'game';
     document.body.classList.remove('wzb-title');   // 这时候才把游戏 UI（摇杆/攻击/血条）露出来
     document.body.classList.remove('wzb-intro');
-    if (window.ROOM) ROOM.begin(); else if (typeof reset === 'function') reset();
+    if (options.skipWake) { if (window.ROOM) ROOM.skip(); if (typeof reset === 'function') reset(); }
+    else if (window.ROOM) ROOM.begin(); else if (typeof reset === 'function') reset();
     if (dom.flash) {
       dom.flash.style.transition = 'none'; dom.flash.style.opacity = 1;
       requestAnimationFrame(() => { dom.flash.style.transition = 'opacity .32s ease-out'; dom.flash.style.opacity = 0; });
@@ -2776,6 +2842,7 @@ function hit(z, dmg, dir, ranged) {
 
   function show() {
     S.mode = 'title'; S.intro = 0;
+    if (dom.chapter) dom.chapter.classList.remove('open');
     if (typeof reset === 'function') reset();   // 回首页时把这一局清掉（背景音乐也会回到村庄曲）
     document.body.classList.remove('wzb-intro');
     document.body.classList.add('wzb-title');
@@ -2792,6 +2859,8 @@ function hit(z, dmg, dir, ranged) {
     playerName: () => S.name,
     hardMode: () => hardMode,
     noviceMode: () => !hardMode,
+    hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
+    markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏
@@ -2851,6 +2920,10 @@ load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
+document.querySelectorAll('[data-weapon-icon]').forEach(img => {
+  const src = ASSETS.ui && ASSETS.ui[img.dataset.weaponIcon];
+  if (src) img.src = src;
+});
 // 角色像素图：CH[角色][帧] = { img, w, h, ax, ay, white }
 const CH = {};
 for (const [name, frames] of Object.entries(ASSETS.chars)) {
@@ -3020,7 +3093,13 @@ document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); }
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
-document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
+document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w); }));
+const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
+document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
+  e.preventDefault();
+  const i = WEAPON_ORDER.indexOf(weapon);
+  setW(WEAPON_ORDER[(i + 1) % WEAPON_ORDER.length]);
+});
 function setW(w) { weapon = w; ui(); }
 function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === weapon)); }
 
@@ -4034,6 +4113,7 @@ function update(dt) {
       needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
+    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {

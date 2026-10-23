@@ -6,6 +6,10 @@ load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
+document.querySelectorAll('[data-weapon-icon]').forEach(img => {
+  const src = ASSETS.ui && ASSETS.ui[img.dataset.weaponIcon];
+  if (src) img.src = src;
+});
 // 角色像素图：CH[角色][帧] = { img, w, h, ax, ay, white }
 const CH = {};
 for (const [name, frames] of Object.entries(ASSETS.chars)) {
@@ -175,7 +179,13 @@ document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); }
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
-document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
+document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w); }));
+const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
+document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
+  e.preventDefault();
+  const i = WEAPON_ORDER.indexOf(weapon);
+  setW(WEAPON_ORDER[(i + 1) % WEAPON_ORDER.length]);
+});
 function setW(w) { weapon = w; ui(); }
 function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === weapon)); }
 
@@ -1189,6 +1199,7 @@ function update(dt) {
       needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
+    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {

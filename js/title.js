@@ -6,7 +6,8 @@
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
-  const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
+  const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
+  const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0, chapterReturn: false };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
   let hardMode = false;
@@ -14,6 +15,14 @@
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
+  function readCampaign() { try { const v = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function playerKey(n) { return String(n || '').trim().slice(0, 8); }
+  function hasCleared(n, chapter = 1) { const k = playerKey(n); return !!(k && readCampaign()[k] && readCampaign()[k][chapter]); }
+  function markCleared(n, chapter = 1) {
+    const k = playerKey(n); if (!k) return false;
+    const progress = readCampaign(); progress[k] = Object.assign({}, progress[k], { [chapter]: true });
+    try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; }
+  }
   function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
   function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
   function writeNovice(v) { hardMode = !!v; setNoviceClass(); try { localStorage.setItem(HARD_KEY, hardMode ? '1' : '0'); } catch (e) {} }
@@ -145,8 +154,8 @@
     st.textContent = `
       body.wzb-title #top, body.wzb-title #help, body.wzb-title #joy,
       body.wzb-title #bA, body.wzb-title #bR { display: none !important; }
-      body.wzb-title #wp button[data-w] { display: none !important; }
-      body.wzb-intro #wp, body.wzb-intro #bMute { display: none !important; }
+      body.wzb-title #wp button[data-w], body.wzb-title #bWeapon { display: none !important; }
+      body.wzb-intro #wp, body.wzb-intro #bMute, body.wzb-intro #bWeapon { display: none !important; }
       #tStyle0 { display: none; }
       #tName, #tStart, #tHelp, #tNovice, #tBoard, #tHintOff {
         position: fixed; z-index: 7; font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
@@ -214,6 +223,31 @@
         position: fixed; inset: 0; z-index: 10; background: #fff; opacity: 1; pointer-events: none;
         transition: opacity .3s ease-out;
       }
+      #tChapter {
+        position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
+        padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center,rgba(34,22,17,.68),rgba(12,8,10,.88));
+      }
+      #tChapter.open { display: flex; }
+      #tChapterPanel {
+        width: min(560px, 92vw); max-height: 86vh; overflow: auto; box-sizing: border-box; padding: 22px 24px 20px;
+        border: 2px solid #b98a38; border-radius: 14px; color: #f3dfb6; text-align: center;
+        background: linear-gradient(145deg,rgba(55,36,23,.97),rgba(24,18,18,.98));
+        box-shadow: 0 16px 50px rgba(0,0,0,.7), inset 0 0 24px rgba(206,154,64,.12);
+        font-family: "PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+      }
+      #tChapter h2 { margin: 0 0 5px; color: #f3d37b; font-size: clamp(21px,4vw,30px); letter-spacing: .12em; }
+      #tChapter p { margin: 0 0 16px; color: #cbb894; font-size: 13px; }
+      .tChapterOption {
+        display: block; width: 100%; margin: 10px 0; padding: 13px 15px; box-sizing: border-box;
+        border: 1px solid #b98a38; border-radius: 9px; color: #f8e8c6; text-align: left;
+        background: linear-gradient(180deg,rgba(118,79,37,.9),rgba(62,43,29,.96)); cursor: pointer;
+      }
+      .tChapterOption strong { display: block; color: #ffdc82; font-size: 16px; }
+      .tChapterOption small { display: block; margin-top: 4px; color: #d3c09e; font-size: 12px; }
+      .tChapterOption:active:not(:disabled) { transform: translateY(2px); filter: brightness(1.15); }
+      .tChapterOption:disabled { border-color: #625647; color: #92836e; background: rgba(50,43,36,.8); cursor: default; }
+      .tChapterOption:disabled strong,.tChapterOption:disabled small { color: #92836e; }
+      #tChapterBack { margin-top: 8px; padding: 8px 20px; border-color: #82705a; color: #d3c09e; }
     `;
     document.head.appendChild(st);
     setNoviceClass();
@@ -263,6 +297,13 @@
       <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
+    dom.chapter = mk('div', 'tChapter', '');
+    dom.chapter.innerHTML = `<div id="tChapterPanel"><h2>选择关卡</h2><p></p>
+      <button class="tChapterOption" data-chapter="1"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
+      <button class="tChapterOption" data-chapter="2" disabled><strong>第二章　黄巾决战　未开放</strong><small>战场仍在筹备中</small></button>
+      <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div>`;
+    dom.chapter.querySelector('[data-chapter="1"]').addEventListener('click', () => finish({ skipWake: true }));
+    dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
       if (e.key === 'Enter') start();
@@ -496,17 +537,36 @@
       return;
     }
     S.name = n; writeName(n);
+    if (hasCleared(n, 1)) { openChapterSelect(); return; }
     S.mode = 'intro'; S.intro = 0;
     document.body.classList.add('wzb-intro');
     S.msgT = 0; if (dom.tip) dom.tip.style.opacity = 0;   // 清掉“请输入名字”
     setDomVisible(false);   // 输入框/按钮先藏起来；游戏 UI 等真正进场再放出来
   }
 
-  function finish() {
+  function openChapterSelect() {
+    S.mode = 'chapter'; S.chapterReturn = true;
+    document.body.classList.add('wzb-intro');
+    setDomVisible(false);
+    const note = dom.chapter.querySelector('p');
+    if (note) note.textContent = `将以「${S.name}」的名义继续征战`;
+    dom.chapter.classList.add('open');
+  }
+
+  function closeChapterSelect() {
+    dom.chapter.classList.remove('open');
+    document.body.classList.remove('wzb-intro');
+    S.mode = 'title'; S.chapterReturn = false;
+    setDomVisible(true);
+  }
+
+  function finish(options = {}) {
+    dom.chapter.classList.remove('open');
     S.mode = 'game';
     document.body.classList.remove('wzb-title');   // 这时候才把游戏 UI（摇杆/攻击/血条）露出来
     document.body.classList.remove('wzb-intro');
-    if (window.ROOM) ROOM.begin(); else if (typeof reset === 'function') reset();
+    if (options.skipWake) { if (window.ROOM) ROOM.skip(); if (typeof reset === 'function') reset(); }
+    else if (window.ROOM) ROOM.begin(); else if (typeof reset === 'function') reset();
     if (dom.flash) {
       dom.flash.style.transition = 'none'; dom.flash.style.opacity = 1;
       requestAnimationFrame(() => { dom.flash.style.transition = 'opacity .32s ease-out'; dom.flash.style.opacity = 0; });
@@ -515,6 +575,7 @@
 
   function show() {
     S.mode = 'title'; S.intro = 0;
+    if (dom.chapter) dom.chapter.classList.remove('open');
     if (typeof reset === 'function') reset();   // 回首页时把这一局清掉（背景音乐也会回到村庄曲）
     document.body.classList.remove('wzb-intro');
     document.body.classList.add('wzb-title');
@@ -531,6 +592,8 @@
     playerName: () => S.name,
     hardMode: () => hardMode,
     noviceMode: () => !hardMode,
+    hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
+    markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏

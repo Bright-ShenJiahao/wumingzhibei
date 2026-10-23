@@ -8,7 +8,12 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 #top{position:fixed;left:0;right:0;top:0;display:flex;gap:6px;padding:8px calc(10px + env(safe-area-inset-left));align-items:center;flex-wrap:wrap;z-index:2;pointer-events:none}
 button{font:inherit;font-size:13px;font-weight:700;border:1.5px solid rgba(255,255,255,.55);background:rgba(20,14,30,.35);color:#fff;text-shadow:0 1px 2px #000;border-radius:7px;padding:4px 8px;touch-action:none}
 button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border-color:#ffd86e}
-#wp{position:fixed;right:calc(8px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;gap:5px;z-index:3}
+#wp{position:fixed;right:calc(8px + env(safe-area-inset-right));top:calc(6px + env(safe-area-inset-top));display:flex;gap:5px;z-index:3;align-items:center}
+#wp button[data-w]{width:48px;height:48px;padding:4px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#wp button[data-w] img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated;pointer-events:none}
+#bWeapon{width:42px;height:42px;padding:0;border-radius:50%;font-size:22px;line-height:1;color:#f3d37b;border-color:rgba(224,184,99,.8);background:rgba(54,38,24,.76)}
+#bWeapon:active{background:rgba(130,91,43,.92);transform:rotate(30deg)}
+#bMute{min-width:40px;height:42px;padding:0 7px}
 #joy{position:fixed;left:0;bottom:0;width:50%;height:70%;z-index:1;touch-action:none}
 #base{position:absolute;left:calc(14px + env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.35)}
 #knob{position:absolute;left:25px;top:25px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.4)}
@@ -27,6 +32,7 @@ body.wzb-summon #bSkill{display:flex}
 body.wzb-summon #bSkill:disabled{filter:saturate(.6)}
 #help{position:fixed;left:10px;bottom:8px;font-size:12px;color:#ddd;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 body.wzb-rogue #top,body.wzb-rogue #wp,body.wzb-rogue #joy,body.wzb-rogue .big,body.wzb-rogue #help{display:none}
+@media (max-width:600px){#wp{gap:3px}#wp button[data-w]{width:42px;height:44px}#wp button[data-w] img{width:36px;height:36px}#bWeapon{width:38px;height:38px}#bMute{min-width:36px;height:38px}}
 body.wzb-pro #help{display:none}
 #rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
 @media (pointer:coarse){#help{display:none}}
@@ -37,7 +43,7 @@ body.wzb-pro #help{display:none}
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
-<div id="wp"><button data-w="staff">棍</button><button data-w="hammer">锤子</button><button data-w="stone">石子</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
+<div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换武器">↻</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
 <button class="big" id="bR">翻滚</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">召唤 2</button>
 <div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K/空格 翻滚 · U 召唤 · 1/2/3 换武器 · R 重来</div>
