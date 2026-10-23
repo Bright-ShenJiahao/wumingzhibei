@@ -191,6 +191,12 @@
         text-shadow: 0 1px 3px #000; cursor: pointer; padding: 6px 14px;
       }
       #tBoard:active { background: rgba(255,216,110,.22); }
+      #tModeTip {
+        position: fixed; z-index: 8; transform: translate(-50%, 0); pointer-events: none;
+        background: rgba(18,12,26,.94); border: 1.5px solid #c9971f; border-radius: 8px;
+        color: #f2e6c9; font: 700 13px/1.5 "PingFang SC",sans-serif; padding: 5px 10px;
+        opacity: 0; transition: opacity .18s; white-space: nowrap;
+      }
       #tTip {
         position: fixed; z-index: 8; color: #ff8f7a; font: 700 14px/1.4 "PingFang SC",sans-serif;
         text-shadow: 0 1px 3px #000; transform: translate(-50%,0); pointer-events: none; opacity: 0;
@@ -218,7 +224,7 @@
     dom.start = mk('button', 'tStart', '开始游戏');
     dom.novice = mk('label', 'tNovice', '困难模式');
     dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = hardMode;
-    dom.novice.prepend(dom.noviceInput); dom.novice.title = '敌人不再受双倍伤害（更难），但排行榜评分 ×1.5';
+    dom.novice.prepend(dom.noviceInput); dom.novice.title = '敌人更强，积分 1.25 倍';
     dom.board = mk('button', 'tBoard', '英雄榜');
     dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
     dom.hintOff = mk('label', 'tHintOff', '关闭提醒');
@@ -226,10 +232,25 @@
     dom.hintOffInput.type = 'checkbox';
     try { dom.hintOffInput.checked = localStorage.getItem('wzb-hint-off') === '1'; } catch (e) {}
     dom.hintOff.prepend(dom.hintOffInput);
-    dom.hintOff.title = '勾选后不再显示手机全屏提示（微信里玩会留黑边那条）';
+    dom.hintOff.title = '勾选后不再显示手机全屏提示';
     dom.hintOffInput.addEventListener('change', () => {
       try { localStorage.setItem('wzb-hint-off', dom.hintOffInput.checked ? '1' : '0'); } catch (e) {}
     });
+    dom.modeTip = mk('div', 'tModeTip', '');
+    const showModeTip = (text, anchor) => {
+      const r = anchor.getBoundingClientRect();
+      dom.modeTip.textContent = text;
+      dom.modeTip.style.left = Math.round(r.left + r.width / 2) + 'px';
+      dom.modeTip.style.top = Math.round(r.bottom + 8) + 'px';
+      dom.modeTip.style.opacity = '1';
+      clearTimeout(dom.modeTip._t);
+      dom.modeTip._t = setTimeout(() => { dom.modeTip.style.opacity = '0'; }, 2600);
+    };
+    const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
+    if (coarse) {
+      dom.novice.addEventListener('click', () => showModeTip('敌人更强，积分 1.25 倍', dom.novice));
+      dom.hintOff.addEventListener('click', () => showModeTip('勾选后不再显示手机全屏提示', dom.hintOff));
+    }
     dom.help = mk('button', 'tHelp', '?');
     dom.help.title = '操作说明'; dom.help.setAttribute('aria-label', '操作说明');
     dom.tip = mk('div', 'tTip', '请输入名字');
@@ -460,6 +481,7 @@
   function setDomVisible(v) {
     const d = v ? '' : 'none';
     for (const k of ['name', 'start', 'help', 'novice', 'board', 'hintOff']) if (dom[k]) dom[k].style.display = d;
+    if (!v && dom.modeTip) { dom.modeTip.style.opacity = '0'; }
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 

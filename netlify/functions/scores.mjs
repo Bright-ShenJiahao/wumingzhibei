@@ -62,9 +62,9 @@ function pub(x) {
   const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
   const diff = x.diff === 'easy' ? 'easy' : 'hard';     // 只用于显示：老记录当年的难度就是现在的困难
   const base = scoreOf(x.kills, x.t, cleared, win, hits, x.bonus);
-  // 困难（旧普通）= 原分 ×1；简单模式 = 原分 ×2/3（等于困难 ÷1.5）；老记录没有 diff → 按困难算，分数不动
+  // 困难（旧普通）= 原分 ×1；简单模式 = 原分 ×0.8（困难 ≈ 简单的 1.25 倍）；老记录没有 diff → 按困难算，分数不动
   return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff,
-    score: Math.round(base * (x.diff === 'easy' ? 2 / 3 : 1)) };
+    score: Math.round(base * (x.diff === 'easy' ? .8 : 1)) };
 }
 
 export default async function handler(req, context) {
