@@ -845,8 +845,8 @@
   }
 
   function idlePreviewFrame(id) {
-    const base = id === 'halberd' ? 'staff' : id;
-    return base + '0';
+    if (id === 'halberd') return 'arm_idle';
+    return id + '0';
   }
 
   function drawPreviewIdle(id) {
@@ -857,7 +857,7 @@
   function playWeaponPreview(id) {
     if (!ITEMS[id]) return;
     previewWeapon = id;
-    const base = id === 'halberd' ? 'staff' : id;
+    const base = id === 'halberd' ? 'halberd' : id;
     const combo = typeof WEAP !== 'undefined' && WEAP[base] ? WEAP[base].combo : [];
     const frames = [];
     combo.forEach(step => step.f.forEach((frame, i) => frames.push({ frame, duration: Math.max(.06, (step.d[i] || .12) * 1000) })));

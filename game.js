@@ -109,7 +109,16 @@ const WEAP = {
   ] },
 };
 // 管亥长戟暂沿用棍子的连招参数；主角专用持戟动作帧补齐后再替换显示帧。
-WEAP.halberd = Object.assign({}, WEAP.staff, { name: '长戟' });
+WEAP.halberd = Object.assign({}, WEAP.staff, {
+  name: '长戟',
+  reach: 46,
+  combo: [
+    { f: ['arm_h1a', 'arm_h1b'], d: [.13, .19], dmg: 1.1, kb: 56, daze: .3 },
+    { f: ['arm_h2a', 'arm_h2b'], d: [.11, .19], dmg: 1.1, kb: 50, daze: .45 },
+    { f: ['arm_h3a', 'arm_h3b'], d: [.16, .25], dmg: 1.3, kb: 150, daze: 1, multi: true, knock: true },
+    { f: ['arm_h4a', 'arm_h4b'], d: [.10, .24], dmg: 2.2, kb: 90, daze: .5, thrust: true },
+  ],
+});
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
@@ -1608,14 +1617,16 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
+  const armor = weapon === 'halberd';
   const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
-  if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
-  if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
-  if (h.st === 'bounce' || h.st === 'getup') return h.st;
-  if (h.st === 'walk') return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
-  if (h.st === 'hurt') return 'hurt'; if (h.st === 'down') return 'down';
-  return frameWeapon + '0';
+  if (h.st === 'roll') return armor ? (Math.floor(h.t * 15) % 2 ? 'arm_roll2' : 'arm_roll1') : (Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1');
+  if (h.air) return armor ? (h.vz > 0 ? 'arm_fly1' : 'arm_fly2') : (h.vz > 0 ? 'fly1' : 'fly2');
+  if (h.st === 'bounce' || h.st === 'getup') return armor ? 'arm_' + h.st : h.st;
+  if (h.st === 'walk') return armor ? 'arm_w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4] : frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'hurt') return armor ? 'arm_hurt' : 'hurt';
+  if (h.st === 'down') return armor ? 'arm_down' : 'down';
+  return armor ? 'arm_idle' : frameWeapon + '0';
 }
 function zFrame(z) {
   if (z.T.siege) {
