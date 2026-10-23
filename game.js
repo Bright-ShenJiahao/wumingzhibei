@@ -166,6 +166,7 @@ addEventListener('keydown', e => {
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
   if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley();
+  if (e.code === 'KeyI' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley();
   if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();

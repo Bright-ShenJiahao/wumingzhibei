@@ -331,10 +331,12 @@
     dom.panel = document.createElement('div'); dom.panel.id = 'tHelpPanel';
     dom.panel.innerHTML = `<h3>操作说明</h3>
       <div><b>电脑</b>：WASD / 方向键移动 · J 攻击（长按蓄力）· K / 空格 翻滚</div>
-      <div style="padding-left:38px">1 / 2 / 3 换武器 · U 万箭齐发 · R 重来</div>
-      <div><b>手机</b>：左下摇杆移动 · 右下攻击（长按蓄力）/ 翻滚 · 右上换武器 · 技能按钮</div>
-      <div><b>武器</b>：棍四连击、范围大；锤可打断；石子远程；长戟（首通后整备页选）沿用棍连招。</div>
-      <div><b>蓄力</b>：按住攻击 0.4~2 秒，受击会打断；打中才能接连招。</div>`;
+      <div style="padding-left:38px">1 / 2 / 3 换武器 · R 重来</div>
+      <div style="padding-left:38px">U 召唤（万箭齐发）· I 主动技能（投石车）</div>
+      <div><b>手机</b>：左下摇杆 · 右下攻击 / 翻滚 · 右上换武器</div>
+      <div style="padding-left:38px">右侧召唤 / 主动技能按钮</div>
+      <div><b>武器</b>：棍四连击 · 锤可打断 · 石子远程 · 长戟（整备页选）同棍连招</div>
+      <div><b>蓄力</b>：按住 0.4~2 秒，受击打断；命中才能接连招</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
     dom.chapter = mk('div', 'tChapter', '');
