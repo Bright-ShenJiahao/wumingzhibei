@@ -104,5 +104,16 @@ for name, src in HAL_MAP.items():
     atlas['hero'][name] = hatlas[src]
     print(name, '=', src, atlas['hero'][name])
 
+# idle 帧整体偏大，缩到与白T身高一致；同时给走路帧做一个持戟覆盖层
+idle = Image.open(os.path.join(HAL, 'h1a.png')).convert('RGBA')
+small = idle.resize((round(idle.width * .75), round(idle.height * .75)), Image.BOX)
+for name in ('arm_idle', 'arm_h1a'):
+    small.save(os.path.join(HERO, name + '.png'))
+    atlas['hero'][name] = [small.width, small.height, round(small.width / 2, 1), small.height - 1]
+weapon = idle.crop((50, 0, idle.width, idle.height))
+weapon.save(os.path.join(HERO, 'arm_weapon.png'))
+atlas['hero']['arm_weapon'] = [weapon.width, weapon.height, round(weapon.width / 2, 1), weapon.height - 1]
+print('idle scaled', small.size, 'weapon', weapon.size)
+
 json.dump(atlas, open(ATLAS, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('atlas updated')
