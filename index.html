@@ -2346,6 +2346,7 @@ function hit(z, dmg, dir, ranged) {
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
   let hardMode = false;
   let selectedChapter = 1, pointerDrag = null, suppressItemClick = false;
+  let previewAnimation = null, previewRaf = 0, previewWeapon = 'staff';
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
@@ -2606,16 +2607,18 @@ function hit(z, dmg, dir, ranged) {
         transition: opacity .3s ease-out;
       }
       #tChapter {
-        position:fixed; inset:0; z-index:9; display:none; box-sizing:border-box; padding:clamp(8px,1.8vw,22px);
-        background:#1c1712; color:#ead9b8; font-family:"MaShanZheng","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+        position:fixed; inset:0; z-index:9; display:none; box-sizing:border-box; padding:20px;
+        align-items:center; justify-content:center; overflow:auto;
+        background:rgba(8,6,5,.5); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+        color:#ead9b8; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
       }
       #tChapter.open { display:flex; }
       #tChapter [hidden] { display:none !important; }
-      #tChapterShell { display:grid; grid-template-columns:minmax(205px,35%) minmax(0,65%); width:100%; min-height:0; overflow:hidden; border:2px solid #98713e; border-radius:12px; background:linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:inset 0 0 0 1px rgba(227,194,132,.16); }
-      #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,2vw,24px); }
+      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:860px; max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:auto; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
+      #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,1.6vw,22px); }
       #tChapterPick { display:flex; flex-direction:column; border-right:2px solid #8b693c; background:linear-gradient(90deg,rgba(26,20,16,.3),rgba(15,12,10,.12)); }
       #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
-      #tChapter h2 { margin:0; color:#f0d58f; font-size:clamp(19px,2.4vw,29px); letter-spacing:.08em; }
+      #tChapter h2 { margin:0; color:#f0d58f; font:700 clamp(19px,2.4vw,29px)/1.2 "PingFang SC","Microsoft YaHei",sans-serif; letter-spacing:.08em; }
       #tChapter p { margin:3px 0 0; color:#c4b18e; font-size:clamp(11px,1.2vw,14px); }
       .tChapterCard { width:100%; min-height:clamp(91px,17vh,150px); margin-top:clamp(8px,1.5vh,15px); padding:clamp(11px,1.5vw,18px); box-sizing:border-box; border:1px solid #9d7845; border-radius:9px; color:#e9d8b7; text-align:left; background:repeating-linear-gradient(4deg,rgba(225,187,121,.035) 0 2px,transparent 2px 12px),linear-gradient(145deg,#62462c,#382a20); cursor:pointer; touch-action:manipulation; }
       .tChapterCard strong { display:block; color:#f4d88e; font-size:clamp(15px,1.7vw,20px); }
@@ -2626,24 +2629,29 @@ function hit(z, dmg, dir, ranged) {
       .tChapterButton { border:1px solid #b18a4b; border-radius:8px; color:#f0dfbd; background:linear-gradient(#715233,#3b2b20); font-weight:700; cursor:pointer; touch-action:manipulation; }
       .tChapterButton:active:not(:disabled) { filter:brightness(1.25); transform:translateY(1px); }
       .tChapterButton:disabled { opacity:.45; color:#a89c88; cursor:default; }
-      #tPrepHeader { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+      #tPrepHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; }
+      #tPrepHeader p { margin:0; }
       #tPrepTarget { text-align:right; white-space:nowrap; }
-      #tPrepSlots { flex:1; min-height:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(5px,1vw,12px); }
-      .tPrepSlot { min-width:0; min-height:0; display:grid; grid-template-columns:minmax(42px,30%) minmax(0,1fr); grid-template-rows:auto 1fr; gap:3px 8px; align-items:center; padding:clamp(6px,1vw,12px); box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); }
-      .tPrepSlot > b { grid-column:1/-1; color:#eccd87; font-size:clamp(11px,1.3vw,16px); }
-      .tPrepIcon { width:100%; height:100%; max-height:70px; min-height:35px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
-      .tPrepIcon img,.tBagIcon img { width:80%; height:80%; object-fit:contain; image-rendering:pixelated; }
-      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { width:100%; height:100%; object-fit:cover; object-position:92% 50%; }
+      #tPrepMain { min-height:180px; flex:1 1 180px; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
+      #tPrepPreview { width:160px; height:180px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:radial-gradient(ellipse at 50% 68%,rgba(161,112,48,.23),transparent 70%),linear-gradient(145deg,#38291e,#201a15); color:#cbb894; cursor:pointer; touch-action:manipulation; }
+      #tPrepPreview canvas { width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
+      #tPrepPreview small { font-size:10px; }
+      #tPrepSlots { min-width:0; min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); gap:clamp(5px,.8vw,10px); }
+      .tPrepSlot { min-width:0; min-height:0; display:grid; grid-template-columns:42% minmax(0,1fr); grid-template-rows:auto 1fr; gap:2px 7px; align-items:center; padding:clamp(5px,.8vw,9px); box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); cursor:pointer; touch-action:none; }
+      .tPrepSlot > b { grid-column:1/-1; color:#eccd87; font-size:clamp(11px,1.2vw,15px); }
+      .tPrepIcon { width:100%; aspect-ratio:3/2; min-height:28px; display:flex; align-items:center; justify-content:center; overflow:visible; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
+      .tPrepIcon img,.tBagIcon img { width:92%; height:92%; object-fit:contain; image-rendering:pixelated; }
+      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { width:125%; height:100%; object-fit:contain; transform:rotate(-33deg); }
       .tPrepName { overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); text-overflow:ellipsis; }
       .tPrepName small { display:block; margin-top:4px; color:#c3ae88; font-size:10px; }
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
       .tPrepSlot.drag-incompatible { border-color:#a78049; }
       #tPrepBagTitle { display:flex; align-items:center; justify-content:space-between; color:#e7d5af; font-size:clamp(12px,1.4vw,16px); font-weight:700; }
-      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(4px,.7vw,8px); height:clamp(52px,12vh,82px); }
-      .tBagItem,.tBagEmpty { min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; border:1px solid #9f7945; border-radius:6px; background:#292119; color:#e8d7b3; touch-action:none; }
+      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(4px,.7vw,8px); height:clamp(94px,16vh,142px); flex:none; }
+      .tBagItem,.tBagEmpty { min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:visible; border:1px solid #9f7945; border-radius:6px; background:#292119; color:#e8d7b3; touch-action:none; }
       .tBagItem { cursor:grab; }
       .tBagItem:active { cursor:grabbing; }
-      .tBagIcon { width:58%; height:55%; display:flex; align-items:center; justify-content:center; }
+      .tBagIcon { width:62%; height:62%; display:flex; align-items:center; justify-content:center; }
       .tBagItem span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(9px,1vw,12px); }
       .tBagEmpty { border-style:dashed; border-color:#66533a; color:#81745d; font-size:12px; }
       #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
@@ -2652,23 +2660,29 @@ function hit(z, dmg, dir, ranged) {
       #tPrepGo:not(:disabled) { border-color:#d3a95f; color:#ffe8b0; }
       #tPrepGhost { position:fixed; z-index:30; pointer-events:none; width:90px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #f0cf81; border-radius:8px; background:rgba(42,31,22,.94); color:#f4e2bb; box-shadow:0 8px 24px #0009; transform:translate(-50%,-50%); }
       #tPrepGhost img { width:48px; height:42px; object-fit:contain; image-rendering:pixelated; }
-      @media(max-width:600px) and (orientation:landscape) {
-        #tChapter { padding:6px; }
-        #tChapterShell { grid-template-columns:minmax(150px,31%) minmax(0,69%); }
-        #tChapterPick,#tChapterPanel { padding:8px; }
-        #tChapterPick .tChapterCard { min-height:76px; margin-top:7px; padding:8px; }
+      @media(max-width:900px) and (orientation:landscape) {
+        #tChapter { padding:3vw; }
+        #tChapterShell { width:94vw; min-width:0; min-height:0; max-height:94vh; grid-template-columns:minmax(0,31%) minmax(0,69%); }
+        #tChapterPick,#tChapterPanel { padding:clamp(6px,1.2vw,10px); }
+        #tChapterPick .tChapterCard { min-height:clamp(54px,17vh,76px); margin-top:6px; padding:7px; }
         #tChapterPickBack { padding:7px; }
         #tChapterPanel { gap:5px; }
+        #tPrepMain { min-height:120px; flex:1 1 120px; grid-template-columns:clamp(92px,16vw,120px) minmax(0,1fr); gap:6px; }
+        #tPrepPreview { width:clamp(92px,16vw,120px); height:100%; min-height:120px; }
         #tPrepSlots { gap:4px; }
-        .tPrepSlot { grid-template-columns:minmax(30px,26%) minmax(0,1fr); gap:2px 4px; padding:5px; }
-        .tPrepIcon { min-height:28px; }
-        #tPrepBag { height:50px; gap:3px; }
-        .tBagIcon { height:45%; }
+        .tPrepSlot { grid-template-columns:38% minmax(0,1fr); gap:2px 4px; padding:4px; }
+        .tPrepIcon { min-height:24px; }
+        #tPrepBag { height:clamp(78px,22vh,94px); gap:3px; }
+        .tBagIcon { height:48%; }
         #tPrepGo { padding:6px 12px; }
       }
       @media(max-height:420px) and (orientation:landscape) {
-        #tChapterPick .tChapterCard { min-height:68px; margin-top:5px; }
-        #tPrepBag { height:44px; }
+        #tChapter { padding:5px; }
+        #tChapterShell { max-height:96vh; }
+        #tChapterPick .tChapterCard { min-height:54px; margin-top:4px; }
+        #tPrepMain { min-height:104px; flex-basis:104px; }
+        #tPrepPreview { min-height:104px; }
+        #tPrepBag { height:76px; }
       }
     `;
     document.head.appendChild(st);
@@ -2727,8 +2741,11 @@ function hit(z, dmg, dir, ranged) {
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
       <section id="tChapterPanel" aria-label="整军备战">
-        <header id="tPrepHeader"><div><h2>整军备战</h2><p id="tPrepNote"></p></div><p id="tPrepTarget"></p></header>
-        <div id="tPrepSlots"></div>
+        <header id="tPrepHeader"><h2>整军备战</h2><p id="tPrepTarget"></p></header>
+        <div id="tPrepMain">
+          <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="320" height="320"></canvas><small>点击预览攻击</small></button>
+          <div id="tPrepSlots"></div>
+        </div>
         <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 拖回卸下</small></div>
         <div id="tPrepBag"></div>
         <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
@@ -2749,9 +2766,10 @@ function hit(z, dmg, dir, ranged) {
       const item = e.target.closest('[data-item]');
       if (item) { equipItem(item.dataset.item); return; }
       const slot = e.target.closest('[data-slot]');
-      if (slot) unequipSlot(slot.dataset.slot);
+      if (slot) previewEquippedSlot(slot.dataset.slot);
     });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
+    dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
     dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
     document.addEventListener('pointermove', moveLoadoutPointer, { passive: false });
     document.addEventListener('pointerup', endLoadoutPointer);
@@ -3001,7 +3019,7 @@ function hit(z, dmg, dir, ranged) {
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
     const note = dom.chapter.querySelector('#tChapterNote');
-    if (note) note.textContent = `将以「${S.name}」的名义继续征战`;
+    if (note) note.textContent = `玩家：${S.name || '未命名'}`;
     selectedChapter = 1;
     renderPreparation();
     dom.chapter.classList.add('open');
@@ -3009,6 +3027,9 @@ function hit(z, dmg, dir, ranged) {
 
   function closeChapterSelect() {
     dom.chapter.classList.remove('open');
+    previewAnimation = null;
+    if (previewRaf) cancelAnimationFrame(previewRaf);
+    previewRaf = 0;
     document.body.classList.remove('wzb-intro');
     S.mode = 'title'; S.chapterReturn = false;
     setDomVisible(true);
@@ -3047,8 +3068,6 @@ function hit(z, dmg, dir, ranged) {
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
-    const note = dom.chapter.querySelector('#tPrepNote');
-    if (note) note.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
     if (target) target.textContent = `出征目标：${chapterName}`;
 
@@ -3065,7 +3084,7 @@ function hit(z, dmg, dir, ranged) {
     const equipped = new Set(Object.values(p.equipped).filter(Boolean));
     const items = p.owned.filter(id => ITEMS[id] && !equipped.has(id));
     const bag = dom.chapter.querySelector('#tPrepBag');
-    bag.innerHTML = Array.from({ length: 6 }, (_, i) => {
+    bag.innerHTML = Array.from({ length: 12 }, (_, i) => {
       const id = items[i];
       return id
         ? `<button class="tBagItem" type="button" data-item="${id}" data-inventory-drop="item" aria-label="${ITEMS[id].name}，点击装备或拖动"><span class="tBagIcon">${itemIcon(id)}</span><span>${ITEMS[id].name}</span></button>`
@@ -3076,6 +3095,7 @@ function hit(z, dmg, dir, ranged) {
     go.disabled = !ready || (selectedChapter === 2 && !canEnter2);
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
+    if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
 
   function saveEquipment(p) {
@@ -3089,15 +3109,86 @@ function hit(z, dmg, dir, ranged) {
     const item = ITEMS[id], p = playerLoadout();
     if (!item || !p.owned.includes(id)) return false;
     p.equipped[item.slot] = id;
-    return saveEquipment(p);
+    const ok = saveEquipment(p);
+    if (ok) playWeaponPreview(id);
+    return ok;
   }
 
-  function unequipSlot(slot) {
+  function previewEquippedSlot(slot) {
     if (!EQUIPMENT_SLOTS.some(s => s.id === slot)) return false;
     const p = playerLoadout();
     if (!p.equipped[slot]) return false;
-    p.equipped[slot] = null;
-    return saveEquipment(p);
+    playWeaponPreview(p.equipped[slot]);
+    return true;
+  }
+
+  function drawPreviewFrame(frameName) {
+    const canvas = dom.chapter && dom.chapter.querySelector('#tPrepPreview canvas');
+    if (!canvas || typeof CH === 'undefined') return;
+    const g = canvas.getContext('2d');
+    if (!g) return;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = 'rgba(12,9,7,.3)';
+    g.beginPath(); g.ellipse(canvas.width / 2, canvas.height - 27, 60, 9, 0, 0, Math.PI * 2); g.fill();
+    const frame = CH.hero && CH.hero[frameName];
+    if (!frame) return;
+    if (!frame.img.complete) {
+      if (!frame.previewPending) {
+        frame.previewPending = true;
+        frame.img.addEventListener('load', () => {
+          frame.previewPending = false;
+          if (dom.chapter && dom.chapter.classList.contains('open')) drawPreviewFrame(frameName);
+        }, { once: true });
+      }
+      return;
+    }
+    if (!frame.img.naturalWidth) return;
+    const scale = Math.max(1, Math.floor(Math.min((canvas.width * .72) / frame.w, (canvas.height * .78) / frame.h)));
+    const x = Math.round(canvas.width / 2 - frame.ax * scale);
+    const y = Math.round(canvas.height - 28 - frame.ay * scale);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(frame.img, x, y, frame.w * scale, frame.h * scale);
+  }
+
+  function idlePreviewFrame(id) {
+    const base = id === 'halberd' ? 'staff' : id;
+    return base + '0';
+  }
+
+  function drawPreviewIdle(id) {
+    previewWeapon = ITEMS[id] ? id : 'staff';
+    drawPreviewFrame(idlePreviewFrame(previewWeapon));
+  }
+
+  function playWeaponPreview(id) {
+    if (!ITEMS[id]) return;
+    previewWeapon = id;
+    const base = id === 'halberd' ? 'staff' : id;
+    const combo = typeof WEAP !== 'undefined' && WEAP[base] ? WEAP[base].combo : [];
+    const frames = [];
+    combo.forEach(step => step.f.forEach((frame, i) => frames.push({ frame, duration: Math.max(.06, (step.d[i] || .12) * 1000) })));
+    if (!frames.length) { drawPreviewIdle(id); return; }
+    if (previewRaf) cancelAnimationFrame(previewRaf);
+    previewAnimation = { id, frames, start: performance.now(), total: frames.reduce((sum, frame) => sum + frame.duration, 0) };
+    const tick = now => {
+      if (!previewAnimation || !dom.chapter.classList.contains('open')) { previewAnimation = null; previewRaf = 0; return; }
+      const elapsed = now - previewAnimation.start;
+      let frameName = frames[frames.length - 1].frame;
+      if (elapsed < previewAnimation.total) {
+        let time = elapsed;
+        for (const frame of frames) {
+          if (time < frame.duration) { frameName = frame.frame; break; }
+          time -= frame.duration;
+        }
+      } else if (elapsed >= previewAnimation.total + 1000) {
+        previewAnimation = null; previewRaf = 0;
+        drawPreviewIdle(id);
+        return;
+      }
+      drawPreviewFrame(frameName);
+      previewRaf = requestAnimationFrame(tick);
+    };
+    tick(performance.now());
   }
 
   function beginLoadoutPointer(e) {
@@ -3142,7 +3233,9 @@ function hit(z, dmg, dir, ranged) {
     if (targetSlot && targetSlot.dataset.slot === item.slot) p.equipped[item.slot] = drag.id;
     else if (targetBag && drag.source === 'slot') p.equipped[drag.sourceSlot] = null;
     else return;
-    saveEquipment(p);
+    const equipped = !!(targetSlot && targetSlot.dataset.slot === item.slot);
+    const saved = saveEquipment(p);
+    if (saved && equipped) playWeaponPreview(drag.id);
   }
 
   function cancelLoadoutPointer(e) {
