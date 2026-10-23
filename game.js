@@ -46,48 +46,7 @@ function keyChapter2Map(image) {
   };
 }
 
-function drawChapter2Far(img, vw) {
-  if (!img || !img.complete || !img.width) return;
-  const s = M.viewH / img.height;
-  tileLayer(img, s, .18, 0);
-}
-function drawChapter2Mid(img, vw, horizon) {
-  if (!img || !img.complete || !img.width) return;
-  if (horizon <= 0) return;
-  const pad = M.viewH * .03;
-  tileLayer(img, (horizon - pad) / img.height, .62, pad);
-}
-function drawChapter2Ground(img, vw, horizon) {
-  if (!img || !img.complete || !img.width) return;
-  const gh = M.viewH - horizon;
-  if (gh <= 0) return;
-  const tileW = 1080;
-  const scale = tileW / img.width;
-  const srcH = Math.min(img.height, gh / scale);
-  const sy = (img.height - srcH) / 2;
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  const start = Math.floor(cam.x / tileW) * tileW - tileW;
-  for (let x = start; x < cam.x + vw + tileW; x += tileW) {
-    const flip = Math.round(x / tileW) & 1;
-    ctx.save();
-    if (flip) { ctx.translate(x + tileW, 0); ctx.scale(-1, 1); }
-    else ctx.translate(x, 0);
-    ctx.drawImage(img, 0, sy, img.width, srcH, 0, horizon, tileW, gh);
-    ctx.restore();
-  }
-  ctx.restore();
-}
-function drawChapter2Horizon(vw, horizon) {
-  const g = ctx.createLinearGradient(0, horizon, 0, horizon + 26);
-  g.addColorStop(0, 'rgba(38,20,12,.32)');
-  g.addColorStop(1, 'rgba(38,20,12,0)');
-  ctx.save(); ctx.fillStyle = g; ctx.fillRect(cam.x, horizon, vw, 26); ctx.restore();
-}
 if (ASSETS.chapter2) {
-  if (ASSETS.chapter2.far) load('chapter2_far', ASSETS.chapter2.far);
-  if (ASSETS.chapter2.mid) load('chapter2_mid', ASSETS.chapter2.mid);
-  if (ASSETS.chapter2.ground) load('chapter2_ground', ASSETS.chapter2.ground);
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
@@ -1688,11 +1647,7 @@ function draw() {
   ctx.setTransform(SC, 0, 0, SC, OXs, 0); ctx.imageSmoothingEnabled = true;
   const vw = viewW(), ms = .24 / .61, my = 165 - 619 * .24;
   if (chapter2Run) {
-    const sky = ctx.createLinearGradient(0, 0, 0, M.viewH);
-    sky.addColorStop(0, '#3c3940'); sky.addColorStop(.55, '#a66a48'); sky.addColorStop(1, '#9b5d30');
-    ctx.fillStyle = sky; ctx.fillRect(cam.x, 0, vw, M.viewH);
     const bossMap = chapter2Run.battle === 5;
-    const horizon = M.viewH * .40;
     if (bossMap) {
       const im = IMG.chapter2_altar, keyed = im && im.keyedCanvas;
       if (keyed) {
@@ -1702,12 +1657,9 @@ function draw() {
         ctx.imageSmoothingEnabled = false;
       }
     } else {
-      ctx.imageSmoothingEnabled = true;
-      drawChapter2Far(IMG.chapter2_far, vw);
-      drawChapter2Mid(IMG.chapter2_mid, vw, horizon);
-      drawChapter2Ground(IMG.chapter2_ground, vw, horizon);
-      drawChapter2Horizon(vw, horizon);
-      ctx.imageSmoothingEnabled = false;
+      tileLayer(IMG.far, .577, .3, 0);
+      tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
+      tileLayer(IMG.mid, ms, 1, my);
     }
     ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
   } else {
