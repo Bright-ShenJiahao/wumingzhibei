@@ -165,8 +165,11 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
-  if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley();
-  if (e.code === 'KeyI' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley();
+  if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE) {
+    if (ROGUE.useSummon()) summonArchersVolley();
+    else if (ROGUE.useCatapult()) catapultVolley();
+  }
+  // KeyI 预留给后续法器技能，暂不绑定
   if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();

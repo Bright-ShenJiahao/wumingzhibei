@@ -242,6 +242,7 @@
       }
       #tHelpPanel {
         position: fixed; z-index: 9; left: 50%; top: 50%; transform: translate(-50%,-50%);
+        width: min(560px, 90vw); box-sizing: border-box;
         background: rgba(18,12,26,.94); border: 2px solid #c9971f; border-radius: 14px; padding: 18px 22px;
         color: #f2e6c9; font: 600 14px/1.9 "PingFang SC","Noto Sans CJK SC",sans-serif;
         box-shadow: 0 12px 40px rgba(0,0,0,.6); display: none; max-width: 86vw; text-align: left;
@@ -332,9 +333,10 @@
     dom.panel.innerHTML = `<h3>操作说明</h3>
       <div><b>电脑</b>：WASD / 方向键移动 · J 攻击（长按蓄力）· K / 空格 翻滚</div>
       <div style="padding-left:38px">1 / 2 / 3 换武器 · R 重来</div>
-      <div style="padding-left:38px">U 召唤（万箭齐发）· I 主动技能（投石车）</div>
+      <div style="padding-left:38px">U 召唤：万箭齐发 / 投石车</div>
+      <div style="padding-left:38px">I 法器：待开放</div>
       <div><b>手机</b>：左下摇杆 · 右下攻击 / 翻滚 · 右上换武器</div>
-      <div style="padding-left:38px">右侧召唤 / 主动技能按钮</div>
+      <div style="padding-left:38px">右侧召唤按钮（法器待开放）</div>
       <div><b>武器</b>：棍四连击 · 锤可打断 · 石子远程 · 长戟（整备页选）同棍连招</div>
       <div><b>蓄力</b>：按住 0.4~2 秒，受击打断；命中才能接连招</div>`;
     document.body.appendChild(dom.panel);
