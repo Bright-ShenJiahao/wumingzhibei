@@ -463,9 +463,9 @@ function splitHit(target, damage) {
     hit(other, damage * .3, 0, Math.sign(other.x - target.x), false, 0, .12, false, false, { secondary: true, scaled: true });
 }
 function summonArchersVolley() {
-  const angles = [-22, -16, -10, -4, 4, 10, 16, 22].map(a => a * Math.PI / 180);   // 收束成 44° 的窄扇形
+  const angles = [-12, -8.6, -5.1, -1.7, 1.7, 5.1, 8.6, 12].map(a => a * Math.PI / 180);   // 收束成 24° 的窄扇形
   for (const a of angles) {
-    const C = { dmg: .3, kb: 12, pierce: false };
+    const C = { dmg: .5, kb: 12, pierce: true, pierceOff: .3 };   // 穿透，后续目标只吃 30%
     const ang = a * hero.f;
     shots.push({ x: hero.x + hero.f * 14, y: hero.y + rnd(-8, 8), z: 24, vx: Math.cos(ang) * 260 * hero.f, vy: Math.sin(a) * 190, life: 1.05, C, c: 0, hitSet: [], kind: 'arrow', secondary: true, summon: true });
   }
@@ -1117,7 +1117,7 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * .4 : s.C.dmg;   // 穿透后面的敌人只吃 40%
+      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * (s.C.pierceOff || .4) : s.C.dmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
       hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });   // 最后 true = 远程，管亥可能拨开
       if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
       hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人

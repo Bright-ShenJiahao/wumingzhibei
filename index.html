@@ -1376,7 +1376,7 @@ function hit(z, dmg, dir, ranged) {
     { id: 'wave', name: '冲击波', school: '长武器', w: 6, desc: '第三段附带直线冲击波，略增伤害；命中减防 10%，持续 0.5 秒', apply: () => { S.staffWave = 1; S.waveBonus = 1.15; } },
     { id: 'crit', name: '致命一击', school: '暴击', w: 6, desc: '主动攻击有 10% 概率造成 150% 伤害', apply: () => { S.crit = .1; } },
     { id: 'poison', name: '淬毒', school: '持续伤害', w: 6, desc: '主动攻击使敌人中毒 2 秒；再次命中可叠至 2 层，每层每秒造成 0.25 伤害', apply: () => { S.poison = 1; } },
-    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.3 伤害；每局 2 次，冷却 40 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
+    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；每局 2 次，冷却 30 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
     { id: 'fire', name: '献祭', school: '范围伤害', w: 6, desc: '微弱火焰灼烧近身敌人：每名敌人每 0.5 秒受到 0.2 伤害', apply: () => { S.fireAura = 1; } },
     { id: 'split', name: '分裂', school: '近战', w: 6, desc: '近战命中后，对半径 45 内其他敌人造成本次伤害的 30%', apply: () => { S.split = 1; } },
     { id: 'scatter', name: '散射', school: '远程', w: 6, desc: '远程攻击增加上下各 30° 的副弹，各造成普通伤害的 10%', apply: () => { S.scatter = 1; } },
@@ -1408,7 +1408,7 @@ function hit(z, dmg, dir, ranged) {
     const b = document.getElementById('bSkill');
     if (!b) return;
     const left = Math.max(0, 2 - summonUses);
-    b.textContent = summonCd > 0 ? `召唤 ${left} · ${Math.ceil(summonCd)}s` : `召唤 ${left}`;
+    b.textContent = summonCd > 0 ? `万箭 ${left} · ${Math.ceil(summonCd)}s` : `万箭 ${left}`;
     b.disabled = summonCd > 0 || left <= 0;
     b.style.opacity = b.disabled ? '.52' : '1';
   }
@@ -1428,7 +1428,7 @@ function hit(z, dmg, dir, ranged) {
   }
   function useSummon() {
     if (!S.summon || summonUses >= 2 || summonCd > 0) return false;
-    summonUses++; summonCd = 40; updateSkillButton(); return true;
+    summonUses++; summonCd = 30; updateSkillButton(); return true;
   }
   function absorbHit() {
     if (!S.shield || !shieldReady) return false;
@@ -3377,9 +3377,9 @@ function splitHit(target, damage) {
     hit(other, damage * .3, 0, Math.sign(other.x - target.x), false, 0, .12, false, false, { secondary: true, scaled: true });
 }
 function summonArchersVolley() {
-  const angles = [-22, -16, -10, -4, 4, 10, 16, 22].map(a => a * Math.PI / 180);   // 收束成 44° 的窄扇形
+  const angles = [-12, -8.6, -5.1, -1.7, 1.7, 5.1, 8.6, 12].map(a => a * Math.PI / 180);   // 收束成 24° 的窄扇形
   for (const a of angles) {
-    const C = { dmg: .3, kb: 12, pierce: false };
+    const C = { dmg: .5, kb: 12, pierce: true, pierceOff: .3 };   // 穿透，后续目标只吃 30%
     const ang = a * hero.f;
     shots.push({ x: hero.x + hero.f * 14, y: hero.y + rnd(-8, 8), z: 24, vx: Math.cos(ang) * 260 * hero.f, vy: Math.sin(a) * 190, life: 1.05, C, c: 0, hitSet: [], kind: 'arrow', secondary: true, summon: true });
   }
@@ -4031,7 +4031,7 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * .4 : s.C.dmg;   // 穿透后面的敌人只吃 40%
+      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * (s.C.pierceOff || .4) : s.C.dmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
       hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });   // 最后 true = 远程，管亥可能拨开
       if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
       hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人

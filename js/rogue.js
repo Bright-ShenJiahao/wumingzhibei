@@ -20,7 +20,7 @@
     { id: 'wave', name: '冲击波', school: '长武器', w: 6, desc: '第三段附带直线冲击波，略增伤害；命中减防 10%，持续 0.5 秒', apply: () => { S.staffWave = 1; S.waveBonus = 1.15; } },
     { id: 'crit', name: '致命一击', school: '暴击', w: 6, desc: '主动攻击有 10% 概率造成 150% 伤害', apply: () => { S.crit = .1; } },
     { id: 'poison', name: '淬毒', school: '持续伤害', w: 6, desc: '主动攻击使敌人中毒 2 秒；再次命中可叠至 2 层，每层每秒造成 0.25 伤害', apply: () => { S.poison = 1; } },
-    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.3 伤害；每局 2 次，冷却 40 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
+    { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；每局 2 次，冷却 30 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
     { id: 'fire', name: '献祭', school: '范围伤害', w: 6, desc: '微弱火焰灼烧近身敌人：每名敌人每 0.5 秒受到 0.2 伤害', apply: () => { S.fireAura = 1; } },
     { id: 'split', name: '分裂', school: '近战', w: 6, desc: '近战命中后，对半径 45 内其他敌人造成本次伤害的 30%', apply: () => { S.split = 1; } },
     { id: 'scatter', name: '散射', school: '远程', w: 6, desc: '远程攻击增加上下各 30° 的副弹，各造成普通伤害的 10%', apply: () => { S.scatter = 1; } },
@@ -52,7 +52,7 @@
     const b = document.getElementById('bSkill');
     if (!b) return;
     const left = Math.max(0, 2 - summonUses);
-    b.textContent = summonCd > 0 ? `召唤 ${left} · ${Math.ceil(summonCd)}s` : `召唤 ${left}`;
+    b.textContent = summonCd > 0 ? `万箭 ${left} · ${Math.ceil(summonCd)}s` : `万箭 ${left}`;
     b.disabled = summonCd > 0 || left <= 0;
     b.style.opacity = b.disabled ? '.52' : '1';
   }
@@ -72,7 +72,7 @@
   }
   function useSummon() {
     if (!S.summon || summonUses >= 2 || summonCd > 0) return false;
-    summonUses++; summonCd = 40; updateSkillButton(); return true;
+    summonUses++; summonCd = 30; updateSkillButton(); return true;
   }
   function absorbHit() {
     if (!S.shield || !shieldReady) return false;
