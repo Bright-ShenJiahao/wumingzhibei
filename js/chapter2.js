@@ -2,7 +2,8 @@
 (() => {
   const MAP = 'battlefield';
   const BOSS_MAP = 'altar';
-  const unlocked = true;
+  const unlocked = false;                         // 正常关闭；仅 ?debug 开发者模式可进入
+  const debugMode = /[?&]debug(?:=|&|$)/.test(location.search);
   let selectedRoute = null;
   const battles = Object.freeze([
     Object.freeze({
@@ -64,7 +65,7 @@
     units,
     routeChoiceAfter: 2,
     routes,
-    canEnter: () => unlocked,
+    canEnter: () => unlocked || debugMode,
     canEnterBattle,
     canChooseRoute: () => unlocked && completed.has(2) && selectedRoute === null,
     completeBattle: number => {

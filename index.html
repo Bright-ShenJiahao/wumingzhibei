@@ -1078,7 +1078,8 @@ function hit(z, dmg, dir, ranged) {
 (() => {
   const MAP = 'battlefield';
   const BOSS_MAP = 'altar';
-  const unlocked = true;
+  const unlocked = false;                         // 正常关闭；仅 ?debug 开发者模式可进入
+  const debugMode = /[?&]debug(?:=|&|$)/.test(location.search);
   let selectedRoute = null;
   const battles = Object.freeze([
     Object.freeze({
@@ -1140,7 +1141,7 @@ function hit(z, dmg, dir, ranged) {
     units,
     routeChoiceAfter: 2,
     routes,
-    canEnter: () => unlocked,
+    canEnter: () => unlocked || debugMode,
     canEnterBattle,
     canChooseRoute: () => unlocked && completed.has(2) && selectedRoute === null,
     completeBattle: number => {
@@ -2620,6 +2621,7 @@ function hit(z, dmg, dir, ranged) {
       #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
       #tChapter h2 { margin:0; color:#f0d58f; font:700 clamp(19px,2.4vw,29px)/1.2 "PingFang SC","Microsoft YaHei",sans-serif; letter-spacing:.08em; }
       #tChapter p { margin:3px 0 0; color:#c4b18e; font-size:clamp(11px,1.2vw,14px); }
+      #tChapterNotice { margin:8px 0 0 !important; color:#d7b579 !important; font-size:clamp(10px,1.05vw,12px) !important; line-height:1.5; text-align:left; }
       .tChapterCard { width:100%; min-height:clamp(91px,17vh,150px); margin-top:clamp(8px,1.5vh,15px); padding:clamp(11px,1.5vw,18px); box-sizing:border-box; border:1px solid #9d7845; border-radius:9px; color:#e9d8b7; text-align:left; background:repeating-linear-gradient(4deg,rgba(225,187,121,.035) 0 2px,transparent 2px 12px),linear-gradient(145deg,#62462c,#382a20); cursor:pointer; touch-action:manipulation; }
       .tChapterCard strong { display:block; color:#f4d88e; font-size:clamp(15px,1.7vw,20px); }
       .tChapterCard small { display:block; margin-top:8px; color:#c8b590; font-size:clamp(10px,1.1vw,13px); }
@@ -2641,9 +2643,10 @@ function hit(z, dmg, dir, ranged) {
       .tPrepSlot > b { grid-column:1/-1; min-width:0; padding:0 1px 1px; box-sizing:border-box; color:#eccd87; font-size:clamp(11px,1.2vw,15px); line-height:1.15; }
       .tPrepIcon { box-sizing:border-box; width:52px; height:100%; max-height:34px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
       .tPrepIcon img,.tBagIcon img { display:block; width:auto; height:auto; max-width:92%; max-height:88%; object-fit:contain; image-rendering:pixelated; }
-      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { max-width:100%; max-height:50%; transform:none; }
-      .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { max-width:70%; max-height:70%; }
-      .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { max-width:48%; max-height:48%; }
+      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { width:44px; height:auto; max-width:100%; max-height:100%; transform:none; }
+      .tPrepIcon img.icon-w_staff,.tBagIcon img.icon-w_staff { width:38px; height:auto; max-width:100%; max-height:100%; }
+      .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { width:24px; height:24px; max-width:100%; max-height:100%; }
+      .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { width:18px; height:18px; max-width:100%; max-height:100%; }
       .tPrepName { min-width:0; max-width:100%; overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepName small { display:block; max-width:100%; margin-top:2px; overflow:hidden; color:#c3ae88; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
@@ -2740,6 +2743,7 @@ function hit(z, dmg, dir, ranged) {
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
+        <p id="tChapterNotice"></p>
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
       <section id="tChapterPanel" aria-label="整军备战">
@@ -3066,6 +3070,11 @@ function hit(z, dmg, dir, ranged) {
       const state = dom.chapter.querySelector('#tChapter2State');
       if (state) state.textContent = canEnter2 ? '选择后可整备出征' : '未开放';
     }
+    const notice = dom.chapter.querySelector('#tChapterNotice');
+    if (notice) {
+      notice.style.display = canEnter2 ? 'none' : 'block';
+      notice.textContent = '第二章暂未开放；可先在第一章刷武器词条（词条系统开发中）。';
+    }
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
@@ -3145,7 +3154,10 @@ function hit(z, dmg, dir, ranged) {
       return;
     }
     if (!frame.img.naturalWidth) return;
-    const scale = Math.max(1, Math.floor(Math.min((canvas.width * .72) / frame.w, (canvas.height * .78) / frame.h)));
+    const baseH = 74;   // 以主角身高为基准，所有武器待机统一比例（棍子原来的大小）
+    const natural = Math.min(2, canvas.height * .78 / baseH);
+    const widthCap = canvas.width * .92 / Math.max(baseH, frame.w);
+    const scale = Math.max(1, Math.floor(Math.min(natural, widthCap)));
     const x = Math.round(canvas.width / 2 - frame.ax * scale);
     const y = Math.round(canvas.height - 28 - frame.ay * scale);
     g.imageSmoothingEnabled = false;
