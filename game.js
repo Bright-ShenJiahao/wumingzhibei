@@ -111,7 +111,7 @@ const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 200
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
-let drops = [], floaters = [], reviveUsed = false, pwaves = [];   // 掉落物 / 飘字 / 复活是否已用 / 棍子冲击波
+let drops = [], floaters = [], reviveUsed = false, revives = 0, pwaves = [];   // 掉落物 / 飘字 / 复活标记 / 复活次数 / 棍子冲击波
 let villagers = [], villagersStarted = false, villagersRewarded = false, villagersThanksT = -1;
 let extraDone = false;
 let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）
@@ -130,7 +130,7 @@ function reset() {
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -183,6 +183,7 @@ document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); }
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
+document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
 document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w === 'staff' ? longWeapon() : b.dataset.w); }));
 function longWeapon() { return (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'staff'; }
 const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
@@ -396,6 +397,8 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     if (traits.finisher) dmg *= R_(ranged ? 'finRanged' : 'finMelee');
     if (!traits.secondary && !traits.guaranteedCrit && R_('crit', 0) && Math.random() < R_('crit', 0)) {
       dmg *= 1.5; floaters.push({ x: z.x, y: z.y - 34, t: 0, txt: '暴击！', big: true });
+    } else if (traits.scatter && R_('crit', 0) && Math.random() < R_('crit', 0)) {
+      dmg *= 1.25; floaters.push({ x: z.x, y: z.y - 30, t: 0, txt: '暴击', color: '#ffd06a' });   // 散射副弹：125%
     }
   }
   if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
@@ -404,7 +407,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     const res = Boss.hit(z, dmg, dir, ranged);
     if (z.hp < hp0) {
       if (traits.dot) return res;
-      if (!traits.secondary && R_('poison', 0)) applyPoison(z);
+      if ((!traits.secondary || traits.scatter) && R_('poison', 0)) applyPoison(z, traits.scatter ? .5 : 1);
       if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
       if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
       if (!traits.secondary && !ranged && R_('split', 0)) splitHit(z, dmg);
@@ -458,9 +461,10 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
   if (!traits.secondary && !ranged && R_('split', 0)) splitHit(z, dmg / (noviceMode() ? 2 : 1));
 }
-function applyPoison(z) {
+function applyPoison(z, scale = 1) {
   if (!z || z.dead) return;
   const active = z.poisonT > 0;
+  z.poisonScale = scale;   // 散射副弹只有半效
   z.poisonStacks = Math.min(2, (z.poisonStacks || 0) + 1);
   z.poisonT = 2; if (!active) z.poisonTick = 1;
 }
@@ -808,7 +812,7 @@ function chargedAttack(power) {
       shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
       if (R_('scatter', 0)) for (const side of [-1, 1]) {
         const a = ang + side * Math.PI / 6, subC = Object.assign({}, C, { dmg: C.dmg * .1, kb: C.kb * .5 });
-        shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life, C: subC, c: 0, hitSet: [], charged: true, secondary: true });
+        shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life, C: subC, c: 0, hitSet: [], charged: true, secondary: true, scatter: true });
       }
     }
     return;
@@ -850,7 +854,7 @@ function strike() {
     shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
     if (R_('scatter', 0)) for (const a of [-Math.PI / 6, Math.PI / 6]) {
       const subC = Object.assign({}, mainC, { dmg: mainC.dmg * .1, kb: mainC.kb * .5 });
-      shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true });
+      shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true, scatter: true });
     }
     if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：远程连击追加半伤攻击
       const C2 = Object.assign({}, mainC, { dmg: mainC.dmg * .5, kb: mainC.kb * .6 });
@@ -1124,7 +1128,7 @@ function updateShots(dt) {
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * (s.C.pierceOff || .4) : s.C.dmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
-      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });   // 最后 true = 远程，管亥可能拨开
+      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary, scatter: !!s.scatter });   // 最后 true = 远程，管亥可能拨开
       if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
       hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
       if (!s.C.pierce) s.life = 0;
@@ -1147,12 +1151,152 @@ function updateShots(dt) {
 
   }
   fires = fires.filter(f => f.t > 0);
+  updateCatapults(dt);
+}
+
+// ---------- 投石车 ----------
+function catapultVolley() {
+  for (let i = 0; i < 3; i++) {
+    catapults.push({ x: cam.x - 40 - i * 34, y: M.top + 46 + i * 62, tx: cam.x + 46 + i * 8, t: -i * .42, fired: false, phase: 'in', ft: 0 });
+  }
+  sfx('land', cam.x + 40); say('投石车来了！', 1.6);
+}
+function updateCatapults(dt) {
+  for (const c of catapults) {
+    c.t += dt;
+    if (c.t < 0) continue;
+    if (c.phase === 'in') {
+      c.x += 46 * dt;
+      if (c.x >= c.tx) { c.x = c.tx; c.phase = 'aim'; c.ft = 0; }
+    } else if (c.phase === 'aim') {
+      c.ft += dt;
+      if (c.ft > .35) {
+        c.phase = 'fire'; c.fired = true; c.ft = 0;
+        // 优先砸向画面里的敌人（略带随机偏移），没有敌人才砸玩家附近
+        const foes = zs.filter(z => !z.dead && !z.air && z.x > cam.x - 20 && z.x < cam.x + viewW() + 20);
+        let tx, ty;
+        if (foes.length) {
+          const tgt = foes[Math.floor(Math.random() * foes.length)];
+          tx = tgt.x + rnd(-16, 16); ty = tgt.y + rnd(-8, 8);
+        } else {
+          tx = hero.x + rnd(-90, 90); ty = rnd(M.top + 10, M.bot - 6);
+        }
+        tx = Math.max(cam.x + 40, Math.min(cam.x + viewW() - 30, tx));
+        ty = Math.max(M.top + 8, Math.min(M.bot - 4, ty));
+        allyShots.push({ sx: c.x, sy: c.y - 26, x: c.x, y: c.y - 26, tx, ty, t: 0, T: .75 });
+        sfx('sling', c.x);
+      }
+    } else if (c.phase === 'fire') {
+      c.ft += dt;
+      if (c.ft > .3) { c.phase = 'out'; }
+    } else if (c.phase === 'out') {
+      c.x -= 70 * dt;
+    }
+  }
+  catapults = catapults.filter(c => !(c.phase === 'out' && c.x < cam.x - 90));
+  for (const s of allyShots) {
+    s.t += dt;
+    const k = Math.min(1, s.t / s.T);
+    s.x = s.sx + (s.tx - s.sx) * k;
+    s.y = s.sy + (s.ty - s.sy) * k - Math.sin(k * Math.PI) * 120;
+    if (k >= 1) {
+      s.done = true;
+      shake = Math.max(shake, .18);
+      sfx('land', s.tx);
+      for (const z of zs) {
+        if (z.dead || z.air) continue;
+        if (Math.abs(z.x - s.tx) < 34 && Math.abs(z.y - s.ty) < 22) hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true });
+      }
+      allyFires.push({ x: s.tx, y: s.ty, t: 4, r: 32, tick: 0 });
+      for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-16, 16), y: s.ty + rnd(-8, 4), vx: rnd(-60, 60), vy: rnd(-110, -30), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.3, .6), max: .6, c: '#ff9a2e' });
+    }
+  }
+  allyShots = allyShots.filter(s => !s.done);
+  for (const f of allyFires) {
+    f.t -= dt; f.tick -= dt;
+    if (f.tick <= 0) {
+      f.tick = .5;
+      for (const z of zs) {
+        if (z.dead || z.air) continue;
+        if (Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .45) hit(z, .3, 0, 0, false, 0, 0, false, true, { dot: true });
+      }
+    }
+  }
+  allyFires = allyFires.filter(f => f.t > 0);
+}
+function drawCatapults() {
+  for (const c of catapults) {
+    if (c.t < 0) continue;
+    const fr = c.phase === 'fire' ? 'fire' : c.phase === 'aim' ? 'load' : 'idle';
+    const f = CH.yellow_catapult && (CH.yellow_catapult[fr] || CH.yellow_catapult.idle);
+    if (f && f.img) {
+      const sc = .62, w = f.w * sc, h = f.h * sc;
+      ctx.drawImage(f.img, Math.round(c.x - w / 2), Math.round(c.y + 4 - h), w, h);
+    } else { ctx.fillStyle = '#5a3a1c'; ctx.fillRect(c.x - 18, c.y - 22, 36, 26); }
+  }
+  for (const s of allyShots) {
+    ctx.fillStyle = '#6b6b6b';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,150,40,.9)';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 2.4, 0, 7); ctx.fill();
+  }
+}
+
+// 投石车火场：复用弓箭手地面火苗的 4 帧，整体调成偏朱红，和黄橙色的火箭火区分开。
+const allyFireTint = [];
+function allyFireFrame(k) {
+  if (allyFireTint[k]) return allyFireTint[k];
+  const im = IMG['ui_fire' + k];   // 打包时 UI 图统一加 ui_ 前缀
+  if (!im || !im.complete || !im.naturalWidth) return null;
+  const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const px = g.getImageData(0, 0, c.width, c.height), d = px.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const lum = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114;
+    d[i] = Math.min(255, d[i] * .92 + 16);                 // 红
+    d[i + 1] = Math.min(255, d[i + 1] * .42 + lum * .08);  // 压掉黄绿
+    d[i + 2] = Math.min(255, d[i + 2] * .58 + lum * .12);  // 蓝略抬，偏朱红
+  }
+  g.putImageData(px, 0, 0);
+  allyFireTint[k] = c;
+  return c;
+}
+function drawAllyFire() {
+  const now = performance.now() / 90;
+  for (const f of allyFires) {
+    const fade = Math.min(1, f.t / .6);
+    const a = Math.min(1, (4 - f.t) / .25) * fade;
+    if (a <= 0) continue;
+    // 地面被烤红的一圈（和伤害范围一致）
+    const gd = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r);
+    gd.addColorStop(0, 'rgba(255,120,70,' + (.26 * a) + ')');
+    gd.addColorStop(1, 'rgba(210,40,20,0)');
+    ctx.fillStyle = gd;
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .45, 0, 0, 7); ctx.fill();
+    // 三簇火苗，错开相位和高度
+    const seeds = [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];
+    for (let i = 0; i < seeds.length; i++) {
+      const [ox, sc, ph] = seeds[i];
+      const im = allyFireFrame(Math.floor(now + ph * 4) % 4);
+      if (!im) continue;
+      const FH = 32 * sc, FW = FH * im.width / im.height;
+      ctx.globalAlpha = a * (.86 + .14 * Math.sin(now * .6 + i));
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6), FW, FH);
+      ctx.globalAlpha = 1;
+    }
+  }
 }
 
 let gameT = 0;
 let arenaL = null;
 let boardSent = false;   // 本局成绩是否已提交到英雄榜
-let runBonus = 0;        // 满血吃补血道具等额外积分   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
+let runBonus = 0;        // 满血吃补血道具等额外积分
+// 投石车（锦囊·主动）：从左边进场、各投一块燃烧石，然后退出
+let catapults = [];      // { x, y, tx, t, fired, phase }
+let allyShots = [];      // 投出的石头
+let allyFires = [];      // 燃烧地面（只伤敌人）   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
 let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {
@@ -1200,9 +1344,9 @@ function update(dt) {
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
       // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
-      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8)),
+      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
-      needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
+      needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? '获得管亥的长戟，可在整备界面选择装备。' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
@@ -1210,11 +1354,11 @@ function update(dt) {
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy' });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy', revives });
       }
     }
     uiBtns = [];
-    if (!won && !reviveUsed) { toastMsg = '还有 1 次免费复活：分享给好友就能继续'; toastT = 6; }
+    if (!won) { toastMsg = revives >= 1 ? '分享给好友可以继续（第 3 条命起评分减半）' : '倒下了：分享给好友可免费复活'; toastT = 6; }
   }
   if (result) {   // 面板弹一声闷「咚」；台词跳出时再来一声轻「嗒」
     if (!result.s1 && gameT >= result.born) { result.s1 = 1; sfx('panel'); }
@@ -1397,6 +1541,7 @@ function draw() {
       ctx.globalAlpha = 1;
     }
   }
+  drawAllyFire();   // 投石车留下的火场（和弓箭手的火共用帧，颜色偏朱红）
   // 火箭落点预警
   for (const s of eshots) if (s.k === 'arrow') {
     const d = Math.sign(s.vx) || 1;
@@ -1416,6 +1561,7 @@ function draw() {
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
   for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
+  if (catapults.length || allyShots.length || allyFires.length) list.push({ y: M.bot - 1, d: () => drawCatapults() });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
@@ -1673,7 +1819,7 @@ function drawResult(HW, HH) {
   plank(3, '第二章', 'next', false, chapter2Locked);
 
   // 复活按钮
-  if (!result.win && !reviveUsed && raw > .8) {
+  if (!result.win && raw > .8) {
     const rw = pw * .66, rh = sh * .078, rx = px0 + (pw - rw) / 2, ry = sy + sh * .60;
     const pressed = pressAct === 'revive' && performance.now() - pressAt < 140;
     const pulse = .5 + .5 * Math.sin(performance.now() / 220);   // 呼吸，吸引注意
@@ -1689,7 +1835,8 @@ function drawResult(HW, HH) {
     ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
     ctx.fillStyle = '#e9ffe2'; ctx.font = 'bold ' + Math.round(rh * .5) + 'px ' + F;
     ctx.textAlign = 'center';
-    ctx.fillText('分享给好友 · 免费复活（仅此一次）', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
+    const label = revives >= 1 ? '分享复活（第 3 条命起评分减半）' : '分享给好友 · 免费复活';
+    ctx.fillText(label, rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
     ctx.restore();
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
@@ -1705,8 +1852,8 @@ function drawResult(HW, HH) {
 }
 // 分享换复活（每局一次）：不管分享成不成功都给，分享面板取消也不扣次数
 async function doRevive() {
-  if (!result || result.win || reviveUsed) return;
-  reviveUsed = true;
+  if (!result || result.win) return;
+  reviveUsed = true; revives++;   // 可以无限复活，但从第 2 次复活起评分减半
   const r = { win: false, kills, time: result.time, rank: '' };
   result = null; uiBtns = [];
   over = false;
@@ -1833,8 +1980,55 @@ function drawChargeAura(h) {
   ctx.restore();
 }
 
+// 献祭：主角身上一层淡红色光晕；敌人贴身每秒叠 1 层（最多 3 层），层数越高红光越亮、光环越多。
+function drawFireAura(h) {
+  if (!window.ROGUE || !ROGUE.fireAura) return;
+  const A = ROGUE.fireAura(); if (!A.active) return;
+  const lv = Math.max(1, Math.min(3, A.stacks || 1));
+  const t = performance.now() / 1000, pulse = .5 + .5 * Math.sin(t * 2.6);
+  const R = 26 + lv * 6;
+  // 外层柔光：正常混合压暗一点背景，浅色地面上也能看见
+  ctx.save();
+  const g = ctx.createRadialGradient(h.x, h.y - 18, 3, h.x, h.y - 18, R);
+  g.addColorStop(0, `rgba(255,86,66,${.20 + lv * .035 + pulse * .02})`);
+  g.addColorStop(.55, `rgba(214,42,44,${.13 + lv * .025})`);
+  g.addColorStop(1, 'rgba(140,16,26,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(h.x, h.y - 18, R * .9, R * 1.05, 0, 0, 7); ctx.fill();
+  ctx.restore();
+  // 贴身光晕：每层一圈淡红光环（1~3 层），最内圈最亮
+  for (let i = 0; i < lv; i++) {
+    const rx = 15 + i * 3.2, ry = 20 + i * 3.2;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,104,82,${.26 - i * .05 + pulse * .03})`;
+    ctx.lineWidth = 1.4;
+    ctx.shadowColor = 'rgba(255,70,50,.55)';
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y - 17, rx, ry, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  // 贴地范围圈：淡红，尽量不抢画面
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,96,78,${.12 + lv * .04})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(h.x, h.y, 24, 10, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+  // 缓缓上升的火星
+  ctx.save();
+  for (let i = 0; i < lv * 4; i++) {
+    const ph = (t * (.32 + i * .045) + i * .37) % 1;
+    const x = h.x + Math.sin(t * 1.6 + i * 2.3) * (9 + lv * 2.4);
+    const y = h.y - 7 - ph * (26 + lv * 6);
+    ctx.globalAlpha = (1 - ph) * (.30 + lv * .09);
+    ctx.fillStyle = i % 2 ? '#ff9a64' : '#ff4a3a';
+    ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
+  }
+  ctx.restore();
+}
+
 function drawHero() {
   const h = hero; shadow(h.x, h.y, 10);
+  if (!over && h.st !== 'down') drawFireAura(h);
   h.shieldFlash = Math.max(0, (h.shieldFlash || 0) - 1 / 60);
   if (window.ROGUE && ROGUE.shieldReady && ROGUE.shieldReady()) {
     const pulse = .72 + .18 * Math.sin(performance.now() / 230);

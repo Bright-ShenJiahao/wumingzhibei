@@ -63,8 +63,9 @@ function pub(x) {
   const diff = x.diff === 'easy' ? 'easy' : 'hard';     // 只用于显示：老记录当年的难度就是现在的困难
   const base = scoreOf(x.kills, x.t, cleared, win, hits, x.bonus);
   // 困难（旧普通）= 原分 ×1；简单模式 = 原分 ×0.8（困难 ≈ 简单的 1.25 倍）；老记录没有 diff → 按困难算，分数不动
-  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff,
-    score: Math.round(base * (x.diff === 'easy' ? .8 : 1)) };
+  const rv = Number.isFinite(x.revives) ? x.revives : 0;
+  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff, revives: rv,
+    score: Math.round(base * (x.diff === 'easy' ? .8 : 1) * (rv >= 2 ? .5 : 1)) };   // 第 2 次复活起评分减半
 }
 
 export default async function handler(req, context) {
@@ -120,6 +121,7 @@ export default async function handler(req, context) {
   const hits = Math.max(0, Math.min(99, Math.round(Number(body.hits)) || 0));
   const bonus = Math.max(0, Math.min(200, Math.round(Number(body.bonus)) || 0));
   const diff = body.diff === 'hard' ? 'hard' : 'easy';
+  const revives = Math.max(0, Math.min(20, Math.round(Number(body.revives)) || 0));
   if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
   if (win && t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);      // 通关不可能这么快
   if (!win && t < 10) return json({ ok: false, error: 'too fast' }, 400);
@@ -134,7 +136,7 @@ export default async function handler(req, context) {
     const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
     if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
 
-    const rec = { name, kills, t, zone, win, hits, bonus, diff, at: now, season: SEASON, ip, cheat: 0 };
+    const rec = { name, kills, t, zone, win, hits, bonus, diff, revives, at: now, season: SEASON, ip, cheat: 0 };
     const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
     await store.set(key, JSON.stringify(rec));
     return json({ ok: true, key });
