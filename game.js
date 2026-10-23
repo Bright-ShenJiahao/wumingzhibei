@@ -96,9 +96,9 @@ const WEAP = {
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
   // move: 0：出手期间站定不动（只保留开头那一下前冲），砸下去人不能跟着滑，重量感更足
   hammer: { name: '锤子', class: 'short', reach: 25, dy: 15, snd: 'staff', lunge: 80, lungeT: .12, interrupt: true, move: 0, combo: [
-    { f: ['hammer_1a', 'hammer_1b'], d: [.14, .24], dmg: 1.5, kb: 30 },                           // 举锤下砸
-    { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
-    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
+    { f: ['arm_hammer_1a', 'arm_hammer_1b'], d: [.14, .24], dmg: 1.5, kb: 30 },                           // 举锤下砸
+    { f: ['arm_hammer_2a', 'arm_hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
+    { f: ['arm_hammer_3a', 'arm_hammer_3b', 'arm_hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
@@ -1617,16 +1617,16 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
-  const armor = weapon === 'halberd';
+  const armor = weapon === 'halberd' || weapon === 'hammer';
   const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return armor ? (Math.floor(h.t * 15) % 2 ? 'arm_roll2' : 'arm_roll1') : (Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1');
   if (h.air) return armor ? (h.vz > 0 ? 'arm_fly1' : 'arm_fly2') : (h.vz > 0 ? 'fly1' : 'fly2');
   if (h.st === 'bounce' || h.st === 'getup') return armor ? 'arm_' + h.st : h.st;
-  if (h.st === 'walk') return armor ? 'arm_w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4] : frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'walk') return armor ? (weapon === 'hammer' ? 'arm_hammerw' : 'arm_w') + [1, 2, 3, 2][Math.floor(h.t * 8) % 4] : frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
   if (h.st === 'hurt') return armor ? 'arm_hurt' : 'hurt';
   if (h.st === 'down') return armor ? 'arm_down' : 'down';
-  return armor ? 'arm_idle' : frameWeapon + '0';
+  return armor ? (weapon === 'hammer' ? 'arm_hammer0' : 'arm_idle') : frameWeapon + '0';
 }
 function zFrame(z) {
   if (z.T.siege) {
