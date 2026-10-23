@@ -5,7 +5,7 @@
     move: 1, aspd: 1, chargedDmg: 1, steady: 0,
     lifesteal: 0, shield: 0, stoneExtra: 0, scatter: 0,
     hammerAoe: 0, hammerBonus: 1, staffWave: 0, waveBonus: 1,
-    crit: 0, poison: 0, summon: 0, fireAura: 0, split: 0,
+    crit: 0, poison: 0, summon: 0, catapult: 0, fireAura: 0, split: 0,
   };
   const DEFAULT = { ...S };
   const CARDS = [
@@ -23,11 +23,12 @@
     { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；每局 2 次，冷却 30 秒', apply: () => { S.summon = 1; summonUses = 0; summonCd = 0; updateSkillButton(); } },
     { id: 'fire', name: '献祭', school: '范围伤害', w: 6, desc: '微弱火焰灼烧近身敌人：每名敌人每 0.5 秒受到 0.2 伤害', apply: () => { S.fireAura = 1; } },
     { id: 'split', name: '分裂', school: '近战', w: 6, desc: '近战命中后，对半径 45 内其他敌人造成本次伤害的 30%', apply: () => { S.split = 1; } },
-    { id: 'scatter', name: '散射', school: '远程', w: 6, desc: '远程攻击增加上下各 30° 的副弹，各造成普通伤害的 10%', apply: () => { S.scatter = 1; } },
+    { id: 'catapult', name: '投石车', school: '主动技能', w: 5, desc: '从左方召来 3 台投石车，各投一块燃烧石：落地 1.5 伤害，留下 4 秒火场（每 0.5 秒 0.3 伤害）；每局 1 次', apply: () => { S.catapult = 1; } },
+  { id: 'scatter', name: '散射', school: '远程', w: 6, desc: '远程攻击增加上下各 30° 的副弹，各造成普通伤害的 10%', apply: () => { S.scatter = 1; } },
   ];
   const stacks = {};
   let open = false, offer = [], anim = 0, rects = [], rerollToken = false, rerollRect = null;
-  let inputLockT = 0, shieldReady = false, shieldTimer = 10, summonUses = 0, summonCd = 0;
+  let inputLockT = 0, shieldReady = false, shieldTimer = 10, summonUses = 0, summonCd = 0, catapultUses = 0;
 
   const WEAPON_CARD = { long: 'wave', short: 'quake', ranged: 'combo' };
   const weightOf = c => {
@@ -50,11 +51,21 @@
   function updateSkillButton() {
     document.body.classList.toggle('wzb-summon', !!S.summon);
     const b = document.getElementById('bSkill');
-    if (!b) return;
-    const left = Math.max(0, 2 - summonUses);
-    b.textContent = summonCd > 0 ? `万箭 ${left} · ${Math.ceil(summonCd)}s` : `万箭 ${left}`;
-    b.disabled = summonCd > 0 || left <= 0;
-    b.style.opacity = b.disabled ? '.52' : '1';
+    if (b) {
+      const left = Math.max(0, 2 - summonUses);
+      b.textContent = summonCd > 0 ? `万箭齐发 ${left} · ${Math.ceil(summonCd)}s` : `万箭齐发 ${left}`;
+      b.disabled = summonCd > 0 || left <= 0;
+      b.style.opacity = b.disabled ? '.52' : '1';
+    }
+    // 投石车：独立按钮，每局一次
+    document.body.classList.toggle('wzb-catapult', !!S.catapult);
+    const c = document.getElementById('bCatapult');
+    if (c) {
+      const cle = Math.max(0, 1 - catapultUses);
+      c.textContent = cle > 0 ? '投石车 1' : '投石车 0';
+      c.disabled = cle <= 0;
+      c.style.opacity = c.disabled ? '.52' : '1';
+    }
   }
   function offerCards() {
     // 已获得卡从本局卡池移除，不会再次出现；每次最多三张，且优先保持不同流派。
@@ -69,6 +80,10 @@
     stacks[c.id] = 1; c.apply(); setOpen(false); updateSkillButton();
     if (typeof toast === 'function') toast('锦囊：' + c.name);
     if (typeof say === 'function') say('获得「' + c.name + '」—— ' + c.desc, 3);
+  }
+  function useCatapult() {
+    if (!S.catapult || catapultUses >= 1) return false;
+    catapultUses++; updateSkillButton(); return true;
   }
   function useSummon() {
     if (!S.summon || summonUses >= 2 || summonCd > 0) return false;
@@ -94,7 +109,7 @@
     if (S.poison && typeof zs !== 'undefined') for (const z of zs) {
       if (!z || !z.poisonT || z.dead) continue;
       z.poisonT = Math.max(0, z.poisonT - dt); z.poisonTick = (z.poisonTick || 1) - dt;
-      if (z.poisonTick <= 0 && z.poisonT > 0) { z.poisonTick += 1; rogueHit(z, .25 * z.poisonStacks * (z.T && z.T.boss ? .5 : 1), { secondary: true, scaled: true, dot: true }); }
+      if (z.poisonTick <= 0 && z.poisonT > 0) { z.poisonTick += 1; rogueHit(z, .25 * z.poisonStacks * (z.poisonScale || 1) * (z.T && z.T.boss ? .5 : 1), { secondary: true, scaled: true, dot: true }); }
       if (!z.poisonT) z.poisonStacks = 0;
     }
   }
@@ -146,7 +161,7 @@
   }, { capture: true });
   addEventListener('keydown', e => { if (!open) return; if (e.code === 'Digit1') choose(0); if (e.code === 'Digit2') choose(1); if (e.code === 'Digit3') choose(2); }, true);
   window.ROGUE = {
-    S, offer: offerCards, blocks: () => open, draw, update, tick, choose, useSummon, absorbHit,
+    S, offer: offerCards, blocks: () => open, draw, update, tick, choose, useSummon, useCatapult, absorbHit,
     shieldReady: () => !!S.shield && shieldReady,
     summonState: () => ({ uses: summonUses, cooldown: summonCd }),
     grantReroll() { if (rerollToken) return false; rerollToken = true; return true; },
