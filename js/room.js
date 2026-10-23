@@ -60,19 +60,21 @@
 
   const KINDS = ['staff', 'hammer', 'stone'];
   const NAME = { staff: '棍', hammer: '锤子', stone: '石子' };
+  const PICK_NAME = { staff: '棍子 · 长武器', hammer: '锤子 · 短武器', stone: '石子 · 远程武器' };
 
   const S = {
     mode: 'off',        // off | play
     phase: 'wake',      // wake（还没站起来）| free（可自由走动）
     t: 0, li: -1, lineT: 0, fade: 1, out: 0, took: 0, cn: 0, ct: 0,
     hero: null, items: [], motes: [], battleT: 0, battleI: 0,
+    msg: '', msgT: 0, warnT: 0, warnShown: false,
   };
 
   function viewW() { try { return cv.width / DPR / ((cv.height / DPR) / 300); } catch (e) { return 640; } }
 
   function resetRoom() {
     const vw = viewW();
-    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0; S.battleT = 1.2; S.battleI = 0;
+    S.phase = 'wake'; S.t = 0; S.li = -1; S.lineT = 0; S.cn = 0; S.ct = 0; S.fade = 1; S.out = 0; S.took = 0; S.battleT = 1.2; S.battleI = 0; S.msg = ''; S.msgT = 0; S.warnT = 0; S.warnShown = false;
     fitImg();
     const sp = P.spawn();
     S.hero = { x: sp[0], y: sp[1], f: 1, st: 'down', t: 0, vx: 0 };
@@ -148,6 +150,7 @@
       return;
     }
 
+    if (S.msgT > 0) S.msgT -= dt;   // 捡起提示的倒计时
     // 墙后持续传来断续的打斗声，音量轻且偏右，提示玩家朝右侧前进。
     S.battleT -= dt;
     if (S.battleT <= 0 && window.SFX) {
@@ -178,6 +181,8 @@
         it.got = 1; S.took++;
         if (window.SFX) SFX.play('pickup', 0);
         S.li = -1; S.lineT = 0;
+        S.msg = '您获得了' + (PICK_NAME[it.k] || NAME[it.k]); S.msgT = 3;
+        if (S.took >= 3) { S.msg = '三把武器都拿到了：电脑按 1 / 2 / 3 换武器，手机点右上角的武器图标换'; S.msgT = 5.5; }
       }
     }
 
@@ -186,10 +191,20 @@
     const dl = P.doorL()[0], dr = P.doorR()[0];
     const doorY0 = toW(IMG_W * .5, IMG_H * .68)[1], doorY1 = toW(IMG_W * .5, IMG_H * .84)[1];
     // 门口触发覆盖门洞和门前一段地面，避免必须踩中一条很窄的“传送阵”。
-    if (S.took >= 3 && h.x > dl - 22 && h.x < dr + 22 && h.y > doorY0 && h.y < doorY1 && S.out === 0) {
-      S.out = .001;
-      if (window.SFX) SFX.play('land', 0);
-    }
+    const inDoor = h.x > dl - 22 && h.x < dr + 22 && h.y > doorY0 && h.y < doorY1;
+    if (inDoor && S.out === 0) {
+      if (S.took >= 3) {
+        S.out = .001;
+        if (window.SFX) SFX.play('land', 0);
+      } else {
+        if (!S.warnShown) {
+          S.warnShown = true;
+          S.msg = '您还有武器没拿（' + S.took + '/3）—— 停留一下就放您过去'; S.msgT = 3;
+        }
+        S.warnT += dt;
+        if (S.warnT > 2.5) { S.out = .001; if (window.SFX) SFX.play('land', 0); }
+      }
+    } else if (!inDoor) { S.warnT = 0; }
   }
 
   // ---------- 绘制 ----------
@@ -362,10 +377,23 @@
     drawSlots(W, H);
     drawDialogue(W, H);
     if (S.phase === 'free') {
-      ctx.font = 'bold 14px "PingFang SC","Noto Sans CJK SC",sans-serif';
-      ctx.fillStyle = 'rgba(242,230,201,.7)'; ctx.textAlign = 'center';
+      ctx.textAlign = 'center';
+      // 捡起/提醒的消息（黄字，3~5 秒）
+      if (S.msgT > 0) {
+        ctx.globalAlpha = Math.min(1, S.msgT / .6);
+        ctx.font = 'bold 21px "PingFang SC","Noto Sans CJK SC",sans-serif';
+        ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(20,12,6,.85)';
+        ctx.strokeText(S.msg, W / 2, H - 66);
+        ctx.fillStyle = '#ffd86e'; ctx.fillText(S.msg, W / 2, H - 66);
+        ctx.globalAlpha = 1;
+      }
+      // 常驻提示：字号从 14 放大到 20
+      ctx.font = 'bold 20px "PingFang SC","Noto Sans CJK SC",sans-serif';
+      ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(20,12,6,.75)';
       const t = S.took >= 3 ? '走到门口出去' : `捡起地上的武器（${S.took}/3）`;
-      ctx.fillText(t, W / 2, H - 18); ctx.textAlign = 'left';
+      ctx.strokeText(t, W / 2, H - 24);
+      ctx.fillStyle = 'rgba(246,236,214,.92)'; ctx.fillText(t, W / 2, H - 24);
+      ctx.textAlign = 'left';
     }
     // 转场
     if (S.fade > 0) { ctx.fillStyle = `rgba(255,255,255,${S.fade})`; ctx.fillRect(0, 0, W, H); }
@@ -394,6 +422,6 @@
     skip: () => { S.mode = 'off'; document.body.classList.remove('wzb-room', 'wzb-wake'); },
     place: (px, py) => { S.hero.x = px; S.hero.y = py; },   // 调试用：摆位置
     geo: () => ({ doorL: P.doorL(), doorR: P.doorR(), thr: P.threshold(), top: P.floorTop(), bot: P.floorBot() }),
-    info: () => ({ phase: S.phase, took: S.took, x: Math.round(S.hero ? S.hero.x : 0), viewW: Math.round(viewW()) }),
+    info: () => ({ phase: S.phase, took: S.took, x: Math.round(S.hero ? S.hero.x : 0), viewW: Math.round(viewW()), msg: S.msg, msgT: +S.msgT.toFixed(1), out: +S.out.toFixed(2), items: S.items.map(i => ({ k: i.k, x: Math.round(i.x), y: Math.round(i.y), got: i.got })) }),
   };
 })();

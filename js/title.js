@@ -5,20 +5,20 @@
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
-  const NOVICE_KEY = 'wzb-novice-mode';
+  const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
   const S = { mode: 'title', intro: 0, flash: 1, name: '', msg: '', msgT: 0, shake: 0, t: 0 };
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
-  let noviceMode = false;
+  let hardMode = false;
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function writeName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
-  function readNovice() { try { const v = localStorage.getItem(NOVICE_KEY); return v == null ? false : v === '1'; } catch (e) { return true; } }
-  function setNoviceClass() { document.body.classList.toggle('wzb-pro', !noviceMode); }
-  function writeNovice(v) { noviceMode = !!v; setNoviceClass(); try { localStorage.setItem(NOVICE_KEY, noviceMode ? '1' : '0'); } catch (e) {} }
+  function readHard() { try { return localStorage.getItem(HARD_KEY) === '1'; } catch (e) { return false; } }
+  function setNoviceClass() { document.body.classList.toggle('wzb-pro', !hardMode); }
+  function writeNovice(v) { hardMode = !!v; setNoviceClass(); try { localStorage.setItem(HARD_KEY, hardMode ? '1' : '0'); } catch (e) {} }
   S.name = readName();
-  noviceMode = readNovice();
+  hardMode = readHard();
 
   // ---------- 演示用的迷你世界（离屏 canvas） ----------
   const D = { camX: 0, t: 0, hero: null, foes: [], props: [], loop: 0, over: 0 };
@@ -191,6 +191,12 @@
         text-shadow: 0 1px 3px #000; cursor: pointer; padding: 6px 14px;
       }
       #tBoard:active { background: rgba(255,216,110,.22); }
+      #tModeTip {
+        position: fixed; z-index: 8; transform: translate(-50%, 0); pointer-events: none;
+        background: rgba(18,12,26,.94); border: 1.5px solid #c9971f; border-radius: 8px;
+        color: #f2e6c9; font: 700 13px/1.5 "PingFang SC",sans-serif; padding: 5px 10px;
+        opacity: 0; transition: opacity .18s; white-space: nowrap;
+      }
       #tTip {
         position: fixed; z-index: 8; color: #ff8f7a; font: 700 14px/1.4 "PingFang SC",sans-serif;
         text-shadow: 0 1px 3px #000; transform: translate(-50%,0); pointer-events: none; opacity: 0;
@@ -216,9 +222,9 @@
     dom.name.placeholder = '输入你的名字'; dom.name.value = S.name;
     dom.name.setAttribute('autocomplete', 'off'); dom.name.setAttribute('spellcheck', 'false');
     dom.start = mk('button', 'tStart', '开始游戏');
-    dom.novice = mk('label', 'tNovice', '简单模式');
-    dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = noviceMode;
-    dom.novice.prepend(dom.noviceInput); dom.novice.title = '开启后敌人受到的伤害翻倍（操作提示始终显示）';
+    dom.novice = mk('label', 'tNovice', '困难模式');
+    dom.noviceInput = document.createElement('input'); dom.noviceInput.type = 'checkbox'; dom.noviceInput.checked = hardMode;
+    dom.novice.prepend(dom.noviceInput); dom.novice.title = '敌人更强，积分 1.25 倍';
     dom.board = mk('button', 'tBoard', '英雄榜');
     dom.board.addEventListener('click', e => { e.preventDefault(); if (window.BOARD) BOARD.open(); });
     dom.hintOff = mk('label', 'tHintOff', '关闭提醒');
@@ -226,10 +232,25 @@
     dom.hintOffInput.type = 'checkbox';
     try { dom.hintOffInput.checked = localStorage.getItem('wzb-hint-off') === '1'; } catch (e) {}
     dom.hintOff.prepend(dom.hintOffInput);
-    dom.hintOff.title = '勾选后不再显示手机全屏提示（微信里玩会留黑边那条）';
+    dom.hintOff.title = '勾选后不再显示手机全屏提示';
     dom.hintOffInput.addEventListener('change', () => {
       try { localStorage.setItem('wzb-hint-off', dom.hintOffInput.checked ? '1' : '0'); } catch (e) {}
     });
+    dom.modeTip = mk('div', 'tModeTip', '');
+    const showModeTip = (text, anchor) => {
+      const r = anchor.getBoundingClientRect();
+      dom.modeTip.textContent = text;
+      dom.modeTip.style.left = Math.round(r.left + r.width / 2) + 'px';
+      dom.modeTip.style.top = Math.round(r.bottom + 8) + 'px';
+      dom.modeTip.style.opacity = '1';
+      clearTimeout(dom.modeTip._t);
+      dom.modeTip._t = setTimeout(() => { dom.modeTip.style.opacity = '0'; }, 2600);
+    };
+    const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
+    if (coarse) {
+      dom.novice.addEventListener('click', () => showModeTip('敌人更强，积分 1.25 倍', dom.novice));
+      dom.hintOff.addEventListener('click', () => showModeTip('勾选后不再显示手机全屏提示', dom.hintOff));
+    }
     dom.help = mk('button', 'tHelp', '?');
     dom.help.title = '操作说明'; dom.help.setAttribute('aria-label', '操作说明');
     dom.tip = mk('div', 'tTip', '请输入名字');
@@ -420,7 +441,7 @@
     c.fillText('序章 · 幻想三国录', pad + 4, y + L.sub * 1.9);
     // 角落的小字：操作提示（电脑/手机自适应）
     const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
-    if (noviceMode) {
+    if (true) {   // 角落操作提示始终显示
       c.font = '600 12px "PingFang SC",sans-serif'; c.fillStyle = 'rgba(242,230,201,.5)';
       c.fillText(coarse ? '手机：左下摇杆移动 · 右下攻击/翻滚' : 'WASD 移动 · J 攻击 · K 翻滚 · 1/2/3 换武器', pad, L.h - 10);
     }
@@ -460,6 +481,7 @@
   function setDomVisible(v) {
     const d = v ? '' : 'none';
     for (const k of ['name', 'start', 'help', 'novice', 'board', 'hintOff']) if (dom[k]) dom[k].style.display = d;
+    if (!v && dom.modeTip) { dom.modeTip.style.opacity = '0'; }
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 
@@ -507,7 +529,8 @@
     blocks: () => S.mode !== 'game',            // true = 游戏逻辑不推进
     draw: () => draw(),                          // 返回 true = 这一帧由标题界面接管
     playerName: () => S.name,
-    noviceMode: () => noviceMode,
+    hardMode: () => hardMode,
+    noviceMode: () => !hardMode,
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏

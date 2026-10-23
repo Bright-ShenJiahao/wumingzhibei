@@ -86,12 +86,13 @@
         <td class="num">${cl}</td>
         <td class="num">${fmtTime(r.t)}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
+        <td style="text-align:right;font-size:12px;color:${r.diff === 'hard' ? '#e0703a' : '#8d7a5e'}">${r.diff === 'hard' ? '困难' : '简单'}</td>
       </tr>`;
     }).join('');
     body.innerHTML = `<table>
       <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
       <th style="text-align:right">击杀</th><th style="text-align:right">通关区域数</th>
-      <th style="text-align:right">用时</th><th style="text-align:right">日期</th></tr></thead>
+      <th style="text-align:right">用时</th><th style="text-align:right">日期</th><th style="text-align:right">难度</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 
@@ -119,7 +120,7 @@
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
     const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
-      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
+      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus, diff: rec && rec.diff };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

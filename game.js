@@ -23,7 +23,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
   }
 }
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
-const PROP_POOL = ['hay', 'hay', 'well', 'cart'];   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
+const PROP_POOL = ['hay', 'hay', 'cart'];   // 水井已移除（只保留草垛、推车）   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
 // 连招：f = 帧序列，d = 每帧时长，最后一帧开始时出手判定。棍四段，锤和石子三段。
 // 连招规则：上一下打中敌人，才能接下一下；打空就从第一下重来。
@@ -53,16 +53,16 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.18, .07, .28], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
+    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
   blade:   { name: '刀手', hp: 5, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
-  slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [80, 130], cd: 2.4, scale: .88 },
+  slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [64, 104], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
@@ -120,15 +120,16 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
-  arenaL = null; boardSent = false;
-  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0 };
+  arenaL = null; boardSent = false; runBonus = 0;
+  hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; extraDone = false; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
-    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, w: k === 'flag' ? 6 : pw * .75, h: ph });
+    const psc = k === 'cart' ? .5 : 1;   // 推车整体缩到一半
+    props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: k === 'flag' ? 6 : pw * .75 * psc, h: ph * psc });
   }
   tutorialQueue = [
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
@@ -138,7 +139,8 @@ function reset() {
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
-function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }
+function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 敌人受双倍伤害
+function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
@@ -489,6 +491,7 @@ function heroUpdate(dt) {
   let ix = (key.KeyD || key.ArrowRight ? 1 : 0) - (key.KeyA || key.ArrowLeft ? 1 : 0), iy = (key.KeyS || key.ArrowDown ? 1 : 0) - (key.KeyW || key.ArrowUp ? 1 : 0);
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
+  h.ix = ix; h.iy = iy;   // 记下方向输入：跑动中扔石子会偏
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
   if (atkHeldSince && !charging && performance.now() - atkHeldSince >= CHARGE_MS && !h.air && h.st !== 'down' && h.st !== 'hurt') {
@@ -537,9 +540,9 @@ function set(e, st) { e.st = st; e.t = 0; }
 // 每被打中一次掉 1 点耐久；打坏后取消碰撞（p.solid = false）并从画面消失，水井/旗子 hp 为 0 不受影响
 // 回血道具：包子 +1（70%）、鸡腿 +2（20%）、烤乳猪 +3（10%）
 const FOOD = [
-  { k: 'bun', heal: 1, w: 60 },   // 包子：最常见，回 1
-  { k: 'leg', heal: 2, w: 30 },   // 鸡腿：中等，回 2
-  { k: 'pig', heal: 4, w: 10 },   // 烤乳猪：稀有，回 4
+  { k: 'bun', heal: 1, w: 72 },   // 包子：最常见，回 1（权重 60→72）
+  { k: 'leg', heal: 2, w: 22 },   // 鸡腿：中等，回 2（30→22）
+  { k: 'pig', heal: 4, w: 6 },    // 烤乳猪：稀有，回 4（10→6）
 ];
 function spawnDrop(x, y, forceK) {
   let pick;
@@ -576,8 +579,14 @@ function updateDrops(dt) {
         if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
         continue;
       }
-      h.hp = Math.min(10, h.hp + d.heal);
-      floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+      if (h.hp >= 10) {                      // 满血：回不了血，按回复量折算积分（1 血 = 5 分）
+        const bp = d.heal * 5;
+        runBonus += bp;
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + bp + '分' });
+      } else {
+        h.hp = Math.min(10, h.hp + d.heal);
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+      }
       sfx('food', d.x);
     }
   }
@@ -667,7 +676,7 @@ function hitProp(p, dir) {
   }
   if (broken) {
     p.broken = true; p.solid = false;
-    if (Math.random() < .5) spawnDrop(p.x, p.y);   // 一半概率掉吃的
+    if (Math.random() < .65) spawnDrop(p.x, p.y);   // 65% 概率掉吃的（原 50%）
   }
 }
 // 棍子第三段的冲击波（锦囊）
@@ -779,10 +788,11 @@ function chargedAttack(power) {
   if (W.class === 'ranged') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {
       const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force * chargeBonus, spd: 240, life: .8 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
+      const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
+      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
       if (R_('scatter', 0)) for (const side of [-1, 1]) {
         const a = ang + side * Math.PI / 6, subC = Object.assign({}, C, { dmg: C.dmg * .1, kb: C.kb * .5 });
-        shots.push({ x: h.x + h.f * 16, y: h.y, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life, C: subC, c: 0, hitSet: [], charged: true, secondary: true });
+        shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life, C: subC, c: 0, hitSet: [], charged: true, secondary: true });
       }
     }
     return;
@@ -819,14 +829,16 @@ function strike() {
     sfx('swing_stone', h.x); h.lastShotC = c;
     const finisher = c === W.combo.length - 1;
     const mainC = finisher ? Object.assign({}, C, { dmg: C.dmg * R_('finRanged') }) : C;
-    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
+    const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
+    const sOff = running ? rnd(-13, 13) : 0;                  // 跑动中弹道偏 ±13，站定不偏
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
     if (R_('scatter', 0)) for (const a of [-Math.PI / 6, Math.PI / 6]) {
       const subC = Object.assign({}, mainC, { dmg: mainC.dmg * .1, kb: mainC.kb * .5 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true });
+      shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true });
     }
     if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：远程连击追加半伤攻击
       const C2 = Object.assign({}, mainC, { dmg: mainC.dmg * .5, kb: mainC.kb * .6 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [], secondary: true });
+      shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [], secondary: true });
     }
     return;
   }
@@ -981,7 +993,11 @@ function zUpdate(z, dt) {
       if (z.t >= 2) { priestCast(z); set(z, 'idle'); z.chantCd = 8; }
       return;
     }
-    if (z.chantCd <= 0 && Math.abs(z.tok ? 1 : 1)) { set(z, 'chant'); return; }
+    if (z.chantCd <= 0) {
+      // 只有真的有友军受伤（<70% 血）才念咒，避免开场满血白念
+      const hurtAlly = zs.some(o => o !== z && !o.dead && !o.T.boss && o.hp < o.T.hp * .7);
+      if (hurtAlly) { set(z, 'chant'); return; }
+    }
     const pdx = hero.x - z.x, pad = Math.abs(pdx);
     if (pdx) z.f = Math.sign(pdx);
     let tx = z.x, ty = z.y, moving = false;
@@ -1091,8 +1107,10 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });
-      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * .4 : s.C.dmg;   // 穿透后面的敌人只吃 40%
+      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });   // 最后 true = 远程，管亥可能拨开
+      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
+      hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
       if (!s.C.pierce) s.life = 0;
     }
   }
@@ -1117,7 +1135,8 @@ function updateShots(dt) {
 
 let gameT = 0;
 let arenaL = null;
-let boardSent = false;   // 本局成绩是否已提交到英雄榜   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
+let boardSent = false;   // 本局成绩是否已提交到英雄榜
+let runBonus = 0;        // 满血吃补血道具等额外积分   // Boss 战左边界（场地宽 1.2 屏），其它时候为 null
 // HIT 连击：1.2 秒内连续命中就累加，只做视觉反馈、不影响伤害
 let comboCount = 0, comboExpireAt = 0, comboNotices = [];
 function countComboHit() {
@@ -1164,16 +1183,21 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken),   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
+      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8)),
+      rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
-    if (!boardSent) {   // 通关或者阵亡都上报（失败不影响游戏）
+    const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
+    if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy' });
       }
     }
     uiBtns = [];
+    if (!won && !reviveUsed) { toastMsg = '还有 1 次免费复活：分享给好友就能继续'; toastT = 6; }
   }
   if (result) {   // 面板弹一声闷「咚」；台词跳出时再来一声轻「嗒」
     if (!result.s1 && gameT >= result.born) { result.s1 = 1; sfx('panel'); }
@@ -1632,15 +1656,22 @@ function drawResult(HW, HH) {
 
   // 复活按钮
   if (!result.win && !reviveUsed && raw > .8) {
-    const rw = pw * .46, rh = sh * .068, rx = px0 + pw * .50, ry = sy + sh * .615;
+    const rw = pw * .66, rh = sh * .078, rx = px0 + (pw - rw) / 2, ry = sy + sh * .60;
     const pressed = pressAct === 'revive' && performance.now() - pressAt < 140;
+    const pulse = .5 + .5 * Math.sin(performance.now() / 220);   // 呼吸，吸引注意
     ctx.save();
     ctx.globalAlpha = Math.min(1, (raw - .8) / .2);
-    ctx.fillStyle = pressed ? 'rgba(40,90,48,.95)' : 'rgba(47,107,58,.92)';
+    // 外发光
+    ctx.shadowColor = 'rgba(140,240,122,' + (.35 + .35 * pulse) + ')';
+    ctx.shadowBlur = 14 + 8 * pulse;
+    ctx.fillStyle = pressed ? 'rgba(40,90,48,.97)' : 'rgba(47,107,58,.95)';
     ctx.fillRect(rx, ry + (pressed ? 2 : 0), rw, rh);
-    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
-    ctx.fillStyle = '#e9ffe2'; ctx.font = Math.round(rh * .52) + 'px ' + F;
-    ctx.fillText('分享给好友 · 复活一次', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2.5;
+    ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
+    ctx.fillStyle = '#e9ffe2'; ctx.font = 'bold ' + Math.round(rh * .5) + 'px ' + F;
+    ctx.textAlign = 'center';
+    ctx.fillText('分享给好友 · 免费复活（仅此一次）', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
     ctx.restore();
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
@@ -1701,7 +1732,8 @@ document.addEventListener('pointerdown', e => {
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
-  const [, w, h] = ASSETS.props[p.g];
+  const [, w0, h0] = ASSETS.props[p.g];
+  const w = w0 * (p.sc || 1), h = h0 * (p.sc || 1);
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
