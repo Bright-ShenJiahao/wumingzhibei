@@ -46,24 +46,48 @@ function keyChapter2Map(image) {
   };
 }
 
-function drawChapter2TiledMap(image, tileW, tileH, left, right) {
-  const blendW = 88, step = tileW - blendW;
-  const start = Math.max(0, Math.ceil((left - tileW) / step) * step);
-  for (let x = start; x < right; x += step) {
-    if (x === 0) { ctx.drawImage(image, x, 0, tileW, tileH); continue; }
-    const strips = 24, stripW = blendW / strips;
-    for (let i = 0; i < strips; i++) {
-      ctx.globalAlpha = (i + 1) / strips;
-      ctx.drawImage(image, i * image.width / strips, 0, image.width / strips + 1, image.height,
-        x + i * stripW, 0, stripW + .5, tileH);
-    }
-    ctx.globalAlpha = 1;
-    ctx.drawImage(image, blendW * image.width / tileW, 0, image.width - blendW * image.width / tileW, image.height,
-      x + blendW, 0, tileW - blendW, tileH);
+function drawChapter2Far(img, vw) {
+  if (!img || !img.complete || !img.width) return;
+  const s = M.viewH / img.height;
+  tileLayer(img, s, .18, 0);
+}
+function drawChapter2Mid(img, vw, horizon) {
+  if (!img || !img.complete || !img.width) return;
+  if (horizon <= 0) return;
+  const pad = M.viewH * .03;
+  tileLayer(img, (horizon - pad) / img.height, .62, pad);
+}
+function drawChapter2Ground(img, vw, horizon) {
+  if (!img || !img.complete || !img.width) return;
+  const gh = M.viewH - horizon;
+  if (gh <= 0) return;
+  const tileW = 1080;
+  const scale = tileW / img.width;
+  const srcH = Math.min(img.height, gh / scale);
+  const sy = (img.height - srcH) / 2;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  const start = Math.floor(cam.x / tileW) * tileW - tileW;
+  for (let x = start; x < cam.x + vw + tileW; x += tileW) {
+    const flip = Math.round(x / tileW) & 1;
+    ctx.save();
+    if (flip) { ctx.translate(x + tileW, 0); ctx.scale(-1, 1); }
+    else ctx.translate(x, 0);
+    ctx.drawImage(img, 0, sy, img.width, srcH, 0, horizon, tileW, gh);
+    ctx.restore();
   }
+  ctx.restore();
+}
+function drawChapter2Horizon(vw, horizon) {
+  const g = ctx.createLinearGradient(0, horizon, 0, horizon + 26);
+  g.addColorStop(0, 'rgba(38,20,12,.32)');
+  g.addColorStop(1, 'rgba(38,20,12,0)');
+  ctx.save(); ctx.fillStyle = g; ctx.fillRect(cam.x, horizon, vw, 26); ctx.restore();
 }
 if (ASSETS.chapter2) {
-  if (ASSETS.chapter2.battlefield) keyChapter2Map(load('chapter2_battlefield', ASSETS.chapter2.battlefield));
+  if (ASSETS.chapter2.far) load('chapter2_far', ASSETS.chapter2.far);
+  if (ASSETS.chapter2.mid) load('chapter2_mid', ASSETS.chapter2.mid);
+  if (ASSETS.chapter2.ground) load('chapter2_ground', ASSETS.chapter2.ground);
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
@@ -472,12 +496,29 @@ function waves() {
   }
 }
 
+function addChapter2Props() {
+  const list = [
+    ['hay', 520, M.top + 34],
+    ['mill', 1120, M.bot - 26],
+    ['cart', 1760, M.top + 52],
+    ['hay', 2380, M.bot - 30],
+  ];
+  for (const [g, x, y] of list) {
+    const meta = ASSETS.props[g];
+    if (!meta) continue;
+    const [, pw, ph] = meta;
+    const psc = g === 'cart' ? .5 : 1;
+    props.push({ g, x, y, solid: true, broken: false, hp: (g === 'hay' || g === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: pw * .75 * psc, h: ph * psc });
+  }
+}
+
 function startChapter2Debug() {
   if (window.TITLE && TITLE.skip) TITLE.skip();
   if (window.ROOM && ROOM.skip) ROOM.skip();
   reset();
   M.W = 3600;
   props = [];
+  addChapter2Props();
   chapter2Run = { battle: 1, wave: 0, mode: 'fight', nextAt: 0, route: null };
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
@@ -1651,15 +1692,21 @@ function draw() {
     sky.addColorStop(0, '#3c3940'); sky.addColorStop(.55, '#a66a48'); sky.addColorStop(1, '#9b5d30');
     ctx.fillStyle = sky; ctx.fillRect(cam.x, 0, vw, M.viewH);
     const bossMap = chapter2Run.battle === 5;
-    const im = IMG[bossMap ? 'chapter2_altar' : 'chapter2_battlefield'], keyed = im && im.keyedCanvas;
-    if (keyed) {
-      ctx.imageSmoothingEnabled = true;
-      const tileW = bossMap ? M.W : 1080, tileH = 300;
-      if (bossMap) {
+    const horizon = M.viewH * .40;
+    if (bossMap) {
+      const im = IMG.chapter2_altar, keyed = im && im.keyedCanvas;
+      if (keyed) {
+        ctx.imageSmoothingEnabled = true;
+        const tileW = M.W, tileH = 300;
         for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
-      } else {
-        drawChapter2TiledMap(keyed, tileW, tileH, cam.x, cam.x + vw + tileW);
+        ctx.imageSmoothingEnabled = false;
       }
+    } else {
+      ctx.imageSmoothingEnabled = true;
+      drawChapter2Far(IMG.chapter2_far, vw);
+      drawChapter2Mid(IMG.chapter2_mid, vw, horizon);
+      drawChapter2Ground(IMG.chapter2_ground, vw, horizon);
+      drawChapter2Horizon(vw, horizon);
       ctx.imageSmoothingEnabled = false;
     }
     ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
