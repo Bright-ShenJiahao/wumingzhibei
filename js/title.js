@@ -315,7 +315,7 @@
       #tPrepTarget { text-align:right; white-space:nowrap; }
       #tPrepMain { min-height:180px; flex:1 1 180px; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
       #tPrepPreview { width:160px; height:180px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:radial-gradient(ellipse at 50% 68%,rgba(161,112,48,.23),transparent 70%),linear-gradient(145deg,#38291e,#201a15); color:#cbb894; cursor:pointer; touch-action:manipulation; }
-      #tPrepPreview canvas { width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
+      #tPrepPreview canvas { position:static; inset:auto; width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
       #tPrepPreview small { font-size:10px; }
       #tPrepSlots { min-width:0; min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); gap:clamp(5px,.8vw,10px); }
       .tPrepSlot { min-width:0; min-height:0; display:grid; grid-template-columns:42% minmax(0,1fr); grid-template-rows:auto 1fr; gap:2px 7px; align-items:center; padding:clamp(5px,.8vw,9px); box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:repeating-linear-gradient(2deg,rgba(231,196,135,.025) 0 2px,transparent 2px 10px),linear-gradient(145deg,#513a28,#30251d); cursor:pointer; touch-action:none; }
@@ -350,7 +350,7 @@
         #tChapterPanel { gap:5px; }
         #tPrepMain { min-height:120px; flex:1 1 120px; grid-template-columns:clamp(92px,16vw,120px) minmax(0,1fr); gap:6px; }
         #tPrepPreview { width:clamp(92px,16vw,120px); height:100%; min-height:120px; }
-        #tPrepSlots { gap:4px; }
+        #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:4px; }
         .tPrepSlot { grid-template-columns:38% minmax(0,1fr); gap:2px 4px; padding:4px; }
         .tPrepIcon { min-height:24px; }
         #tPrepBag { height:clamp(78px,22vh,94px); gap:3px; }
