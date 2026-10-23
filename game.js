@@ -2329,10 +2329,6 @@ function drawHero() {
   if (h.shieldFlash > 0) { ctx.save(); ctx.globalAlpha = h.shieldFlash / .22; ctx.fillStyle = '#ffe79b'; ctx.beginPath(); ctx.arc(h.x, h.y - 15, 17, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
-  // 披甲基础走路帧是空手的，补一层持戟覆盖，避免走路时长戟消失
-  if (weapon === 'halberd' && h.st === 'walk' && CH.hero && CH.hero.arm_weapon) {
-    drawChar('hero', 'arm_weapon', h.x + (h.f > 0 ? 11 : -11), h.y - (h.z || 0), h.f < 0);
-  }
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {

@@ -30,7 +30,6 @@ lab, n = ndimage.label(fg, structure=np.ones((3, 3), dtype=np.uint8))
 objs = ndimage.find_objects(lab)
 
 BASE_MAP = {
-    'arm_w1': 3, 'arm_w2': 4, 'arm_w3': 5,
     'arm_roll1': 12, 'arm_roll2': 11,
     'arm_hurt': 6, 'arm_down': 24,
     'arm_bounce': 9, 'arm_getup': 10,
@@ -104,16 +103,28 @@ for name, src in HAL_MAP.items():
     atlas['hero'][name] = hatlas[src]
     print(name, '=', src, atlas['hero'][name])
 
-# idle 帧整体偏大，缩到与白T身高一致；同时给走路帧做一个持戟覆盖层
+# 新走路帧：已经由 pixelize_sheet 处理，带戟、两只手都在杆上
+WALK = os.path.join(R, 'art', 'sprites', 'hero_armored_walk')
+walk_atlas = json.load(open(ATLAS, encoding='utf-8'))['hero_armored_walk']
+for name, src in (('arm_w1', 'w1'), ('arm_w2', 'w2'), ('arm_w3', 'w3')):
+    shutil.copyfile(os.path.join(WALK, src + '.png'), os.path.join(HERO, name + '.png'))
+    atlas['hero'][name] = walk_atlas[src]
+    print(name, '=', src, atlas['hero'][name])
+
+# idle 帧整体偏大，缩到与白T身高一致
 idle = Image.open(os.path.join(HAL, 'h1a.png')).convert('RGBA')
 small = idle.resize((round(idle.width * .75), round(idle.height * .75)), Image.BOX)
 for name in ('arm_idle', 'arm_h1a'):
     small.save(os.path.join(HERO, name + '.png'))
     atlas['hero'][name] = [small.width, small.height, round(small.width / 2, 1), small.height - 1]
-weapon = idle.crop((50, 0, idle.width, idle.height))
-weapon.save(os.path.join(HERO, 'arm_weapon.png'))
-atlas['hero']['arm_weapon'] = [weapon.width, weapon.height, round(weapon.width / 2, 1), weapon.height - 1]
-print('idle scaled', small.size, 'weapon', weapon.size)
+print('idle scaled', small.size)
+
+# 旧的走路持戟覆盖层不再需要
+atlas['hero'].pop('arm_weapon', None)
+try:
+    os.remove(os.path.join(HERO, 'arm_weapon.png'))
+except FileNotFoundError:
+    pass
 
 json.dump(atlas, open(ATLAS, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('atlas updated')
