@@ -425,6 +425,8 @@ function startChapter2Debug() {
   hero.x = 60; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.hp = 10;
   startChapter2Battle(1);
 }
+// 正式入口：从章节选择进入第二章（和调试入口共用同一套初始化）
+function startChapter2() { startChapter2Debug(); }
 function startChapter2Battle(number) {
   M.W = number === 5 ? 1080 : 3600;
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';

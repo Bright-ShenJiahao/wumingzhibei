@@ -1,8 +1,8 @@
-// 第二章「黄巾决战」关卡规划。当前整章锁定，地图与分支先随版本打包，玩家不能进入。
+// 第二章「黄巾决战」关卡规划。已从章节选择开放；第五战祭台地图已接入，张角 Boss 待完成。
 (() => {
   const MAP = 'battlefield';
   const BOSS_MAP = 'altar';
-  const unlocked = false;
+  const unlocked = true;
   let selectedRoute = null;
   const battles = Object.freeze([
     Object.freeze({

@@ -300,9 +300,16 @@
     dom.chapter = mk('div', 'tChapter', '');
     dom.chapter.innerHTML = `<div id="tChapterPanel"><h2>选择关卡</h2><p></p>
       <button class="tChapterOption" data-chapter="1"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
-      <button class="tChapterOption" data-chapter="2" disabled><strong>第二章　黄巾决战　未开放</strong><small>战场仍在筹备中</small></button>
+      <button class="tChapterOption" data-chapter="2"><strong>第二章　黄巾决战</strong><small>黄巾后阵 · 追击张梁或张宝</small></button>
       <button class="tChapterOption" id="tChapterBack" type="button">返回</button></div>`;
     dom.chapter.querySelector('[data-chapter="1"]').addEventListener('click', () => finish({ skipWake: true }));
+    dom.chapter.querySelector('[data-chapter="2"]').addEventListener('click', () => {
+      if (!window.CHAPTER2 || !CHAPTER2.canEnter()) return;
+      dom.chapter.classList.remove('open');
+      document.body.classList.remove('wzb-intro');
+      if (typeof startChapter2 === 'function') startChapter2();
+      else if (typeof startChapter2Debug === 'function') startChapter2Debug();
+    });
     dom.chapter.querySelector('#tChapterBack').addEventListener('click', () => closeChapterSelect());
     dom.name.addEventListener('keydown', e => {
       e.stopPropagation();
