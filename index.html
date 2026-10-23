@@ -4135,7 +4135,15 @@ function updateChapter2Catapult(z, dt) {
 }
 function updateChapter2Boss(z, dt) {
   z.flash = Math.max(0, z.flash - dt); z.t += dt; z.cd -= dt;
-  if (z.dead) { if (z.st === 'land' && z.t > .45) { z.st = 'gone'; z.t = 0; } return; }
+  if (z.air) { airStep(z, dt); return; }
+  if (z.st === 'land') {
+    if (z.t > .45) {
+      if (z.dead) { z.st = 'gone'; z.t = 0; }
+      else { z.st = 'move'; z.t = 0; z.cd = .45; }
+    }
+    return;
+  }
+  if (z.dead) return;
   if (z.stun > 0) { z.stun -= dt; return; }
   if (z.st === 'wind') {
     if (z.t >= z.T.wind) {
