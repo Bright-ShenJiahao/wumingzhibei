@@ -463,13 +463,13 @@ function splitHit(target, damage) {
     hit(other, damage * .3, 0, Math.sign(other.x - target.x), false, 0, .12, false, false, { secondary: true, scaled: true });
 }
 function summonArchersVolley() {
-  const angles = [-58, -42, -27, -12, 5, 20, 37, 54].map(a => a * Math.PI / 180);
+  const angles = [-22, -16, -10, -4, 4, 10, 16, 22].map(a => a * Math.PI / 180);   // 收束成 44° 的窄扇形
   for (const a of angles) {
     const C = { dmg: .3, kb: 12, pierce: false };
     const ang = a * hero.f;
     shots.push({ x: hero.x + hero.f * 14, y: hero.y + rnd(-8, 8), z: 24, vx: Math.cos(ang) * 260 * hero.f, vy: Math.sin(a) * 190, life: 1.05, C, c: 0, hitSet: [], kind: 'arrow', secondary: true, summon: true });
   }
-  sfx('sling', hero.x); say('弓箭手散射！', 1.2);
+  sfx('sling', hero.x); say('万箭齐发！', 1.2);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
 function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; e.daze = 0; }
