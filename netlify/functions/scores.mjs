@@ -58,9 +58,9 @@ function scoreOf(kills, t, cleared, win, hits, bonus) {
 function pub(x) {
   const zone = Number.isFinite(x.zone) ? x.zone : (x.win ? MAX_ZONE : 0);
   const win = !!x.win;
-  const hits = Number.isFinite(x.hits) ? x.hits : 0;
+  const hits = Number.isFinite(x.hits) ? x.hits : 99;   // 老记录没有受击数据 → 无伤分按 0 算，不白给
   const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
-  const diff = x.diff === 'hard' ? 'hard' : 'easy';
+  const diff = x.diff === 'easy' ? 'easy' : 'hard';     // 没有 diff 的老记录 = 当时的难度就是现在的困难
   const base = scoreOf(x.kills, x.t, cleared, win, hits, x.bonus);
   return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff,
     score: Math.round(base * (diff === 'hard' ? 1.5 : 1)) };   // 困难模式评分 ×1.5
