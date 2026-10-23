@@ -63,10 +63,13 @@
     const legacy = k && !all[k] && (Array.isArray(all.owned) || Object.prototype.hasOwnProperty.call(all, 'long')) ? all : null;
     const raw = k ? (all[k] || legacy) : null;
     const p = raw && typeof raw === 'object' ? raw : defaultLoadout();
+    const oldOwned = raw && Array.isArray(raw.owned) ? JSON.stringify(raw.owned) : '';
     p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
     for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
     if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
     const oldLong = p.long;
+    const hadEquipped = !!(raw && raw.equipped);
+    const oldEquipped = raw && raw.equipped ? JSON.stringify(raw.equipped) : '';
     const saved = p.equipped && typeof p.equipped === 'object' ? p.equipped : {};
     const restored = (slot, fallback) => Object.prototype.hasOwnProperty.call(saved, slot) ? saved[slot] : fallback;
     p.equipped = {
@@ -78,7 +81,7 @@
       if (!ITEMS[id] || ITEMS[id].slot !== slot.id || !p.owned.includes(id)) p.equipped[slot.id] = null;
     }
     if (!k) return p;
-    const changed = !raw || !raw.equipped || raw.long !== p.equipped.long || JSON.stringify(raw.equipped) !== JSON.stringify(p.equipped) || JSON.stringify(raw.owned) !== JSON.stringify(p.owned);
+    const changed = !raw || !hadEquipped || oldLong !== p.equipped.long || oldEquipped !== JSON.stringify(p.equipped) || oldOwned !== JSON.stringify(p.owned);
     p.long = p.equipped.long || null;
     if (changed) saveLoadout(n, p);
     return p;
@@ -311,6 +314,7 @@
       .tPrepSlot > b { grid-column:1/-1; color:#eccd87; font-size:clamp(11px,1.3vw,16px); }
       .tPrepIcon { width:100%; height:100%; max-height:70px; min-height:35px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid rgba(174,132,71,.68); border-radius:5px; background:#201a15; }
       .tPrepIcon img,.tBagIcon img { width:80%; height:80%; object-fit:contain; image-rendering:pixelated; }
+      .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { width:100%; height:100%; object-fit:cover; object-position:92% 50%; }
       .tPrepName { overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); text-overflow:ellipsis; }
       .tPrepName small { display:block; margin-top:4px; color:#c3ae88; font-size:10px; }
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
@@ -695,7 +699,9 @@
     const item = ITEMS[id];
     if (!item) return '';
     if (item.icon === 'halberd') {
-      return 'art/sprites/guanhai/halberd.png';
+      return typeof ASSETS !== 'undefined' && ASSETS.chars && ASSETS.chars.guanhai && ASSETS.chars.guanhai.halberd
+        ? ASSETS.chars.guanhai.halberd[0]
+        : 'art/sprites/guanhai/halberd.png';
     }
     if (typeof ASSETS === 'undefined') return '';
     return ASSETS.ui && ASSETS.ui[item.icon] ? ASSETS.ui[item.icon] : '';
@@ -703,7 +709,7 @@
 
   function itemIcon(id) {
     const src = itemIconSrc(id);
-    return src ? `<img src="${src}" alt="${ITEMS[id].name}" draggable="false">` : '<span aria-hidden="true">—</span>';
+    return src ? `<img class="icon-${ITEMS[id].icon}" src="${src}" alt="${ITEMS[id].name}" draggable="false">` : '<span aria-hidden="true">—</span>';
   }
 
   function renderPreparation(status = '') {
@@ -792,7 +798,7 @@
     if (!drag.moved && Math.hypot(dx, dy) < 7) return;
     drag.moved = true; e.preventDefault();
     if (!dom.chapter.querySelector('#tPrepGhost')) {
-      const ghost = document.createElement('div'); ghost.id = 'tPrepGhost'; ghost.innerHTML = `${itemIcon(drag.id)}<span>${ITEMS[drag.id].name}</span>`; document.body.appendChild(ghost);
+      const ghost = document.createElement('div'); ghost.id = 'tPrepGhost'; ghost.innerHTML = `${itemIcon(drag.id)}<span>${ITEMS[drag.id].name}</span>`; dom.chapter.appendChild(ghost);
     }
     const ghost = dom.chapter.querySelector('#tPrepGhost');
     ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px';
