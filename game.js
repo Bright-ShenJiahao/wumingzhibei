@@ -1115,7 +1115,10 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
-      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8)),   // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）   // 时间取整后再算，和服务端一分不差 rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
+      score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8)),
+      rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      needRevive: !won && !reviveUsed,   // 还有免费复活机会（结算面板会画按钮）
       line: won ? '' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
@@ -1126,6 +1129,7 @@ function update(dt) {
       }
     }
     uiBtns = [];
+    if (!won && !reviveUsed) { toastMsg = '还有 1 次免费复活：分享给好友就能继续'; toastT = 6; }
   }
   if (result) {   // 面板弹一声闷「咚」；台词跳出时再来一声轻「嗒」
     if (!result.s1 && gameT >= result.born) { result.s1 = 1; sfx('panel'); }
@@ -1581,15 +1585,22 @@ function drawResult(HW, HH) {
 
   // 复活按钮
   if (!result.win && !reviveUsed && raw > .8) {
-    const rw = pw * .46, rh = sh * .068, rx = px0 + pw * .50, ry = sy + sh * .615;
+    const rw = pw * .66, rh = sh * .078, rx = px0 + (pw - rw) / 2, ry = sy + sh * .60;
     const pressed = pressAct === 'revive' && performance.now() - pressAt < 140;
+    const pulse = .5 + .5 * Math.sin(performance.now() / 220);   // 呼吸，吸引注意
     ctx.save();
     ctx.globalAlpha = Math.min(1, (raw - .8) / .2);
-    ctx.fillStyle = pressed ? 'rgba(40,90,48,.95)' : 'rgba(47,107,58,.92)';
+    // 外发光
+    ctx.shadowColor = 'rgba(140,240,122,' + (.35 + .35 * pulse) + ')';
+    ctx.shadowBlur = 14 + 8 * pulse;
+    ctx.fillStyle = pressed ? 'rgba(40,90,48,.97)' : 'rgba(47,107,58,.95)';
     ctx.fillRect(rx, ry + (pressed ? 2 : 0), rw, rh);
-    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
-    ctx.fillStyle = '#e9ffe2'; ctx.font = Math.round(rh * .52) + 'px ' + F;
-    ctx.fillText('分享给好友 · 复活一次', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#8ef07a'; ctx.lineWidth = 2.5;
+    ctx.strokeRect(rx + 1, ry + (pressed ? 2 : 0) + 1, rw - 2, rh - 2);
+    ctx.fillStyle = '#e9ffe2'; ctx.font = 'bold ' + Math.round(rh * .5) + 'px ' + F;
+    ctx.textAlign = 'center';
+    ctx.fillText('分享给好友 · 免费复活（仅此一次）', rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
     ctx.restore();
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
