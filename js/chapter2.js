@@ -1,6 +1,7 @@
 // 第二章「黄巾决战」关卡规划。当前整章锁定，地图与分支先随版本打包，玩家不能进入。
 (() => {
   const MAP = 'battlefield';
+  const BOSS_MAP = 'altar';
   const unlocked = false;
   let selectedRoute = null;
   const battles = Object.freeze([
@@ -27,7 +28,7 @@
     Object.freeze({ number: 2, title: '黄巾后阵', encounter: '四名盾兵、四名枪兵、三台固定投石车', units: ['yellow-shield', 'yellow-spear', 'yellow-catapult'], enemyCount: 11, map: MAP, status: 'locked' }),
     Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear', 'zhang-liang'], map: MAP, route: 'zhang-liang', status: 'locked' }),
     Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-spear', 'zhang-bao'], map: MAP, route: 'zhang-bao', status: 'locked' }),
-    Object.freeze({ number: 5, title: '祭台决战', map: null, status: 'map-pending' }),
+    Object.freeze({ number: 5, title: '祭台决战', map: BOSS_MAP, status: 'locked' }),
   ]);
   const routes = Object.freeze([
     Object.freeze({ id: 'zhang-liang', label: '正面突击：追击张梁', battle: 3 }),
@@ -78,6 +79,6 @@
       return true;
     },
     selectedRoute: () => selectedRoute,
-    mapAsset: key => key === MAP && typeof ASSETS !== 'undefined' ? ASSETS.chapter2.battlefield : null,
+    mapAsset: key => typeof ASSETS !== 'undefined' && ASSETS.chapter2 ? ASSETS.chapter2[key] || null : null,
   });
 })();

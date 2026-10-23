@@ -5,15 +5,18 @@ function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
-if (ASSETS.chapter2 && ASSETS.chapter2.battlefield) {
-  const battlefield = load('chapter2_battlefield', ASSETS.chapter2.battlefield);
-  battlefield.onload = () => {
-    const c = document.createElement('canvas'); c.width = battlefield.width; c.height = battlefield.height;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(battlefield, 0, 0);
+function keyChapter2Map(image) {
+  image.onload = () => {
+    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
     for (let i = 0; i < p.length; i += 4) if (p[i + 1] > 130 && p[i + 1] > p[i] * 1.28 && p[i + 1] > p[i + 2] * 1.2) p[i + 3] = 0;
-    g.putImageData(d, 0, 0); battlefield.keyedCanvas = c;
+    g.putImageData(d, 0, 0); image.keyedCanvas = c;
   };
+}
+if (ASSETS.chapter2) {
+  if (ASSETS.chapter2.battlefield) keyChapter2Map(load('chapter2_battlefield', ASSETS.chapter2.battlefield));
+  if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
 document.querySelectorAll('[data-weapon-icon]').forEach(img => {
@@ -139,6 +142,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 
 function reset() {
   chapter2Run = null;
+  M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
   if (window.ROGUE) ROGUE.reset();
@@ -418,10 +422,12 @@ function startChapter2Debug() {
   startChapter2Battle(1);
 }
 function startChapter2Battle(number) {
+  M.W = number === 5 ? 1080 : 3600;
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
   chapter2Run.nextAt = 0; chapter2Run.spawned = true;
   zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
   hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
+  if (number === 5) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
   lockR = Infinity; clearAt = 0;
   if (number === 1) {
     spawn('yellow-heavy', hero.x + 190, M.top + 28);
@@ -1428,10 +1434,11 @@ function draw() {
     const sky = ctx.createLinearGradient(0, 0, 0, M.viewH);
     sky.addColorStop(0, '#3c3940'); sky.addColorStop(.55, '#a66a48'); sky.addColorStop(1, '#9b5d30');
     ctx.fillStyle = sky; ctx.fillRect(cam.x, 0, vw, M.viewH);
-    const im = IMG.chapter2_battlefield, keyed = im && im.keyedCanvas;
+    const bossMap = chapter2Run.battle === 5;
+    const im = IMG[bossMap ? 'chapter2_altar' : 'chapter2_battlefield'], keyed = im && im.keyedCanvas;
     if (keyed) {
       ctx.imageSmoothingEnabled = true;
-      const tileW = 1080, tileH = 300;
+      const tileW = bossMap ? M.W : 1080, tileH = 300;
       for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
       ctx.imageSmoothingEnabled = false;
     }
