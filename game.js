@@ -5,6 +5,19 @@ function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
+function keyChapter2Map(image) {
+  image.onload = () => {
+    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) if (p[i + 1] > 130 && p[i + 1] > p[i] * 1.28 && p[i + 1] > p[i + 2] * 1.2) p[i + 3] = 0;
+    g.putImageData(d, 0, 0); image.keyedCanvas = c;
+  };
+}
+if (ASSETS.chapter2) {
+  if (ASSETS.chapter2.battlefield) keyChapter2Map(load('chapter2_battlefield', ASSETS.chapter2.battlefield));
+  if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
+}
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
 document.querySelectorAll('[data-weapon-icon]').forEach(img => {
   const src = ASSETS.ui && ASSETS.ui[img.dataset.weaponIcon];
@@ -62,6 +75,8 @@ const WEAP = {
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
 };
+// 管亥长戟暂沿用棍子的连招参数；主角专用持戟动作帧补齐后再替换显示帧。
+WEAP.halberd = Object.assign({}, WEAP.staff, { name: '长戟' });
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
@@ -70,6 +85,12 @@ const TYPES = {
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
+  'yellow-heavy': { name: '黄巾大刀兵', hp: 7, spd: 25, wind: .9, reach: 31, dmg: 2, heavy: true, sprite: 'yellow_heavy', scale: 1.02 },
+  'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .5, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
+  'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
+  'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
+  zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: 1.12 },
+  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.12 },
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -106,7 +127,9 @@ function rollFill(pool, budget) {
   return out;
 }
 const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 2000, 2500, 3000], token: 2 };
+const RETREAT_SCREENS = 1.2;   // 非 Boss 战最多后退 1.2 个屏幕，防止无限风筝
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
+let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, revives = 0, pwaves = [];   // 掉落物 / 飘字 / 复活标记 / 复活次数 / 棍子冲击波
@@ -121,6 +144,12 @@ const R_ = (k, d = 1) => (window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d);
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
 
 function reset() {
+  chapter2Run = null;
+  M.W = 3600;
+  const topTitle = document.querySelector('#top b');
+  if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
+  weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
+  ui();
   if (window.ROGUE) ROGUE.reset();
   atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
@@ -161,9 +190,15 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
-  if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley();
-  if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
+  if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE) {
+    if (ROGUE.useSummon()) summonArchersVolley();
+    else if (ROGUE.useCatapult()) catapultVolley();
+  }
+  // KeyI 预留给后续法器技能，暂不绑定
+  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
+  if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit1') chooseChapter2Route('zhang-liang');
+  if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit2') chooseChapter2Route('zhang-bao');
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup', e => { key[e.code] = 0; if (e.code === 'KeyJ') atkRelease(); });
@@ -180,15 +215,17 @@ document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDe
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
-document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w); }));
+document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w === 'staff' ? longWeapon() : b.dataset.w); }));
+function longWeapon() { return (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'staff'; }
 const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
-  const i = WEAPON_ORDER.indexOf(weapon);
-  setW(WEAPON_ORDER[(i + 1) % WEAPON_ORDER.length]);
+  const order = [longWeapon(), 'hammer', 'stone'];
+  const i = order.indexOf(weapon);
+  setW(order[(i + 1) % order.length]);
 });
 function setW(w) { weapon = w; ui(); }
-function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === weapon)); }
+function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === (weapon === 'halberd' ? 'staff' : weapon))); }
 
 // ---------- 碰撞 ----------
 function blocked(x, y) {
@@ -224,6 +261,8 @@ function moveEnt(e, dx, dy) {
 
 // ---------- 刷怪 ----------
 function viewW() { return cv.width / (cv.height / M.viewH); }
+// 非 Boss 战：从开战线/开战点往左最多退 RETREAT_SCREENS 屏，避免无限后退风筝
+function setRetreatLimit(anchorX) { arenaL = Math.max(0, anchorX - viewW() * RETREAT_SCREENS); }
 // 召唤援军弓箭手：左右各 3 个，射 2 轮就撤
 function priestCast(z) {
   sfx('stamp', z.x); shake = Math.max(shake, .08);
@@ -335,6 +374,7 @@ function drawVillager(v) {
   drawChar(v.ch, frame, v.x, v.y, v.f < 0, 1, v.flash > 0, v.sc);
 }
 function waves() {
+  if (chapter2Run) { chapter2Waves(); return; }
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
   if (lockR < Infinity && zs.some(z => !z.dead) && !zs.some(z => !z.dead && z.st !== 'sleep')) {
@@ -343,7 +383,7 @@ function waves() {
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
     if (!clearAt) clearAt = gameT + (villagersThanksT >= 0 ? 2 : 1.4);   // 救下村民时先让鞠躬和锦囊掉落演完
     if (gameT >= clearAt) {
-      clearAt = 0; lockR = Infinity; gateI++;
+      clearAt = 0; lockR = Infinity; gateI++; arenaL = null;
       if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
       else won = true;
       if (!won && window.ROGUE) ROGUE.offer();   // 每清一个区域，抽一次锦囊   // 通关文案交给结算板，这里不再刷长句
@@ -365,6 +405,7 @@ function waves() {
   }
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
     const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0; extraDone = false;
+    setRetreatLimit(gx);
     if (W.boss) { Boss.start(lockR); return; }
     const list = W.units || (W.core || []).concat(rollFill(W.pool || [], W.budget || 0));
     list.forEach((u, i) => {
@@ -383,6 +424,92 @@ function waves() {
   }
 }
 
+function startChapter2Debug() {
+  if (window.TITLE && TITLE.skip) TITLE.skip();
+  if (window.ROOM && ROOM.skip) ROOM.skip();
+  reset();
+  M.W = 3600;
+  props = [];
+  chapter2Run = { battle: 1, wave: 0, mode: 'fight', nextAt: 0, route: null };
+  const topTitle = document.querySelector('#top b');
+  if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
+  hero.x = 60; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.hp = 10;
+  startChapter2Battle(1);
+}
+// 正式入口：从章节选择进入第二章（和调试入口共用同一套初始化）
+function startChapter2() { startChapter2Debug(); }
+function startChapter2Battle(number) {
+  M.W = number === 5 ? 1080 : 3600;
+  chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
+  chapter2Run.nextAt = 0; chapter2Run.spawned = true;
+  zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
+  hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
+  if (number === 5) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
+  setRetreatLimit(hero.x);
+  lockR = Infinity; clearAt = 0;
+  if (number === 1) {
+    spawn('yellow-heavy', hero.x + 190, M.top + 28);
+    spawn('yellow-heavy', hero.x + 215, M.bot - 23);
+    say('第一战：黄巾正规军后翼', 3);
+  } else if (number === 2) {
+    const lanes = [M.top + 18, (M.top + M.bot) / 2, M.bot - 18, M.top + 47];
+    for (let i = 0; i < 4; i++) spawn('yellow-shield', hero.x + 180 + (i % 2) * 24, lanes[i]);
+    for (let i = 0; i < 4; i++) spawn('yellow-spear', hero.x + 225 + (i % 2) * 22, lanes[i]);
+    const catY = [M.top + 8, (M.top + M.bot) / 2, M.bot - 8];
+    for (let i = 0; i < 3; i++) {
+      spawn('yellow-catapult', hero.x + 570 + i * 12, catY[i]);
+      const z = zs[zs.length - 1]; z.f = -1; z.static = true;
+      z.cd = [2.4, 5.1, 7.7][i]; z.catapultIndex = i;
+    }
+    say('第二战：盾兵护住枪阵，右侧有三台投石车！', 4);
+  } else if (number === 5) {
+    // 张角 Boss 尚未接入：第五战先作为祭台地图预览，不刷敌人、不自动结算。
+    chapter2Run.mode = 'preview';
+    say('第五战：祭台决战（张角战待接入）', 4);
+  } else {
+    const name = number === 3 ? 'zhang_liang' : 'zhang_bao';
+    const y = (M.top + M.bot) / 2;
+    spawn(number === 3 ? 'yellow-heavy' : 'yellow-shield', hero.x + 205, M.top + 22);
+    spawn('yellow-spear', hero.x + 225, M.bot - 20);
+    spawn(name, hero.x + 280, y);
+    const boss = zs[zs.length - 1]; boss.f = -1; boss.cd = 1.4; boss.bossLabel = TYPES[name].name;
+    say(number === 3 ? '第三战：正面追击张梁！' : '第四战：迂回包抄张宝！', 3.5);
+  }
+  cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));
+}
+function chapter2Waves() {
+  if (!chapter2Run) return;
+  if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) { startChapter2Battle(2); return; }
+  if (chapter2Run.mode === 'victory' && gameT >= chapter2Run.nextAt) { chapter2Run.mode = 'complete'; won = true; say('追击成功！张角棺椁的去向仍未查明。', 3); return; }
+  if (chapter2Run.mode === 'clearing' && gameT >= chapter2Run.nextAt) {
+    const battle = chapter2Run.battle;
+    if (battle === 1 && chapter2Run.wave === 0) {
+      chapter2Run.wave = 1;
+      for (const y of [M.top + 16, M.top + 42, M.bot - 42, M.bot - 16]) spawn('yellow-heavy', hero.x + 250 + rnd(-12, 12), y);
+      chapter2Run.mode = 'fight'; say('两翼的黄巾大刀兵包抄上来了！', 2.6); return;
+    }
+    if (battle === 1 && chapter2Run.wave === 1) {
+      chapter2Run.wave = 2;
+      spawn('priest', hero.x + 335, (M.top + M.bot) / 2);
+      spawn('slinger', hero.x + 300, M.top + 20);
+      spawn('slinger', hero.x + 315, M.bot - 20);
+      chapter2Run.mode = 'fight'; say('方士和投石手在后方支援！', 2.8); return;
+    }
+    if (battle === 1) { chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return; }
+    if (battle === 2) { chapter2Run.mode = 'choice'; say('张梁、张宝分兵突围。选择追击路线。', 999); return; }
+    chapter2Run.mode = 'victory'; chapter2Run.nextAt = gameT + .5; return;
+  }
+  if (chapter2Run.mode !== 'fight') return;
+  const alive = zs.some(z => !z.dead);
+  if (!alive) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
+}
+function chooseChapter2Route(route) {
+  if (!chapter2Run || chapter2Run.mode !== 'choice') return;
+  chapter2Run.route = route;
+  say(route === 'zhang-liang' ? '曹操：正面突击，追击张梁！' : '曹操：迂回包抄，截住张宝！', 2.4);
+  startChapter2Battle(route === 'zhang-liang' ? 3 : 4);
+}
+
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || z.air) return;
@@ -396,6 +523,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     }
   }
   if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
+  if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
     const res = Boss.hit(z, dmg, dir, ranged);
@@ -433,7 +561,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   if (!traits.secondary && R_('poison', 0)) applyPoison(z);
   if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
-  z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
+  z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   if (daze && !z.daze && Math.random() < daze * heavyDazeScale) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
@@ -452,7 +580,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
-  if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+  if (knock && !z.T.siege) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
   if (!traits.secondary && !ranged && R_('split', 0)) splitHit(z, dmg / (noviceMode() ? 2 : 1));
 }
 function applyPoison(z, scale = 1) {
@@ -936,6 +1064,8 @@ function dmgHero(n, from) {
 function zUpdate(z, dt) {
   if (z.T.boss) return Boss.update(z, dt);
   const T = z.T;
+  if (T.siege) { updateChapter2Catapult(z, dt); return; }
+  if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }
   z.t += dt * (z.attackSlowT > 0 ? .9 : 1); z.flash = Math.max(0, z.flash - dt); z.cd -= dt * (z.attackSlowT > 0 ? .9 : 1);
   z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
   if (z.qiCd > 0) z.qiCd -= dt;
@@ -1102,6 +1232,48 @@ function zUpdate(z, dt) {
     if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);   // 被草垛等挡住时上下绕开
   }
 }
+function updateChapter2Catapult(z, dt) {
+  z.flash = Math.max(0, z.flash - dt); z.t += dt; z.cd -= dt;
+  if (z.dead) { z.st = 'wreck'; return; }
+  if (z.st === 'wind' && z.t >= .72) {
+    const yOffset = [-24, 0, 24][z.catapultIndex || 0];
+    const tx = Math.min(z.x - 70, Math.max(hero.x - 40, hero.x + rnd(-18, 18)));
+    const ty = Math.max(M.top + 5, Math.min(M.bot - 5, hero.y + yOffset));
+    eshots.push({ k: 'catapult', x0: z.x - 18, y0: z.y - 12, tx, ty, t: 0, T: 1.15, short: 2.2 });
+    z.st = 'recoil'; z.t = 0; z.cd = 7.5; sfx('sling', z.x); return;
+  }
+  if (z.st === 'recoil' && z.t > .45) { z.st = 'idle'; z.t = 0; return; }
+  if (z.st === 'wind') return;
+  if (z.cd <= 0) { z.st = 'wind'; z.t = 0; }
+}
+function updateChapter2Boss(z, dt) {
+  z.flash = Math.max(0, z.flash - dt); z.t += dt; z.cd -= dt;
+  if (z.air) { airStep(z, dt); return; }
+  if (z.st === 'land') {
+    if (z.t > .45) {
+      if (z.dead) { z.st = 'gone'; z.t = 0; }
+      else { z.st = 'move'; z.t = 0; z.cd = .45; }
+    }
+    return;
+  }
+  if (z.dead) return;
+  if (z.stun > 0) { z.stun -= dt; return; }
+  if (z.st === 'wind') {
+    if (z.t >= z.T.wind) {
+      z.st = 'strike'; z.t = 0; sfx('enemySwing', z.x); shake = Math.max(shake, .12);
+      if (hero.inv <= 0 && Math.abs(hero.x - z.x) < z.T.reach + 10 && Math.abs(hero.y - z.y) < 20 && (hero.x - z.x) * z.f > -8) dmgHero(z.T.dmg, z);
+    }
+    return;
+  }
+  if (z.st === 'strike') { if (z.t > .25) { z.st = 'rec'; z.t = 0; } return; }
+  if (z.st === 'rec') { if (z.t > .65) { z.st = 'move'; z.t = 0; z.cd = .6; } return; }
+  const dx = hero.x - z.x, dy = hero.y - z.y;
+  z.f = Math.sign(dx) || z.f; z.moving = Math.abs(dx) > z.T.reach - 5 || Math.abs(dy) > 10;
+  if (z.moving) {
+    const d = Math.hypot(dx, dy) || 1;
+    moveEnt(z, dx / d * z.T.spd * dt, dy / d * z.T.spd * .5 * dt);
+  } else if (z.cd <= 0) { z.st = 'wind'; z.t = 0; sfx('bladeAlert', z.x); }
+}
 
 // ---------- 投射物、火 ----------
 function updateShots(dt) {
@@ -1120,12 +1292,13 @@ function updateShots(dt) {
       s.villagerHits ||= new Set();
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
-    for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
+    const projectileTargets = chapter2Run ? zs.slice().sort((a, b) => s.vx >= 0 ? a.x - b.x : b.x - a.x) : zs;
+    for (const z of projectileTargets) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       const pdmg = (s.C.pierce && s.hitSet.length > 0) ? s.C.dmg * (s.C.pierceOff || .4) : s.C.dmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
       hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary, scatter: !!s.scatter });   // 最后 true = 远程，管亥可能拨开
       if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
       hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
-      if (!s.C.pierce) s.life = 0;
+      if (!s.C.pierce || z.T.blocksPierce) s.life = 0;
     }
   }
   shots = shots.filter(s => s.life > 0);
@@ -1135,7 +1308,7 @@ function updateShots(dt) {
       if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx }); s.life = 0; }
     } else {
       s.t += dt;
-      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: 16 }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
+      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: s.k === 'catapult' ? 32 : 16, seed: rnd(0, 4) }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
     }
   }
   eshots = eshots.filter(s => s.life > 0);
@@ -1313,7 +1486,9 @@ function update(dt) {
   // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
   const done = result && gameT >= result.born;
   if (!done) {
-    heroUpdate(dt);
+    if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
+    // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
+    if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -1341,7 +1516,7 @@ function update(dt) {
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
-      line: won ? '' : deathLine(), s1: 0, s2: 0 };
+      line: won ? '获得管亥的长戟，可在整备界面选择装备。' : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
     if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
@@ -1384,15 +1559,22 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
+  const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
   if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
   if (h.st === 'bounce' || h.st === 'getup') return h.st;
-  if (h.st === 'walk') return weapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'walk') return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
   if (h.st === 'hurt') return 'hurt'; if (h.st === 'down') return 'down';
-  return weapon + '0';
+  return frameWeapon + '0';
 }
 function zFrame(z) {
+  if (z.T.siege) {
+    if (z.dead) return 'wreck';
+    if (z.st === 'wind') return 'load';
+    if (z.st === 'recoil') return z.t < .18 ? 'fire' : 'recoil';
+    return 'idle';
+  }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
   if (z.st === 'land') return 'land';
   if (z.dead) return 'down';
@@ -1416,9 +1598,24 @@ function draw() {
   OXs = Math.round(-cam.x * SC + sk);
   ctx.setTransform(SC, 0, 0, SC, OXs, 0); ctx.imageSmoothingEnabled = true;
   const vw = viewW(), ms = .24 / .61, my = 165 - 619 * .24;
-  tileLayer(IMG.far, .577, .3, 0);
-  tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
-  tileLayer(IMG.mid, ms, 1, my);
+  if (chapter2Run) {
+    const sky = ctx.createLinearGradient(0, 0, 0, M.viewH);
+    sky.addColorStop(0, '#3c3940'); sky.addColorStop(.55, '#a66a48'); sky.addColorStop(1, '#9b5d30');
+    ctx.fillStyle = sky; ctx.fillRect(cam.x, 0, vw, M.viewH);
+    const bossMap = chapter2Run.battle === 5;
+    const im = IMG[bossMap ? 'chapter2_altar' : 'chapter2_battlefield'], keyed = im && im.keyedCanvas;
+    if (keyed) {
+      ctx.imageSmoothingEnabled = true;
+      const tileW = bossMap ? M.W : 1080, tileH = 300;
+      for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
+      ctx.imageSmoothingEnabled = false;
+    }
+    ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
+  } else {
+    tileLayer(IMG.far, .577, .3, 0);
+    tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
+    tileLayer(IMG.mid, ms, 1, my);
+  }
   ctx.imageSmoothingEnabled = false;
   // Boss 关：右上角插一面「苍天已死」血字旗（装饰，人物从旗前走过）
   if (zs.some(z => z.T && z.T.boss)) {
@@ -1545,9 +1742,9 @@ function draw() {
     ctx.fillStyle = '#e8e0d0';
     ctx.beginPath(); ctx.moveTo(s.x + d * 3, s.y - 4); ctx.lineTo(s.x - d * 2, s.y - 7); ctx.lineTo(s.x - d * 2, s.y - 1); ctx.closePath(); ctx.fill();
   }
-  for (const s of eshots) if (s.k === 'fire') {
-    const p = s.t / s.T;
-    ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, 16 * (1.3 - p * .3), 6 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
+  for (const s of eshots) if (s.k === 'fire' || s.k === 'catapult') {
+    const p = s.t / s.T, radius = s.k === 'catapult' ? 32 : 16;
+    ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, radius * (1.3 - p * .3), radius * .38 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
   }
   Boss.drawGround();
   // 按 y 排序绘制
@@ -1567,7 +1764,7 @@ function draw() {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
       const p = Math.min(1, s.t / s.T), x = s.x0 + (s.tx - s.x0) * p, gy = s.y0 + (s.ty - s.y0) * p, z = 24 + Math.sin(p * Math.PI) * 60;
-      list.push({ y: gy, d: () => { shadow(x, gy, 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, 10, 1); ctx.fillStyle = '#ffb02e'; ctx.fillRect(3, -1.5, 3, 3); ctx.fillStyle = '#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
+      list.push({ y: gy, d: () => { shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = '#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = '#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -1618,6 +1815,7 @@ function draw() {
     ctx.fillStyle = '#ffd86e'; lines.forEach((line, i) => ctx.fillText(line, HW / 2, by + 22 + i * 23)); ctx.textAlign = 'left';
   }
   drawResult(HW, HH);
+  if (chapter2Run && chapter2Run.mode === 'choice') drawChapter2Choice(HW, HH);
 }
 
 // ---------- 结算板（通关 / 倒下） ----------
@@ -1843,6 +2041,30 @@ function drawResult(HW, HH) {
   }
   ctx.textAlign = 'left'; ctx.globalAlpha = 1;
 }
+function drawChapter2Choice(HW, HH) {
+  uiBtns = [];
+  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(15,10,10,.72)'; ctx.fillRect(0, 0, HW, HH);
+  const pw = Math.min(600, HW * .88), ph = Math.min(230, HH * .72), x = (HW - pw) / 2, y = (HH - ph) / 2;
+  ctx.fillStyle = 'rgba(50,32,22,.97)'; ctx.strokeStyle = '#c49a54'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, pw, ph, 12); else ctx.rect(x, y, pw, ph); ctx.fill(); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f3d37b'; ctx.font = 'bold 22px sans-serif';
+  ctx.fillText('张梁、张宝分兵突围', HW / 2, y + 35);
+  ctx.fillStyle = '#ead9bb'; ctx.font = '15px sans-serif'; ctx.fillText('选择一路追击（按 1 / 2 也可选择）', HW / 2, y + 67);
+  const gap = 16, bw = (pw - 48 - gap) / 2, bh = 62, by = y + ph - bh - 24;
+  const options = [
+    { x: x + 24, label: '1  正面突击：追击张梁', act: 'zhang-liang' },
+    { x: x + 24 + bw + gap, label: '2  迂回包抄：追击张宝', act: 'zhang-bao' },
+  ];
+  for (const o of options) {
+    ctx.beginPath();
+    ctx.fillStyle = '#8a542c'; ctx.strokeStyle = '#d2ad69'; ctx.lineWidth = 1.5;
+    if (ctx.roundRect) ctx.roundRect(o.x, by, bw, bh, 8); else ctx.rect(o.x, by, bw, bh); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff0cc'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(o.label, o.x + bw / 2, by + bh / 2);
+    uiBtns.push({ x: o.x, y: by, w: bw, h: bh, act: o.act });
+  }
+  ctx.restore();
+}
 // 分享换复活（每局一次）：不管分享成不成功都给，分享面板取消也不扣次数
 async function doRevive() {
   if (!result || result.win) return;
@@ -1867,6 +2089,12 @@ async function doShare() {
 }
 // 结算板上的按钮：手机上只能点这里（没有 R 键），电脑上点按钮或按 R 都行
 document.addEventListener('pointerdown', e => {
+  if (chapter2Run && chapter2Run.mode === 'choice') {
+    for (const b of uiBtns) if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
+      e.preventDefault(); e.stopPropagation(); chooseChapter2Route(b.act); return;
+    }
+    return;
+  }
   if (!result || gameT < result.born) return;
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
@@ -2038,6 +2266,17 @@ function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
     if (z.defDownT > 0) { ctx.fillStyle = '#b9a2dc'; ctx.fillRect(z.x + 4, z.y - 61, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }
+  if (z.T.chapterBoss) {
+    shadow(z.x, z.y, 16);
+    drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1);
+    if (z.dead) return;
+    const w = 34, y = z.y - 49;
+    ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);
+    ctx.fillStyle = '#c93420'; ctx.fillRect(z.x - w / 2 + 1, y + 1, (w - 2) * Math.max(0, z.hp / z.T.hp), 2);
+    ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2; ctx.strokeStyle = '#2a160f'; ctx.fillStyle = '#ffe4ad';
+    ctx.strokeText(z.T.name, z.x, y - 3); ctx.fillText(z.T.name, z.x, y - 3); ctx.textAlign = 'left';
+    return;
+  }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
