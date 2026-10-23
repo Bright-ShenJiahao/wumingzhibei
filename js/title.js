@@ -330,11 +330,11 @@
     dom.tip = mk('div', 'tTip', '请输入名字');
     dom.panel = document.createElement('div'); dom.panel.id = 'tHelpPanel';
     dom.panel.innerHTML = `<h3>操作说明</h3>
-      <div><b>电脑</b>：WASD / 方向键 移动 · J 攻击/长按蓄力（棍四连击，锤/石子三连击）· K 或空格 翻滚 · 1 / 2 / 3 换武器· R 重来</div>
-      <div><b>手机</b>：左下摇杆移动 · 右下「攻击」短按出招、长按蓄力；棍四连击，锤/石子三连击 · 「翻滚」闪避 · 右上换武器</div>
-      <div><b>武器</b>：棍攻击范围大、四连击；锤重击可打断；石子可远程攻击。</div>
-      <div><b>蓄力</b>：按住攻击 0.4 秒开始蓄力，最多 2 秒；受击会打断，松开释放。</div>
-      <div style="margin-top:6px;color:#c9b68a">打中敌人才能接着连招；被打中会打断连招。草垛和推车可以打坏。</div>`;
+      <div><b>电脑</b>：WASD / 方向键移动 · J 攻击（长按蓄力）· K / 空格 翻滚</div>
+      <div style="padding-left:38px">1 / 2 / 3 换武器 · U 万箭齐发 · R 重来</div>
+      <div><b>手机</b>：左下摇杆移动 · 右下攻击（长按蓄力）/ 翻滚 · 右上换武器 · 技能按钮</div>
+      <div><b>武器</b>：棍四连击、范围大；锤可打断；石子远程；长戟（首通后整备页选）沿用棍连招。</div>
+      <div><b>蓄力</b>：按住攻击 0.4~2 秒，受击会打断；打中才能接连招。</div>`;
     document.body.appendChild(dom.panel);
     dom.flash = mk('div', 'tFlash', '');
     dom.chapter = mk('div', 'tChapter', '');
@@ -423,7 +423,9 @@
       const s = dom.help.style;
       const sz = Math.max(26, Math.min(34, h * .07));
       s.width = sz + 'px'; s.height = sz + 'px';
-      s.right = (10 + sz + 8) + 'px'; s.top = '8px';
+      s.right = 'calc(14px + env(safe-area-inset-right))';
+      s.bottom = 'calc(14px + env(safe-area-inset-bottom))';
+      s.top = 'auto';
       s.fontSize = Math.round(sz * .5) + 'px';
     }
     if (dom.hintOff) {
