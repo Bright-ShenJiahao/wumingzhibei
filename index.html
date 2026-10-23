@@ -4258,6 +4258,8 @@ function update(dt) {
   const done = result && gameT >= result.born;
   if (!done) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
+    // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
+    if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
