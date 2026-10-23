@@ -47,6 +47,8 @@ function keyChapter2Map(image) {
 }
 
 if (ASSETS.chapter2) {
+  if (ASSETS.chapter2.far) load('chapter2_far', ASSETS.chapter2.far);
+  if (ASSETS.chapter2.battlefield) load('chapter2_battlefield', ASSETS.chapter2.battlefield);
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
@@ -1657,9 +1659,11 @@ function draw() {
         ctx.imageSmoothingEnabled = false;
       }
     } else {
-      tileLayer(IMG.far, .577, .3, 0);
-      tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
-      tileLayer(IMG.mid, ms, 1, my);
+      ctx.imageSmoothingEnabled = true;
+      const sky = IMG.chapter2_far, field = IMG.chapter2_battlefield;
+      if (sky) tileLayer(sky, M.viewH / sky.height, .18, 0);
+      if (field) tileLayer(field, M.viewH / field.height, 1, 0);
+      ctx.imageSmoothingEnabled = false;
     }
     ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
   } else {

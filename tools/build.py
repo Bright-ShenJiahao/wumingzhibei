@@ -70,6 +70,8 @@ assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: 'data:audio/mpeg;ba
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
 assets['chapter2'] = {
+    'far': uri(P('art', 'bg', 'chapter2_far.webp')),
+    'battlefield': uri(P('art', 'bg', 'chapter2_battlefield.webp')),
     'altar': uri(P('art', 'bg', 'chapter2_altar.webp')),
 }
 # js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用
