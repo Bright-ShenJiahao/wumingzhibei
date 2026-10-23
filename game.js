@@ -458,18 +458,16 @@ function waves() {
 }
 
 function addChapter2Props() {
-  const list = [
-    ['hay', 520, M.top + 34],
-    ['mill', 1120, M.bot - 26],
-    ['cart', 1760, M.top + 52],
-    ['hay', 2380, M.bot - 30],
-  ];
-  for (const [g, x, y] of list) {
+  const pool = ['hay', 'cart', 'mill'];
+  const cartH = (ASSETS.props.cart && ASSETS.props.cart[2]) || 48;
+  for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
+    const g = pool[Math.floor(Math.random() * pool.length)];
     const meta = ASSETS.props[g];
     if (!meta) continue;
     const [, pw, ph] = meta;
-    const psc = g === 'cart' ? .5 : 1;
-    props.push({ g, x, y, solid: true, broken: false, hp: (g === 'hay' || g === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: pw * .75 * psc, h: ph * psc });
+    // 石碾按推车的显示高度缩放，避免比推车大一圈
+    const psc = g === 'cart' ? .5 : g === 'mill' ? (cartH * .5) / ph : 1;
+    props.push({ g, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: 3, hitT: 0, sc: psc, w: pw * .75 * psc, h: ph * psc, chapter2: true });
   }
 }
 
@@ -852,15 +850,15 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 function hitProp(p, dir) {
-  if (p.broken || !(p.g === 'hay' || p.g === 'cart')) return;
+  if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
-  const hay = p.g === 'hay', broken = p.hp <= 0;
+  const hay = p.g === 'hay', mill = p.g === 'mill', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
-  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : ['#4b2c12', '#7a4d22', '#a3703c'];
   const n = broken ? 22 : 7;
   for (let i = 0; i < n; i++) {
     const life = broken ? rnd(.42, .65) : rnd(.32, .55);
-    // 草垛掉细条状的稻草，推车掉方块状的木片；带一点朝被打飞的方向
+    // 草垛掉细条状的稻草，推车掉方块状的木片，石碾掉碎石
     const w = hay ? rnd(2.8, 4.6) : rnd(1.8, 3.2), hh = hay ? 1.2 : w;
     propFx.push({ x: p.x + rnd(-p.w * .35, p.w * .35), y: p.y - rnd(4, p.h * .7),
       vx: rnd(-70, 70) + (dir || 0) * 35, vy: rnd(-130, -45), w, h: hh, life, max: life,
@@ -868,7 +866,8 @@ function hitProp(p, dir) {
   }
   if (broken) {
     p.broken = true; p.solid = false;
-    if (Math.random() < .65) spawnDrop(p.x, p.y);   // 65% 概率掉吃的（原 50%）
+    // 第二章的草垛/推车/石碾全部掉落回血；第一章仍保持 65%
+    if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
   }
 }
 // 棍子第三段的冲击波（锦囊）
@@ -1074,9 +1073,9 @@ function strike() {
     const inRange = C.both ? Math.abs(dx) < rch + 10 : dx > -14 && dx < rch + 10;
     if (inRange && Math.abs(v.y - h.y) < W.dy) { v.flash = .12; v.hitAtk = h.atk; }
   }
-  // 草垛、推车也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
+  // 草垛、推车、石碾也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
-    if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+    if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) continue;
     const dx = (p.x - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < rch + p.w / 2 : dx > -4 - p.w / 2 && dx < rch + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
@@ -1329,9 +1328,9 @@ function updateChapter2Boss(z, dt) {
 function updateShots(dt) {
   for (const s of shots) {
     s.x += s.vx * dt; s.y += (s.vy || 0) * dt; s.life -= dt;
-    // 石子碰到草垛/推车：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
+    // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
-      if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
+      if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) continue;
       if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
