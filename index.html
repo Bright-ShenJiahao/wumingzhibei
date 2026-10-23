@@ -3052,6 +3052,7 @@ function rollFill(pool, budget) {
   return out;
 }
 const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 2000, 2500, 3000], token: 2 };
+const RETREAT_SCREENS = 1.2;   // 非 Boss 战最多后退 1.2 个屏幕，防止无限风筝
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
@@ -3176,6 +3177,8 @@ function moveEnt(e, dx, dy) {
 
 // ---------- 刷怪 ----------
 function viewW() { return cv.width / (cv.height / M.viewH); }
+// 非 Boss 战：从开战线/开战点往左最多退 RETREAT_SCREENS 屏，避免无限后退风筝
+function setRetreatLimit(anchorX) { arenaL = Math.max(0, anchorX - viewW() * RETREAT_SCREENS); }
 // 召唤援军弓箭手：左右各 3 个，射 2 轮就撤
 function priestCast(z) {
   sfx('stamp', z.x); shake = Math.max(shake, .08);
@@ -3296,7 +3299,7 @@ function waves() {
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
     if (!clearAt) clearAt = gameT + (villagersThanksT >= 0 ? 2 : 1.4);   // 救下村民时先让鞠躬和锦囊掉落演完
     if (gameT >= clearAt) {
-      clearAt = 0; lockR = Infinity; gateI++;
+      clearAt = 0; lockR = Infinity; gateI++; arenaL = null;
       if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
       else won = true;
       if (!won && window.ROGUE) ROGUE.offer();   // 每清一个区域，抽一次锦囊   // 通关文案交给结算板，这里不再刷长句
@@ -3318,6 +3321,7 @@ function waves() {
   }
   if (lockR === Infinity && gateI < M.gates.length && hero.x > M.gates[gateI]) {
     const gx = M.gates[gateI], W = WAVES[gateI]; lockR = gx + vw * 0.6; clearAt = 0; extraDone = false;
+    setRetreatLimit(gx);
     if (W.boss) { Boss.start(lockR); return; }
     const list = W.units || (W.core || []).concat(rollFill(W.pool || [], W.budget || 0));
     list.forEach((u, i) => {
@@ -3355,6 +3359,7 @@ function startChapter2Battle(number) {
   zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
   hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
   if (number === 5) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
+  setRetreatLimit(hero.x);
   lockR = Infinity; clearAt = 0;
   if (number === 1) {
     spawn('yellow-heavy', hero.x + 190, M.top + 28);

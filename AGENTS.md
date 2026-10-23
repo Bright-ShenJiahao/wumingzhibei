@@ -73,6 +73,8 @@
   逻辑在 js/boss.js（`Boss.wx()` `wxMove()` `wxAspd()` `wxProj()` `wxDraw()`）。
 - 波次：`WAVES` 里 `core` 是固定教学骨架（新兵种首次登场永远在这），`budget`+`pool` 是随机填充，
   威胁值见 `THREAT`（喽啰1/刀手2/投石手2/弓手2/老卒4）。
+- 非 Boss 战最多后退 **1.2 个屏幕**（`RETREAT_SCREENS`，`setRetreatLimit()` 设 `arenaL`），清完区域后
+  自动解除，方便回头捡掉落；Boss 战仍由 `Boss.start()` 设 1 屏决斗场。
 
 ## 开发者模式（调试用，普通玩家看不到）
 - 新增 `js/debug.js`：网址带 `?debug` 才启用。
