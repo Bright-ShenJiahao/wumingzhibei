@@ -106,18 +106,20 @@ function hit(z, dmg, dir, ranged) {
 
   // ---------- 行为 ----------
   function update(z, dt) {
-    z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
-    if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - dt; z.throwCd = (z.throwCd || 0) - dt; }
+    z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
+    const actionDt = dt * (z.attackSlowT > 0 ? .9 : z.moveSlowT > 0 ? .85 : 1);
+    z.t += actionDt; z.flash = Math.max(0, z.flash - dt); z.cd -= actionDt;
+    if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - actionDt; z.throwCd = (z.throwCd || 0) - actionDt; }
     if (z.blockT > 0) z.blockT -= dt;
     if (z.blockCd > 0) z.blockCd -= dt;
     // 掷出去的长戟：飞 → 落地 → 等他去捡
     if (z.spear && !z.spear.land) {
-      const p = z.spear; p.x += p.vx * dt;
+      const p = z.spear; p.x += p.vx * actionDt;
       if (heroIn(p.x, z.y, 16, 14)) { dmgHero(2, { x: p.x }); p.land = 1; shake = .2; }
       else if (Math.abs(p.x - z.x) > 260) p.land = 1;
       if (p.land) { p.y = z.y; z.pickX = p.x; }
     }
-    if (horse) { horse.t += dt; horse.x += horse.f * 160 * dt; if (horse.t > 2.5) horse = null; }
+    if (horse) { horse.t += actionDt; horse.x += horse.f * 160 * actionDt; if (horse.t > 2.5) horse = null; }
     if (z.dead) {
       // 跪倒 → 倒地，然后就一直躺着：通关结算时大将要留在场上，不再转 gone 消失
       if (z.st === 'kneel' && z.t > 2.2) set(z, 'down');
@@ -125,7 +127,7 @@ function hit(z, dmg, dir, ranged) {
     }
     const [L, Rr] = view();
     const dx = hero.x - z.x, ad = Math.abs(dx), ady = Math.abs(hero.y - z.y);
-    if (z.phase === 1) phase1(z, dt, dx, ad, ady, L, Rr); else phase2(z, dt, dx, ad, ady, L, Rr);
+    if (z.phase === 1) phase1(z, actionDt, dx, ad, ady, L, Rr); else phase2(z, actionDt, dx, ad, ady, L, Rr);
   }
 
   function phase1(z, dt, dx, ad, ady, L, Rr) {

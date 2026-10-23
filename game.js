@@ -36,7 +36,7 @@ const WEAP = {
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
-  staff: { name: '棍', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
+  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
@@ -45,14 +45,14 @@ const WEAP = {
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
   // move: 0：出手期间站定不动（只保留开头那一下前冲），砸下去人不能跟着滑，重量感更足
-  hammer: { name: '锤子', reach: 25, dy: 15, snd: 'staff', lunge: 80, lungeT: .12, interrupt: true, move: 0, combo: [
+  hammer: { name: '锤子', class: 'short', reach: 25, dy: 15, snd: 'staff', lunge: 80, lungeT: .12, interrupt: true, move: 0, combo: [
     { f: ['hammer_1a', 'hammer_1b'], d: [.14, .24], dmg: 1.5, kb: 30 },                           // 举锤下砸
     { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
-  stone: { name: '石子', proj: true, move: 1, combo: [
+  stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
     { f: ['stone_1a', 'stone_1b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
     { f: ['stone_2a', 'stone_2b'], d: [.09, .21], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.18, .07, .28], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
@@ -155,6 +155,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
+  if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley();
   if (e.code === 'Digit1') setW('staff'); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
   if (e.code === 'KeyR') reset();
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
@@ -171,6 +172,7 @@ document.getElementById('bA').addEventListener('pointercancel', () => atkRelease
 document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
 document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
+document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
 function setW(w) { weapon = w; ui(); }
 function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === weapon)); }
@@ -369,14 +371,38 @@ function waves() {
 }
 
 // ---------- 主角 ----------
-function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false) {
+function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
+  if (!z || z.dead || z.air) return;
+  if (!traits.scaled && !traits.dot) {
+    dmg *= R_(ranged ? 'rangedDmg' : 'meleeDmg');
+    if (traits.finisher) dmg *= R_(ranged ? 'finRanged' : 'finMelee');
+    if (!traits.secondary && !traits.guaranteedCrit && R_('crit', 0) && Math.random() < R_('crit', 0)) {
+      dmg *= 1.5; floaters.push({ x: z.x, y: z.y - 34, t: 0, txt: '暴击！', big: true });
+    }
+  }
+  if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
   if (z.T.boss) {
     const hp0 = z.hp;
     const res = Boss.hit(z, dmg, dir, ranged);
-    if (z.hp < hp0) countComboHit();
+    if (z.hp < hp0) {
+      if (traits.dot) return res;
+      if (!traits.secondary && R_('poison', 0)) applyPoison(z);
+      if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
+      if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
+      if (!traits.secondary && !ranged && R_('split', 0)) splitHit(z, dmg);
+      countComboHit();
+    }
     return res;
   }
-  if (z.dead || z.air) return;
+  if (traits.dot) {
+    z.hp -= dmg; z.flash = .08;
+    if (z.hp <= 0) {
+      z.dead = 1; kills++; set(z, 'land');
+      if (z.villagerChaser) thankVillagers();
+      if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); }
+    }
+    return;
+  }
   countComboHit();
   if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
@@ -385,11 +411,13 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
-  dmg *= R_('dmg');   // 锦囊：造成伤害倍率
   if (noviceMode()) dmg *= 2;   // 简单模式：只影响伤害，提示文案始终显示
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   const ls = R_('lifesteal', 0);
-  if (ls && gameT - (hero.leechT || -9) > 2) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
+  if (ls && gameT - (hero.leechT == null ? -9 : hero.leechT) >= 3) { hero.leechT = gameT; hero.hp = Math.min(10, hero.hp + ls); }
+  if (!traits.secondary && R_('poison', 0)) applyPoison(z);
+  if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
+  if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun; z.vx = kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   if (daze && !z.daze && Math.random() < daze * heavyDazeScale) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
@@ -410,6 +438,26 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
   if (knock) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+  if (!traits.secondary && !ranged && R_('split', 0)) splitHit(z, dmg / (noviceMode() ? 2 : 1));
+}
+function applyPoison(z) {
+  if (!z || z.dead) return;
+  const active = z.poisonT > 0;
+  z.poisonStacks = Math.min(2, (z.poisonStacks || 0) + 1);
+  z.poisonT = 2; if (!active) z.poisonTick = 1;
+}
+function splitHit(target, damage) {
+  for (const other of zs) if (other !== target && !other.dead && !other.air && Math.hypot(other.x - target.x, other.y - target.y) <= 45)
+    hit(other, damage * .3, 0, Math.sign(other.x - target.x), false, 0, .12, false, false, { secondary: true, scaled: true });
+}
+function summonArchersVolley() {
+  const angles = [-58, -42, -27, -12, 5, 20, 37, 54].map(a => a * Math.PI / 180);
+  for (const a of angles) {
+    const C = { dmg: .3, kb: 12, pierce: false };
+    const ang = a * hero.f;
+    shots.push({ x: hero.x + hero.f * 14, y: hero.y + rnd(-8, 8), z: 24, vx: Math.cos(ang) * 260 * hero.f, vy: Math.sin(a) * 190, life: 1.05, C, c: 0, hitSet: [], kind: 'arrow', secondary: true, summon: true });
+  }
+  sfx('sling', hero.x); say('弓箭手散射！', 1.2);
 }
 // 击飞：腾空 → 落地弹一下 → （敌人）爬起 /（死亡）倒地消失
 function launch(e, vx, vz) { e.air = true; e.z = 0.1; e.vz = vz; e.ax = vx; e.st = 'air'; e.t = 0; e.tok = false; e.stun = 0; e.daze = 0; }
@@ -627,7 +675,7 @@ function updatePWaves(dt) {
   for (const w of pwaves) {
     w.t += dt; w.x += w.vx * dt;
     for (const z of zs) if (!z.dead && !w.hit.has(z) && Math.abs(z.x - w.x) < 18 && Math.abs(z.y - w.y) < 16) {
-      w.hit.add(z); hit(z, 1.2 * R_('dmg'), 60, Math.sign(w.vx), false, 0, .3);
+      w.hit.add(z); hit(z, w.dmg, 60, Math.sign(w.vx), false, 0, .3, false, false, { secondary: true, shockwave: true });
     }
   }
   pwaves = pwaves.filter(w => w.t < w.T);
@@ -727,10 +775,15 @@ function chargedAttack(power) {
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
   const R = weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : 0;
-  if (weapon === 'stone') {                    // 三颗扇形
+  const chargeBonus = W.class === 'ranged' ? 1.1 : R_('chargedDmg', 1);
+  if (W.class === 'ranged') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {
-      const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force, spd: 240, life: .8 });
+      const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force * chargeBonus, spd: 240, life: .8 });
       shots.push({ x: h.x + h.f * 16, y: h.y, z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], charged: true });
+      if (R_('scatter', 0)) for (const side of [-1, 1]) {
+        const a = ang + side * Math.PI / 6, subC = Object.assign({}, C, { dmg: C.dmg * .1, kb: C.kb * .5 });
+        shots.push({ x: h.x + h.f * 16, y: h.y, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life, C: subC, c: 0, hitSet: [], charged: true, secondary: true });
+      }
     }
     return;
   }
@@ -742,7 +795,7 @@ function chargedAttack(power) {
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
     const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
     if (inFan) {
-      const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
+      const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force * R_('chargedDmg', 1);
       hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
       addChargeHitFx(weapon, z.x, z.y - (weapon === 'hammer' ? 2 : 15), h.f);
     }
@@ -764,19 +817,26 @@ function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
-    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C, c, hitSet: [] });
-    if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：石子·连击（第二颗只有一半伤害）
-      const C2 = Object.assign({}, C, { dmg: C.dmg * .5, kb: C.kb * .6 });
-      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [] });
+    const finisher = c === W.combo.length - 1;
+    const mainC = finisher ? Object.assign({}, C, { dmg: C.dmg * R_('finRanged') }) : C;
+    shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
+    if (R_('scatter', 0)) for (const a of [-Math.PI / 6, Math.PI / 6]) {
+      const subC = Object.assign({}, mainC, { dmg: mainC.dmg * .1, kb: mainC.kb * .5 });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true });
+    }
+    if (Math.random() < R_('stoneExtra', 0)) {   // 锦囊：远程连击追加半伤攻击
+      const C2 = Object.assign({}, mainC, { dmg: mainC.dmg * .5, kb: mainC.kb * .6 });
+      shots.push({ x: h.x + h.f * 16, y: h.y, z: 26, vx: h.f * C.spd * 1.06, life: (C.life || .8) + .1, C: C2, c, hitSet: [], secondary: true });
     }
     return;
   }
   let landed = false, hitEnemy = false;
-  const reach = W.reach * R_('reach');                                   // 锦囊：长手
+  const reach = W.reach;
   const rch = C.thrust ? reach * 1.35 : reach;                          // 「戳」比劈多 35% 距离
-  const finisher = weapon === 'staff' ? 3 : 2;
-  const fin = (c === finisher ? R_('fin') : 1) * 1;                     // 锦囊：终招（各武器最后一段）
-  const aoe = (weapon === 'hammer' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：锤·震地
+  const finisher = c === W.combo.length - 1;
+  const isFinisher = finisher;
+  const fin = 1;
+  const aoe = (W.class === 'short' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：短武器第三段震地
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
@@ -794,12 +854,14 @@ function strike() {
       if (downed) mult *= 2;
       if (critT > 0) mult *= 2;
       if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
-      hit(z, C.dmg * fin * mult, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt);
+      let attackDmg = C.dmg * fin * mult;
+      if (aoe) attackDmg *= R_('hammerBonus', 1);
+      hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0 });
       if (!C.multi && !aoe) break;
     }
   }
-  if (weapon === 'staff' && c === 2 && R_('staffWave', 0)) {   // 锦囊：棍·冲击波
-    pwaves.push({ x: h.x + h.f * 28, y: h.y, vx: h.f * 330, t: 0, T: .9, hit: new Set(), f: h.f });
+  if (W.class === 'long' && c === 2 && R_('staffWave', 0)) {   // 锦囊：长武器第三段冲击波
+    pwaves.push({ x: h.x + h.f * 28, y: h.y, vx: h.f * 330, t: 0, T: .9, hit: new Set(), f: h.f, dmg: 1.2 * R_('waveBonus', 1) });
   }
   // 误伤村民只闪一下，不扣血、不计击倒，也不改变连招判定。
   for (const v of villagers) {
@@ -824,13 +886,17 @@ function strike() {
 }
 function dmgHero(n, from) {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
-  n = Math.max(1, n * R_('take'));   // 锦囊：每层减伤 20%，最低受到 1 点
+  if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
+  n = Math.max(1, n * R_('take'));
+  const steadyHold = h.hp > n && charging && R_('steady', 0) > 0 && Math.random() < R_('steady', 0);
   hitsTaken++;   // 结算评价用：被打了多少下
   comboCount = 0; comboExpireAt = 0;   // 主角实际受击，连击立即结束
   sfx('hurt', h.x);
-  h.hp -= n; h.inv = .7; shake = .2; h.atk = null; cancelCharge();
+  h.hp -= n; h.inv = .7; shake = .2;
+  if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
-  if (n >= 2 || h.hp <= 0) {
+  if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
+  else if (n >= 2 || h.hp <= 0) {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (h.hp <= 0) h.deathArc = true;
   } else { set(h, 'hurt'); h.vx = dir * 80; }
@@ -844,7 +910,8 @@ function dmgHero(n, from) {
 function zUpdate(z, dt) {
   if (z.T.boss) return Boss.update(z, dt);
   const T = z.T;
-  z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd -= dt;
+  z.t += dt * (z.attackSlowT > 0 ? .9 : 1); z.flash = Math.max(0, z.flash - dt); z.cd -= dt * (z.attackSlowT > 0 ? .9 : 1);
+  z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
   if (z.qiCd > 0) z.qiCd -= dt;
   if (z.qi != null) {                     // 老卒蓄力中：0.62 秒后劈出扇形剑气
     z.qi += dt;
@@ -1000,7 +1067,7 @@ function zUpdate(z, dt) {
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);
   z.moving = l > 4;
   if (z.moving) {
-    const sp = T.spd * (Math.abs(dx) > 150 ? 1.8 : 1);   // 离得远时快步冲过来
+    const sp = T.spd * (z.moveSlowT > 0 ? .85 : 1) * (Math.abs(dx) > 150 ? 1.8 : 1);   // 离得远时快步冲过来
     moveEnt(z, mx / l * sp * dt, my / l * sp * .7 * dt);
     if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);   // 被草垛等挡住时上下绕开
   }
@@ -1009,7 +1076,7 @@ function zUpdate(z, dt) {
 // ---------- 投射物、火 ----------
 function updateShots(dt) {
   for (const s of shots) {
-    s.x += s.vx * dt; s.life -= dt;
+    s.x += s.vx * dt; s.y += (s.vy || 0) * dt; s.life -= dt;
     // 石子碰到草垛/推车：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
       if (p.broken || (p.g !== 'hay' && p.g !== 'cart')) continue;
@@ -1024,7 +1091,7 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     for (const z of zs) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
-      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true);
+      hit(z, s.C.dmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, { secondary: !!s.secondary });
       if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);   // true = 远程（石子），管亥可能拨开 hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (!s.C.pierce) s.life = 0;
     }
@@ -1066,6 +1133,7 @@ function update(dt) {
   if (window.ROOM && ROOM.blocks()) { ROOM.update(dt); return; }   // 开场农房：游戏不推进，由 room.js 自己走
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
+  if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   gameT += dt;
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
@@ -1310,7 +1378,10 @@ function draw() {
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
   list.push({ y: hero.y, d: drawHero });
-  for (const s of shots) list.push({ y: s.y + .1, d: () => stone(s.x, s.y - s.z) });
+  for (const s of shots) list.push({ y: s.y + .1, d: () => {
+    if (s.kind === 'arrow') { ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); ctx.fillStyle = '#3a2410'; ctx.fillRect(-5, -1, 10, 2); ctx.fillStyle = '#dfd4b5'; ctx.fillRect(3, -1, 3, 2); ctx.restore(); }
+    else stone(s.x, s.y - s.z);
+  } });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -1714,12 +1785,22 @@ function drawChargeAura(h) {
 
 function drawHero() {
   const h = hero; shadow(h.x, h.y, 10);
+  h.shieldFlash = Math.max(0, (h.shieldFlash || 0) - 1 / 60);
+  if (window.ROGUE && ROGUE.shieldReady && ROGUE.shieldReady()) {
+    const pulse = .72 + .18 * Math.sin(performance.now() / 230);
+    ctx.save(); ctx.globalAlpha = pulse; ctx.strokeStyle = '#d9b968'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y - 13, 15, 20, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,236,171,.68)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(h.x, h.y - 13, 12, 17, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  if (h.shieldFlash > 0) { ctx.save(); ctx.globalAlpha = h.shieldFlash / .22; ctx.fillStyle = '#ffe79b'; ctx.beginPath(); ctx.arc(h.x, h.y - 15, 17, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
-  if (z.T.boss) { Boss.draw(z); if (z.celebrating) drawCheer(z); return; }
+  if (z.T.boss) { Boss.draw(z); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
+    if (z.defDownT > 0) { ctx.fillStyle = '#b9a2dc'; ctx.fillRect(z.x + 4, z.y - 61, 3, 3); }
+    if (z.celebrating) drawCheer(z); return; }
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
@@ -1746,6 +1827,7 @@ function drawZ(z) {
       ctx.fillStyle = '#3a2410'; ctx.fillRect(sx - 2, sy - 2, 4, 4); ctx.fillStyle = '#ffd84a'; ctx.fillRect(sx - 1.5, sy - .5, 3, 1); ctx.fillRect(sx - .5, sy - 1.5, 1, 3);
     }
   }
+  if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, top - 5, 3, 3); ctx.fillStyle = '#4c8a43'; ctx.fillRect(z.x + 3, top - 7, 2, 2); }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
   const barW = z.T.elite ? 26 : 18;
   const barY = top;

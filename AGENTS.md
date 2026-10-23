@@ -61,12 +61,14 @@
 - **体型系数**（只影响绘制，判定框不变）：喽啰 .86 / 投石手 .88 / 刀手 .92 / 弓手 .92 / 老卒 1.05；主角 1.00。
 
 ## 肉鸽系统（js/rogue.js）
-- 每清完一个区域弹「锦囊」三选一（30% 额外多一张诅咒卡），本局有效，**再来一局会清空**。
-- 卡的数值统一放在 `ROGUE.S`，game.js 用 `R_('键')` 读取（没抽卡时是默认值 1）。
-- 已接的键：dmg / move / fin / reach / aspd / daze / take / takeFlat / lifesteal /
-  stoneExtra / hammerAoe / staffWave。加新卡就加进 CARDS 并接一个新的键。
-- 抽卡时三张保证来自**不同流派**；武器卡的出现与当前手上拿什么武器**无关**（纯随机）。
-- 每局抽 4 次（清完第 1~4 区各一次），「再来一局」会清空。
+- 每清完一个区域弹「锦囊」三选一；卡牌不重复出现。每张卡每局最多获得一次，所有效果**只在当前局有效**，再来一局清空。
+- 卡的数值统一放在 `ROGUE.S`，game.js 用 `R_('键')` 读取；无卡时使用中性默认值。
+- 当前卡牌键：meleeDmg / rangedDmg / finMelee / finRanged / move / aspd / chargedDmg / steady /
+  lifesteal / shield / stoneExtra / scatter / hammerAoe / hammerBonus / staffWave / waveBonus /
+  crit / poison / summon / fireAura / split。加卡需在 CARDS 中定义，并接入对应战斗逻辑。
+- 抽卡时三张优先来自不同流派；当前武器对应的专属卡权重 ×3（棍/冲击波、锤/震地、石子/连击），其他专属卡随机出现。每局抽 4 次（清完第 1~4 区各一次）。
+- 主动召唤锦囊获得后显示技能按钮，电脑按 U；每局两次，冷却 40 秒。
+- 锦囊副弹、追加攻击和溅射不触发连击、散射、暴击或淬毒，避免递归触发。
 - 天候：只在 Boss 战、进场 50% 概率（雨=移速-10%/翻滚+25%，雪=移速-12%/出招-10%，风=石子-15%），
   逻辑在 js/boss.js（`Boss.wx()` `wxMove()` `wxAspd()` `wxProj()` `wxDraw()`）。
 - 波次：`WAVES` 里 `core` 是固定教学骨架（新兵种首次登场永远在这），`budget`+`pool` 是随机填充，
