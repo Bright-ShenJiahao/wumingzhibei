@@ -95,7 +95,14 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.save();
     ctx.globalAlpha = Math.min(1, S.t / .18);
-    // 轻压战场亮度，让原背景仍可辨认。
+    // 开场使用确定好的黄昏主战场底图，保持整张构图完整铺满屏幕。
+    const bg = IMG.chapter2_intro;
+    if (bg && bg.complete && bg.naturalWidth) {
+      const scale = Math.max(W / bg.naturalWidth, H / bg.naturalHeight);
+      const bw = bg.naturalWidth * scale, bh = bg.naturalHeight * scale;
+      ctx.drawImage(bg, (W - bw) / 2, (H - bh) / 2, bw, bh);
+    }
+    // 轻压底图亮度，让对白更清晰，同时仍能看清战场细节。
     ctx.fillStyle = 'rgba(18,12,10,.22)'; ctx.fillRect(0, 0, W, H);
     ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 8;
     ctx.fillStyle = 'rgba(30,22,18,.91)'; rounded(ctx, px, py, panelW, panelH, 8); ctx.fill();

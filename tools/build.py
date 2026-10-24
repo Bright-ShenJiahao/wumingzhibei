@@ -81,6 +81,7 @@ assets['chapter2'] = {
     'battlefield': uri(P('art', 'bg', 'chapter2_battlefield.webp')),
     'altar': uri(P('art', 'bg', 'chapter2_altar.webp')),
 }
+assets['chapter2Intro'] = uri(P('art', 'bg', 'chapter2_intro.webp'))
 # js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用
 import glob
 mods = sorted(glob.glob(P('js', '*.js')))

@@ -51,6 +51,7 @@ if (ASSETS.chapter2) {
   if (ASSETS.chapter2.battlefield) load('chapter2_battlefield', ASSETS.chapter2.battlefield);
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
+if (ASSETS.chapter2Intro) load('chapter2_intro', ASSETS.chapter2Intro);
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
 Object.entries(ASSETS.dialogPortraits || {}).forEach(([k, v]) => load('dialog_' + k, v));
 document.querySelectorAll('[data-weapon-icon]').forEach(img => {
