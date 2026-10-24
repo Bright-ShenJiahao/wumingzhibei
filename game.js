@@ -107,6 +107,11 @@ const WEAP = {
     { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
+  bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
+    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .72, kb: 38, spd: 330, life: 1.05 },
+    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .72, kb: 38, spd: 340, life: 1.08 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: 1.35, kb: 75, spd: 390, life: 1.15, pierce: true },
+  ] },
 };
 // 长戟使用白衣专用帧。
 WEAP.halberd = Object.assign({}, WEAP.staff, {
@@ -1031,7 +1036,7 @@ function strike() {
     const mainC = finisher ? Object.assign({}, C, { dmg: C.dmg * R_('finRanged') }) : C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? rnd(-13, 13) : 0;                  // 跑动中弹道偏 ±13，站定不偏
-    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], kind: weapon === 'bow' ? 'arrow' : undefined });
     if (R_('scatter', 0)) for (const a of [-Math.PI / 6, Math.PI / 6]) {
       const subC = Object.assign({}, mainC, { dmg: mainC.dmg * .1, kb: mainC.kb * .5 });
       shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true, scatter: true });

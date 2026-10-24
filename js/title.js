@@ -14,6 +14,7 @@
     halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'halberd' }),
     hammer: Object.freeze({ name: '锤子', slot: 'short', icon: 'w_hammer' }),
     stone: Object.freeze({ name: '石子', slot: 'ranged', icon: 'w_stone' }),
+    bow: Object.freeze({ name: '汉弓', slot: 'ranged', icon: 'w_bow' }),
   });
   const EQUIPMENT_SLOTS = Object.freeze([
     Object.freeze({ id: 'long', name: '长武器', combat: true }),
@@ -68,8 +69,9 @@
     const oldOwned = raw && Array.isArray(raw.owned) ? JSON.stringify(raw.owned) : '';
     p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
     for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
+    if (!DEBUG) p.owned = p.owned.filter(id => id !== 'bow');
     if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
-    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone']) if (!p.owned.includes(id)) p.owned.push(id);
+    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone', 'bow']) if (!p.owned.includes(id)) p.owned.push(id);
     const oldLong = p.long;
     const hadEquipped = !!(raw && raw.equipped);
     const oldEquipped = raw && raw.equipped ? JSON.stringify(raw.equipped) : '';
@@ -850,6 +852,7 @@
     if (id === 'hammer') return 'hammer0';
     if (id === 'staff') return 'staff0';
     if (id === 'stone') return 'stone0';
+    if (id === 'bow') return 'bow0';
     return id + '0';
   }
 
@@ -993,7 +996,7 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
-    preparedWeapon: () => hasCleared(S.name, 1) ? playerLoadout().equipped.long : null,
+    preparedWeapon: () => { const p = playerLoadout(); if (p.equipped.ranged === 'bow') return 'bow'; return hasCleared(S.name, 1) ? p.equipped.long : null; },
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏
