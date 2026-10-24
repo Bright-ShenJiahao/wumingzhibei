@@ -463,6 +463,7 @@
     });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
     dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
+    if (window.WEAPON_TIP) WEAPON_TIP.attach(dom.chapter, id => ITEMS[id]);
     dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
     document.addEventListener('pointermove', moveLoadoutPointer, { passive: false });
     document.addEventListener('pointerup', endLoadoutPointer);
@@ -747,6 +748,7 @@
 
   function renderPreparation(status = '') {
     if (!dom.chapter) return;
+    if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
@@ -775,7 +777,7 @@
       const display = item ? item.name : (slot.id === 'artifact' ? '未装备' : '空');
       const extra = slot.id === 'fashion' && !item ? '<small>联系作者购买</small>' : '';
       const icon = item ? itemIcon(id) : '<span aria-hidden="true">—</span>';
-      return `<div class="tPrepSlot" data-slot="${slot.id}" data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}">
+      return `<div class="tPrepSlot" data-slot="${slot.id}" ${item ? `data-weapon="${id}"` : ''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}">
         <b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}${extra}</span></div>`;
     }).join('');
 
