@@ -107,6 +107,11 @@ const WEAP = {
     { f: ['arm_stone_2a', 'arm_stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
     { f: ['arm_stone_3a', 'arm_stone_3b', 'arm_stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
   ] },
+  bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
+    { f: ['arm_bow_1a', 'arm_bow_1b'], d: [.20, .26], dmg: .72, kb: 38, spd: 330, life: 1.05 },
+    { f: ['arm_bow_2a', 'arm_bow_2b'], d: [.18, .26], dmg: .72, kb: 38, spd: 340, life: 1.08 },
+    { f: ['arm_bow_3a', 'arm_bow_3b'], d: [.22, .30], dmg: 1.35, kb: 75, spd: 390, life: 1.15, pierce: true },
+  ] },
 };
 // 管亥长戟暂沿用棍子的连招参数；主角专用持戟动作帧补齐后再替换显示帧。
 WEAP.halberd = Object.assign({}, WEAP.staff, {
@@ -634,6 +639,8 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   }
   if (z.hp <= 0) {
     z.dead = 1; kills++; knock = true;
+    let bowUnlocked = false; try { bowUnlocked = localStorage.getItem('wzb-bow-unlocked-v1') === '1'; } catch (e) {}
+    if (chapter2Run && !bowUnlocked && !drops.some(d => d.k === 'bow')) spawnBowDrop(z.x, z.y);
     if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
@@ -754,6 +761,7 @@ function spawnDrop(x, y, forceK) {
   drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
 function spawnRerollDrop(x, y) { drops.push({ k: 'roll', x, y, z: 10, vy: 130, t: 0, life: 24, got: 0 }); }
+function spawnBowDrop(x, y) { drops.push({ k: 'bow', x, y, z: 12, vy: 160, t: 0, life: 30, got: 0 }); }
 function updateDrops(dt) {
   const h = hero;
   for (const d of drops) {
@@ -776,6 +784,13 @@ function updateDrops(dt) {
         const granted = window.ROGUE && ROGUE.grantReroll();
         floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: granted ? 'ROLL +1' : '锦囊已满' });
         if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
+        continue;
+      }
+      if (d.k === 'bow') {
+        try { localStorage.setItem('wzb-bow-unlocked-v1', '1'); } catch (e) {}
+        floaters.push({ x: d.x, y: d.y - 14, t: 0, txt: '汉弓解锁', big: true });
+        say('获得汉弓！整备界面已可装备。', 3);
+        sfx('food', d.x);
         continue;
       }
       if (h.hp >= 10) {                      // 满血：回不了血，按回复量折算积分（1 血 = 5 分）
@@ -813,6 +828,13 @@ function drawDrop(d) {
     c.fillStyle = '#c78b3d'; c.beginPath(); c.ellipse(0, -.5, 4.8, 3.5, 0, 0, 7); c.fill();
     c.strokeStyle = '#8e3a24'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-3, -3); c.lineTo(3, 3); c.moveTo(3, -3); c.lineTo(-3, 3); c.stroke();
     c.fillStyle = '#f3d27c'; c.fillRect(-1, -1, 2, 2); c.restore(); return;
+  }
+  if (d.k === 'bow') {
+    c.save(); c.translate(d.x, y - fh / 2); c.shadowColor = 'rgba(26,14,8,.9)'; c.shadowOffsetX = .9; c.shadowOffsetY = .9;
+    c.strokeStyle = '#8b5a2b'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 9, -Math.PI / 2, Math.PI / 2); c.stroke();
+    c.strokeStyle = '#e7d7b0'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -9); c.lineTo(0, 9); c.stroke();
+    c.strokeStyle = '#5a3518'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, 0); c.lineTo(9, 0); c.stroke();
+    c.restore(); return;
   }
   if (im && im.complete) {
     c.save(); c.imageSmoothingEnabled = false;
@@ -1031,7 +1053,7 @@ function strike() {
     const mainC = finisher ? Object.assign({}, C, { dmg: C.dmg * R_('finRanged') }) : C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? rnd(-13, 13) : 0;                  // 跑动中弹道偏 ±13，站定不偏
-    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [] });
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], kind: weapon === 'bow' ? 'arrow' : undefined });
     if (R_('scatter', 0)) for (const a of [-Math.PI / 6, Math.PI / 6]) {
       const subC = Object.assign({}, mainC, { dmg: mainC.dmg * .1, kb: mainC.kb * .5 });
       shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 20, vx: h.f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, life: C.life || .8, C: subC, c, hitSet: [], secondary: true, scatter: true });
@@ -1617,19 +1639,19 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.restore();
 }
 function heroFrame(h) {
-  const armor = weapon === 'halberd' || weapon === 'hammer' || weapon === 'staff' || weapon === 'stone';
+  const armor = weapon === 'halberd' || weapon === 'hammer' || weapon === 'staff' || weapon === 'stone' || weapon === 'bow';
   const frameWeapon = weapon === 'halberd' ? 'staff' : weapon;
   if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
   if (h.st === 'roll') return armor ? (Math.floor(h.t * 15) % 2 ? 'arm_roll2' : 'arm_roll1') : (Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1');
   if (h.air) return armor ? (h.vz > 0 ? 'arm_fly1' : 'arm_fly2') : (h.vz > 0 ? 'fly1' : 'fly2');
   if (h.st === 'bounce' || h.st === 'getup') return armor ? 'arm_' + h.st : h.st;
   if (h.st === 'walk') {
-    if (armor) return (weapon === 'halberd' ? 'arm_w' : weapon === 'hammer' ? 'arm_hammerw' : weapon === 'staff' ? 'arm_staffw' : 'arm_stonew') + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+    if (armor) return (weapon === 'halberd' ? 'arm_w' : weapon === 'hammer' ? 'arm_hammerw' : weapon === 'staff' ? 'arm_staffw' : weapon === 'stone' ? 'arm_stonew' : 'arm_boww') + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
     return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
   }
   if (h.st === 'hurt') return armor ? 'arm_hurt' : 'hurt';
   if (h.st === 'down') return armor ? 'arm_down' : 'down';
-  return armor ? (weapon === 'halberd' ? 'arm_idle' : weapon === 'hammer' ? 'arm_hammer0' : weapon === 'staff' ? 'arm_staff0' : 'arm_stone0') : frameWeapon + '0';
+  return armor ? (weapon === 'halberd' ? 'arm_idle' : weapon === 'hammer' ? 'arm_hammer0' : weapon === 'staff' ? 'arm_staff0' : weapon === 'stone' ? 'arm_stone0' : 'arm_bow0') : frameWeapon + '0';
 }
 function zFrame(z) {
   if (z.T.siege) {
@@ -1825,7 +1847,7 @@ function draw() {
   for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => {
-    if (s.kind === 'arrow') { ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); ctx.fillStyle = '#3a2410'; ctx.fillRect(-5, -1, 10, 2); ctx.fillStyle = '#dfd4b5'; ctx.fillRect(3, -1, 3, 2); ctx.restore(); }
+    if (s.kind === 'arrow') { ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); ctx.fillStyle = '#3a2410'; ctx.fillRect(-13, -1, 24, 2); ctx.fillStyle = '#dfd4b5'; ctx.beginPath(); ctx.moveTo(11, -3); ctx.lineTo(17, 0); ctx.lineTo(11, 3); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#b02a1e'; ctx.fillRect(-14, -2, 3, 4); ctx.restore(); }
     else stone(s.x, s.y - s.z);
   } });
   for (const s of eshots) {
