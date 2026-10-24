@@ -1,4 +1,4 @@
-// 背景音乐：Web Audio 实时合成，不用任何外部音频文件，也没有现成曲子的旋律。
+// 背景音乐：第一章Web Audio合成；第二章叠加用户参考中分离的大鼓单击采样，旋律原创。
 // 调式：中国五声（宫商角徵羽）羽调式 A-C-D-E-G，乱世村庄的哀凉感。
 // 乐器：低沉战鼓（正弦下坠 + 低频噪声）、拨弦（古筝/琵琶式的多倍频衰减 + 拨弦噪声）、
 //       长音（埙/二胡式的三角波 + 颤音 + 气声）。
@@ -91,7 +91,7 @@
     },
   };
 
-  // 第二章《旌旗北望》：原创羽调式主题；行军与交战共用126BPM/32小节时钟。
+  // 第二章《旌旗北望》：原创羽调式主题；行军与交战共用112BPM/32小节时钟。
   // 低鼓是大军的步伐，桶鼓做左右呼应，短号与低弦只在交战后加入。
   const WAR_PH = {
     a: [[0, 5, .32], [4, 7, .28], [8, 8, .34], [12, 7, .26]],
@@ -105,30 +105,30 @@
   };
   const warMelody = 'abcdabefabcdagfh' + 'abcdcgefagcdagfh';
   const warDrums = {
-    a: '3.......5.......', b: '3.....5.2.......',
-    c: '3...5...2...5...', d: '3.......2...55..',
-    e: '3..53.5.3..52.5.', f: '3.5.2.5.3.55.255',
-    g: '3..53.553..52.55', h: '3.553.5.3.555555',
+    a: '3...............', b: '3.......2.......',
+    c: '3.......2...5...', d: '3.....5.2.......',
+    e: '3...5...3..52...', f: '3..52...3...5.5.',
+    g: '3...3...2..52.5.', h: '3...5...3..55532',
   };
   TRACKS.warField = {
-    bpm: 126, bars: 32, sync: 'chapter2', war: 1,
-    lv: { drum: .54, pluck: .33, tone: .18 },
+    bpm: 112, bars: 32, sync: 'chapter2', war: 1,
+    lv: { drum: .72, pluck: .19, tone: .18 },
     drone: { midi: 33, level: .035 }, drums: warDrums,
     drumArr: 'ababacbdababacbd' + 'acbcacbdabacacbd',
     ph: WAR_PH, melArr: warMelody,
     tones: { 0: [3, 3], 8: [5, 3], 16: [3, 3], 24: [7, 3] },
   };
   TRACKS.warBattle = {
-    bpm: 126, bars: 32, sync: 'chapter2', war: 2,
-    lv: { drum: .76, pluck: .38, tone: .18 },
+    bpm: 112, bars: 32, sync: 'chapter2', war: 2,
+    lv: { drum: .9, pluck: .23, tone: .18 },
     drone: { midi: 33, level: .045 }, drums: warDrums,
     drumArr: 'efefegfhefefgffh' + 'egfgegfhefefggfh',
     ph: WAR_PH, melArr: warMelody,
     tones: { 0: [3, 3], 8: [5, 3], 16: [3, 3], 24: [7, 3] },
   };
   TRACKS.warBoss = {
-    bpm: 144, bars: 32, war: 3,
-    lv: { drum: .78, pluck: .38, tone: .2 },
+    bpm: 124, bars: 32, war: 3,
+    lv: { drum: .94, pluck: .23, tone: .2 },
     drone: { midi: 33, level: .055 }, drums: warDrums,
     drumArr: 'egfhegfheffhggfh' + 'egfhegfhegfheghh',
     ph: WAR_PH, melArr: warMelody,
@@ -151,7 +151,7 @@
   buildTracks();
 
   // ---------- 音频节点 ----------
-  let ac = null, out = null, noiseBuf = null;
+  let ac = null, out = null, noiseBuf = null, southernDrum = null;
   let layers = [], state = null, muted = false, started = false, jingle = null;
   let schedT = 0, pollT = 0, combatHoldUntil = 0, dialogueQuiet = false;
 
@@ -165,6 +165,31 @@
     return s;
   }
   const osc = (type, f, t) => { const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); return o; };
+
+  function loadSouthernDrum() {
+    try {
+      const url = typeof ASSETS !== 'undefined' && ASSETS.music && ASSETS.music.southernDrum;
+      if (!url) return;
+      const raw = atob(url.slice(url.indexOf(',') + 1));
+      const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+      ac.decodeAudioData(bytes.buffer).then(buffer => { southernDrum = buffer; }).catch(() => {});
+    } catch (_) {}
+  }
+
+  function warDrum(t, kind, vel, dest) {
+    if (!southernDrum) {
+      // 解码前安静等候，第二章不回退到第一章的电子式下坠鼓。
+      return;
+    }
+    const edge = kind === 'tom' || kind === 'snare';
+    const s = ac.createBufferSource(); s.buffer = southernDrum;
+    s.playbackRate.value = (edge ? 1.16 : 1) * (1 + (Math.random() - .5) * .025);
+    const filter = ac.createBiquadFilter(); filter.type = edge ? 'highpass' : 'lowpass';
+    filter.frequency.value = edge ? 140 : 2200;
+    const g = ac.createGain(); g.gain.value = vel * (edge ? .58 : 1.15);
+    s.connect(filter).connect(g).connect(dest);
+    s.start(t); s.stop(t + southernDrum.duration + .05);
+  }
 
   // 战鼓：鼓皮的下坠正弦 + 鼓槌的闷响；重击再补一层很低的下潜（余震）
   function drum(t, kind, vel, dest) {
@@ -270,7 +295,7 @@
     g.gain.linearRampToValueAtTime(vel, t + (horn ? .065 : .025));
     g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     for (const detune of [-5, 5]) {
-      const o = osc(horn ? 'sawtooth' : 'triangle', m2f(midi), t);
+      const o = osc('triangle', m2f(midi), t);
       o.detune.value = detune;
       o.connect(filter); o.start(t); o.stop(t + dur + .05);
     }
@@ -282,10 +307,12 @@
     const dp = T.drums[T.drumArr[bar]];
     if (dp) {
       const c = dp[st];
-      if (c && c !== '.') { const d = DRUM[c]; if (d) drum(t, d[0], d[1] * T.lv.drum, L.gain); }
+      if (c && c !== '.') { const d = DRUM[c]; if (d) (T.war ? warDrum : drum)(t, d[0], d[1] * T.lv.drum, L.gain); }
     }
     const ev = T.melMap.get(bar * 16 + st);
-    if (ev) pluck(t, dn(ev[0]), (ev[1] || .34) * T.lv.pluck, L.gain, ev[2] || .7);
+    if (ev && (!T.war || bar % 2 === 0 || (T.war > 1 && st === 0))) {
+      pluck(t, dn(ev[0]), (ev[1] || .34) * T.lv.pluck, L.gain, ev[2] || (T.war ? 1 : .7));
+    }
     if (st === 0 && T.tones && T.tones[bar]) {
       const [d, beats] = T.tones[bar];
       longTone(t, dn(d), beats * 60 / T.bpm, T.lv.tone, L.gain);
@@ -295,14 +322,9 @@
       if (st === 0 || (T.war > 1 && st === 8)) {
         warVoice(t, dn(root), .33, T.war > 1 ? .075 : .035, L.gain);
       }
-      if (T.war > 1 && st % 2 === 0) {
-        pluck(t, dn(root + (st % 4 === 0 ? 5 : 7)), .065, L.gain, .16);
-      }
-      if (T.war > 1 && bar % 4 === 0 && (st === 0 || st === 6 || st === 10)) {
+      if (T.war > 1 && bar % 8 === 0 && (st === 0 || st === 10)) {
         warVoice(t, dn([5, 8, 7][st === 0 ? 0 : st === 6 ? 1 : 2]), .42, .045, L.gain, true);
       }
-      // 中频鼓皮共振让手机也能听见战鼓，不只堆低频和总音量。
-      if (st === 0 || (T.war > 1 && st === 8)) drum(t, 'tom', .18, L.gain);
     }
   }
 
@@ -466,6 +488,7 @@
     started = true;
     try {
       ac = new AC();
+      loadSouthernDrum();
       out = ac.createGain();
       out.gain.value = .0001;
       const comp = ac.createDynamicsCompressor();

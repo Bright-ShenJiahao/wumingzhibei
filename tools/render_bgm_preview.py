@@ -1,9 +1,10 @@
-"""从真实BGM曲谱导出第二章试听小样；音色为离线近似，游戏仍使用Web Audio合成。"""
+"""实际曲谱与同一大鼓采样的第二章试听；其他乐器为Web Audio音色的离线近似。"""
 import json
 import subprocess
 import wave
 from pathlib import Path
 import numpy as np
+from scipy import signal
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'build/music'
@@ -17,6 +18,8 @@ process.stdout.write(JSON.stringify(ctx.score));
 """
 tracks = json.loads(subprocess.check_output(['node', '-e', exporter], cwd=ROOT, encoding='utf-8'))
 SR = 22050
+with wave.open(str(ROOT/'art/audio/southern_drum.wav'),'rb') as w:
+    drum_sample=np.frombuffer(w.readframes(w.getnframes()),'<i2').astype(float)/32768
 rng = np.random.default_rng(126)
 pent = [0, 3, 5, 7, 10]
 def dn(d):
@@ -34,17 +37,11 @@ def pluck(m, vel, dur=.7):
     env = np.exp(-9.2 * t / dur) * np.minimum(1, t / .005)
     return vel * env * (np.sin(2*np.pi*f*t) + .4*np.sin(4*np.pi*f*t) + .18*np.sin(6*np.pi*f*t))
 def drum(kind, vel):
-    t = np.arange(round(.8 * SR)) / SR
-    start, end, decay = (250, 105, .32) if kind == 'tom' else (150, 44, .46)
-    k = np.log(end / start) / .2
-    phase = 2*np.pi*start*(np.exp(k*np.minimum(t,.2))-1)/k + 2*np.pi*end*np.maximum(0,t-.2)
-    s = vel*np.sin(phase)*np.exp(-9.2*t/decay)*np.minimum(1,t/.006)
-    s += vel*.15*rng.normal(size=len(t))*np.exp(-t/.025)
-    if kind == 'kick' and vel > .45:
-        s += vel*.6*np.sin(2*np.pi*(36*t+36*.12*(1-np.exp(-t/.12))))*np.exp(-t/.18)
-    if kind == 'snare':
-        s = vel*.45*rng.normal(size=len(t))*np.exp(-t/.03)
-    return s
+    edge=kind in ['tom','snare']
+    rate=1.16 if edge else 1
+    s=np.interp(np.arange(0,len(drum_sample)-1,rate),np.arange(len(drum_sample)),drum_sample)
+    filt=signal.butter(2,140 if edge else 2200,fs=SR,btype='highpass' if edge else 'lowpass',output='sos')
+    return signal.sosfilt(filt,s)*vel*(.58 if edge else 1.15)
 def voice(m, dur, vel, horn=False):
     t = np.arange(round((dur+.05)*SR))/SR
     f = freq(m)
@@ -62,14 +59,14 @@ def render(name, first_bar):
             if c in DRUM:
                 kind,v=DRUM[c]; add(out,base+st*beat/4,drum(kind,v*tr['lv']['drum']))
         for ev in tr['ph'][tr['melArr'][bar]]:
-            st,d,*rest=ev; add(out,base+st*beat/4,pluck(dn(d),(rest[0] if rest else .34)*tr['lv']['pluck']))
+            st,d,*rest=ev
+            if bar%2==0 or (tr['war']>1 and st==0):
+                add(out,base+st*beat/4,pluck(dn(d),(rest[0] if rest else .34)*tr['lv']['pluck'],1))
         for st in range(16):
             at = base+st*beat/4
             if st==0 or (tr['war']>1 and st==8):
-                add(out,at,voice(dn(root),.33,.075 if tr['war']>1 else .035)); add(out,at,drum('tom',.18))
-            if tr['war']>1 and st%2==0:
-                add(out,at,pluck(dn(root+(5 if st%4==0 else 7)),.065,.16))
-            if tr['war']>1 and bar%4==0 and st in [0,6,10]:
+                add(out,at,voice(dn(root),.33,.075 if tr['war']>1 else .035))
+            if tr['war']>1 and bar%8==0 and st in [0,10]:
                 add(out,at,voice(dn({0:5,6:8,10:7}[st]),.42,.045,True))
         if str(bar) in tr.get('tones',{}):
             d,beats=tr['tones'][str(bar)]; add(out,base,voice(dn(d),beats*beat,.18))
@@ -82,7 +79,7 @@ audio=np.concatenate(parts)
 audio=np.tanh(audio*.9)*.68
 audio[:round(.2*SR)]*=np.linspace(0,1,round(.2*SR))
 audio[-SR:]*=np.linspace(1,0,SR)
-with wave.open(str(OUT/'chapter2-battle-demo.wav'),'wb') as w:
+with wave.open(str(OUT/'chapter2-southern-drum-demo.wav'),'wb') as w:
     w.setnchannels(1);w.setsampwidth(2);w.setframerate(SR);w.writeframes((audio*32767).astype('<i2').tobytes())
-print('Preview:',OUT/'chapter2-battle-demo.wav')
-print('行军 0:00；交战 0:15.24；首领 0:30.48；音色为离线近似。')
+print('Preview:',OUT/'chapter2-southern-drum-demo.wav')
+print('Section starts (seconds):',0,round(len(parts[0])/SR,2),round((len(parts[0])+len(parts[1]))/SR,2))
