@@ -91,6 +91,50 @@
     },
   };
 
+  // 第二章《旌旗北望》：原创羽调式主题；行军与交战共用126BPM/32小节时钟。
+  // 低鼓是大军的步伐，桶鼓做左右呼应，短号与低弦只在交战后加入。
+  const WAR_PH = {
+    a: [[0, 5, .32], [4, 7, .28], [8, 8, .34], [12, 7, .26]],
+    b: [[0, 5, .32], [6, 4, .27], [10, 3, .3], [14, 5, .28]],
+    c: [[0, 8, .34], [4, 10, .3], [8, 9, .34], [12, 7, .28]],
+    d: [[0, 6, .3], [6, 7, .27], [10, 5, .34]],
+    e: [[0, 10, .34], [3, 9, .28], [6, 8, .3], [10, 7, .3], [14, 8, .28]],
+    f: [[0, 7, .3], [4, 6, .28], [8, 4, .3], [12, 5, .34]],
+    g: [[0, 8, .34], [2, 9, .27], [4, 10, .32], [8, 12, .3], [12, 10, .32]],
+    h: [[0, 7, .32], [4, 5, .32], [10, 4, .25], [14, 5, .28]],
+  };
+  const warMelody = 'abcdabefabcdagfh' + 'abcdcgefagcdagfh';
+  const warDrums = {
+    a: '3.......5.......', b: '3.....5.2.......',
+    c: '3...5...2...5...', d: '3.......2...55..',
+    e: '3..53.5.3..52.5.', f: '3.5.2.5.3.55.255',
+    g: '3..53.553..52.55', h: '3.553.5.3.555555',
+  };
+  TRACKS.warField = {
+    bpm: 126, bars: 32, sync: 'chapter2', war: 1,
+    lv: { drum: .54, pluck: .33, tone: .18 },
+    drone: { midi: 33, level: .035 }, drums: warDrums,
+    drumArr: 'ababacbdababacbd' + 'acbcacbdabacacbd',
+    ph: WAR_PH, melArr: warMelody,
+    tones: { 0: [3, 3], 8: [5, 3], 16: [3, 3], 24: [7, 3] },
+  };
+  TRACKS.warBattle = {
+    bpm: 126, bars: 32, sync: 'chapter2', war: 2,
+    lv: { drum: .76, pluck: .38, tone: .18 },
+    drone: { midi: 33, level: .045 }, drums: warDrums,
+    drumArr: 'efefegfhefefgffh' + 'egfgegfhefefggfh',
+    ph: WAR_PH, melArr: warMelody,
+    tones: { 0: [3, 3], 8: [5, 3], 16: [3, 3], 24: [7, 3] },
+  };
+  TRACKS.warBoss = {
+    bpm: 144, bars: 32, war: 3,
+    lv: { drum: .78, pluck: .38, tone: .2 },
+    drone: { midi: 33, level: .055 }, drums: warDrums,
+    drumArr: 'egfhegfheffhggfh' + 'egfhegfhegfheghh',
+    ph: WAR_PH, melArr: warMelody,
+    tones: { 0: [3, 3], 8: [2, 3], 16: [3, 3], 24: [5, 3] },
+  };
+
   // 把旋律片段展开成「整首循环里的绝对步数 → 音符」，并顺手检查曲谱长度
   function buildTracks() {
     for (const name in TRACKS) {
@@ -109,7 +153,7 @@
   // ---------- 音频节点 ----------
   let ac = null, out = null, noiseBuf = null;
   let layers = [], state = null, muted = false, started = false, jingle = null;
-  let schedT = 0, pollT = 0;
+  let schedT = 0, pollT = 0, combatHoldUntil = 0, dialogueQuiet = false;
 
   function noiseSrc() {
     if (!noiseBuf) {
@@ -217,6 +261,21 @@
     s.start(t, Math.random()); s.stop(t + dur + .7);
   }
 
+  // 短促军号/低弦：柔化锯齿泛音，留出攻击音效和对白所在的中高频。
+  function warVoice(t, midi, dur, vel, dest, horn = false) {
+    const filter = ac.createBiquadFilter(); filter.type = 'lowpass';
+    filter.frequency.value = horn ? 1550 : 720; filter.Q.value = .5;
+    const g = ac.createGain(); filter.connect(g).connect(dest);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.linearRampToValueAtTime(vel, t + (horn ? .065 : .025));
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    for (const detune of [-5, 5]) {
+      const o = osc(horn ? 'sawtooth' : 'triangle', m2f(midi), t);
+      o.detune.value = detune;
+      o.connect(filter); o.start(t); o.stop(t + dur + .05);
+    }
+  }
+
   // ---------- 循环曲 ----------
   function playStep(L, bar, st, t) {
     const T = L.track;
@@ -231,12 +290,29 @@
       const [d, beats] = T.tones[bar];
       longTone(t, dn(d), beats * 60 / T.bpm, T.lv.tone, L.gain);
     }
+    if (T.war) {
+      const root = [0, 0, 3, 2][Math.floor(bar / 4) % 4];
+      if (st === 0 || (T.war > 1 && st === 8)) {
+        warVoice(t, dn(root), .33, T.war > 1 ? .075 : .035, L.gain);
+      }
+      if (T.war > 1 && st % 2 === 0) {
+        pluck(t, dn(root + (st % 4 === 0 ? 5 : 7)), .065, L.gain, .16);
+      }
+      if (T.war > 1 && bar % 4 === 0 && (st === 0 || st === 6 || st === 10)) {
+        warVoice(t, dn([5, 8, 7][st === 0 ? 0 : st === 6 ? 1 : 2]), .42, .045, L.gain, true);
+      }
+      // 中频鼓皮共振让手机也能听见战鼓，不只堆低频和总音量。
+      if (st === 0 || (T.war > 1 && st === 8)) drum(t, 'tom', .18, L.gain);
+    }
   }
 
-  function newLayer(name) {
+  function newLayer(name, previous) {
     const T = TRACKS[name];
     const g = ac.createGain(); g.gain.value = .0001; g.connect(out);
     const L = { name, track: T, gain: g, step: 0, time: ac.currentTime + .12, spb: 60 / T.bpm / 4, nodes: [] };
+    if (previous && T.sync && T.sync === previous.track.sync && T.bpm === previous.track.bpm) {
+      L.step = previous.step; L.time = previous.time;
+    }
     if (T.drone) {   // 低音持续音，跟着本曲一起淡入淡出
       const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = m2f(T.drone.midi);
       const dg = ac.createGain(); dg.gain.value = T.drone.level;
@@ -333,6 +409,14 @@
     try {
       if (typeof won !== 'undefined' && won) return 'victory';
       if (typeof over !== 'undefined' && over) return 'defeat';
+      if (typeof chapter2Run !== 'undefined' && chapter2Run && !(window.TITLE && TITLE.blocks())) {
+        if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) return 'warField';
+        const alive = typeof zs !== 'undefined' && zs ? zs.filter(z => z && !z.dead) : [];
+        if (alive.some(z => z.T && (z.T.boss || z.T.chapterBoss))) return 'warBoss';
+        if (chapter2Run.mode === 'fight' && alive.length) combatHoldUntil = performance.now() + 2400;
+        if (['intro', 'choice', 'preview', 'victory', 'complete'].includes(chapter2Run.mode)) return 'warField';
+        return performance.now() < combatHoldUntil ? 'warBattle' : 'warField';
+      }
       if (typeof zs !== 'undefined' && zs && zs.some && zs.some(z => z && z.T && z.T.boss && !z.dead)) return 'boss';
       if (typeof lockR !== 'undefined' && lockR < Infinity) return 'battle';
     } catch (e) {}
@@ -350,7 +434,7 @@
     const cur = layers[layers.length - 1];
     if (cur && cur.name === st && !cur.stopping) return;
     layers.filter(L => !L.stopping).forEach(L => stopLayer(L, XFADE));
-    const L = newLayer(st);
+    const L = newLayer(st, cur);
     const t = ac.currentTime;
     L.gain.gain.setValueAtTime(.0001, t);
     L.gain.gain.linearRampToValueAtTime(1, t + XFADE);
@@ -361,7 +445,7 @@
     const t = ac.currentTime;
     out.gain.cancelScheduledValues(t);
     out.gain.setValueAtTime(out.gain.value, t);
-    out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL, t + .12);
+    out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL * (dialogueQuiet ? .45 : 1), t + .25);
   }
 
   // 系统有时会把音频上下文挂起（切后台、来电），在手势或轮询时顺手恢复
@@ -372,7 +456,8 @@
     const st = readState();
     if (st !== state) applyState(st);
     const m = !!(window.SFX && typeof SFX.isMuted === 'function' && SFX.isMuted());
-    if (m !== muted) { muted = m; applyVolume(); }
+    const quiet = !!(window.CHAPTER2_INTRO && CHAPTER2_INTRO.active());
+    if (m !== muted || quiet !== dialogueQuiet) { muted = m; dialogueQuiet = quiet; applyVolume(); }
   }
 
   // ---------- 启动（浏览器要求先有用户操作） ----------
