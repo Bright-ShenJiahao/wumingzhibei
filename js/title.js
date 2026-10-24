@@ -8,14 +8,12 @@
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
   const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
   const ARMORY_KEY = 'wzb-armory-v1';
-  const BOW_KEY = 'wzb-bow-unlocked-v1';
   const DEBUG = /[?&]debug(?:=|&|$)/.test(location.search);
   const ITEMS = Object.freeze({
     staff: Object.freeze({ name: '棍子', slot: 'long', icon: 'w_staff' }),
     halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'halberd' }),
     hammer: Object.freeze({ name: '锤子', slot: 'short', icon: 'w_hammer' }),
     stone: Object.freeze({ name: '石子', slot: 'ranged', icon: 'w_stone' }),
-    bow: Object.freeze({ name: '汉弓', slot: 'ranged', icon: 'w_bow' }),
   });
   const EQUIPMENT_SLOTS = Object.freeze([
     Object.freeze({ id: 'long', name: '长武器', combat: true }),
@@ -71,8 +69,7 @@
     p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
     for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
     if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
-    if ((DEBUG || (() => { try { return localStorage.getItem(BOW_KEY) === '1'; } catch (e) { return false; } })()) && !p.owned.includes('bow')) p.owned.push('bow');
-    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone', 'bow']) if (!p.owned.includes(id)) p.owned.push(id);
+    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone']) if (!p.owned.includes(id)) p.owned.push(id);
     const oldLong = p.long;
     const hadEquipped = !!(raw && raw.equipped);
     const oldEquipped = raw && raw.equipped ? JSON.stringify(raw.equipped) : '';
@@ -849,11 +846,10 @@
   }
 
   function idlePreviewFrame(id) {
-    if (id === 'halberd') return 'arm_idle';
-    if (id === 'hammer') return 'arm_hammer0';
-    if (id === 'staff') return 'arm_staff0';
-    if (id === 'stone') return 'arm_stone0';
-    if (id === 'bow') return 'arm_bow0';
+    if (id === 'halberd') return 'halberd0';
+    if (id === 'hammer') return 'hammer0';
+    if (id === 'staff') return 'staff0';
+    if (id === 'stone') return 'stone0';
     return id + '0';
   }
 
@@ -997,7 +993,7 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
-    preparedWeapon: () => { const p = playerLoadout(); if (p.equipped.ranged === 'bow') return 'bow'; return hasCleared(S.name, 1) ? p.equipped.long : null; },
+    preparedWeapon: () => hasCleared(S.name, 1) ? playerLoadout().equipped.long : null,
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏

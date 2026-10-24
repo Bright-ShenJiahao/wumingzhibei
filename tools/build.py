@@ -37,7 +37,7 @@ assets['title'] = uri(P('art', 'title', 'home.webp'))
 assets['room'] = uri(P('art', 'room', 'wake_outside.webp'))   # 农房内景
 assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))
 # UI（卷轴/木牌按钮/印章）与回血食物
-assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'w_bow', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone')}
+assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone')}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
 
