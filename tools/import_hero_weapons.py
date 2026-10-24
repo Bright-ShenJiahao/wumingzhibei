@@ -23,6 +23,28 @@ def keyed(path):
     return Image.fromarray(rgba), alpha
 
 
+def strengthen_body(color, mask, xx, yy, head, foot, bounds, head_x, shaft):
+    """仅加宽下巴以下的身体约9%，头部、脚底和刚性戟杆保留原坐标。"""
+    lo, hi = bounds
+    (sx, sy), (ex, ey) = shaft
+    length2 = (ex - sx) ** 2 + (ey - sy) ** 2
+    along = np.clip(((xx - sx) * (ex - sx) + (yy - sy) * (ey - sy)) / length2, 0, 1)
+    weapon = (xx - sx - along * (ex - sx)) ** 2 + (yy - sy - along * (ey - sy)) ** 2 < 36
+    body = mask & (xx >= lo) & (xx <= hi) & (yy > head[1] + 3) & (yy < foot[1] - 5) & ~weapon
+    blend = np.clip((yy - head[1] - 3) / 14, 0, 1) * np.clip((foot[1] - 5 - yy) / 14, 0, 1)
+    progress = np.clip((yy - head[1]) / (foot[1] - head[1]), 0, 1)
+    center = head_x * (1 - progress) + foot[0] * progress
+    source_x = np.rint(center + (xx - center) / (1 + .09 * blend) - xx[0, 0]).astype(int)
+    source_x = source_x.clip(0, mask.shape[1] - 1)
+    source_y = np.arange(mask.shape[0])[:, None]
+    expanded = body[source_y, source_x] & ~weapon
+    out, alpha = color.copy(), mask.copy()
+    alpha[body] = False
+    out[expanded] = color[source_y, source_x][expanded]
+    alpha[expanded] = True
+    return out, alpha
+
+
 def import_halberd():
     rgb = np.asarray(Image.open(ART / 'gemini' / '白衣男主_长戟_旧风格_v3.png').convert('RGB')).copy()
     # 名称: (切帧区域, 脚底中心, 头顶/下巴)。空手走路格不纳入持戟循环。
@@ -40,7 +62,22 @@ def import_halberd():
         'down1': ((390, 686, 584, 853), (467, 849), (704, 775)),
         'down2': ((390, 844, 581, 1024), (470, 1019), (870, 940)),
     }
-    frames = {}
+    # 身体范围、颈部中心和戟杆轴线：用来保护头部与武器，只加厚人物本体。
+    bodies = {
+        'idle': ((48, 136), 96, ((140, 191), (140, 45))),
+        'walk1': ((44, 142), 98, ((9, 357), (193, 266))),
+        'walk2': ((48, 139), 100, ((15, 527), (198, 438))),
+        'walk3': ((44, 142), 98, ((8, 680), (191, 591))),
+        'walk4': ((47, 143), 98, ((11, 996), (195, 901))),
+        'walk5': ((244, 334), 292, ((203, 996), (380, 900))),
+        'wind': ((395, 517), 477, ((385, 174), (568, 13))),
+        'recover': ((410, 546), 492, ((401, 298), (669, 298))),
+        'thrust': ((410, 566), 509, ((430, 461), (725, 461))),
+        'overhead': ((438, 534), 494, ((398, 533), (591, 602))),
+        'down1': ((412, 532), 492, ((398, 692), (575, 839))),
+        'down2': ((410, 531), 492, ((397, 849), (566, 1015))),
+    }
+    frames, face_masks = {}, {}
     for name, (box, foot, head) in specs.items():
         x0, y0, x1, y1 = box
         sub = rgb[y0:y1, x0:x1].copy()
@@ -54,8 +91,16 @@ def import_halberd():
         labels, count = ndimage.label(mask)
         sizes = ndimage.sum(mask, labels, range(1, count + 1))
         mask = labels == int(np.argmax(sizes) + 1)
+        bounds, head_x, shaft = bodies[name]
+        sub, mask = strengthen_body(sub, mask, xx, yy, head, foot, bounds, head_x, shaft)
+        c = sub.astype(float)
+        skin = mask & (c[..., 0] > 95) & (c[..., 0] > c[..., 1] * 1.15) & (c[..., 0] < c[..., 1] * 2.05) & (c[..., 1] > c[..., 2] * 1.05)
+        skin &= (xx >= bounds[0] - 6) & (xx <= bounds[1] + 6) & (yy >= head[0]) & (yy < foot[1] - 5)
+        face = skin & (yy <= head[1] + 2)
         ys, xs = np.nonzero(mask)
         bx, by, ex, ey = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+        skin = skin[by:ey, bx:ex]
+        face = face[by:ey, bx:ex]
         sub, mask = sub[by:ey, bx:ex], mask[by:ey, bx:ex]
         # 旧棍子的头部约31像素（含两侧描边）；这里统一为29像素，再补1px描边。
         scale = 29 / (head[1] - head[0])
@@ -65,21 +110,40 @@ def import_halberd():
         premult = np.asarray(Image.fromarray((sub * mask[..., None]).astype('uint8')).resize(size, Image.Resampling.BOX)).astype(float)
         color = (premult / np.maximum(alpha, 1e-3)[..., None]).clip(0, 255).astype('uint8')
         on = alpha > .45
+        skin = np.asarray(Image.fromarray((skin * 255).astype('uint8')).resize(size, Image.Resampling.BOX)) > 127
+        face_masks[name] = np.asarray(Image.fromarray((face * 255).astype('uint8')).resize(size, Image.Resampling.BOX)) > 127
         ax = (foot[0] - x0 - bx) * scale + 1
         ay = round((foot[1] - y0 - by + 1) * scale)
-        frames[name] = (color, on, ax, ay)
+        frames[name] = (color, on, ax, ay, skin & on)
 
     # 旧素材提供肤色、黑发、白衣和阴影；新图补充戟头、红缨和白色轨迹颜色。
     reference = []
     for name in ['staff0', 'hammer0', 'stone0']:
         a = np.asarray(Image.open(ART / 'sprites' / 'hero' / (name + '.png')).convert('RGBA'))
         reference.append(a[..., :3][a[..., 3] > 0])
-    donors = np.concatenate(reference * 6 + [c[m] for c, m, _, _ in frames.values()])
-    palette = Image.fromarray(donors[None]).quantize(colors=29, method=Image.Quantize.MEDIANCUT)
+    # 从旧棍原帧取同一组肤色，匹配明暗分布；不能仅靠混合调色板碰运气。
+    skin_colors = np.array([(112, 70, 58), (145, 93, 76), (190, 116, 94), (204, 130, 103), (229, 152, 117), (251, 183, 136), (252, 189, 140)], dtype='uint8')
+    weights = np.array([np.all(reference[0] == color, axis=1).sum() for color in skin_colors], dtype=float)
+    def match_skin(regions, target_weights):
+        target_cdf = np.cumsum(target_weights) / target_weights.sum()
+        skin_pixels = np.concatenate([color[selection] for color, selection in regions])
+        lightness = np.rint(skin_pixels @ np.array([.299, .587, .114])).astype(int)
+        histogram = np.bincount(lightness, minlength=256)
+        source_cdf = (np.cumsum(histogram) - histogram / 2) / histogram.sum()
+        for color, selection in regions:
+            light = np.rint(color[selection] @ np.array([.299, .587, .114])).astype(int)
+            indices = np.searchsorted(target_cdf, source_cdf[light]).clip(0, len(skin_colors) - 1)
+            color[selection] = skin_colors[indices]
+    match_skin([(c, s & ~face_masks[n]) for n, (c, _, _, _, s) in frames.items()], weights)
+    ref_face = np.asarray(Image.open(ART / 'sprites' / 'hero' / 'staff0.png').convert('RGB'))[12:32, 19:51].reshape(-1, 3)
+    face_weights = np.array([np.all(ref_face == color, axis=1).sum() for color in skin_colors], dtype=float)
+    match_skin([(c, s & face_masks[n]) for n, (c, _, _, _, s) in frames.items()], face_weights)
+    donors = np.concatenate(reference * 6 + [c[m] for c, m, _, _, _ in frames.values()])
+    palette = Image.fromarray(donors[None]).quantize(colors=22, method=Image.Quantize.MEDIANCUT)
     # 给红缨保留3个色阶，避免旧素材的大面积黑白肤色把小块红色挤成棕色。
     red = donors[(donors[:, 0] > donors[:, 1] * 1.8) & (donors[:, 0] > donors[:, 2] * 1.8) & (donors[:, 0] > 70) & (donors[:, 1] < 75)]
     red_palette = Image.fromarray(red[None]).quantize(colors=3, method=Image.Quantize.MEDIANCUT)
-    colors = palette.getpalette()[:29 * 3] + red_palette.getpalette()[:3 * 3]
+    colors = palette.getpalette()[:22 * 3] + skin_colors.flatten().tolist() + red_palette.getpalette()[:3 * 3]
     palette.putpalette(colors + [0] * (768 - len(colors)))
 
     mapping = dict(zip(['halberd0'] + [f'halberdw{i}' for i in range(1, 6)], ['idle'] + [f'walk{i}' for i in range(1, 6)]))
@@ -87,7 +151,7 @@ def import_halberd():
     atlas_path = ART / 'sprites' / 'atlas.json'
     atlas = json.loads(atlas_path.read_text(encoding='utf-8'))
     for name, pose in mapping.items():
-        color, on, ax, ay = frames[pose]
+        color, on, ax, ay, _ = frames[pose]
         color = np.asarray(Image.fromarray(color).quantize(palette=palette, dither=Image.Dither.NONE).convert('RGB'))
         h, w = on.shape
         out = np.zeros((h + 2, w + 2, 4), dtype='uint8')
