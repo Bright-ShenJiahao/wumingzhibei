@@ -55,7 +55,7 @@ FONT_OUT = P('art', 'fonts', 'result.ttf')
 os.makedirs(P('art', 'fonts'), exist_ok=True)
 _gsrc = open(P('game.js'), encoding='utf-8').read()
 _i = _gsrc.find('const DEATH_LINES')
-_body = _gsrc[_i:] if _i > 0 else _gsrc
+_body = _gsrc  # 全部游戏字符串都进子集，避免结算/UI 某些字回退成系统字体
 _chars = set()
 for _m in __import__('re').findall(r"'([^'\\]*)'|\"([^\"\\]*)\"|`([^`\\]*)`", _body):
     for _t in _m:
