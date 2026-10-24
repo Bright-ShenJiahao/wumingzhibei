@@ -6,11 +6,93 @@
 import json
 from pathlib import Path
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / 'art'
+
+# 统一的是骨架尺寸，不是含武器的外接框。头部不拉伸，下巴以下补回约4px。
+BODY_STRETCH = 1.10
+HALBERD_LENGTH = 135  # 与锤子约75px人物本体对应，1.8倍；不含刀光。
+
+
+def rigid_halberd():
+    """同一把戟：保留戟头/红缨体积，只增加两手前方的直杆。"""
+    im = Image.new('RGBA', (HALBERD_LENGTH, 23))
+    d = ImageDraw.Draw(im)
+    d.rectangle((2, 7, 110, 11), fill=(27, 26, 28, 255))
+    d.line((4, 8, 110, 8), fill=(104, 103, 102, 255))
+    d.rectangle((0, 7, 3, 11), fill=(49, 49, 53, 255))
+    d.line((1, 8, 2, 8), fill=(180, 180, 183, 255))
+    # 按独立武器原图的环月侧刃与轴向枪尖落到整数像素，避免JPEG杂色和歪尖。
+    dark, steel, light = (34, 33, 37, 255), (146, 149, 154, 255), (230, 232, 225, 255)
+    for points in [[(111, 8), (108, 2), (113, 4), (119, 4), (124, 0), (122, 5), (116, 9)],
+                   [(111, 10), (108, 16), (113, 14), (119, 14), (124, 18), (122, 13), (116, 9)]]:
+        d.polygon(points, fill=steel, outline=dark)
+    d.line((110, 3, 114, 5, 119, 5, 122, 3), fill=light)
+    d.line((112, 14, 116, 12, 120, 14), fill=light)
+    d.polygon([(114, 7), (124, 5), (134, 9), (124, 12), (114, 11)], fill=steel, outline=dark)
+    d.line((116, 8, 131, 9), fill=light)
+    d.rectangle((106, 7, 110, 11), fill=(181, 133, 64, 255), outline=dark)
+    d.polygon([(106, 10), (111, 11), (108, 16), (105, 17), (101, 21), (103, 15), (101, 17), (103, 12)], fill=(145, 31, 29, 255), outline=(75, 24, 27, 255))
+    d.line((107, 12, 104, 17), fill=(206, 57, 37, 255))
+    return im
+
+
+def compose_weapon(im, ax, ay, pose, shaft, box, crop_origin, scale, chin, body_stretch):
+    """用固定长度刚性武器合成，独立维护脚底锚点与头部尺寸。"""
+    bx, by = crop_origin
+    def point(p):
+        x, y = p
+        y = y if y <= chin else chin + (y - chin) * body_stretch
+        return np.array([(x - box[0] - bx) * scale + 1,
+                         (y - box[1] - by) * scale + 1])
+    start, end = map(point, shaft)
+    direction = (end - start) / np.linalg.norm(end - start)
+    weapon = rigid_halberd()
+    # 局部坐标到屏幕；杆轴y=9，柄尾保持原来的位置，新增长度全部位于手前方。
+    corners = np.array([start + direction * x + np.array([-direction[1], direction[0]]) * (y - 9)
+                        for x, y in [(0, 0), (135, 0), (0, 23), (135, 23)]])
+    low = np.floor(np.minimum(corners.min(axis=0), [0, 0]) - 75).astype(int)
+    high = np.ceil(np.maximum(corners.max(axis=0), im.size) + 75).astype(int)
+    size = tuple(high - low)
+    # 逆仿射保持戟头与杆轴同线，最近邻保证像素硬边。
+    normal = np.array([-direction[1], direction[0]])
+    origin = low - start
+    coeff = (direction[0], direction[1], float(direction @ origin),
+             normal[0], normal[1], float(normal @ origin + 9))
+    layer = weapon.transform(size, Image.Transform.AFFINE, coeff, Image.Resampling.NEAREST)
+    body = Image.new('RGBA', size)
+    body.alpha_composite(im, tuple(-low))
+    # 武器先画，人物/手掌后画，确保握持处不被杆覆盖。
+    layer.alpha_composite(body)
+    ax, ay = ax - low[0], ay - low[1]
+    tip = start + direction * 134 - low
+    if pose in ('thrust', 'down1', 'down2'):
+        fx = Image.new('RGBA', size)
+        d = ImageDraw.Draw(fx)
+        if pose == 'thrust':
+            for offset, length in [(-7, 32), (-3, 43), (5, 37), (9, 23)]:
+                p = tip - direction * 19 + normal * offset
+                q = p - direction * length
+                d.line([tuple(q), tuple(p)], fill=(169, 226, 239, 255), width=1)
+                d.line([tuple(q + direction * 10), tuple(p - direction * 4)], fill=(244, 251, 248, 255), width=1)
+        else:
+            # 新参考图的青白色月牙：固定在戟尖经过的路径，不增加第二把武器。
+            center = np.array([ax + 8, ay - 34])
+            radius = float(np.linalg.norm(tip - center))
+            angle = np.arctan2(*(tip - center)[::-1])
+            angles = np.linspace(angle - 1.45, angle, 36)
+            outer = [tuple(center + (radius + 2) * np.array([np.cos(t), np.sin(t)])) for t in angles]
+            inner = [tuple(center + (radius - 2 - 5 * i / 35) * np.array([np.cos(t), np.sin(t)])) for i, t in enumerate(angles)]
+            d.polygon(outer + inner[::-1], fill=(163, 223, 236, 255))
+            d.line(outer, fill=(247, 252, 249, 255), width=2)
+        fx.alpha_composite(layer)
+        layer = fx
+    bbox = layer.getbbox()
+    layer = layer.crop(bbox)
+    return layer, round(float(ax - bbox[0]), 1), round(float(ay - bbox[1]), 1), round(float((tip[0] - ax) * .4), 1)
 
 
 def keyed(path):
@@ -74,10 +156,10 @@ def import_halberd():
         'recover': ((410, 546), 492, ((401, 298), (669, 298))),
         'thrust': ((410, 566), 509, ((430, 461), (725, 461))),
         'overhead': ((438, 534), 494, ((398, 533), (591, 602))),
-        'down1': ((412, 532), 492, ((398, 692), (575, 839))),
-        'down2': ((410, 531), 492, ((397, 849), (566, 1015))),
+        'down1': ((412, 532), 492, ((398, 692), (570, 823))),
+        'down2': ((410, 531), 492, ((397, 849), (563, 983))),
     }
-    frames, face_masks = {}, {}
+    frames, face_masks, geometry = {}, {}, {}
     for name, (box, foot, head) in specs.items():
         x0, y0, x1, y1 = box
         sub = rgb[y0:y1, x0:x1].copy()
@@ -97,6 +179,27 @@ def import_halberd():
         skin = mask & (c[..., 0] > 95) & (c[..., 0] > c[..., 1] * 1.15) & (c[..., 0] < c[..., 1] * 2.05) & (c[..., 1] > c[..., 2] * 1.05)
         skin &= (xx >= bounds[0] - 6) & (xx <= bounds[1] + 6) & (yy >= head[0]) & (yy < foot[1] - 5)
         face = skin & (yy <= head[1] + 2)
+        # 显式移除旧短戟：轴线窄管+戟头区域，手掌及其轮廓保留。
+        start, end = np.array(shaft[0]), np.array(shaft[1])
+        vector = end - start
+        length = np.linalg.norm(vector)
+        along = ((xx - start[0]) * vector[0] + (yy - start[1]) * vector[1]) / length
+        across = np.abs((xx - start[0]) * vector[1] - (yy - start[1]) * vector[0]) / length
+        old_weapon = ((across < 7) & (along > -10) & (along < length + 12)) | ((across < 33) & (along > length - 90) & (along < length + 48))
+        hands = ndimage.binary_dilation(skin & (xx >= bounds[0]) & (xx <= bounds[1]), iterations=2)
+        # 原下劈帧有弧光，只保留身体附近，新的轨迹在独立层重建。
+        if name == 'down1':
+            old_weapon |= (xx > bounds[1] + 3) | ((yy > head[1] + 6) & (sub[..., 0] > 205) & (sub[..., 1] > 205))
+        head_region = (np.abs(xx - head_x) < 40) & (yy >= head[0] - 2) & (yy <= head[1] + 2)
+        if name == 'idle':
+            # 旧竖戟侧刃紧贴刘海，不能把它当成需要保护的头发/脸。
+            head_region &= xx < 130
+            hands &= ~((xx >= 130) & (yy < 90))
+        mask &= ~old_weapon | hands | head_region
+        if name == 'idle':
+            mask &= ~((xx >= 128) & (yy < 90))
+        skin &= mask
+        face &= mask
         ys, xs = np.nonzero(mask)
         bx, by, ex, ey = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
         skin = skin[by:ey, bx:ex]
@@ -104,6 +207,11 @@ def import_halberd():
         sub, mask = sub[by:ey, bx:ex], mask[by:ey, bx:ex]
         # 旧棍子的头部约31像素（含两侧描边）；这里统一为29像素，再补1px描边。
         scale = 29 / (head[1] - head[0])
+        # 仅在已排除戟的身体层量头顶/鞋底；头部不动，颈部以下落到75px含描边。
+        actual_head = (head[1] - y0 - by) * scale
+        actual_lower = (y0 + ey - 1 - head[1]) * scale
+        body_stretch = ((73 - actual_head) / actual_lower
+                        if name == 'idle' or name.startswith('walk') else BODY_STRETCH)
         size = (round(sub.shape[1] * scale), round(sub.shape[0] * scale))
         sub[..., 1] = np.minimum(sub[..., 1], np.maximum(sub[..., 0], sub[..., 2]) + 6)
         alpha = np.asarray(Image.fromarray((mask * 255).astype('uint8')).resize(size, Image.Resampling.BOX)).astype(float) / 255
@@ -114,7 +222,18 @@ def import_halberd():
         face_masks[name] = np.asarray(Image.fromarray((face * 255).astype('uint8')).resize(size, Image.Resampling.BOX)) > 127
         ax = (foot[0] - x0 - bx) * scale + 1
         ay = round((foot[1] - y0 - by + 1) * scale)
+        # 头部保持29px；仅校准颈部以下长度，站立本体从约71补至75px。
+        cut = max(1, min(size[1] - 1, round((head[1] - y0 - by) * scale)))
+        lower = round((size[1] - cut) * body_stretch)
+        def stretch(a):
+            return np.concatenate((a[:cut], np.asarray(Image.fromarray(a[cut:]).resize((size[0], lower), Image.Resampling.NEAREST))))
+        color = stretch(color)
+        on = stretch(on.astype('uint8')).astype(bool)
+        skin = stretch(skin.astype('uint8')).astype(bool)
+        face_masks[name] = stretch(face_masks[name].astype('uint8')).astype(bool)
+        ay += round(max(0, foot[1] - head[1]) * scale * (body_stretch - 1))
         frames[name] = (color, on, ax, ay, skin & on)
+        geometry[name] = (shaft, box, (bx, by), scale, head[1], body_stretch)
 
     # 旧素材提供肤色、黑发、白衣和阴影；新图补充戟头、红缨和白色轨迹颜色。
     reference = []
@@ -167,9 +286,18 @@ def import_halberd():
         out[edge, :3] = (neighbor / np.maximum(count, 1)[..., None] * .3).astype('uint8')[edge]
         out[edge, 3] = 255
         out[out[..., 3] == 0] = 0
+        # 去掉拆旧武器时留下的孤立杂点，保留独立握拳等正常部件。
+        labels, total = ndimage.label(out[..., 3] > 0)
+        sizes = np.bincount(labels.ravel())
+        out[(labels > 0) & (sizes[labels] < 6)] = 0
+        # 鞋底以人物层最下面的不透明像素为准，武器/特效不参与落脚点。
+        ay = int(np.nonzero(out[..., 3])[0].max()) + 1
         im = Image.fromarray(out)
+        im, ax, ay, reach = compose_weapon(im, ax, ay, pose, *geometry[pose])
         im.save(ART / 'sprites' / 'hero' / (name + '.png'))
         atlas['hero'][name] = [im.width, im.height, round(ax, 1), ay]
+        print(name, 'body_px=', Image.fromarray(out).getbbox()[3] - Image.fromarray(out).getbbox()[1],
+              'anchor=', ax, ay, 'tip_world=', reach)
     atlas_path.write_text(json.dumps(atlas, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     print('长戟：旧素材共享调色、1px描边、头部校准，输出', len(mapping), '帧')
 

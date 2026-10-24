@@ -844,7 +844,9 @@
     const baseH = 74;   // 以主角身高为基准，所有武器/攻击帧统一比例
     // 不能用 frame.w（武器长度）限制缩放，否则长戟攻击帧会把人物缩小，预览忽大忽小。
     const scale = Math.max(1, Math.min(2, Math.floor(canvas.height * .78 / baseH)));
-    const x = Math.round(canvas.width / 2 - frame.ax * scale);
+    // 长戟按人物同倍率画，锚点向左留出完整135px武器和轨迹的空间。
+    const centerX = previewWeapon === 'halberd' ? canvas.width * .32 : canvas.width / 2;
+    const x = Math.round(centerX - frame.ax * scale);
     const y = Math.round(canvas.height - 28 - frame.ay * scale);
     g.imageSmoothingEnabled = false;
     g.drawImage(frame.img, x, y, frame.w * scale, frame.h * scale);
