@@ -52,6 +52,7 @@ if (ASSETS.chapter2) {
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
+Object.entries(ASSETS.dialogPortraits || {}).forEach(([k, v]) => load('dialog_' + k, v));
 document.querySelectorAll('[data-weapon-icon]').forEach(img => {
   const src = ASSETS.ui && ASSETS.ui[img.dataset.weaponIcon];
   if (src) img.src = src;
@@ -485,21 +486,23 @@ function addChapter2Props() {
   }
 }
 
-function startChapter2Debug() {
+function prepareChapter2Run(showOpening) {
   if (window.TITLE && TITLE.skip) TITLE.skip();
   if (window.ROOM && ROOM.skip) ROOM.skip();
   reset();
   M.W = 3600;
   props = [];
   addChapter2Props();
-  chapter2Run = { battle: 1, wave: 0, mode: 'fight', nextAt: 0, route: null };
+  chapter2Run = { battle: 1, wave: 0, mode: showOpening ? 'intro' : 'fight', nextAt: 0, route: null };
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
   hero.x = 60; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.hp = 10;
-  startChapter2Battle(1);
+  if (showOpening && window.CHAPTER2_INTRO) CHAPTER2_INTRO.start(() => startChapter2Battle(1));
+  else startChapter2Battle(1);
 }
-// 正式入口：从章节选择进入第二章（和调试入口共用同一套初始化）
-function startChapter2() { startChapter2Debug(); }
+function startChapter2Debug() { prepareChapter2Run(false); }
+// 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
+function startChapter2() { prepareChapter2Run(true); }
 function startChapter2Battle(number) {
   M.W = number === 5 ? 1080 : 3600;
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
@@ -1536,6 +1539,7 @@ function countComboHit() {
   if (comboNotices.length > 2) comboNotices.shift();   // 最多同时两条
 }
 function update(dt) {
+  if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) { CHAPTER2_INTRO.update(dt); return; }
   if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
   if (critT > 0) critT -= dt;
   if (pdCd > 0) pdCd -= dt;
@@ -1885,6 +1889,7 @@ function draw() {
   }
   drawResult(HW, HH);
   if (chapter2Run && chapter2Run.mode === 'choice') drawChapter2Choice(HW, HH);
+  if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) CHAPTER2_INTRO.draw();
 }
 
 // ---------- 结算板（通关 / 倒下） ----------

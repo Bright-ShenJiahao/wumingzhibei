@@ -27,7 +27,10 @@ def sprite_uri(path):
     return 'data:image/png;base64,' + base64.b64encode(data).decode()
 
 
-assets = {'chars': {ch: {f: [sprite_uri(P('art', 'sprites', ch, f + '.png'))] + v for f, v in fr.items()} for ch, fr in atlas.items()}}
+# Atlas may contain optional frames not present in this checkout; package only available files.
+assets = {'chars': {ch: {f: [sprite_uri(P('art', 'sprites', ch, f + '.png'))] + v
+                         for f, v in fr.items() if os.path.isfile(P('art', 'sprites', ch, f + '.png'))}
+                     for ch, fr in atlas.items()}}
 pm = json.load(open(P('art', 'props', 'meta.json')))
 _src = open(P('game.js'), encoding='utf-8').read()
 # 只打包 game.js 里实际用到的道具（按名字出现与否判断），减小网页体积
@@ -38,6 +41,10 @@ assets['room'] = uri(P('art', 'room', 'wake_outside.webp'))   # 农房内景
 assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))
 # UI（卷轴/木牌按钮/印章）与回血食物
 assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'w_bow', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone')}
+assets['dialogPortraits'] = {
+    'caocao': uri(P('art', 'ui', 'portrait_caocao.png')),
+    'messenger': uri(P('art', 'ui', 'portrait_messenger.png')),
+}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
 
