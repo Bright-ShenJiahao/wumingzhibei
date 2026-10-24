@@ -12,6 +12,7 @@ SOURCE = ART / 'gemini/白衣男主_汉弓_Gemini_v2.png'
 
 
 def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-contact.png', body_regions=None):
+    is_bow = mapping is None
     rgb = np.asarray(Image.open(source).convert('RGB'))
     # 区域、头顶/下巴、脚底中心。右列第5格缺弓，禁止接入；飞箭由游戏投射物绘制。
     specs = specs or {
@@ -49,6 +50,15 @@ def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-conta
         bounds, head_x, shaft = body_regions[name]
         foot_y = y0 + np.nonzero(mask)[0].max()
         color, mask = strengthen_body(color, mask, xx, yy, head, (foot_x, foot_y), bounds, head_x, shaft)
+        if is_bow:
+            # 白衣躯干用纵向体积明暗替换腹部的两道横向灰褶；皮肤、黑描边不参与。
+            c = color.astype(int)
+            depth = (yy - head[1]) / max(1, foot_y - head[1])
+            cloth = mask & (np.abs(xx - head_x) < 32) & (depth > .04) & (depth < .56)
+            cloth &= (c.min(axis=2) > 115) & (c.max(axis=2) - c.min(axis=2) < 42)
+            shade = np.clip((xx - head_x + 28) / 56 * .7 + depth * .3, 0, .99)
+            ramp = np.array([(239, 242, 247), (220, 224, 232), (196, 202, 214)], dtype='uint8')
+            color[cloth] = ramp[(shade * 3).astype(int)[cloth]]
         ys, xs = np.nonzero(mask)
         bx, by, ex, ey = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
         color, mask = color[by:ey, bx:ex], mask[by:ey, bx:ex]
@@ -71,7 +81,27 @@ def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-conta
             joined = np.concatenate((np.dstack((color, mask.astype('uint8') * 255))[:cut], np.asarray(lower)))
             color, mask = joined[..., :3], joined[..., 3] > 0
         ax = (foot_x - x0 - bx) * scale + 1
-        frames[name] = (color.copy(), mask, ax)
+        # 弓弦在最终像素层单独绘制，避免连通块过滤和BOX采样丢掉细线。
+        string_points = None
+        if is_bow:
+            anchors = {
+                'idle': [(185, 61), (137, 167)], 'walk1': [(185, 239), (130, 348)],
+                'walk2': [(184, 548), (134, 660)], 'walk3': [(184, 712), (135, 826)],
+                'draw1': [(546, 18), (477, 99), (546, 184)],
+                'draw2': [(546, 213), (478, 275), (546, 365)],
+                'draw3': [(548, 383), (479, 438), (551, 520)],
+                'release1': [(536, 533), (538, 672)],
+                'release2': [(537, 866), (532, 980)],
+            }
+            def convert(p):
+                x, y = p
+                px, py = (x - x0 - bx) * scale + 1, (y - y0 - by) * scale + 1
+                if name == 'idle' or name.startswith('walk'):
+                    if py - 1 > cut:
+                        py = cut + (py - 1 - cut) * lower_h / max(1, int(foot_rows.max()) + 1 - cut) + 1
+                return round(px), round(py)
+            string_points = [convert(p) for p in anchors[name]]
+        frames[name] = (color.copy(), mask, ax, string_points)
 
     reference = []
     for name in ['staff0', 'hammer0', 'stone0']:
@@ -80,14 +110,14 @@ def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-conta
     skin_colors = np.array([(112, 70, 58), (145, 93, 76), (190, 116, 94), (204, 130, 103), (229, 152, 117), (251, 183, 136), (252, 189, 140)], dtype='uint8')
     weight = np.array([np.all(reference[0] == c, axis=1).sum() for c in skin_colors])
     target = np.cumsum(weight) / weight.sum()
-    for color, mask, _ in frames.values():
+    for color, mask, _, _ in frames.values():
         c = color.astype(float)
         skin = mask & (c[..., 0] > 95) & (c[..., 0] > c[..., 1] * 1.15) & (c[..., 0] < c[..., 1] * 2.05) & (c[..., 1] > c[..., 2] * 1.05)
         light = np.rint(c[skin] @ np.array([.299, .587, .114])).astype(int)
         hist = np.bincount(light, minlength=256)
         cdf = (np.cumsum(hist) - hist / 2) / max(1, hist.sum())
         color[skin] = skin_colors[np.searchsorted(target, cdf[light]).clip(0, 6)]
-    donors = np.concatenate(reference * 6 + [c[m] for c, m, _ in frames.values()])
+    donors = np.concatenate(reference * 6 + [c[m] for c, m, _, _ in frames.values()])
     palette = Image.fromarray(donors[None]).quantize(colors=32, method=Image.Quantize.MEDIANCUT)
     mapping = mapping or {'bow0': 'idle', 'boww1': 'walk1', 'boww2': 'walk2', 'boww3': 'walk3',
                'bow_1a': 'draw1', 'bow_1b': 'release1', 'bow_2a': 'draw2', 'bow_2b': 'release2',
@@ -95,7 +125,7 @@ def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-conta
     atlas_path = ART / 'sprites/atlas.json'
     atlas = json.loads(atlas_path.read_text(encoding='utf-8'))
     for name, pose in mapping.items():
-        color, mask, ax = frames[pose]
+        color, mask, ax, string_points = frames[pose]
         color = np.asarray(Image.fromarray(color).quantize(palette=palette, dither=Image.Dither.NONE).convert('RGB'))
         h, w = mask.shape
         out = np.zeros((h + 2, w + 2, 4), dtype='uint8')
@@ -113,6 +143,12 @@ def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-conta
         bright_edge = edge & (average.min(axis=2) > 175)
         out[bright_edge] = 0
         im = Image.fromarray(out)
+        if string_points:
+            # 线放在人物后面，再叠人物，弦经过手指处自然被手掌遮挡。
+            layer = Image.new('RGBA', im.size)
+            ImageDraw.Draw(layer).line(string_points, fill=(169, 154, 119, 255), width=1)
+            layer.alpha_composite(im)
+            im = layer
         im.save(ART / 'sprites/hero' / (name + '.png'))
         ay = int(np.nonzero(out[..., 3])[0].max()) + 1
         atlas['hero'][name] = [im.width, im.height, round(ax, 1), ay]

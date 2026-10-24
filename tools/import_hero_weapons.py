@@ -117,7 +117,9 @@ def strengthen_body(color, mask, xx, yy, head, foot, bounds, head_x, shaft):
     blend = np.clip((yy - head[1] - 3) / 14, 0, 1) * np.clip((foot[1] - 5 - yy) / 14, 0, 1)
     progress = np.clip((yy - head[1]) / (foot[1] - head[1]), 0, 1)
     center = head_x * (1 - progress) + foot[0] * progress
-    source_x = np.rint(center + (xx - center) / (1 + .20 * blend) - xx[0, 0]).astype(int)
+    # 肩臂与大腿保留力量感，腰腹只加少量宽度，避免整段躯干膨胀成圆肚。
+    gain = np.interp(progress, [0, .12, .30, .52, .68, .9, 1], [.14, .18, .06, .03, .12, .12, 0])
+    source_x = np.rint(center + (xx - center) / (1 + gain * blend) - xx[0, 0]).astype(int)
     source_x = source_x.clip(0, mask.shape[1] - 1)
     source_y = np.arange(mask.shape[0])[:, None]
     expanded = body[source_y, source_x] & ~weapon
