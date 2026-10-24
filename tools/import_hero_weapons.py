@@ -106,17 +106,18 @@ def keyed(path):
 
 
 def strengthen_body(color, mask, xx, yy, head, foot, bounds, head_x, shaft):
-    """仅加宽下巴以下的身体约9%，头部、脚底和刚性戟杆保留原坐标。"""
+    """加厚下巴以下的肩背、腰胯与四肢；头部、脚底和武器握持保留。"""
     lo, hi = bounds
     (sx, sy), (ex, ey) = shaft
     length2 = (ex - sx) ** 2 + (ey - sy) ** 2
     along = np.clip(((xx - sx) * (ex - sx) + (yy - sy) * (ey - sy)) / length2, 0, 1)
-    weapon = (xx - sx - along * (ex - sx)) ** 2 + (yy - sy - along * (ey - sy)) ** 2 < 36
+    # 握柄周围包含整只手掌，不加宽手指，避免原位置和新位置同时留下残影。
+    weapon = (xx - sx - along * (ex - sx)) ** 2 + (yy - sy - along * (ey - sy)) ** 2 < 144
     body = mask & (xx >= lo) & (xx <= hi) & (yy > head[1] + 3) & (yy < foot[1] - 5) & ~weapon
     blend = np.clip((yy - head[1] - 3) / 14, 0, 1) * np.clip((foot[1] - 5 - yy) / 14, 0, 1)
     progress = np.clip((yy - head[1]) / (foot[1] - head[1]), 0, 1)
     center = head_x * (1 - progress) + foot[0] * progress
-    source_x = np.rint(center + (xx - center) / (1 + .09 * blend) - xx[0, 0]).astype(int)
+    source_x = np.rint(center + (xx - center) / (1 + .20 * blend) - xx[0, 0]).astype(int)
     source_x = source_x.clip(0, mask.shape[1] - 1)
     source_y = np.arange(mask.shape[0])[:, None]
     expanded = body[source_y, source_x] & ~weapon
@@ -198,6 +199,8 @@ def import_halberd():
         mask &= ~old_weapon | hands | head_region
         if name == 'idle':
             mask &= ~((xx >= 128) & (yy < 90))
+            metal_by_hair = (xx >= 121) & (yy < 90) & (np.abs(c[..., 0] - c[..., 2]) < 15) & (c[..., 0] > 85)
+            mask &= ~metal_by_hair
         skin &= mask
         face &= mask
         ys, xs = np.nonzero(mask)
@@ -213,7 +216,7 @@ def import_halberd():
         body_stretch = ((73 - actual_head) / actual_lower
                         if name == 'idle' or name.startswith('walk') else BODY_STRETCH)
         size = (round(sub.shape[1] * scale), round(sub.shape[0] * scale))
-        sub[..., 1] = np.minimum(sub[..., 1], np.maximum(sub[..., 0], sub[..., 2]) + 6)
+        sub[..., 1] = np.minimum(sub[..., 1], np.maximum(sub[..., 0], sub[..., 2]).astype('int16') + 6)
         alpha = np.asarray(Image.fromarray((mask * 255).astype('uint8')).resize(size, Image.Resampling.BOX)).astype(float) / 255
         premult = np.asarray(Image.fromarray((sub * mask[..., None]).astype('uint8')).resize(size, Image.Resampling.BOX)).astype(float)
         color = (premult / np.maximum(alpha, 1e-3)[..., None]).clip(0, 255).astype('uint8')

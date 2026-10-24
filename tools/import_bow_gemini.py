@@ -4,16 +4,17 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
+from import_hero_weapons import strengthen_body
 
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / 'art'
 SOURCE = ART / 'gemini/白衣男主_汉弓_Gemini_v2.png'
 
 
-def main():
-    rgb = np.asarray(Image.open(SOURCE).convert('RGB'))
+def main(source=SOURCE, specs=None, mapping=None, preview_name='bow-gemini-contact.png', body_regions=None):
+    rgb = np.asarray(Image.open(source).convert('RGB'))
     # 区域、头顶/下巴、脚底中心。右列第5格缺弓，禁止接入；飞箭由游戏投射物绘制。
-    specs = {
+    specs = specs or {
         'idle': ((60, 23, 205, 201), (31, 97), 119),
         'walk1': ((44, 208, 206, 378), (216, 282), 122),
         'walk2': ((42, 527, 210, 694), (533, 600), 121),
@@ -24,6 +25,17 @@ def main():
         'release1': ((422, 531, 580, 694), (536, 605), 501),
         'release2': ((420, 856, 580, 1024), (866, 935), 500),
     }
+    body_regions = body_regions or {
+        'idle': ((73, 156), 116, ((154, 156), (180, 62))),
+        'walk1': ((60, 155), 121, ((157, 319), (182, 240))),
+        'walk2': ((57, 158), 128, ((162, 638), (181, 550))),
+        'walk3': ((65, 159), 128, ((161, 796), (181, 714))),
+        'draw1': ((433, 563), 501, ((564, 190), (546, 17))),
+        'draw2': ((435, 563), 503, ((560, 367), (546, 213))),
+        'draw3': ((437, 563), 505, ((560, 519), (548, 383))),
+        'release1': ((436, 558), 502, ((558, 679), (549, 536))),
+        'release2': ((435, 553), 500, ((553, 1007), (546, 868))),
+    }
     frames = {}
     for name, (box, head, foot_x) in specs.items():
         x0, y0, x1, y1 = box
@@ -33,12 +45,17 @@ def main():
         sizes = np.bincount(labels.ravel()); sizes[0] = 0
         # 严格只取这一格的人物连通块：邻帧箭头、独立飞箭一律不并入。
         mask = labels == sizes.argmax()
+        yy, xx = np.mgrid[y0:y1, x0:x1]
+        bounds, head_x, shaft = body_regions[name]
+        foot_y = y0 + np.nonzero(mask)[0].max()
+        color, mask = strengthen_body(color, mask, xx, yy, head, (foot_x, foot_y), bounds, head_x, shaft)
         ys, xs = np.nonzero(mask)
         bx, by, ex, ey = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
         color, mask = color[by:ey, bx:ex], mask[by:ey, bx:ex]
         scale = 29 / (head[1] - head[0])
         size = (round(color.shape[1] * scale), round(color.shape[0] * scale))
-        color[..., 1] = np.minimum(color[..., 1], np.maximum(color[..., 0], color[..., 2]) + 6)
+        # 高亮可达255，先转整型再加容差，避免uint8溢出把白色变紫。
+        color[..., 1] = np.minimum(color[..., 1], np.maximum(color[..., 0], color[..., 2]).astype('int16') + 6)
         alpha = np.asarray(Image.fromarray((mask * 255).astype('uint8')).resize(size, Image.Resampling.BOX)) / 255
         premult = np.asarray(Image.fromarray((color * mask[..., None]).astype('uint8')).resize(size, Image.Resampling.BOX)).astype(float)
         color = (premult / np.maximum(alpha, 1e-3)[..., None]).clip(0, 255).astype('uint8')
@@ -72,7 +89,7 @@ def main():
         color[skin] = skin_colors[np.searchsorted(target, cdf[light]).clip(0, 6)]
     donors = np.concatenate(reference * 6 + [c[m] for c, m, _ in frames.values()])
     palette = Image.fromarray(donors[None]).quantize(colors=32, method=Image.Quantize.MEDIANCUT)
-    mapping = {'bow0': 'idle', 'boww1': 'walk1', 'boww2': 'walk2', 'boww3': 'walk3',
+    mapping = mapping or {'bow0': 'idle', 'boww1': 'walk1', 'boww2': 'walk2', 'boww3': 'walk3',
                'bow_1a': 'draw1', 'bow_1b': 'release1', 'bow_2a': 'draw2', 'bow_2b': 'release2',
                'bow_3a': 'draw3', 'bow_3b': 'release2'}
     atlas_path = ART / 'sprites/atlas.json'
@@ -89,25 +106,31 @@ def main():
         for dy, dx in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             neighbor += np.roll(np.roll(out[..., :3] * on[..., None], dy, 0), dx, 1)
             count += np.roll(np.roll(on, dy, 0), dx, 1)
-        out[edge, :3] = (neighbor / np.maximum(count, 1)[..., None] * .3).astype('uint8')[edge]
+        average = neighbor / np.maximum(count, 1)[..., None]
+        out[edge, :3] = (average * .3).astype('uint8')[edge]
         out[edge, 3] = 255; out[out[..., 3] == 0] = 0
+        # 人物原有深色外轮廓保留；白/青刀光的外沿不额外套一圈黑边。
+        bright_edge = edge & (average.min(axis=2) > 175)
+        out[bright_edge] = 0
         im = Image.fromarray(out)
         im.save(ART / 'sprites/hero' / (name + '.png'))
         ay = int(np.nonzero(out[..., 3])[0].max()) + 1
         atlas['hero'][name] = [im.width, im.height, round(ax, 1), ay]
         print(name, im.size, 'anchor=', round(ax, 1), ay)
     atlas_path.write_text(json.dumps(atlas, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
-    preview = Image.new('RGBA', (1500, 760), (226, 216, 192, 255))
+    columns = 4
+    names = ['hammer0', 'staff0'] + list(mapping)
+    preview = Image.new('RGBA', (columns * 500, ((len(names) + columns - 1) // columns) * 400), (226, 216, 192, 255))
     d = ImageDraw.Draw(preview)
-    for i, name in enumerate(['hammer0', 'staff0'] + list(mapping)):
+    for i, name in enumerate(names):
         w, h, ax, ay = atlas['hero'][name]
-        x, y = i % 6 * 250, i // 6 * 380
+        x, y = i % columns * 500, i // columns * 400
         im = Image.open(ART / 'sprites/hero' / (name + '.png')).convert('RGBA')
-        preview.alpha_composite(im.resize((w * 3, h * 3), Image.Resampling.NEAREST), (round(x + 90 - ax * 3), round(y + 330 - ay * 3)))
-        d.line((x + 5, y + 330, x + 245, y + 330), fill=(160, 140, 110))
+        preview.alpha_composite(im.resize((w * 3, h * 3), Image.Resampling.NEAREST), (round(x + 160 - ax * 3), round(y + 330 - ay * 3)))
+        d.line((x + 5, y + 330, x + 495, y + 330), fill=(160, 140, 110))
         d.text((x + 10, y + 10), name, fill=(40, 30, 25))
     (ROOT / 'build').mkdir(exist_ok=True)
-    preview.save(ROOT / 'build/bow-gemini-contact.png')
+    preview.save(ROOT / 'build' / preview_name)
 
 
 if __name__ == '__main__':

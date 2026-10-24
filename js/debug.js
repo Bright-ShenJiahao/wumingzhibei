@@ -57,7 +57,7 @@
     const godBtn = btn(god ? '无敌：开' : '无敌：关', 'off', () => { god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off'; });
     btn('复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
     btn('测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
-    for (const [id, label] of [['halberd', '试用长戟'], ['bow', '试用汉弓']]) {
+    for (const [id, label] of [['halberd', '试用长戟'], ['bow', '试用汉弓'], ['blade', '试用大刀']]) {
       btn(label, 'alt', () => {
         if (window.TITLE) { TITLE.skip(); if (TITLE.grantWeapon) TITLE.grantWeapon(id, true); }
         if (window.ROOM) ROOM.skip();

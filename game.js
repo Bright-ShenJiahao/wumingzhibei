@@ -102,6 +102,12 @@ const WEAP = {
     { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
+  blade: { name: '大刀', class: 'short', reach: 38, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 46, combo: [
+    { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.1, kb: 42 },
+    { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.2, kb: 48, multi: true },
+    { f: ['blade_3a', 'blade_3b'], d: [.18, .25], dmg: 1.5, kb: 65, multi: true, both: true },
+    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.2, kb: 100, multi: true, knock: true },
+  ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
@@ -244,7 +250,7 @@ addEventListener('keydown', e => {
     else if (ROGUE.useCatapult()) catapultVolley();
   }
   // KeyI 预留给后续法器技能，暂不绑定
-  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW(rangedWeapon());
+  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW(shortWeapon()); if (e.code === 'Digit3') setW(rangedWeapon());
   if (e.code === 'KeyR') reset();
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit1') chooseChapter2Route('zhang-liang');
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit2') chooseChapter2Route('zhang-bao');
@@ -264,18 +270,19 @@ document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDe
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
-function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
+function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'hammer' ? shortWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
 document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(toolbarWeapon(b.dataset.w)); }));
 function longWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('long')) || 'staff'; }
+function shortWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('short')) || 'hammer'; }
 function rangedWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('ranged')) || 'stone'; }
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
-  const order = [longWeapon(), 'hammer', rangedWeapon()];
+  const order = [longWeapon(), shortWeapon(), rangedWeapon()];
   const i = order.indexOf(weapon);
   setW(order[(i + 1) % order.length]);
 });
 function setW(w) {
-  if (!WEAP[w] || ((w === 'bow' || w === 'halberd') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
+  if (!WEAP[w] || ((w === 'bow' || w === 'halberd' || w === 'blade') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
   if (weapon !== w && hero && hero.st === 'atk') { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.q = 0; hero.combo = 0; hero.comboWin = 0; }
   weapon = w; ui();
 }
@@ -1032,7 +1039,7 @@ function chargedAttack(power) {
   chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power });
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
-  const R = weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : 0;
+  const R = weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : (W.chargeReach || 0);
   const chargeBonus = W.class === 'ranged' ? 1.1 : R_('chargedDmg', 1);
   if (W.class === 'ranged') {                    // 三颗扇形
     for (const ang of [-.22, 0, .22]) {

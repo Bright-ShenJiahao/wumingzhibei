@@ -13,6 +13,7 @@
     staff: Object.freeze({ name: '棍子', slot: 'long', icon: 'w_staff' }),
     halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'w_halberd' }),
     hammer: Object.freeze({ name: '锤子', slot: 'short', icon: 'w_hammer' }),
+    blade: Object.freeze({ name: '大刀', slot: 'short', icon: 'w_blade' }),
     stone: Object.freeze({ name: '石子', slot: 'ranged', icon: 'w_stone' }),
     bow: Object.freeze({ name: '汉弓', slot: 'ranged', icon: 'w_bow' }),
   });
@@ -50,7 +51,7 @@
     return true;
   }
   function defaultLoadout() {
-    return { owned: ['staff', 'hammer', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
+    return { owned: ['staff', 'hammer', 'blade', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
   }
   function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return Object.assign(v && typeof v === 'object' ? v : {}, DEBUG ? debugLoadouts : {}); } catch (e) { return DEBUG ? Object.assign({}, debugLoadouts) : {}; } }
   function saveLoadout(n, p) {
@@ -72,7 +73,7 @@
     p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
     for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
     if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
-    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone', 'bow']) if (!p.owned.includes(id)) p.owned.push(id);
+    if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'blade', 'stone', 'bow']) if (!p.owned.includes(id)) p.owned.push(id);
     const oldLong = p.long;
     const hadEquipped = !!(raw && raw.equipped);
     const oldEquipped = raw && raw.equipped ? JSON.stringify(raw.equipped) : '';
@@ -331,6 +332,7 @@
       .tPrepIcon img.icon-halberd,.tBagIcon img.icon-halberd { width:44px; height:auto; max-width:100%; max-height:100%; transform:none; }
       .tPrepIcon img.icon-w_staff,.tBagIcon img.icon-w_staff { width:38px; height:auto; max-width:100%; max-height:100%; }
       .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { width:24px; height:24px; max-width:100%; max-height:100%; }
+      .tPrepIcon img.icon-w_blade,.tBagIcon img.icon-w_blade { width:32px; height:32px; max-width:92%; max-height:92%; }
       .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { width:18px; height:18px; max-width:100%; max-height:100%; }
       .tPrepIcon img.icon-w_bow,.tBagIcon img.icon-w_bow { width:30px; height:30px; max-width:90%; max-height:90%; }
       .tPrepIcon img.icon-w_halberd,.tBagIcon img.icon-w_halberd { width:44px; height:33px; max-width:92%; max-height:92%; }
@@ -1003,7 +1005,7 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
-    preparedWeapon: () => { const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? p.equipped.long : null; },
+    preparedWeapon: () => { const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? (p.equipped.long || p.equipped.short || p.equipped.ranged) : null; },
     equippedWeapon: slot => playerLoadout().equipped[slot] || null,
     ownsWeapon: id => playerLoadout().owned.includes(id),
     grantWeapon: (id, equip = false) => {
