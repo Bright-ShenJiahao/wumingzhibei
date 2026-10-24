@@ -45,6 +45,7 @@ assets['dialogPortraits'] = {
     'caocao': uri(P('art', 'ui', 'portrait_caocao.png')),
     'messenger': uri(P('art', 'ui', 'portrait_messenger.png')),
 }
+assets['ui']['w_halberd'] = uri(P('art', 'ui', 'w_halberd.webp'))
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
 

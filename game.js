@@ -244,7 +244,7 @@ addEventListener('keydown', e => {
     else if (ROGUE.useCatapult()) catapultVolley();
   }
   // KeyI 预留给后续法器技能，暂不绑定
-  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW('stone');
+  if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW('hammer'); if (e.code === 'Digit3') setW(rangedWeapon());
   if (e.code === 'KeyR') reset();
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit1') chooseChapter2Route('zhang-liang');
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit2') chooseChapter2Route('zhang-bao');
@@ -264,17 +264,30 @@ document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDe
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
-document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(b.dataset.w === 'staff' ? longWeapon() : b.dataset.w); }));
-function longWeapon() { return (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'staff'; }
-const WEAPON_ORDER = ['staff', 'hammer', 'stone'];
+function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
+document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(toolbarWeapon(b.dataset.w)); }));
+function longWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('long')) || 'staff'; }
+function rangedWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('ranged')) || 'stone'; }
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
-  const order = [longWeapon(), 'hammer', 'stone'];
+  const order = [longWeapon(), 'hammer', rangedWeapon()];
   const i = order.indexOf(weapon);
   setW(order[(i + 1) % order.length]);
 });
-function setW(w) { weapon = w; ui(); }
-function ui() { document.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === (weapon === 'halberd' ? 'staff' : weapon))); }
+function setW(w) {
+  if (!WEAP[w] || ((w === 'bow' || w === 'halberd') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
+  if (weapon !== w && hero && hero.st === 'atk') { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.q = 0; hero.combo = 0; hero.comboWin = 0; }
+  weapon = w; ui();
+}
+function ui() {
+  document.querySelectorAll('[data-w]').forEach(b => {
+    const id = toolbarWeapon(b.dataset.w), W = WEAP[id];
+    b.classList.toggle('on', id === weapon);
+    b.title = W.name; b.setAttribute('aria-label', W.name);
+    const img = b.querySelector('img'), icon = id === 'halberd' ? 'w_halberd' : 'w_' + id;
+    if (img && ASSETS.ui[icon]) { if (img.dataset.weaponIcon !== icon) img.src = ASSETS.ui[icon]; img.dataset.weaponIcon = icon; img.alt = W.name; }
+  });
+}
 
 // ---------- 碰撞 ----------
 function blocked(x, y) {
@@ -561,7 +574,11 @@ function chapter2Waves() {
       spawn('slinger', hero.x + 315, M.bot - 20);
       chapter2Run.mode = 'fight'; say('方士和投石手在后方支援！', 2.8); return;
     }
-    if (battle === 1) { chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return; }
+    if (battle === 1) {
+      // 第二章首次清完第一战后掉落；拾取才解锁，未拾取时重玩仍会掉落。
+      if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) spawnWeaponDrop('bow', hero.x + 24, hero.y);
+      chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;
+    }
     if (battle === 2) { chapter2Run.mode = 'choice'; say('张梁、张宝分兵突围。选择追击路线。', 999); return; }
     chapter2Run.mode = 'victory'; chapter2Run.nextAt = gameT + .5; return;
   }
@@ -763,6 +780,11 @@ function spawnDrop(x, y, forceK) {
   drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
 function spawnRerollDrop(x, y) { drops.push({ k: 'roll', x, y, z: 10, vy: 130, t: 0, life: 24, got: 0 }); }
+function spawnWeaponDrop(id, x, y) {
+  if (id !== 'bow' || drops.some(d => d.weapon === id && !d.got)) return;
+  drops.push({ k: 'weapon', weapon: id, x, y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
+  say('发现汉弓！靠近拾取，永久存入武器仓库。', 4);
+}
 function updateDrops(dt) {
   const h = hero;
   for (const d of drops) {
@@ -780,6 +802,16 @@ function updateDrops(dt) {
     d.life -= dt;
     if (d.life <= 0) { d.got = 1; continue; }   // 放久了消失
     if (Math.abs(d.x - h.x) < 15 && Math.abs(d.y - h.y) < 16 && d.z < 22) {
+      if (d.weapon) {
+        if (window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, true)) {
+          d.got = 1;
+          if (weapon === 'stone') setW(d.weapon); else ui();
+          sfx('food', d.x);
+          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '获得汉弓' });
+          say('汉弓已装备远程槽，按 3 或点武器栏的弓切换。', 4);
+        }
+        continue;
+      }
       d.got = 1;
       if (d.k === 'roll') {
         const granted = window.ROGUE && ROGUE.grantReroll();
@@ -803,6 +835,14 @@ function updateDrops(dt) {
   floaters = floaters.filter(f => f.t < 1.1);
 }
 function drawDrop(d) {
+  if (d.weapon) {
+    const im = IMG.ui_w_bow, y = d.y - (d.z || 0) - 12;
+    shadow(d.x, d.y, 10);
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = 'rgba(239,196,96,.18)'; ctx.beginPath(); ctx.ellipse(d.x, y, 15, 17, 0, 0, Math.PI * 2); ctx.fill();
+    if (im && im.complete && im.naturalWidth) ctx.drawImage(im, d.x - 14, y - 14, 28, 28);
+    ctx.restore(); return;
+  }
   const c = ctx, meta = (ASSETS.food || {})[d.k], im = IMG['food_' + d.k];
   const fw = meta ? meta[1] : 12, fh = meta ? meta[2] : 10;
   const zz = d.z || 0, y = d.y - zz;
@@ -1632,7 +1672,10 @@ function heroFrame(h) {
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
   if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
   if (h.st === 'bounce' || h.st === 'getup') return h.st;
-  if (h.st === 'walk') return frameWeapon + 'w' + [1, 2, 3, 2][Math.floor(h.t * 8) % 4];
+  if (h.st === 'walk') {
+    const walk = frameWeapon === 'halberd' ? [1, 2, 3, 4, 5, 2] : [1, 2, 3, 2];
+    return frameWeapon + 'w' + walk[Math.floor(h.t * 8) % walk.length];
+  }
   if (h.st === 'hurt') return 'hurt';
   if (h.st === 'down') return 'down';
   return frameWeapon + '0';

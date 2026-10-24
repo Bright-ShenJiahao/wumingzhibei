@@ -11,7 +11,7 @@
   const DEBUG = /[?&]debug(?:=|&|$)/.test(location.search);
   const ITEMS = Object.freeze({
     staff: Object.freeze({ name: '棍子', slot: 'long', icon: 'w_staff' }),
-    halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'halberd' }),
+    halberd: Object.freeze({ name: '长戟', slot: 'long', icon: 'w_halberd' }),
     hammer: Object.freeze({ name: '锤子', slot: 'short', icon: 'w_hammer' }),
     stone: Object.freeze({ name: '石子', slot: 'ranged', icon: 'w_stone' }),
     bow: Object.freeze({ name: '汉弓', slot: 'ranged', icon: 'w_bow' }),
@@ -30,6 +30,7 @@
   let hardMode = false;
   let selectedChapter = 1, pointerDrag = null, suppressItemClick = false;
   let previewAnimation = null, previewRaf = 0, previewWeapon = 'staff';
+  const debugLoadouts = Object.create(null); // 开发者试用装备不写入正式仓库。
 
   // ---------- 名字（localStorage，读写都兜住异常） ----------
   function readName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
@@ -51,9 +52,10 @@
   function defaultLoadout() {
     return { owned: ['staff', 'hammer', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
   }
-  function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return Object.assign(v && typeof v === 'object' ? v : {}, DEBUG ? debugLoadouts : {}); } catch (e) { return DEBUG ? Object.assign({}, debugLoadouts) : {}; } }
   function saveLoadout(n, p) {
-    const k = playerKey(n); if (!k) return false;
+    const k = playerKey(n) || (DEBUG ? '__debug__' : ''); if (!k) return false;
+    if (DEBUG) { debugLoadouts[k] = JSON.parse(JSON.stringify(p)); return true; }
     const all = readLoadouts();
     if (!all[k] && (Array.isArray(all.owned) || Object.prototype.hasOwnProperty.call(all, 'long'))) {
       delete all.owned; delete all.long; delete all.equipped;
@@ -62,14 +64,13 @@
     try { localStorage.setItem(ARMORY_KEY, JSON.stringify(all)); return true; } catch (e) { return false; }
   }
   function playerLoadout(n = S.name) {
-    const k = playerKey(n), all = readLoadouts();
+    const k = playerKey(n) || (DEBUG ? '__debug__' : ''), all = readLoadouts();
     const legacy = k && !all[k] && (Array.isArray(all.owned) || Object.prototype.hasOwnProperty.call(all, 'long')) ? all : null;
     const raw = k ? (all[k] || legacy) : null;
     const p = raw && typeof raw === 'object' ? raw : defaultLoadout();
     const oldOwned = raw && Array.isArray(raw.owned) ? JSON.stringify(raw.owned) : '';
     p.owned = Array.isArray(p.owned) ? p.owned.filter(id => ITEMS[id]) : defaultLoadout().owned;
     for (const id of defaultLoadout().owned) if (!p.owned.includes(id)) p.owned.push(id);
-    if (!DEBUG) p.owned = p.owned.filter(id => id !== 'bow');
     if (hasCleared(n, 1) && !p.owned.includes('halberd')) p.owned.push('halberd');
     if (DEBUG) for (const id of ['staff', 'halberd', 'hammer', 'stone', 'bow']) if (!p.owned.includes(id)) p.owned.push(id);
     const oldLong = p.long;
@@ -331,6 +332,8 @@
       .tPrepIcon img.icon-w_staff,.tBagIcon img.icon-w_staff { width:38px; height:auto; max-width:100%; max-height:100%; }
       .tPrepIcon img.icon-w_hammer,.tBagIcon img.icon-w_hammer { width:24px; height:24px; max-width:100%; max-height:100%; }
       .tPrepIcon img.icon-w_stone,.tBagIcon img.icon-w_stone { width:18px; height:18px; max-width:100%; max-height:100%; }
+      .tPrepIcon img.icon-w_bow,.tBagIcon img.icon-w_bow { width:30px; height:30px; max-width:90%; max-height:90%; }
+      .tPrepIcon img.icon-w_halberd,.tBagIcon img.icon-w_halberd { width:44px; height:33px; max-width:92%; max-height:92%; }
       .tPrepName { min-width:0; max-width:100%; overflow:hidden; color:#eee0c5; font-size:clamp(11px,1.2vw,15px); line-height:1.15; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepName small { display:block; max-width:100%; margin-top:2px; overflow:hidden; color:#c3ae88; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
@@ -996,7 +999,17 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
-    preparedWeapon: () => { const p = playerLoadout(); if (p.equipped.ranged === 'bow') return 'bow'; return hasCleared(S.name, 1) ? p.equipped.long : null; },
+    preparedWeapon: () => { const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? p.equipped.long : null; },
+    equippedWeapon: slot => playerLoadout().equipped[slot] || null,
+    ownsWeapon: id => playerLoadout().owned.includes(id),
+    grantWeapon: (id, equip = false) => {
+      if (!ITEMS[id] || (!DEBUG && !playerKey(S.name))) return false;
+      const p = playerLoadout();
+      if (!p.owned.includes(id)) p.owned.push(id);
+      if (equip) p.equipped[ITEMS[id].slot] = id;
+      p.long = p.equipped.long || null;
+      return saveLoadout(S.name, p);
+    },
     show: () => show(),
     active: () => S.mode !== 'game',
     // 调试用：直接跳过标题页进游戏

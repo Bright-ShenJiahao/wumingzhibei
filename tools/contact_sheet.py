@@ -30,6 +30,8 @@ except Exception: font = ImageFont.load_default()
 def row(name, frames, k=2):
     ims = []
     for f in frames:
+        if not os.path.isfile(os.path.join(R, 'art', 'sprites', name, f + '.png')):
+            continue  # atlas中尚未导出的可选帧与build.py保持一致。
         w, h, ax, ay = A[name][f]
         im = Image.open(os.path.join(R, 'art', 'sprites', name, f + '.png')).convert('RGBA')
         s = scale.get(name, 1)

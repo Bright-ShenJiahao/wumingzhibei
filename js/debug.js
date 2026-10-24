@@ -16,7 +16,7 @@
     #dbg { position: fixed; right: 8px; top: 64px; z-index: 20; width: 152px;
       background: rgba(10,8,16,.86); border: 1px solid rgba(255,216,110,.5); border-radius: 8px;
       padding: 6px; font: 600 11px/1.5 "Consolas","PingFang SC",monospace; color: #ffd86e;
-      box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+      box-shadow: 0 6px 24px rgba(0,0,0,.5); max-height:calc(100vh - 80px); overflow-y:auto; }
     #dbg b { display: block; color: #8ef07a; font-size: 11px; margin-bottom: 4px; }
     #dbg button { display: block; width: 100%; margin: 3px 0; padding: 7px 6px; font: 700 12px "PingFang SC",sans-serif;
       color: #2b1a06; background: linear-gradient(180deg,#f7dd8a,#d9a93c); border: 1px solid #8a5f12; border-radius: 6px; cursor: pointer; }
@@ -57,6 +57,13 @@
     const godBtn = btn(god ? '无敌：开' : '无敌：关', 'off', () => { god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off'; });
     btn('复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
     btn('测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
+    for (const [id, label] of [['halberd', '试用长戟'], ['bow', '试用汉弓']]) {
+      btn(label, 'alt', () => {
+        if (window.TITLE) { TITLE.skip(); if (TITLE.grantWeapon) TITLE.grantWeapon(id, true); }
+        if (window.ROOM) ROOM.skip();
+        if (typeof setW === 'function') setW(id);
+      });
+    }
     btn('第五战地图', 'alt', () => {
       if (typeof startChapter2Debug === 'function') startChapter2Debug();
       if (typeof startChapter2Battle === 'function') startChapter2Battle(5);
