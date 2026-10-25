@@ -204,6 +204,7 @@ function reset() {
   M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
+  pendingWeapon = null;
   weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
   ui();
   if (window.ROGUE) ROGUE.reset();
@@ -261,39 +262,67 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { key[e.code] = 0; if (e.code === 'KeyJ') atkRelease(); });
 addEventListener('contextmenu', e => e.preventDefault());   // 手机长按不弹菜单
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
-jz.addEventListener('pointerdown', e => { e.preventDefault(); joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
+jz.addEventListener('pointerdown', e => { if (joy) return; e.preventDefault(); joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
 jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = e => { if (joy && e && e.pointerId !== joy.id) return; joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
-document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
-document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());
-document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
-document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
+// 多点触控：只有攻击键自己的手指可以结束蓄力。
+let attackPointer = null;
+const attackButton = document.getElementById('bA');
+attackButton.addEventListener('pointerdown', e => {
+  if (attackPointer !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  e.preventDefault(); e.stopPropagation(); attackPointer = e.pointerId;
+  try { attackButton.setPointerCapture(e.pointerId); } catch (_) {}
+  atkPress();
+});
+const endAttackPointer = e => {
+  if (e.pointerId !== attackPointer) return;
+  attackPointer = null;
+  if (e.type === 'pointercancel' || e.type === 'lostpointercapture') cancelCharge();
+  else atkRelease();
+};
+attackButton.addEventListener('pointerup', endAttackPointer);
+attackButton.addEventListener('pointercancel', endAttackPointer);
+attackButton.addEventListener('lostpointercapture', endAttackPointer);
+window.addEventListener('pointerup', endAttackPointer);
+window.addEventListener('blur', () => { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; } });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
 function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'hammer' ? shortWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
-document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(toolbarWeapon(b.dataset.w)); }));
+document.querySelectorAll('[data-w]').forEach(b => {
+  b.addEventListener('pointerdown', e => { if(e.pointerType==='mouse'&&e.button!==0)return; e.preventDefault(); e.stopPropagation(); setW(toolbarWeapon(b.dataset.w)); });
+  b.addEventListener('click', e => { if(e.detail===0)setW(toolbarWeapon(b.dataset.w)); });
+});
 function longWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('long')) || 'staff'; }
 function shortWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('short')) || 'hammer'; }
 function rangedWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('ranged')) || 'stone'; }
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
   const order = [longWeapon(), shortWeapon(), rangedWeapon()].filter(w=>!window.ARMORY||ARMORY.active(w));
-  const i = order.indexOf(weapon);
+  const i = order.indexOf(pendingWeapon || weapon);
   setW(order[(i + 1) % order.length]);
 });
+let pendingWeapon = null;
 function setW(w) {
   if ((window.ARMORY && !ARMORY.active(w)) || !WEAP[w] || ((w === 'bow' || w === 'halberd' || w === 'blade') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
+  if (over || won || (window.TITLE && TITLE.blocks())) return;
+  if (hero && (hero.air || ['hurt','down','bounce','getup'].includes(hero.st))) { pendingWeapon=w; ui(); return; }
+  pendingWeapon=null;
+  const changed = weapon !== w;
   if (weapon !== w && hero && hero.st === 'atk') { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.q = 0; hero.combo = 0; hero.comboWin = 0; }
   if (weapon !== w && window.GEAR) { weapon = w; GEAR.switch(); cancelCharge(); }
   else weapon = w;
   ui();
+  if (changed) toast('切换：' + WEAP[w].name);
 }
 function ui() {
   document.querySelectorAll('[data-w]').forEach(b => {
     const id = toolbarWeapon(b.dataset.w), W = WEAP[id];
     b.classList.toggle('on', id === weapon);
+    b.classList.toggle('weapon-pending', id === pendingWeapon);
+    b.setAttribute('aria-pressed', String(id === weapon));
     b.disabled = !!(window.ARMORY && !ARMORY.active(id));
     b.title = W.name; b.setAttribute('aria-label', W.name);
     const img = b.querySelector('img'), icon = id === 'halberd' ? 'w_halberd' : 'w_' + id;
@@ -712,6 +741,7 @@ function startEnemyCelebration() {
 }
 function heroUpdate(dt) {
   const h = hero;
+  if (pendingWeapon && !h.air && !['hurt','down','bounce','getup'].includes(h.st)) { const requested=pendingWeapon; pendingWeapon=null; setW(requested); }
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }

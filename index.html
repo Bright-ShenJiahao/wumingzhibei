@@ -39,6 +39,13 @@ body.wzb-summon #bSkill:disabled{filter:saturate(.6)}
 body.wzb-rogue #top,body.wzb-rogue #wp,body.wzb-rogue #joy,body.wzb-rogue .big,body.wzb-rogue #help{display:none}
 body.wzb-rogue #bSkill,body.wzb-rogue #bCatapult{display:none!important}
 @media (max-width:600px){#wp{gap:3px}#wp button[data-w]{width:42px;height:44px}#wp button[data-w] img{width:36px;height:36px}#bWeapon{width:38px;height:38px}#bMute{min-width:36px;height:38px}}
+@media (pointer:coarse){
+  #wp{gap:6px} #wp button[data-w]{width:52px;height:52px;min-width:52px;padding:6px}
+  #bWeapon{position:fixed;right:calc(122px + env(safe-area-inset-right));bottom:calc(80px + env(safe-area-inset-bottom));width:54px;height:54px;z-index:7;font-size:14px;background:radial-gradient(circle at 30% 25%,#79613bcc,#352719e8);box-shadow:0 2px 5px #21160d88}
+  #bWeapon:active{transform:translateY(1px);background:#8a653b}
+  #wp button.weapon-pending{outline:2px dashed #e4c779;outline-offset:1px}
+  #bA,#bR,#bSkill,#bCatapult,#bWeapon{touch-action:none;-webkit-user-select:none}
+}
 body.wzb-pro #help{display:none}
 #rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
 @media (pointer:coarse){#help{display:none}}
@@ -49,7 +56,7 @@ body.wzb-pro #help{display:none}
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
-<div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换武器">↻</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
+<div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换到下一把已装备武器">换武</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
 <button class="big" id="bR">翻滚</button><button class="big" id="bCatapult" type="button">投石车</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">万箭齐发</button>
 <div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力 · K/空格 翻滚 · U 召唤 · I 法器（待开放） · 1/2/3 换武器 · R 重来</div>
@@ -4316,6 +4323,7 @@ function reset() {
   M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
+  pendingWeapon = null;
   weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
   ui();
   if (window.ROGUE) ROGUE.reset();
@@ -4373,39 +4381,67 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { key[e.code] = 0; if (e.code === 'KeyJ') atkRelease(); });
 addEventListener('contextmenu', e => e.preventDefault());   // 手机长按不弹菜单
 const jz = document.getElementById('joy'), jk = document.getElementById('knob');
-jz.addEventListener('pointerdown', e => { e.preventDefault(); joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
+jz.addEventListener('pointerdown', e => { if (joy) return; e.preventDefault(); joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; jz.setPointerCapture(e.pointerId); });
 jz.addEventListener('pointermove', e => { if (!joy || e.pointerId !== joy.id) return; let dx = e.clientX - joy.x, dy = e.clientY - joy.y, l = Math.hypot(dx, dy); if (l > 40) { dx *= 40 / l; dy *= 40 / l; } joy.dx = dx / 36; joy.dy = dy / 36; jk.style.transform = `translate(${dx}px,${dy}px)`; });
 const endJ = e => { if (joy && e && e.pointerId !== joy.id) return; joy = null; jk.style.transform = ''; };
 jz.addEventListener('pointerup', endJ); jz.addEventListener('pointercancel', endJ);
-document.getElementById('bA').addEventListener('pointerup', () => atkRelease());
-document.getElementById('bA').addEventListener('pointercancel', () => atkRelease());
-document.addEventListener('pointerup', () => { if (atkHeldSince) atkRelease(); });
-document.getElementById('bA').addEventListener('pointerdown', e => { e.preventDefault(); atkPress(); });
+// 多点触控：只有攻击键自己的手指可以结束蓄力。
+let attackPointer = null;
+const attackButton = document.getElementById('bA');
+attackButton.addEventListener('pointerdown', e => {
+  if (attackPointer !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  e.preventDefault(); e.stopPropagation(); attackPointer = e.pointerId;
+  try { attackButton.setPointerCapture(e.pointerId); } catch (_) {}
+  atkPress();
+});
+const endAttackPointer = e => {
+  if (e.pointerId !== attackPointer) return;
+  attackPointer = null;
+  if (e.type === 'pointercancel' || e.type === 'lostpointercapture') cancelCharge();
+  else atkRelease();
+};
+attackButton.addEventListener('pointerup', endAttackPointer);
+attackButton.addEventListener('pointercancel', endAttackPointer);
+attackButton.addEventListener('lostpointercapture', endAttackPointer);
+window.addEventListener('pointerup', endAttackPointer);
+window.addEventListener('blur', () => { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; } });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
 function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'hammer' ? shortWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
-document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); setW(toolbarWeapon(b.dataset.w)); }));
+document.querySelectorAll('[data-w]').forEach(b => {
+  b.addEventListener('pointerdown', e => { if(e.pointerType==='mouse'&&e.button!==0)return; e.preventDefault(); e.stopPropagation(); setW(toolbarWeapon(b.dataset.w)); });
+  b.addEventListener('click', e => { if(e.detail===0)setW(toolbarWeapon(b.dataset.w)); });
+});
 function longWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('long')) || 'staff'; }
 function shortWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('short')) || 'hammer'; }
 function rangedWeapon() { return (window.TITLE && TITLE.equippedWeapon && TITLE.equippedWeapon('ranged')) || 'stone'; }
 document.getElementById('bWeapon').addEventListener('pointerdown', e => {   // 手机：循环切换武器
   e.preventDefault();
   const order = [longWeapon(), shortWeapon(), rangedWeapon()].filter(w=>!window.ARMORY||ARMORY.active(w));
-  const i = order.indexOf(weapon);
+  const i = order.indexOf(pendingWeapon || weapon);
   setW(order[(i + 1) % order.length]);
 });
+let pendingWeapon = null;
 function setW(w) {
   if ((window.ARMORY && !ARMORY.active(w)) || !WEAP[w] || ((w === 'bow' || w === 'halberd' || w === 'blade') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
+  if (over || won || (window.TITLE && TITLE.blocks())) return;
+  if (hero && (hero.air || ['hurt','down','bounce','getup'].includes(hero.st))) { pendingWeapon=w; ui(); return; }
+  pendingWeapon=null;
+  const changed = weapon !== w;
   if (weapon !== w && hero && hero.st === 'atk') { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.q = 0; hero.combo = 0; hero.comboWin = 0; }
   if (weapon !== w && window.GEAR) { weapon = w; GEAR.switch(); cancelCharge(); }
   else weapon = w;
   ui();
+  if (changed) toast('切换：' + WEAP[w].name);
 }
 function ui() {
   document.querySelectorAll('[data-w]').forEach(b => {
     const id = toolbarWeapon(b.dataset.w), W = WEAP[id];
     b.classList.toggle('on', id === weapon);
+    b.classList.toggle('weapon-pending', id === pendingWeapon);
+    b.setAttribute('aria-pressed', String(id === weapon));
     b.disabled = !!(window.ARMORY && !ARMORY.active(id));
     b.title = W.name; b.setAttribute('aria-label', W.name);
     const img = b.querySelector('img'), icon = id === 'halberd' ? 'w_halberd' : 'w_' + id;
@@ -4824,6 +4860,7 @@ function startEnemyCelebration() {
 }
 function heroUpdate(dt) {
   const h = hero;
+  if (pendingWeapon && !h.air && !['hurt','down','bounce','getup'].includes(h.st)) { const requested=pendingWeapon; pendingWeapon=null; setW(requested); }
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
