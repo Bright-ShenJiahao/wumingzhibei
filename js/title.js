@@ -48,6 +48,7 @@
       if (!p.owned.includes('halberd')) p.owned.push('halberd');
       saveLoadout(n, p);
     }
+    if (window.CLOUD_SAVE) CLOUD_SAVE.queue(n);
     return true;
   }
   function defaultLoadout() {
@@ -692,8 +693,9 @@
     if (!v && dom.panel) { dom.panel.style.display = 'none'; helpOpen = false; }
   }
 
-  function start() {
-    if (S.mode !== 'title') return;
+  let startPending = false;
+  async function start() {
+    if (S.mode !== 'title' || startPending) return;
     const n = (dom.name.value || '').trim().slice(0, 8);
     if (!n) {
       S.msg = '请输入名字'; S.msgT = 1.6;
@@ -703,6 +705,11 @@
       return;
     }
     S.name = n; writeName(n);
+    if (window.CLOUD_SAVE && !DEBUG) {
+      startPending=true; dom.start.disabled=true; dom.name.disabled=true;
+      const savedLabel=dom.start.textContent; dom.start.textContent='同步存档…';
+      try { await CLOUD_SAVE.sync(n); } finally { startPending=false; dom.start.disabled=false; dom.name.disabled=false; dom.start.textContent=savedLabel; }
+    }
     if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
     if (window.ARMORY) ARMORY.markPlayed();
     S.mode = 'intro'; S.intro = 0;
@@ -800,6 +807,7 @@
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
     if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
+    if (window.CLOUD_SAVE) CLOUD_SAVE.attach(dom.chapter);
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
 
@@ -1013,6 +1021,15 @@
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
     legacyLoadout: () => playerLoadout(),
+    campaignProgress: () => readCampaign()[playerKey(S.name)] || {},
+    applyCloudProgress: progress => {
+      if (DEBUG) return;
+      const key=playerKey(S.name),all=readCampaign(); if(!key)return;
+      const merged=Object.assign({}, all[key]);
+      for(const chapter of ['1','2']) if(progress && progress[chapter]) merged[chapter]=true;
+      all[key]=merged;
+      try { localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(all)); } catch (_) {}
+    },
     refreshPreparation: () => renderPreparation(),
     preparedWeapon: () => { if (window.ARMORY && ARMORY.played()) return ARMORY.prepared(); const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? (p.equipped.long || p.equipped.short || p.equipped.ranged) : null; },
     equippedWeapon: slot => window.ARMORY ? ARMORY.equipped(slot)?.type || null : playerLoadout().equipped[slot] || null,

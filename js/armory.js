@@ -1,14 +1,31 @@
 // 每个玩家独立的武器实例仓库；调试存档仅在内存中。
 (() => {
   const D=AFFIX_DATA,KEY='wzb-equipment-v2',debug=/[?&]debug(?:=|&|$)/.test(location.search);
-  const memory=Object.create(null); let cache=null,cacheName='',selection=new Set(),message='';
+  const memory=Object.create(null); let cache=null,cacheName='',baseline=null,freshLocal=false,selection=new Set(),message='';
   const player=()=>window.TITLE?TITLE.playerName()||'__debug__':'__debug__';
   function read(){try{const value=JSON.parse(localStorage.getItem(KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}}
-  function save(){if(debug){memory[cacheName]=cache;return true;}try{const all=read();all[cacheName]=cache;localStorage.setItem(KEY,JSON.stringify(all));return true;}catch(e){return false;}}
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  function save({remote=false}={}){
+    if(debug){memory[cacheName]=cache;baseline=copy(cache);return true;}
+    try{
+      const next=copy(cache),now=Date.now();next._removed ||= {};next._equipAt ||= {};
+      if(!remote&&baseline){
+        freshLocal=false;
+        const old=new Map(baseline.items.map(i=>[i.uid,i]));
+        for(const item of next.items){const previous=old.get(item.uid);if(!previous||JSON.stringify(previous)!==JSON.stringify(item))item._at=Math.max(now,(previous?._at||0)+1);old.delete(item.uid);}
+        for(const id of old.keys())next._removed[id]=now;
+        for(const slot of ['long','short','ranged'])if(next.equipped[slot]!==baseline.equipped[slot])next._equipAt[slot]=Math.max(now,(baseline._equipAt?.[slot]||0)+1);
+      }
+      const all=read();all[cacheName]=next;localStorage.setItem(KEY,JSON.stringify(all));
+      Object.assign(cache,next);baseline=copy(cache);
+      if(!remote&&window.CLOUD_SAVE)CLOUD_SAVE.queue(cacheName);
+      return true;
+    }catch(e){return false;}
+  }
   function starter(type){const item=D.generate(type,'boss','',0);item.special=null;item.inscription='';return item;}
   function state(){
     const name=player();if(cache&&cacheName===name)return cache;
-    cacheName=name;const all=debug?memory:read();cache=Object.prototype.hasOwnProperty.call(all,name)&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
+    cacheName=name;baseline=null;const all=debug?memory:read();freshLocal=!Object.prototype.hasOwnProperty.call(all,name);cache=!freshLocal&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
     selection.clear();
     if(!Array.isArray(cache.items))cache.items=[];
     cache.items=cache.items.filter(i=>i&&D.names[i.type]&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&typeof i.uid==='string');
@@ -21,7 +38,7 @@
       const slot=D.slots[type];if(!cache.equipped[slot]&&(!legacy||legacy.equipped[slot]===type))cache.equipped[slot]=item.uid;
     }
     // 只迁移一次。后来重铸/丢弃的旧武器不会被旧存档再次补回。
-    cache.migrated=true;save();return cache;
+    cache.migrated=true;save({remote:true});return cache;
   }
   function equipped(slot){const p=state();return p.items.find(i=>i.uid===p.equipped[slot])||null;}
   function active(type){const item=equipped(D.slots[type]);return item&&item.type===type?item:null;}
@@ -77,7 +94,20 @@
     showMessage(message);message='';
   }
   function showMessage(text){const n=document.getElementById('aMessage');if(n)n.textContent=text;}
-  window.ARMORY={state,equipped,active,add,grant,equip,unequip,reforge,render,byId:uid=>state().items.find(i=>i.uid===uid),
+  function exportProfile(){const p=copy(state());p.campaign=Object.assign({},p.campaign,window.TITLE?TITLE.campaignProgress():{});return p;}
+  function mergeCloud(profile){
+    const before=copy(state()),local=exportProfile();
+    // 全新设备尚未出征时，默认赠送武器不重复塞进已有的云端仓库。
+    if(freshLocal&&profile.items?.length){local.items=[];local.equipped={};local._equipAt={};}
+    const merged=CLOUD_MERGE.merge(profile,local);
+    // 保留首份云同步前本机备份；同步失败不会移除本机装备。
+    if(!debug)try{const backupKey=KEY+'-backup:'+cacheName;if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,JSON.stringify(before));}catch(e){}
+    Object.assign(cache,merged);if(!save({remote:true})){cache=before;baseline=copy(before);return false;}
+    freshLocal=false;
+    if(window.TITLE)TITLE.applyCloudProgress(merged.campaign);
+    selection.clear();return true;
+  }
+  window.ARMORY={state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();
