@@ -83,7 +83,7 @@
   const applicable=(a,type)=>!positive[a.id]?.type || (positive[a.id].type==='ranged')===(slots[type]==='ranged');
   function label(item) {return qualities[item.q].name+'·'+(item.affixes[0]?positive[item.affixes[0].id].name:'')+names[item.type];}
   function lines(item) {
-    const out=item.affixes.map(a=>{const d=positive[a.id];return `${d.name} ${['C','B','A'][a.tier]}：${d.desc} ${a.value}${d.unit==='pp'?'个百分点':'%'}${applicable(a,item.type)?'':'（当前武器不生效）'}`;});
+    const out=item.affixes.map(a=>{const d=positive[a.id];return `${d.name} ${['初级','中级','高级'][a.tier]}：${d.desc} ${a.value}${d.unit==='pp'?'个百分点':'%'}${applicable(a,item.type)?'':'（当前武器不生效）'}`;});
     if(item.negative){const n=item.negative,d=negative[n.id];out.push(`${d.name}：${d.desc}${n.id==='fragile'?'+':'－'}${n.value}${d.unit==='pp'?'个百分点':'%'}`);}
     if(item.special)out.push('特殊·'+special[item.special].name+'：'+special[item.special].desc);
     if(item.inscription)out.push('「'+item.inscription+'」');
