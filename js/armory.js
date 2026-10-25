@@ -33,7 +33,8 @@
     cache.equipped ||= {};
     for(const slot of ['long','short','ranged'])if(!cache.items.some(i=>i.uid===cache.equipped[slot]&&D.slots[i.type]===slot))cache.equipped[slot]=null;
     const legacy=window.TITLE&&TITLE.legacyLoadout?TITLE.legacyLoadout():null;
-    for(const type of cache.migrated?[]:(legacy?.owned||['staff','hammer','blade','stone']))if(D.names[type]&&!cache.items.some(i=>i.type===type)){
+    // 旧版v1会自动赠送大刀，不把这份误赠记录再次迁入；已存在的v2实例不批量删除。
+    for(const type of cache.migrated?[]:(legacy?.owned||['staff','hammer','stone']))if(D.names[type]&&(debug||type!=='blade')&&!cache.items.some(i=>i.type===type)){
       const item=starter(type);cache.items.push(item);
       const slot=D.slots[type];if(!cache.equipped[slot]&&(!legacy||legacy.equipped[slot]===type))cache.equipped[slot]=item.uid;
     }

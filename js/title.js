@@ -52,7 +52,7 @@
     return true;
   }
   function defaultLoadout() {
-    return { owned: ['staff', 'hammer', 'blade', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
+    return { owned: ['staff', 'hammer', 'stone'], long: 'staff', equipped: { long: 'staff', short: 'hammer', ranged: 'stone', talisman: null, artifact: null, fashion: null } };
   }
   function readLoadouts() { try { const v = JSON.parse(localStorage.getItem(ARMORY_KEY) || '{}'); return Object.assign(v && typeof v === 'object' ? v : {}, DEBUG ? debugLoadouts : {}); } catch (e) { return DEBUG ? Object.assign({}, debugLoadouts) : {}; } }
   function saveLoadout(n, p) {

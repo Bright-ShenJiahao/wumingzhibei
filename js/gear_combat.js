@@ -109,7 +109,10 @@
     if(!boss&&!z.T.elite&&!chance(.005))return;
     const r=Math.random(),count=boss?(r<.5?1:r<.8?2:3):1;
     const person=boss?(z.T.boss?'管亥':z.type==='zhang_liang'?'张梁':z.type==='zhang_bao'?'张宝':''):'';
-    const pool=['staff','hammer','blade','stone'];if(TITLE.ownsWeapon('halberd')||TITLE.hasCleared(1))pool.push('halberd');if(TITLE.ownsWeapon('bow'))pool.push('bow');
+    const pool=['staff','hammer','stone'];
+    if(TITLE.ownsWeapon('halberd')||TITLE.hasCleared(1))pool.push('halberd');
+    // 按当前战斗章节限制，而不是按是否拥有；回第一章刷装也不会掉大刀或汉弓。
+    if(chapter2Run){pool.push('blade');if(TITLE.ownsWeapon('bow'))pool.push('bow');}
     for(let i=0;i<count;i++){const type=z.T.boss&&!TITLE.hasCleared(1)&&i===0?'halberd':D.pick(pool),item=D.generate(type,source,person);drops.push({k:'weapon',weapon:type,item,x:z.x+(i-(count-1)/2)*18,y:z.y,z:10,vy:130,t:0,life:Infinity,got:0});}
     if(!boss)return;say('将领已败！靠近拾取武器，失败也会保留。',3);
   }
