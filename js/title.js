@@ -442,7 +442,7 @@
           <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
           <div id="tPrepSlots"></div>
         </div>
-        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3把重铸</small></div>
+        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3～5把熔炼</small></div>
         <div id="tPrepBag"></div>
         <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
@@ -803,7 +803,7 @@
     }).join('');
     const ready = EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id]);
     const go = dom.chapter.querySelector('#tPrepGo');
-    go.disabled = !ready || (selectedChapter === 2 && !canEnter2);
+    go.disabled = !!(window.ARMORY && ARMORY.count() >= ARMORY.capacity()) || !ready || (selectedChapter === 2 && !canEnter2);
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
     if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
@@ -970,6 +970,7 @@
   }
 
   function startSelectedChapter() {
+    if(window.ARMORY && ARMORY.count() >= ARMORY.capacity()){renderPreparation('已满50把，请先熔炼或丢弃，再出征');return;}
     if (window.ARMORY) ARMORY.markPlayed();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;

@@ -20,7 +20,7 @@
       if(download){
         const remote=await request('/api/profile?name='+encodeURIComponent(player));
         if(player!==name())return false;
-        if(!ARMORY.mergeCloud(remote))throw new Error('本机存储空间不足');
+        if(!ARMORY.mergeCloud(remote))throw new Error('合并失败：请检查50把容量限制或本机存储空间');
       }
       const profile=payload(player);if(!profile)return false;
       const sent=JSON.stringify(profile),revision=++sequence;
@@ -28,11 +28,11 @@
       if(player===name()){
         const changedDuringRequest=JSON.stringify(payload(player))!==sent;
         // 战斗中只上传，返回标题/备战后再合并云端装备，避免中途换掉手持实例。
-        if(TITLE.active()&&!ARMORY.mergeCloud(remote))throw new Error('本机存储空间不足');
+        if(TITLE.active()&&!ARMORY.mergeCloud(remote))throw new Error('合并失败：请检查50把容量限制或本机存储空间');
         if(changedDuringRequest)pending.add(player);
       }
       retryAt=0;status('云存档已同步');return true;
-    }catch(e){pending.add(player);retryAt=Date.now()+15000;status('已保存在本机 · 云同步失败，稍后重试');return false;}
+    }catch(e){pending.add(player);retryAt=Date.now()+15000;status('已保存在本机 · '+(e.message&&e.message!=='Failed to fetch'?e.message:'云同步失败，稍后重试'));return false;}
   }
   function schedule(player,download=false){
     const key=player+':'+download;if(inFlight.has(key))return inFlight.get(key);
