@@ -1,0 +1,83 @@
+// 每个玩家独立的武器实例仓库；调试存档仅在内存中。
+(() => {
+  const D=AFFIX_DATA,KEY='wzb-equipment-v2',debug=/[?&]debug(?:=|&|$)/.test(location.search);
+  const memory=Object.create(null); let cache=null,cacheName='',selection=new Set(),message='';
+  const player=()=>window.TITLE?TITLE.playerName()||'__debug__':'__debug__';
+  function read(){try{const value=JSON.parse(localStorage.getItem(KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}}
+  function save(){if(debug){memory[cacheName]=cache;return true;}try{const all=read();all[cacheName]=cache;localStorage.setItem(KEY,JSON.stringify(all));return true;}catch(e){return false;}}
+  function starter(type){const item=D.generate(type,'boss','',0);item.special=null;item.inscription='';return item;}
+  function state(){
+    const name=player();if(cache&&cacheName===name)return cache;
+    cacheName=name;const all=debug?memory:read();cache=Object.prototype.hasOwnProperty.call(all,name)&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
+    selection.clear();
+    if(!Array.isArray(cache.items))cache.items=[];
+    cache.items=cache.items.filter(i=>i&&D.names[i.type]&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&typeof i.uid==='string');
+    for(const item of cache.items){item.affixes=(item.affixes||[]).filter(a=>D.positive[a.id]&&Number.isInteger(a.tier)&&a.tier>=0&&a.tier<=2).map(a=>({...a,value:D.positive[a.id].values[a.tier]}));if(!D.special[item.special])item.special=null;if(item.negative&&!D.negative[item.negative.id])item.negative=null;}
+    cache.equipped ||= {};
+    for(const slot of ['long','short','ranged'])if(!cache.items.some(i=>i.uid===cache.equipped[slot]&&D.slots[i.type]===slot))cache.equipped[slot]=null;
+    const legacy=window.TITLE&&TITLE.legacyLoadout?TITLE.legacyLoadout():null;
+    for(const type of cache.migrated?[]:(legacy?.owned||['staff','hammer','blade','stone']))if(D.names[type]&&!cache.items.some(i=>i.type===type)){
+      const item=starter(type);cache.items.push(item);
+      const slot=D.slots[type];if(!cache.equipped[slot]&&(!legacy||legacy.equipped[slot]===type))cache.equipped[slot]=item.uid;
+    }
+    // 只迁移一次。后来重铸/丢弃的旧武器不会被旧存档再次补回。
+    cache.migrated=true;save();return cache;
+  }
+  function equipped(slot){const p=state();return p.items.find(i=>i.uid===p.equipped[slot])||null;}
+  function active(type){const item=equipped(D.slots[type]);return item&&item.type===type?item:null;}
+  function add(item){const p=state();p.items.push(item);if(!save()){p.items.pop();return false;}return true;}
+  function grant(type,equip=false){const p=state();let item=p.items.find(i=>i.type===type);if(!item){item=starter(type);p.items.push(item);}if(equip)p.equipped[D.slots[type]]=item.uid;return save();}
+  function equip(uid){const p=state(),item=p.items.find(i=>i.uid===uid);if(!item)return false;const slot=D.slots[item.type],old=p.equipped[slot];p.equipped[slot]=uid;if(!save()){p.equipped[slot]=old;return false;}selection.delete(uid);return true;}
+  function unequip(slot){const p=state(),old=p.equipped[slot];p.equipped[slot]=null;if(!save()){p.equipped[slot]=old;return false;}return true;}
+  function majority(values){const counts={};values.forEach(v=>counts[v]=(counts[v]||0)+1);const max=Math.max(...Object.values(counts));return D.pick(Object.keys(counts).filter(k=>counts[k]===max));}
+  function reforge(ids){
+    const p=state(),items=ids.map(id=>p.items.find(i=>i.uid===id));
+    if(ids.length!==3||new Set(ids).size!==3||items.some(i=>!i||i.locked||Object.values(p.equipped).includes(i.uid)))return false;
+    const type=majority(items.map(i=>i.type)),q=Number(majority(items.map(i=>Math.min(4,i.q))));
+    const fresh=D.generate(type,'boss','',q),old=p.items;
+    p.items=p.items.filter(i=>!ids.includes(i.uid));p.items.push(fresh);
+    if(!save()){p.items=old;return false;}selection.clear();return fresh;
+  }
+  function setupStyle(){if(document.getElementById('armoryStyle'))return;
+    const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
+    #tChapterPanel{overflow-y:auto!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
+    .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
+    .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
+    .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
+    .aCard button:active,#aTools button:active{transform:translateY(1px);filter:brightness(.8)}
+    .aCard .aEquip{display:flex;flex-direction:column;align-items:center;width:100%;border:0;background:none;color:var(--quality)}
+    .aCard img{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}.aCard .aActions{display:flex;gap:4px;justify-content:center;margin-top:5px}
+    .aCard input{accent-color:#b28a4a}#aTools{font-size:12px;color:#cdb78f;line-height:1.5;padding:8px 0}#aTools p{margin:4px 0}#aTools details{margin:5px 0}#aTools button{margin-right:6px}#aMessage{color:#f2d28b}
+    #aDetail{white-space:pre-line;max-height:170px;overflow:auto;padding:8px;border:1px solid #7c623d;background:#2b2119;color:#e7d1a6}
+    @media(max-height:450px){#tPrepBag{height:130px!important;max-height:150px}.aCard{min-height:95px;font-size:11px}#aTools{font-size:11px}#aDetail{max-height:100px}}
+    `;document.head.append(style);
+  }
+  function detail(item){const box=document.getElementById('aDetail');if(!box)return;const old=equipped(D.slots[item.type]);let comparison='';if(old&&old.uid!==item.uid)comparison='\n当前装备：'+D.label(old)+'\n'+D.lines(old).join('\n');box.textContent=D.label(item)+'\n'+D.lines(item).join('\n')+'\n基础暴击1%／暴伤150%；仅当前手持武器生效。'+comparison;}
+  function render(root,icon,preview){
+    setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
+    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{const item=equipped(node.dataset.slot);if(item){node.dataset.uid=item.uid;const label=node.querySelector('.tPrepName');label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;node.onpointerenter=()=>detail(item);node.onfocus=()=>detail(item);const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};node.append(remove);}});
+    bag.replaceChildren();bag.style.gridTemplateColumns='repeat(auto-fill,minmax(116px,1fr))';
+    const eq=new Set(Object.values(p.equipped));
+    for(const item of p.items.filter(i=>!eq.has(i.uid))){
+      const card=document.createElement('div');card.className='aCard'+(selection.has(item.uid)?' selected':'');card.style.setProperty('--quality',D.qualities[item.q].color);card.dataset.uid=item.uid;
+      const button=document.createElement('button');button.type='button';button.className='aEquip';button.dataset.weapon=item.type;button.dataset.uid=item.uid;
+      const image=document.createElement('span');image.innerHTML=icon(item.type);button.append(image);
+      const title=document.createElement('span');title.textContent=D.label(item)+(item.special?' ✦':'');button.append(title);
+      button.onclick=()=>{if(equip(item.uid)){window.TITLE.refreshPreparation();preview(item.type);}else showMessage('保存失败，未能装备');};
+      button.onfocus=()=>detail(item);button.onpointerenter=()=>detail(item);card.append(button);
+      const actions=document.createElement('div');actions.className='aActions';
+      const info=document.createElement('button');info.textContent='详情';info.onclick=()=>detail(item);actions.append(info);
+      const lock=document.createElement('button');lock.textContent=item.locked?'已锁':'锁定';lock.setAttribute('aria-pressed',String(item.locked));lock.onclick=()=>{item.locked=!item.locked;selection.delete(item.uid);save();window.TITLE.refreshPreparation();};actions.append(lock);
+      const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.disabled=item.locked;check.checked=selection.has(item.uid);check.onchange=()=>{if(check.checked){if(selection.size>=3){check.checked=false;showMessage('重铸每次选择3把');return;}selection.add(item.uid);}else selection.delete(item.uid);card.classList.toggle('selected',check.checked);showMessage('已选择 '+selection.size+'/3 把');};label.append(check,'重铸');actions.append(label);card.append(actions);bag.append(card);
+    }
+    let tools=root.querySelector('#aTools');if(!tools){tools=document.createElement('section');tools.id='aTools';bag.after(tools);}
+    tools.innerHTML='<p>装备未齐？再战一场！精英必掉1把，BOSS掉1～3把且品质更好；失败仍保留已拾取武器。</p><details><summary>掉落与重铸规则</summary><p>小怪0.5%掉武器；每把5%概率有特殊。3把重铸：造型与品质分别取多数，平票随机。天工按传说参与统计，特殊不继承，重新按5%抽取。已装备、已锁定武器不能投入。</p></details><div id="aDetail" tabindex="0">点击详情查看词条；点击武器装备。</div><p><button id="aForge" type="button">重铸所选3把</button><button id="aDiscard" type="button">丢弃所选</button><span id="aMessage" role="status"></span></p>';
+    tools.querySelector('#aForge').onclick=()=>{if(selection.size!==3){showMessage('请选择3把未装备、未锁定武器');return;}const selected=[...selection].map(id=>p.items.find(i=>i.uid===id));if(!confirm('消耗以下3把武器，词条与特殊效果均重新抽取：\n'+selected.map(D.label).join('\n')+'\n天工按传说参与品质统计。'))return;const result=reforge([...selection]);message=result?'重铸获得：'+D.label(result):'重铸失败，材料未消耗';window.TITLE.refreshPreparation();};
+    tools.querySelector('#aDiscard').onclick=()=>{const ids=[...selection];if(!ids.length)return;if(!confirm('丢弃选中的'+ids.length+'把武器？无法找回。'))return;const old=p.items;p.items=p.items.filter(i=>!ids.includes(i.uid)||i.locked||eq.has(i.uid));if(!save()){p.items=old;showMessage('保存失败，未丢弃');return;}selection.clear();message='已丢弃所选武器';window.TITLE.refreshPreparation();};
+    showMessage(message);message='';
+  }
+  function showMessage(text){const n=document.getElementById('aMessage');if(n)n.textContent=text;}
+  window.ARMORY={state,equipped,active,add,grant,equip,unequip,reforge,render,byId:uid=>state().items.find(i=>i.uid===uid),
+    played:()=>!!state().played,markPlayed(){state().played=true;save();},
+    owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
+})();

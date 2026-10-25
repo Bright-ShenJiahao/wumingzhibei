@@ -47,7 +47,19 @@
     row(w.proj ? '射程' : '攻击范围', `${range} · 游戏距离单位`);
     row('连招', `${combos.length}段 · 完整一套${fmt(combos.reduce((n, c) => n + duration(c), 0))}秒`);
     if (third) row('第三段', `${fmt(third.dmg)}伤害 · ${fmt(duration(third))}秒${effects.length ? ' · ' + effects.join('、') : ''}`);
-    row('词条', '暂无 · 系统尚未实装');
+    const instance = window.ARMORY && (node.dataset.uid ? ARMORY.byId(node.dataset.uid) : ARMORY.active(id));
+    if (instance) {
+      heading.textContent = AFFIX_DATA.label(instance); heading.style.color = AFFIX_DATA.qualities[instance.q].color;
+      const st = AFFIX_DATA.stats(instance);
+      row('常驻伤害', combos.map(c => fmt(c.dmg * st.damage)).join(' / '));
+      row('常驻攻速', `${fmt(st.speed / duration(first))}次/秒${st.speed >= 1.4 ? ' · 已达上限' : ''}`);
+      row('实际距离', `${Math.round(lo * st.range)}～${Math.round(hi * st.range)}${st.range >= 1.35 ? ' · 已达上限' : ''}`);
+      row('暴击／暴伤', `${fmt(st.crit*100)}% / ${fmt(st.critDamage*100)}%`);
+      row('生命／减伤', `${fmt(st.health)} / ${fmt(st.guard*100)}%`);
+      row('词条', AFFIX_DATA.lines(instance).join('；') || '无');
+    }
+    else row('词条', '无');
+    row('基础暴击', '1% · 暴击伤害150%');
     tip.append(list);
     const note = document.createElement('p');
     note.textContent = '各段按顺序列出基础伤害；不含难度、锦囊及其他加成。攻速按动作时长计算。';
@@ -65,7 +77,7 @@
     const style = document.createElement('style');
     style.textContent = `
       #wWeaponTip { position:fixed; z-index:10000; pointer-events:none; box-sizing:border-box;
-        width:min(316px,calc(100vw - 20px)); max-height:calc(100vh - 20px); overflow:hidden;
+        width:min(350px,calc(100vw - 20px)); max-height:calc(100vh - 20px); overflow:auto;
         padding:15px 17px 12px; color:#e8d6af; font-family:inherit; font-size:13px; line-height:1.5;
         border:1px solid #ba9250; border-radius:5px;
         background:repeating-linear-gradient(3deg,rgba(211,171,104,.035) 0 1px,transparent 1px 7px),linear-gradient(135deg,#403022,#211b16);

@@ -45,6 +45,7 @@ assets['dialogPortraits'] = {
     'caocao': uri(P('art', 'ui', 'portrait_caocao.png')),
     'messenger': uri(P('art', 'ui', 'portrait_messenger.png')),
 }
+assets['ui']['w_blade'] = uri(P('art', 'ui', 'w_blade.webp'))
 assets['ui']['w_halberd'] = uri(P('art', 'ui', 'w_halberd.webp'))
 assets['music'] = {'southernDrum': 'data:audio/wav;base64,' + base64.b64encode(open(P('art', 'audio', 'southern_drum.wav'), 'rb').read()).decode()}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
@@ -56,7 +57,7 @@ FONT_OUT = P('art', 'fonts', 'result.ttf')
 os.makedirs(P('art', 'fonts'), exist_ok=True)
 _gsrc = open(P('game.js'), encoding='utf-8').read()
 _i = _gsrc.find('const DEATH_LINES')
-_body = _gsrc  # 全部游戏字符串都进子集，避免结算/UI 某些字回退成系统字体
+_body = _gsrc + ''.join(open(f, encoding='utf-8').read() for f in __import__('glob').glob(P('js', '*.js')))  # 全部游戏字符串都进子集，避免结算/UI 某些字回退成系统字体
 _chars = set()
 for _m in __import__('re').findall(r"'([^'\\]*)'|\"([^\"\\]*)\"|`([^`\\]*)`", _body):
     for _t in _m:

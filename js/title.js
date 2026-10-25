@@ -441,7 +441,7 @@
           <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
           <div id="tPrepSlots"></div>
         </div>
-        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 拖回卸下</small></div>
+        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3把重铸</small></div>
         <div id="tPrepBag"></div>
         <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
@@ -703,7 +703,8 @@
       return;
     }
     S.name = n; writeName(n);
-    if (hasCleared(n, 1)) { openChapterSelect(); return; }
+    if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
+    if (window.ARMORY) ARMORY.markPlayed();
     S.mode = 'intro'; S.intro = 0;
     document.body.classList.add('wzb-intro');
     S.msgT = 0; if (dom.tip) dom.tip.style.opacity = 0;   // 清掉“请输入名字”
@@ -752,6 +753,7 @@
     if (!dom.chapter) return;
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
+    if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
     const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
@@ -764,7 +766,7 @@
     const notice = dom.chapter.querySelector('#tChapterNotice');
     if (notice) {
       notice.style.display = canEnter2 ? 'none' : 'block';
-      notice.textContent = '第二章暂未开放；可先在第一章刷武器词条（词条系统开发中）。';
+      notice.textContent = '第二章暂未开放；可在第一章挑战精英与BOSS，收集和重铸武器。';
     }
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
@@ -797,6 +799,7 @@
     go.disabled = !ready || (selectedChapter === 2 && !canEnter2);
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
+    if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
 
@@ -819,8 +822,9 @@
   function previewEquippedSlot(slot) {
     if (!EQUIPMENT_SLOTS.some(s => s.id === slot)) return false;
     const p = playerLoadout();
-    if (!p.equipped[slot]) return false;
-    playWeaponPreview(p.equipped[slot]);
+    const id = window.ARMORY ? ARMORY.equipped(slot)?.type : p.equipped[slot];
+    if (!id) return false;
+    playWeaponPreview(id);
     return true;
   }
 
@@ -902,6 +906,7 @@
   }
 
   function beginLoadoutPointer(e) {
+    if (window.ARMORY) return;
     if (!dom.prep || !dom.prep.contains(e.target)) return;
     const itemNode = e.target.closest('[data-item]');
     const slotNode = e.target.closest('[data-slot]');
@@ -957,7 +962,9 @@
   }
 
   function startSelectedChapter() {
+    if (window.ARMORY) ARMORY.markPlayed();
     const p = playerLoadout();
+    if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
     if (!EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id])) { renderPreparation('至少装备一件武器'); return; }
     if (selectedChapter === 2) {
       if (!window.CHAPTER2 || !CHAPTER2.canEnter()) { renderPreparation('第二章未开放'); return; }
@@ -1005,10 +1012,13 @@
     noviceMode: () => !hardMode,
     hasCleared: (chapter = 1, name = S.name) => hasCleared(name, chapter),
     markCleared: (chapter = 1, name = S.name) => markCleared(name, chapter),
-    preparedWeapon: () => { const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? (p.equipped.long || p.equipped.short || p.equipped.ranged) : null; },
-    equippedWeapon: slot => playerLoadout().equipped[slot] || null,
-    ownsWeapon: id => playerLoadout().owned.includes(id),
+    legacyLoadout: () => playerLoadout(),
+    refreshPreparation: () => renderPreparation(),
+    preparedWeapon: () => { if (window.ARMORY && ARMORY.played()) return ARMORY.prepared(); const p = playerLoadout(); return hasCleared(S.name, 1) || DEBUG ? (p.equipped.long || p.equipped.short || p.equipped.ranged) : null; },
+    equippedWeapon: slot => window.ARMORY ? ARMORY.equipped(slot)?.type || null : playerLoadout().equipped[slot] || null,
+    ownsWeapon: id => window.ARMORY ? ARMORY.owns(id) : playerLoadout().owned.includes(id),
     grantWeapon: (id, equip = false) => {
+      if (window.ARMORY) return ARMORY.grant(id, equip);
       if (!ITEMS[id] || (!DEBUG && !playerKey(S.name))) return false;
       const p = playerLoadout();
       if (!p.owned.includes(id)) p.owned.push(id);

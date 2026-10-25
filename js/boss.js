@@ -36,7 +36,7 @@ const Boss = (() => {
     sp *= wxMove();
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
     if (l < 2) return true;
-    const k = Math.min(1, sp * dt / l); z.x += dx * k; z.y += dy * .7 * k;
+    const k = Math.min(1, sp * dt * (window.GEAR ? GEAR.enemyMove(z) : 1) / l); z.x += dx * k; z.y += dy * .7 * k;
     z.y = Math.max(M.top, Math.min(M.bot, z.y));
     if (Math.abs(dx) > 2) z.f = Math.sign(dx);
     return false;
@@ -107,7 +107,7 @@ function hit(z, dmg, dir, ranged) {
   // ---------- 行为 ----------
   function update(z, dt) {
     z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
-    const actionDt = dt * (z.attackSlowT > 0 ? .9 : z.moveSlowT > 0 ? .85 : 1);
+    const actionDt = dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1));
     z.t += actionDt; z.flash = Math.max(0, z.flash - dt); z.cd -= actionDt;
     if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - actionDt; z.throwCd = (z.throwCd || 0) - actionDt; }
     if (z.blockT > 0) z.blockT -= dt;
@@ -115,7 +115,7 @@ function hit(z, dmg, dir, ranged) {
     // 掷出去的长戟：飞 → 落地 → 等他去捡
     if (z.spear && !z.spear.land) {
       const p = z.spear; p.x += p.vx * actionDt;
-      if (heroIn(p.x, z.y, 16, 14)) { dmgHero(2, { x: p.x }); p.land = 1; shake = .2; }
+      if (heroIn(p.x, z.y, 16, 14)) { dmgHero(2, { x: p.x }, 'skill'); p.land = 1; shake = .2; }
       else if (Math.abs(p.x - z.x) > 260) p.land = 1;
       if (p.land) { p.y = z.y; z.pickX = p.x; }
     }
@@ -163,7 +163,7 @@ function hit(z, dmg, dir, ranged) {
     if (S === 'charge') {
       z.x += z.f * 300 * dt;
       if (z.t % .18 < dt) sfx('land', z.x);
-      if (heroIn(z.x + z.f * 20, z.y, 32, 11)) dmgHero(2, { x: z.x - z.f * 30 });   // 冲锋：戟尖约 50
+      if (heroIn(z.x + z.f * 20, z.y, 32, 11)) dmgHero(2, { x: z.x - z.f * 30 }, 'skill');   // 冲锋：戟尖约 50
       if (Math.abs(z.x - z.cx0) >= z.cdist || (z.f > 0 && z.x > Rr - 30) || (z.f < 0 && z.x < L + 30)) { set(z, 'tired'); }
       return;
     }
@@ -176,13 +176,13 @@ function hit(z, dmg, dir, ranged) {
       if (p >= 1) {
         z.z = 0; set(z, 'stomp'); shake = .3; sfx('enemyDown', z.x);
         fx.push({ k: 'quake', x: z.x, y: z.y, t: 0, T: .45 });
-        if (heroIn(z.x, z.y, 40, 16)) dmgHero(2, { x: z.x });
+        if (heroIn(z.x, z.y, 40, 16)) dmgHero(2, { x: z.x }, 'skill');
       }
       return;
     }
     if (S === 'stomp') { if (z.t > 1) { set(z, 'idle'); z.cd = 1.2; } return; }
     // 马上横劈
-    if (S === 'sweep_a') { z.f = Math.sign(dx) || z.f; if (z.t > .6) { set(z, 'sweep_b'); sfx('enemySwing', z.x); if (heroIn(z.x + z.f * 36, z.y, 40, 15)) dmgHero(2, z); } return; }   // 马上横扫：戟尖约 75
+    if (S === 'sweep_a') { z.f = Math.sign(dx) || z.f; if (z.t > .6) { set(z, 'sweep_b'); sfx('enemySwing', z.x); if (heroIn(z.x + z.f * 36, z.y, 40, 15)) dmgHero(2, z, 'skill'); } return; }   // 马上横扫：戟尖约 75
     if (S === 'sweep_b') { if (z.t > .5) { set(z, 'idle'); z.cd = 1.3; } return; }
     if (S === 'fall') {
       z.x += z.vx * dt; z.vx *= .92;
@@ -223,7 +223,7 @@ function hit(z, dmg, dir, ranged) {
     }
     if (S === 'dash_b') {
       z.x = Math.max(L + 16, Math.min(Rr - 16, z.x + z.f * 260 * dt));
-      if (!z.hitDone && heroIn(z.x + z.f * 18, z.y, 28, 15)) { z.hitDone = true; dmgHero(2, { x: z.x + z.f * 18 }); shake = .22; freeze = .05; }
+      if (!z.hitDone && heroIn(z.x + z.f * 18, z.y, 28, 15)) { z.hitDone = true; dmgHero(2, { x: z.x + z.f * 18 }, 'skill'); shake = .22; freeze = .05; }
       if (z.t > .22) { set(z, 'dash_end'); z.cd = 1.3; }
       return;
     }
@@ -256,27 +256,27 @@ function hit(z, dmg, dir, ranged) {
     }
     // 重劈：举过头 → 砸地，冲击波沿面朝方向跑
     if (S === 'chop_a') { if (z.t > .8 / sp) { set(z, 'chop_b'); shake = .25; sfx('finisher', z.x);
-      if (heroIn(z.x + z.f * 34, z.y, 34, 14)) dmgHero(3, z);   // 重劈：长戟砸在地上，戟尖约 66，更远处靠冲击波
+      if (heroIn(z.x + z.f * 34, z.y, 34, 14)) dmgHero(3, z, 'skill');   // 重劈：长戟砸在地上，戟尖约 66，更远处靠冲击波
       fx.push({ k: 'wave', x: z.x + z.f * 66, y: z.y, vx: z.f * 230, t: 0, T: 1.2, hit: false }); } return; }
     if (S === 'chop_b') { if (z.t > .55) { if (rage) { set(z, 'thrust_a'); sfx('bladeAlert', z.x); } else { set(z, 'idle'); z.cd = 1.1; } } return; }
     // 头顶转戟：追着主角走，靠近就被打；转完头晕
     if (S === 'spin') {
       moveTo(z, hero.x, hero.y, 30 * sp, dt);
       if (z.t % .25 < dt) sfx('enemySwing', z.x);
-      if (heroIn(z.x, z.y, 42, 14)) dmgHero(1, z);   // 转戟：半径约 42
+      if (heroIn(z.x, z.y, 42, 14)) dmgHero(1, z, 'skill');   // 转戟：半径约 42
       if (z.t > 2.2) set(z, 'dizzy');
       return;
     }
     // 突刺
     if (S === 'thrust_a') { z.f = Math.sign(dx) || z.f; if (z.t > .4 / sp) { set(z, 'thrust_b'); sfx('enemySwing', z.x); z.x += z.f * 16;
-      const reach = 84, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z); } return; }   // 突刺：戟尖约 84
+      const reach = 84, mid = z.x + z.f * reach / 2; if (heroIn(mid, z.y, reach / 2, 12)) dmgHero(2, z, 'skill'); } return; }   // 突刺：戟尖约 84
     if (S === 'thrust_b') { if (z.t > .45) { set(z, 'idle'); z.cd = 1; } return; }
   }
 
   function updateFx(dt) {
     for (const e of fx) {
       e.t += dt;
-      if (e.k === 'wave') { e.x += e.vx * dt; if (!e.hit && heroIn(e.x, e.y, 14, 10)) { e.hit = true; dmgHero(3, { x: e.x - e.vx }); } }
+      if (e.k === 'wave') { e.x += e.vx * dt; if (!e.hit && heroIn(e.x, e.y, 14, 10)) { e.hit = true; dmgHero(3, { x: e.x - e.vx }, 'skill'); } }
     }
     fx = fx.filter(e => e.t < e.T);
   }
