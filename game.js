@@ -617,6 +617,8 @@ function chapter2Waves() {
       spawn('slinger', hero.x + 315, M.bot - 20);
       chapter2Run.mode = 'fight'; say('方士和投石手在后方支援！', 2.8); return;
     }
+    // 第一、二战清场后各抽一次锦囊；锦囊面板会冻结战斗，关掉后下一帧再继续转场/选路，避免数字键同时选锦囊和路线。
+    if ((battle === 1 || battle === 2) && window.ROGUE && !chapter2Run['card' + battle]) { chapter2Run['card' + battle] = true; ROGUE.offer(); return; }
     if (battle === 1) {
       // 第二章首次清完第一战后掉落；拾取才解锁，未拾取时重玩仍会掉落。
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) spawnWeaponDrop('bow', hero.x + 24, hero.y);
@@ -1664,11 +1666,11 @@ function update(dt) {
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
-      line: won ? '获得管亥的长戟，可在整备界面选择装备。' : deathLine(), s1: 0, s2: 0 };
+      line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
-    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(1);
-    if (!boardSent && !debugRun) {   // 通关或者阵亡都上报（失败不影响游戏）
+    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);   // 第二章通关记第二章，不再误记成第一章
+    if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
