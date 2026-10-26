@@ -44,7 +44,7 @@
     const ranges=combos.map(c=>(w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range);
     return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus};
   }
-  function render(container,item,{compare=null,compact=false}={}){
+  function render(container,item,{compare=null,compact=false,peer=null}={}){
     if(!item||typeof WEAP==='undefined'||!WEAP[item.type])return;style();container.replaceChildren();container.classList.add('weapon-detail');
     const D=AFFIX_DATA,w=WEAP[item.type],st=D.stats(item),combos=w.combo,total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
     const heading=node('div',null,'wd-title');if(item.inscription)heading.append(node('span',item.inscription+'·','wd-origin'));
@@ -58,10 +58,10 @@
     if(item.special)affix('✦ '+D.special[item.special].name,'特殊',D.special[item.special].desc,'wd-special');
     if(!item.affixes.length&&!item.negative&&!item.special)affixes.append(node('div','无词条','wd-muted'));
     container.append(node('h4','装备后属性'));
-    const list=node('dl'),values=metrics(item),other=compare?metrics(compare):null;
+    const list=node('dl'),values=metrics(item),other=compare?metrics(compare):null,peerValues=peer?metrics(peer):other;
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
-    const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(other&&Math.abs(other[key]-base)>1e-9))row(label,value,list,key);};
+    const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
     row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
     row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));

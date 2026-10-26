@@ -45,13 +45,13 @@
     const equipped=ARMORY.equipped(AFFIX_DATA.slots[item.type]);
     const compare=equipped&&equipped.uid!==item.uid?equipped:null;
     dialog.classList.toggle('two',!!compare);
-    function frame(value,label,kind,other){
+    function frame(value,label,kind,other,peer=null){
       const section=document.createElement('section');section.className='wt-frame '+kind;
       const title=document.createElement('header');title.textContent=label;
-      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,compact:mode==='hover'});
+      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,peer,compact:mode==='hover'});
       section.append(title,body);panels.append(section);
     }
-    if(compare)frame(compare,'已装备','wt-equipped');
+    if(compare)frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
   }
   function show(node){

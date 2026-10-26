@@ -434,6 +434,40 @@
         #tPrepFooter{min-height:54px;padding:4px 5px;gap:4px}#aFooterTools{gap:3px}#aFooterTools button{min-width:39px;height:32px;padding:3px 4px;font-size:10px}#aFooterTools .aForgeButton{height:42px;font-size:clamp(11px,3vh,14px);padding:3px 5px}#aForgeTag{padding:2px 3px;font-size:7px}#aFooterTools #aLock{min-width:41px}#aFooterTools #aDiscard{min-width:37px}#tPrepGo{min-width:72px;height:44px;padding:4px 8px;font-size:clamp(14px,3.5vh,17px)}#tPrepStatus{top:-16px;font-size:9px}
         .x-preparation #tPrepFooter{min-height:54px}
       }
+
+      /* —— 整备页修正：选择器带 #tChapter 前缀，保证盖过 armory.js 后注入的样式 —— */
+      /* 校场页也保留标题行，只显示同步状态 */
+      #tChapter .x-preparation #tPrepHeader{display:flex!important;min-height:26px}#tChapter .x-preparation #tPrepHeader h2,#tChapter .x-preparation #tPrepTarget{display:none}
+      #tChapter .x-preparation #tPrepStatus{position:static;flex:1 1 auto;min-width:0;padding:0;background:none;color:#cdb78e;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+      #tChapter #tPrepGo{margin-left:auto}
+      #tChapter #tPrepStatus:empty{display:none}   /* 空提示条不再盖住最后一行武器卡 */
+      /* 熔炼按钮按内容宽度，不再拉满底栏 */
+      #tChapter #aFooterTools{flex:0 1 auto}#tChapter #aFooterTools .aForgeButton{flex:none;justify-content:flex-start}#tChapter #aForgeTag{overflow:visible;text-overflow:clip}
+      /* 装备槽：两行——[图标] 槽位名 + 武器名 / 卸下 锁定 */
+      #tChapter .tPrepSlot{grid-template-columns:42px auto minmax(0,1fr);grid-template-rows:auto auto;align-content:center;align-items:center;column-gap:6px;row-gap:5px;padding:5px 7px}
+      #tChapter .tPrepSlot>b{grid-column:2;grid-row:1;font-size:11px;color:#c9a96e;letter-spacing:1px}
+      #tChapter .tPrepSlot .tPrepIcon{grid-column:1;grid-row:1/3;width:42px;height:42px}
+      #tChapter .tPrepSlot .tPrepName{grid-column:3;grid-row:1;align-self:center}
+      #tChapter .tPrepSlot .aSlotActions{grid-column:2/4;grid-row:2;align-self:center;display:flex;gap:5px}
+      #tChapter .tPrepSlot .aSlotActions button{max-width:none;min-height:20px;padding:2px 8px;font-size:11px;line-height:1.1}
+      /* 人物预览：画布由脚本按框的比例重设尺寸，不再拉伸变形；影子由画布画在脚下 */
+      #tChapter #tPrepMain{grid-template-columns:minmax(0,1fr) minmax(130px,25%) minmax(0,1fr)}
+      #tChapter #tPrepPreview{justify-content:flex-end;padding-bottom:4px}#tChapter #tPrepPreview:after{display:none}
+      #tChapter #tPrepPreview canvas{flex:1 1 0;width:100%;height:auto;min-height:0}
+      @media(max-height:430px){
+        #tChapter #tPrepMain{height:clamp(108px,34vh,140px);grid-template-columns:minmax(0,1fr) minmax(84px,24%) minmax(0,1fr)}
+        #tChapter .tPrepSlot{grid-template-columns:30px auto minmax(0,1fr);column-gap:4px;row-gap:3px;padding:3px 5px}
+        #tChapter .tPrepSlot .tPrepIcon{width:30px;height:30px}
+        #tChapter .tPrepSlot>b{font-size:8px;letter-spacing:0}#tChapter .tPrepSlot .tPrepName{font-size:10px}
+        #tChapter .tPrepSlot .aSlotActions{gap:3px}#tChapter .tPrepSlot .aSlotActions button{min-height:15px;padding:1px 5px;font-size:8px}
+        #tChapter #tPrepPreview small{font-size:8px}
+        /* 校场页按80%缩小 */
+        #tChapter #xPrep{padding:6px 10px}#tChapter #xPrep h2{margin:4px 0 2px;font-size:17px}#tChapter #xPrep h3{margin:7px 0 4px;font-size:11px}
+        #tChapter #xPrep .x-progress{font-size:10px}#tChapter #xPrep button{min-height:28px;padding:3px 10px;font-size:11px}#tChapter #xPrep .x-back{min-height:24px;padding:2px 8px;font-size:10px}
+        #tChapter #xPrep .x-options{gap:5px}#tChapter #xPrep .x-chapters{margin:4px 0;gap:5px;font-size:11px}#tChapter #xPrep .x-chapters button{min-height:24px;padding:2px 9px}
+        #tChapter #xStrength{padding:5px 8px;font-size:10px}#tChapter #xPrep small{font-size:9px}
+        #tChapter .x-preparation #tPrepStatus{font-size:9px}
+      }
     `;document.head.appendChild(prepStyle);
     setNoviceClass();
     const mk = (tag, id, text) => { const e = document.createElement(tag); e.id = id; if (text) e.textContent = text; document.body.appendChild(e); return e; };
@@ -530,6 +564,7 @@
     });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
     dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
+    if (typeof ResizeObserver !== 'undefined') { previewObserver = new ResizeObserver(() => { if (lastPreviewFrame && !previewAnimation) drawPreviewFrame(lastPreviewFrame); }); previewObserver.observe(dom.chapter.querySelector('#tPrepPreview')); }
     if (window.WEAPON_TIP) WEAPON_TIP.attach(dom.chapter, id => ITEMS[id]);
     dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
     document.addEventListener('pointermove', moveLoadoutPointer, { passive: false });
@@ -873,7 +908,7 @@
     dom.chapter.dataset.prepView=prepView;
     dom.prep.classList.toggle('x-preparation',prepView==='xiaochang');
     if (window.XIAOCHANG) XIAOCHANG.renderPreparation(dom.chapter, prepView === 'xiaochang',selectedChapter);
-    if (window.CLOUD_SAVE) { CLOUD_SAVE.attach(dom.chapter);const line=dom.chapter.querySelector('#cloudStatus')?.parentElement;if(line&&line.parentElement!==dom.chapter.querySelector('#tPrepSync')){dom.chapter.querySelector('#tPrepSync').append(...line.childNodes);line.remove();} }
+    if (window.CLOUD_SAVE) { CLOUD_SAVE.attach(dom.chapter);const line=dom.chapter.querySelector('#cloudStatus')?.parentElement;const holder=dom.chapter.querySelector('#tPrepSync');if(line&&holder&&line!==holder&&line.parentElement!==holder){holder.append(...line.childNodes);line.remove();} }
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
 
@@ -902,14 +937,21 @@
     return true;
   }
 
+  let lastPreviewFrame = '';
+  let previewObserver = null;
   function drawPreviewFrame(frameName) {
     const canvas = dom.chapter && dom.chapter.querySelector('#tPrepPreview canvas');
     if (!canvas || typeof CH === 'undefined') return;
     const g = canvas.getContext('2d');
     if (!g) return;
+    // 画布像素尺寸跟着预览框的比例走（高固定400），CSS 只做等比缩放，人物不会被压扁。
+    const box = canvas.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) {
+      const H = 400, W = Math.max(160, Math.round(H * box.width / box.height));
+      if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    }
+    lastPreviewFrame = frameName;
     g.clearRect(0, 0, canvas.width, canvas.height);
-    g.fillStyle = 'rgba(12,9,7,.3)';
-    g.beginPath(); g.ellipse(canvas.width / 2, canvas.height - 27, 60, 9, 0, 0, Math.PI * 2); g.fill();
     const frame = CH.hero && CH.hero[frameName];
     if (!frame) return;
     if (!frame.img.complete) {
@@ -925,11 +967,14 @@
     if (!frame.img.naturalWidth) return;
     const baseH = 74;   // 以主角身高为基准，所有武器/攻击帧统一比例
     // 不能用 frame.w（武器长度）限制缩放，否则长戟攻击帧会把人物缩小，预览忽大忽小。
-    const scale = Math.max(1, Math.min(3, Math.floor(canvas.height * .78 / baseH)));
+    const scale = 3;   // 画布高固定400：主角按3倍整数缩放，约占框高55%
     // 长戟按人物同倍率画，锚点向左留出完整135px武器和轨迹的空间。
     const centerX = previewWeapon === 'halberd' ? canvas.width * .32 : canvas.width / 2;
+    const footY = Math.round(canvas.height * .8);   // 脚底踩在框高约80%处
+    g.fillStyle = 'rgba(12,9,7,.42)';
+    g.beginPath(); g.ellipse(previewWeapon === 'halberd' ? centerX + 6 * scale : centerX, footY + 2, 20 * scale, 3.5 * scale, 0, 0, Math.PI * 2); g.fill();
     const x = Math.round(centerX - frame.ax * scale);
-    const y = Math.round(canvas.height - 28 - frame.ay * scale);
+    const y = Math.round(footY - frame.ay * scale);
     g.imageSmoothingEnabled = false;
     g.drawImage(frame.img, x, y, frame.w * scale, frame.h * scale);
   }
