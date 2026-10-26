@@ -51,7 +51,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=45d06980ed" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=45d06980ed)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=05ccdae312" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=05ccdae312)format("woff2");font-display:swap}</style></head><body>
 <canvas id="c"></canvas>
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
@@ -6137,10 +6137,14 @@ function updateDrops(dt) {
         if (granted) { say('锦囊可重抽一次：下次选卡时按 ROLL', 3); sfx('food', d.x); }
         continue;
       }
-      if (h.hp >= maxHeroHp()) {                      // 满血：回不了血，按回复量折算积分（1 血 = 5 分）
-        const bp = d.heal * 5;
-        runBonus += bp;
-        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + bp + '分' });
+      if (h.hp >= maxHeroHp()) {
+        if (window.XIAOCHANG && XIAOCHANG.active()) {
+          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '已满血' });
+        } else { // 主线满血时仍按 1 血 = 5 分折算积分。
+          const bp = d.heal * 5;
+          runBonus += bp;
+          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + bp + '分' });
+        }
       } else {
         h.hp = Math.min(maxHeroHp(), h.hp + d.heal);
         floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
@@ -6152,13 +6156,42 @@ function updateDrops(dt) {
   for (const f of floaters) f.t += dt;
   floaters = floaters.filter(f => f.t < 1.1);
 }
+// 地面武器按可见内容的长边缩放；透明留白不参与尺寸计算。
+const DROP_WEAPON_SIZE = { stone: 10, hammer: 18, blade: 20, bow: 20, staff: 28, halberd: 32 };
+const dropIconBounds = new WeakMap();
+function weaponDropBounds(im) {
+  if (!im || !im.complete || !im.naturalWidth) return null;
+  if (dropIconBounds.has(im)) return dropIconBounds.get(im);
+  const w = im.naturalWidth, h = im.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const c = canvas.getContext('2d', { willReadFrequently: true });
+  c.drawImage(im, 0, 0);
+  const pixels = c.getImageData(0, 0, w, h).data;
+  let left = w, top = h, right = -1, bottom = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!pixels[(y * w + x) * 4 + 3]) continue;
+    left = Math.min(left, x); right = Math.max(right, x);
+    top = Math.min(top, y); bottom = Math.max(bottom, y);
+  }
+  const bounds = right < 0 ? null : { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
+  dropIconBounds.set(im, bounds);
+  return bounds;
+}
 function drawDrop(d) {
   if (d.weapon) {
     const im = IMG['ui_w_' + d.weapon], y = d.y - (d.z || 0) - 12;
-    shadow(d.x, d.y, 10);
+    const size = DROP_WEAPON_SIZE[d.weapon] || 20;
+    shadow(d.x, d.y, size * .2); // 影子宽度为长边的 0.4 倍。
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = 'rgba(239,196,96,.18)'; ctx.beginPath(); ctx.ellipse(d.x, y, 15, 17, 0, 0, Math.PI * 2); ctx.fill();
-    if (im && im.complete && im.naturalWidth) ctx.drawImage(im, d.x - 14, y - 14, 28, 28);
+    ctx.fillStyle = 'rgba(239,196,96,.18)';
+    ctx.beginPath(); ctx.ellipse(d.x, y, size * .3, size * .3, 0, 0, Math.PI * 2); ctx.fill();
+    const bounds = weaponDropBounds(im);
+    if (bounds) {
+      const scale = size / Math.max(bounds.w, bounds.h);
+      const w = bounds.w * scale, h = bounds.h * scale;
+      ctx.drawImage(im, bounds.x, bounds.y, bounds.w, bounds.h, d.x - w / 2, y - h / 2, w, h);
+    }
     ctx.restore(); return;
   }
   const c = ctx, meta = (ASSETS.food || {})[d.k], im = IMG['food_' + d.k];
