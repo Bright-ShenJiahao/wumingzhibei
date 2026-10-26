@@ -1995,7 +1995,7 @@ function draw() {
   for (const z of zs) list.push({ y: z.y, d: () => { if (window.XIAOCHANG) XIAOCHANG.drawAffix(z); drawZ(z); } });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => {
-    if (s.kind === 'arrow') { const ar = IMG['ui_arrow']; ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); if (ar && ar.complete) ctx.drawImage(ar, -ar.width / 2, -ar.height / 2); ctx.restore(); }
+    if (s.kind === 'arrow') { const ar = IMG['ui_arrow']; ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); if (ar && ar.complete) { ctx.imageSmoothingEnabled = false; ctx.drawImage(ar, -ar.width * PX / 2, -ar.height * PX / 2, ar.width * PX, ar.height * PX); } ctx.restore(); }   // 箭图与人物同像素密度（1像素=PX），长度约为主角身高0.7
     else stone(s.x, s.y - s.z);
   } });
   for (const s of eshots) {
