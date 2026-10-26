@@ -163,3 +163,7 @@
 - `js/menu_music.js`：Lofi 电钢琴，72 BPM、A小调、五声旋律，32 小节循环，全部 Web Audio 合成，不加载音频文件。
 - `js/bgm.js` 在 `TITLE.mode()` 为 `title`（标题）或 `chapter`（整军备战、校场页）时切到 `menu` 状态播放这首，出征后 1.5 秒交叉淡入淡出到战斗音乐。
 - 黑胶底噪已按用户要求调到很轻，不要再调大。
+
+## 存档口令
+- 规则和接口见 `docs/cloud-save.md`「存档口令」一节：`netlify/lib/pins.mjs`（口令存储与校验）、`netlify/functions/pin.mjs`（设置/修改）、`netlify/functions/admin.mjs`（站长查看/清除，需要环境变量 `WZB_ADMIN_KEY`）。
+- 口令按用户要求以原文保存，方便站长找回，不要改成哈希。

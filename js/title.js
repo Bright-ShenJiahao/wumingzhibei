@@ -809,7 +809,7 @@
     if (window.CLOUD_SAVE && !DEBUG) {
       startPending=true; dom.start.disabled=true; dom.name.disabled=true;
       const savedLabel=dom.start.textContent; dom.start.textContent='同步存档…';
-      try { await CLOUD_SAVE.sync(n); } finally { startPending=false; dom.start.disabled=false; dom.name.disabled=false; dom.start.textContent=savedLabel; }
+      try { await CLOUD_SAVE.sync(n); if (CLOUD_SAVE.waitPin) await CLOUD_SAVE.waitPin(); } finally { startPending=false; dom.start.disabled=false; dom.name.disabled=false; dom.start.textContent=savedLabel; }
     }
     if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
     if (window.ARMORY) ARMORY.markPlayed();

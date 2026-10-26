@@ -3,6 +3,7 @@ import { getStore } from '@netlify/blobs';
 import { createHash } from 'node:crypto';
 import '../../js/cloud_merge.js';
 import '../../js/equipment_rules.js';
+import { pinStore, checkPin } from '../lib/pins.mjs';
 export const config={path:'/api/profile'};
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const TYPES=new Set(['staff','hammer','blade','stone','halberd','bow']);
@@ -39,6 +40,10 @@ export default async function handler(req){
   const prefix='player/'+createHash('sha256').update(name).digest('hex')+'/';
   try{
     const store=getStore({name:'wumingzhibei-profiles',consistency:'strong'});
+    // 设了存档口令的名字：读档、写档都要带对口令（GET 用请求头 X-Save-Pin，POST 用 body.pin）
+    const pinCheck=await checkPin(pinStore(),name,body?String(body.pin||''):String(req.headers.get('x-save-pin')||''));
+    if(!pinCheck.ok)return reply(pinCheck.body,pinCheck.status);
+    const pinSet=pinCheck.pinSet;
     if(body){
       if(!/^[a-zA-Z0-9-]{8,80}$/.test(body.writer||'')||!Number.isSafeInteger(body.sequence)||body.sequence<1)return reply({ok:false,error:'Invalid revision'},400);
       let profile;try{profile=validate(body.profile);}catch(e){return reply({ok:false,error:e.message},400);}
@@ -52,10 +57,10 @@ export default async function handler(req){
         // 既有历史快照保留，新的快照也继续备份；不删除原云档。
         await store.set(prefix+body.writer+'/'+String(body.sequence).padStart(16,'0'),JSON.stringify(merged)).catch(()=>{});
         const latest=await store.get(prefix+'current',{type:'json'});
-        return reply({ok:true,limit:globalThis.EQUIPMENT_RULES.CAPACITY,profile:latest||merged});
+        return reply({ok:true,pinSet,limit:globalThis.EQUIPMENT_RULES.CAPACITY,profile:latest||merged});
       }
       return reply({ok:false,error:'存档正在其他设备更新，请稍后重试'},409);
     }
-    return reply({ok:true,limit:globalThis.EQUIPMENT_RULES.CAPACITY,profile:(await current(store,prefix)).profile});
+    return reply({ok:true,pinSet,limit:globalThis.EQUIPMENT_RULES.CAPACITY,profile:(await current(store,prefix)).profile});
   }catch{return reply({ok:false,error:'云存档暂时不可用，请保留本机存档后重试'},503);}
 }
