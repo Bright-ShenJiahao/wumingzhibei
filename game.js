@@ -1806,7 +1806,7 @@ function zFrame(z) {
     return 'idle';
   }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
-  if (z.st === 'land') return 'land';
+  if (z.st === 'land') return !z.dead && z.t > .25 && CH[z.sprite || z.type]?.getup ? 'getup' : 'land';
   if (z.dead) return 'down';
   if (z.st === 'sleep') return 'down';
   if (z.st === 'wake') return 'idle';
