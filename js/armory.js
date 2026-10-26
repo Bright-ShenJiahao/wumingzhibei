@@ -93,7 +93,7 @@
     const forge=root.querySelector('#aForge'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');
     forge.onclick=()=>{const ids=[...selection],selected=ids.map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),plan=EQUIPMENT_RULES.forgePlan(selected);if(!plan){showMessage('请选择3～5把未装备、未锁定武器');return;}
       // 吃亏提醒：材料里有比熔出品质更高的，或带特殊词条的
-      const top=Math.max(...plan.qualities),costly=selected.filter(i=>Math.min(4,i.q)>top||i.special),warn=costly.length?`\n\n⚠ 注意：${costly.map(i=>D.label(i)+(i.special?'（带特殊词条）':'')).join('、')} 也会被熔掉！`:'';
+      const top=Math.max(...plan.qualities),costly=selected.filter(i=>Math.min(4,i.q)>top||i.special),warn=costly.length?`\n\n⚠ 注意：目前搭配会出${plan.qualities.map(q=>D.qualities[q].name).join('或')}，${costly.map(i=>D.label(i)+(i.special?'（带特殊词条）':'')).join('、')} 也会被熔掉！`:'';
       askConfirm({title:'确认熔炼',description:`将消耗以下${selected.length}把武器，词条与特殊均重抽：`,items:selected,summary:forgeSummary(plan)+'\n天工按传说统计，特殊独立5%。'+warn,warn:!!warn,action:async()=>{
         // 熔的就是确认框里列出的那几把；先和云端核对，防止另一台设备已经用掉
         showMessage('正在核对存档…');

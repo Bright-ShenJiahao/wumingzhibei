@@ -1,5 +1,5 @@
 // 站长专用：查看或清除某个名字的存档口令。
-// 需要在 Netlify 后台设置环境变量 WZB_ADMIN_KEY；没设置时这个接口直接关闭。
+// 密钥：站长手里的内置密钥（代码只存 SHA-256 哈希），或 Netlify 环境变量 WZB_ADMIN_KEY。
 // 查看：/api/admin?key=管理密钥&name=玩家名
 // 清除：/api/admin?key=管理密钥&name=玩家名&action=clear
 // 查熔掉/丢掉的武器：/api/admin?key=管理密钥&name=玩家名&action=lost
@@ -26,13 +26,15 @@ async function history(store, prefix) {
   }
   return { seen, snapshots: keys.length };
 }
+const ADMIN_HASH = '92f4e18af5440512c9b1a1b2bd54099be8e4cf4bb5b7a15197ff65c321f437e6';
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 
 export default async function handler(req) {
-  const secret = process.env.WZB_ADMIN_KEY;
-  if (!secret || secret.length < 8) return reply({ ok: false, error: '管理接口未开启：请在 Netlify 设置至少8位的环境变量 WZB_ADMIN_KEY' }, 503);
-  const url = new URL(req.url);
-  if (!same(url.searchParams.get('key') || '', secret)) return reply({ ok: false, error: '管理密钥不对' }, 403);
+  // 两种密钥都认：Netlify 环境变量 WZB_ADMIN_KEY，或代码里内置的站长密钥（只存哈希，明文只在站长手里）
+  const secret = process.env.WZB_ADMIN_KEY, url = new URL(req.url), key = url.searchParams.get('key') || '';
+  const okEnv = !!secret && secret.length >= 8 && same(key, secret);
+  const okHash = same(createHash('sha256').update(key).digest('hex'), ADMIN_HASH);
+  if (!okEnv && !okHash) return reply({ ok: false, error: '管理密钥不对' }, 403);
   const name = String(url.searchParams.get('name') || '').trim();
   if (!name) return reply({ ok: false, error: '请带上 name=玩家名' }, 400);
   const action = url.searchParams.get('action');
