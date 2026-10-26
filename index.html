@@ -2145,7 +2145,9 @@ function hit(z, dmg, dir, ranged) {
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
       if(e.pointerType==='touch'||mode==='modal')return;
-      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n);
+      const n=weaponNode(e.target);
+      if(mode==='hover'&&active?.contains(e.target)){clearTimeout(hideTimer);return;}
+      if(n&&n!==active)show(n);
     });
     root.addEventListener('pointermove',e=>{
       if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}
