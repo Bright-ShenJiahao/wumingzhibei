@@ -1,7 +1,7 @@
 // 每个玩家独立的武器实例仓库；调试存档仅在内存中。
 (() => {
   const D=AFFIX_DATA,KEY='wzb-equipment-v2',debug=/[?&]debug(?:=|&|$)/.test(location.search);
-  const memory=Object.create(null); let cache=null,cacheName='',baseline=null,freshLocal=false,selection=new Set(),message='';
+  const memory=Object.create(null); let cache=null,cacheName='',baseline=null,freshLocal=false,selection=new Set(),message='',lastChanged=false;
   const player=()=>window.TITLE?TITLE.playerName()||'__debug__':'__debug__';
   function read(){try{const value=JSON.parse(localStorage.getItem(KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}}
   const copy=value=>JSON.parse(JSON.stringify(value));
@@ -71,7 +71,7 @@
     @media(max-height:430px){#tPrepScroll{padding-bottom:64px!important}.tPrepSlot[data-uid]{grid-template-columns:34px minmax(0,1fr);grid-template-rows:10px minmax(7px,1fr) auto}.aSlotActions{grid-row:3;gap:2px}.aSlotActions button{font-size:8px!important;padding:0 3px!important}.aCard{padding:3px}.aCard .aSelect{left:2px;top:2px;width:12px;height:12px}.aCard .aLockMark{right:2px;top:1px;font-size:10px}.aCardName{font-size:9px}}
   `;document.head.append(style);}
   function ensureConfirm(){let overlay=document.getElementById('aConfirm');if(overlay)return overlay;overlay=document.createElement('div');overlay.id='aConfirm';overlay.hidden=true;overlay.innerHTML='<section class="a-confirm-paper"><h3></h3><p class="a-confirm-desc"></p><ul></ul><div class="a-confirm-summary"></div><div class="a-confirm-actions"><button type="button" data-confirm="yes">确定</button><button type="button" data-confirm="no">取消</button></div></section>';overlay.querySelector('.a-confirm-paper').style.backgroundImage=`url("${ASSETS.ui.scroll}")`;overlay.querySelectorAll('button').forEach(b=>b.style.backgroundImage=`url("${ASSETS.ui.btn}")`);document.body.append(overlay);overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('[data-confirm="no"]'))overlay.hidden=true;if(e.target.closest('[data-confirm="yes"]')){const action=overlay._action;overlay.hidden=true;action?.();}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)overlay.hidden=true;});return overlay;}
-  function askConfirm({title,description='',items=[],summary='',action}){const overlay=ensureConfirm();overlay._action=action;overlay.querySelector('h3').textContent=title;overlay.querySelector('.a-confirm-desc').textContent=description;const list=overlay.querySelector('ul');list.replaceChildren(...items.map(item=>{const li=document.createElement('li');li.textContent=D.label(item);li.style.color=D.qualities[item.q].color;return li;}));list.hidden=!items.length;const notes=overlay.querySelector('.a-confirm-summary');notes.textContent=summary;notes.hidden=!summary;overlay.hidden=false;}
+  function askConfirm({title,description='',items=[],summary='',action,warn=false}){const overlay=ensureConfirm();overlay._action=action;overlay.querySelector('h3').textContent=title;overlay.querySelector('.a-confirm-desc').textContent=description;const list=overlay.querySelector('ul');list.replaceChildren(...items.map(item=>{const li=document.createElement('li');li.textContent=D.label(item);li.style.color=D.qualities[item.q].color;return li;}));list.hidden=!items.length;const notes=overlay.querySelector('.a-confirm-summary');notes.textContent=summary;notes.hidden=!summary;notes.style.color=warn?'#9b1c12':'';notes.style.fontWeight=warn?'700':'';overlay.hidden=false;}
   function render(root,icon,preview){
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('.tBagCount');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.CAPACITY;countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
@@ -91,7 +91,16 @@
     if(!tools.querySelector('details'))tools.innerHTML='<details><summary>掉落与熔炼规则</summary><p><b>哪里掉武器</b><br>精英必掉1把；首领掉1～3把；小兵偶尔掉。首领掉的品质最好，精英其次，小兵最差。</p><p><b>去哪里刷</b><br>校场演武比主线更容易出好武器：第1层最高掉优良，每往上一层多一档，第4层起能掉传说。</p><p><b>仓库</b><br>身上加仓库一共50格，满了就捡不起来，记得熔炼或丢弃。</p><p><b>熔炼</b><br>勾选3～5把熔成1把新武器：造型和品质取数量最多的那种，词条全部重新随机。放得越多，越容易升一档品质（每次最多升一档，传说不再升）。具体概率看熔炼按钮上的数字。已装备、已锁定的武器不能熔炼。</p></details>';
     tools.querySelector('details').open=tools.dataset.open==='1';tools.querySelector('details').ontoggle=e=>tools.dataset.open=e.target.open?'1':'0';
     const forge=root.querySelector('#aForge'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');
-    forge.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),plan=EQUIPMENT_RULES.forgePlan(selected);if(!plan){showMessage('请选择3～5把未装备、未锁定武器');return;}askConfirm({title:'确认熔炼',description:`将消耗以下${selected.length}把武器，词条与特殊均重抽：`,items:selected,summary:forgeSummary(plan)+'\n天工按传说统计，特殊独立5%。',action:()=>{const result=reforge([...selection]);message=result?'熔炼获得：'+D.label(result)+(result.forgeFrom!=null?'（升阶成功）':''):'熔炼失败，材料未消耗';window.TITLE.refreshPreparation();}});};
+    forge.onclick=()=>{const ids=[...selection],selected=ids.map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),plan=EQUIPMENT_RULES.forgePlan(selected);if(!plan){showMessage('请选择3～5把未装备、未锁定武器');return;}
+      // 吃亏提醒：材料里有比熔出品质更高的，或带特殊词条的
+      const top=Math.max(...plan.qualities),costly=selected.filter(i=>Math.min(4,i.q)>top||i.special),warn=costly.length?`\n\n⚠ 注意：${costly.map(i=>D.label(i)+(i.special?'（带特殊词条）':'')).join('、')} 也会被熔掉！`:'';
+      askConfirm({title:'确认熔炼',description:`将消耗以下${selected.length}把武器，词条与特殊均重抽：`,items:selected,summary:forgeSummary(plan)+'\n天工按传说统计，特殊独立5%。'+warn,warn:!!warn,action:async()=>{
+        // 熔的就是确认框里列出的那几把；先和云端核对，防止另一台设备已经用掉
+        showMessage('正在核对存档…');
+        if(window.CLOUD_SAVE&&CLOUD_SAVE.sync)await CLOUD_SAVE.sync(window.TITLE?TITLE.playerName():'');
+        const now=state(),eq=new Set(Object.values(now.equipped));
+        if(ids.some(id=>{const i=now.items.find(x=>x.uid===id);return !i||i.locked||eq.has(id);})){message='这些武器有的已在其他设备使用或已装备、锁定，熔炼取消，材料未消耗';window.TITLE.refreshPreparation();return;}
+        const result=reforge(ids);message=result?'熔炼获得：'+D.label(result)+(result.forgeFrom!=null?'（升阶成功）':''):'熔炼失败，材料未消耗';window.TITLE.refreshPreparation();}});};
     lock.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length)return;const makeLocked=!selected.every(i=>i.locked);for(const item of selected)item.locked=makeLocked;save();window.TITLE.refreshPreparation();};
     discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能丢弃');return;}askConfirm({title:'确认丢弃',description:'以下武器将被丢弃，无法找回。',items:selected,action:()=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;showMessage('保存失败，未丢弃');return;}selection.clear();message='已丢弃所选武器';window.TITLE.refreshPreparation();}});};
     updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或丢弃':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
@@ -107,15 +116,22 @@
     // 全新设备尚未出征时，默认赠送武器不重复塞进已有的云端仓库。
     if(freshLocal&&profile.items?.length){local.items=[];local.equipped={};local._equipAt={};}
     const merged=CLOUD_MERGE.merge(profile,local);
+    // 武器顺序以本机为准，云端新来的排在最后：同步后卡片位置不跳，防止勾错。
+    const order=new Map(before.items.map((i,n)=>[i.uid,n]));
+    merged.items=merged.items.map((item,n)=>({item,n})).sort((a,b)=>(order.has(a.item.uid)?order.get(a.item.uid):1e6+a.n)-(order.has(b.item.uid)?order.get(b.item.uid):1e6+b.n)).map(x=>x.item);
+    const sig=p=>JSON.stringify([p.items,p.equipped,p.campaign]);
     if(merged.items.length>EQUIPMENT_RULES.CAPACITY){message='云端合并后超过50把，请先在原设备熔炼或丢弃，再同步';return false;}
     // 保留首份云同步前本机备份；同步失败不会移除本机装备。
     if(!debug)try{const backupKey=KEY+'-backup:'+cacheName;if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,JSON.stringify(before));}catch(e){}
     Object.assign(cache,merged);if(!save({remote:true})){cache=before;baseline=copy(before);return false;}
     freshLocal=false;
     if(window.TITLE)TITLE.applyCloudProgress(merged.campaign);
-    selection.clear();return true;
+    lastChanged=sig(exportProfile())!==sig(local);
+    // 同步不清空勾选：只去掉已经不存在的武器（重画时还会去掉已装备的）。
+    for(const uid of [...selection])if(!state().items.some(i=>i.uid===uid))selection.delete(uid);
+    return true;
   }
-  window.ARMORY={count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();

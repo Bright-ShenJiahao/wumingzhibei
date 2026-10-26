@@ -2,7 +2,7 @@
 (() => {
   const debug=/[?&]debug(?:=|&|$)/.test(location.search);
   const writer=globalThis.crypto?.randomUUID?.()||'tab-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-  let sequence=0,tail=Promise.resolve(),timer=null,retryAt=0,seenMain=null,seenArena=null;
+  let lastVisiblePull=0,sequence=0,tail=Promise.resolve(),timer=null,retryAt=0,seenMain=null,seenArena=null;
   const pending=new Set(),wanted=new Set(),inFlight=new Map(),states=new Map();
   const name=()=>window.TITLE?TITLE.playerName():'';
   const state=player=>{if(!states.has(player))states.set(player,{phase:'syncing',at:0,detail:''});return states.get(player);};
@@ -98,6 +98,7 @@
   }
   function merge(remote){
     if(!ARMORY.mergeCloud(remote)){const error=new Error('合并失败：请检查50把容量限制或本机存储空间');error.profileError=true;throw error;}
+    return ARMORY.lastMergeChanged?ARMORY.lastMergeChanged():true;
   }
   async function exchange(player,download){
     if(debug||!player||player==='__debug__')return true;
@@ -105,22 +106,23 @@
     // 串行队列可能等到玩家已出征才开始；再次检查，不能在战斗中发起下载。
     const pull=download&&player===name()&&canMerge();
     if(download&&!pull&&player===name())wanted.add(player);
-    status(player,'syncing');let applied=false;
+    status(player,'syncing');let changed=false;
     try{
       if(pull){
         wanted.add(player);
         const remote=await request('/api/profile?name='+encodeURIComponent(player),{},player);
         // 下载途中出征/换名字：绝不把迟到的结果合进战斗装备，留待下个安全时机。
-        if(player===name()&&canMerge()){merge(remote);applied=true;wanted.delete(player);}
+        if(player===name()&&canMerge()){changed=merge(remote)||changed;wanted.delete(player);}
       }
       const profile=payload(player);if(!profile){status(player,'error');return false;}
       const sent=JSON.stringify(profile),revision=++sequence;
       const remote=await request('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:player,writer,sequence:revision,profile,pin:pinFor(player)})},player);
       if(player===name()){
         const changedDuringRequest=JSON.stringify(payload(player))!==sent;
-        if(canMerge()){merge(remote);applied=true;}
+        if(canMerge())changed=merge(remote)||changed;
         if(changedDuringRequest)pending.add(player);
-        if(applied&&canMerge())TITLE.refreshPreparation();
+        // 只有云端真的带来了变化才重画整备页；内容一样就不动页面（不打断勾选）
+        if(changed&&canMerge())TITLE.refreshPreparation();
       }
       retryAt=0;status(player,'ready');return true;
     }catch(e){
@@ -177,10 +179,12 @@
   window.addEventListener('offline',()=>{if(!debug&&name())status(name(),'error');});
   window.addEventListener('online',()=>{retryAt=0;queue(name());if(canMerge())schedule(name(),true);});
   document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden){if(canMerge())schedule(name(),true);else queue(name());}
+    // 切回页面时下载一次（换设备玩能接上），10秒内最多一次
+    if(!document.hidden){if(canMerge()&&Date.now()-lastVisiblePull>10000){lastVisiblePull=Date.now();schedule(name(),true);}else queue(name());}
   });
   setInterval(flush,15000);
-  setInterval(()=>{renderStatus();if(!document.hidden&&isPreparation())schedule(name(),true);},30000);
+  // 不再定时下载：整备页定时刷新会打断勾选、熔错武器。只在进整备页、结算、切回页面、点↻和熔炼前同步。
+  setInterval(renderStatus,30000);
   setInterval(watchSettlements,250);
   window.CLOUD_SAVE={queue,attach,enterPreparation,openPin,waitPin,sync:player=>schedule(player,true)};
 })();
