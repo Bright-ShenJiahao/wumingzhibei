@@ -411,10 +411,12 @@
   `;
   document.head.appendChild(style);
   roomImg = new Image();
-  roomImg.src = (typeof ASSETS !== 'undefined' && ASSETS.room) || '';
+  // 农房内景只有新档开场才用：点「开始游戏」进开场时再下载（prefetch），没预取到就在 begin() 里补上
+  const prefetch = () => { if (!roomImg.src) roomImg.src = (typeof ASSETS !== 'undefined' && ASSETS.room) || ''; };
 
   window.ROOM = {
-    begin,
+    prefetch,
+    begin: (...a) => { prefetch(); return begin(...a); },
     blocks: () => S.mode === 'play',
     draw,
     update: (dt) => update(dt),

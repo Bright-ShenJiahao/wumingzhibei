@@ -814,6 +814,7 @@
     if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
     if (window.ARMORY) ARMORY.markPlayed();
     S.mode = 'intro'; S.intro = 0;
+    if (window.ROOM && ROOM.prefetch) ROOM.prefetch();
     document.body.classList.add('wzb-intro');
     S.msgT = 0; if (dom.tip) dom.tip.style.opacity = 0;   // 清掉“请输入名字”
     setDomVisible(false);   // 输入框/按钮先藏起来；游戏 UI 等真正进场再放出来
@@ -821,6 +822,7 @@
 
   function openChapterSelect(target = 1) {
     S.mode = 'chapter'; S.chapterReturn = true;
+    if (window.ensureAssets) { ensureAssets('xiaochang', { silent: true }); if (window.CHAPTER2 && CHAPTER2.canEnter()) ensureAssets('chapter2', { silent: true }); }
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
     const note = dom.chapter.querySelector('#tChapterNote');

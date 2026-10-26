@@ -7,8 +7,14 @@
 - `game.js`：游戏全部逻辑（原生 JS + Canvas，无框架、无构建工具）。
 - `js/*.js`：独立模块（音效、界面等），打包时按文件名顺序放在 `game.js` 前面。新功能尽量写成单独模块，`game.js` 里只加调用，减少多个 AI 同时改同一个文件的冲突。调用模块时先判断是否存在，例如 `window.SFX && SFX.play('hit')`。
 - `index.src.html`：网页模板（界面、按钮、样式）。
-- `index.html`：**打包生成的文件，不要手改**；改完源码必须 `python tools/build.py` 重新生成并**一起提交**（Netlify 直接发布仓库里的这个文件）。
-  注意：之前试过改成 Netlify 云端构建，但因为 netlify.toml 的 BOM 问题失败，已回退，现在仍是"提交 index.html 才会上线"。
+- `index.html`：**打包生成的文件，不要手改**；改完源码必须 `python tools/build.py` 重新生成，并把 **`index.html` 和 `pack/` 一起提交**（Netlify 直接发布仓库里的文件）。
+- `pack/`：**打包生成的素材**（图片转 webp、字体转 woff2、音频），不要手改。`index.html` 只放代码，通过 `pack/...?v=内容指纹` 引用素材；
+  netlify.toml 给 `/pack/*` 设了一年缓存，内容一变指纹就变，所以玩家只会重新下载改动过的文件。`pack/.cache.json` 是转换缓存，也要提交。
+  - 打包需要 Pillow、fontTools、brotli（`pip install pillow fonttools brotli`）；没装 brotli 时字体退回 TTF，体积大一倍。
+  - 代码里写死的 `art/...png/webp` 路径，打包时会自动换成 `pack/` 里的网址。
+  - **本地测试要用网页服务器打开**（在仓库目录运行 `python -m http.server 8000`，再访问 http://localhost:8000/ ），直接双击打开 index.html 时，第二章祭台抠图等功能会因浏览器安全限制失效。
+- 按需加载（game.js 的 `ensureAssets`）：第二章的背景、开场图、立绘和第二章兵种（`LAZY_CHARS`）只在进第二章时下载；校场地图在打开整备页时后台预取；农房内景在新档开场时才下载。
+  新增只在某一章用到的大图，照这个方式加进对应的组，不要放进首次加载。
 - `art/title/home.png`：**登录页背景图**（一对情侣在电视前打游戏，电视屏幕是绿幕）。
   - 屏幕是**绿幕遮罩**显示：`tv_mask.png`（同尺寸、绿幕处不透明）决定游戏画面只出现在屏幕形状内。
     这样电视机自带的透视、以及**垂在屏幕上的布偶猫爪子**都会自然保留在游戏画面之上（矩形贴图做不到这点）。
@@ -18,7 +24,7 @@
 - `art/ui/`：卷轴、木牌按钮（普通/红漆）、三种印章（方/圆/长方），webp，由 `tools/process_ui.py` 从绿底原图生成。
 - `art/food/`：回血食物（包子 1 血 / 鸡腿 2 血 / 烤乳猪 4 血），png + `meta.json` 记录世界尺寸。
 - `art/fonts/result.ttf`：结算画面的毛笔字体子集（Ma Shan Zheng，OFL）。
-  字表在 `tools/build.py` 里自动从 game.js 的结算文案里收集，打包时内联成 @font-face（约 84KB）。
+  字表在 `tools/build.py` 里自动从全部 js 的字符串里收集，打包成 `pack/fonts/result.woff2`（约 450KB）。
   **不要**改成在线加载 Google Fonts（国内微信打不开）。
 - `art/gemini/`：Gemini 原图，保持不动。
 - `art/bg/`：背景层；`art/props/`：道具（`meta.json` 记录世界尺寸）；`art/sprites/`：像素人物。

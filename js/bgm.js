@@ -170,9 +170,8 @@
     try {
       const url = typeof ASSETS !== 'undefined' && ASSETS.music && ASSETS.music.southernDrum;
       if (!url) return;
-      const raw = atob(url.slice(url.indexOf(',') + 1));
-      const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
-      ac.decodeAudioData(bytes.buffer).then(buffer => { southernDrum = buffer; }).catch(() => {});
+      const bytes = url.startsWith('data:') ? Promise.resolve(Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), c => c.charCodeAt(0)).buffer) : fetch(url).then(r => r.arrayBuffer());
+      bytes.then(buf => ac.decodeAudioData(buf)).then(buffer => { southernDrum = buffer; }).catch(() => {});
     } catch (_) {}
   }
 

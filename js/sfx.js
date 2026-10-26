@@ -247,7 +247,8 @@
   // data:URI → 二进制（不用 fetch，部分手机浏览器不支持 fetch data: 地址）
   function b64buf(uri) { const bin = atob(uri.split(',')[1]), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
   function decode(name) {
-    if (!vcache[name]) vcache[name] = new Promise((ok, no) => ac.decodeAudioData(b64buf(ASSETS.voice[name]), ok, no));
+    const src = ASSETS.voice[name];
+    if (!vcache[name]) vcache[name] = (src.startsWith('data:') ? Promise.resolve(b64buf(src)) : fetch(src).then(r => r.arrayBuffer())).then(buf => new Promise((ok, no) => ac.decodeAudioData(buf, ok, no)));
     return vcache[name];
   }
   let preloaded = false;

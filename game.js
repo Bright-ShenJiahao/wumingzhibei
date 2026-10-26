@@ -2,6 +2,30 @@
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
+// 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
+const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
+const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2' };
+function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
+function ensureAssets(group, { silent = false, label = '' } = {}) {
+  if (LAZY_DONE[group]) return LAZY_DONE[group];
+  const list = LAZY[group] || [];
+  let done = 0, overlay = null;
+  const tick = () => { done++; if (overlay) overlay.querySelector('b').textContent = Math.round(done / Math.max(1, list.length) * 100) + '%'; };
+  const show = silent ? 0 : setTimeout(() => {
+    overlay = document.createElement('div'); overlay.id = 'wzbLoading';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#120c08e8;color:#f1d58f;font:16px sans-serif;letter-spacing:2px';
+    overlay.innerHTML = '<span>' + (label || '加载中') + '</span><b>0%</b>';
+    document.body.appendChild(overlay); tick(); done--;
+  }, 120);
+  LAZY_DONE[group] = Promise.all(list.map(([img, src]) => new Promise(ok => {
+    if (img.complete && img.naturalWidth) { tick(); ok(); return; }
+    img.addEventListener('load', () => { tick(); ok(); }, { once: true });
+    img.addEventListener('error', () => { tick(); ok(); }, { once: true });   // 个别图失败也继续，不卡住游戏
+    if (!img.src) img.src = src;
+  }))).then(() => { clearTimeout(show); if (overlay) overlay.remove(); });
+  return LAZY_DONE[group];
+}
+window.ensureAssets = ensureAssets;
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
@@ -47,14 +71,14 @@ function keyChapter2Map(image) {
 }
 
 if (ASSETS.chapter2) {
-  if (ASSETS.chapter2.far) load('chapter2_far', ASSETS.chapter2.far);
-  if (ASSETS.chapter2.battlefield) load('chapter2_battlefield', ASSETS.chapter2.battlefield);
-  if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
+  if (ASSETS.chapter2.far) lazyLoad('chapter2', 'chapter2_far', ASSETS.chapter2.far);
+  if (ASSETS.chapter2.battlefield) lazyLoad('chapter2', 'chapter2_battlefield', ASSETS.chapter2.battlefield);
+  if (ASSETS.chapter2.altar) keyChapter2Map(lazyLoad('chapter2', 'chapter2_altar', ASSETS.chapter2.altar));
 }
-if (ASSETS.xiaochang) load('xiaochang', ASSETS.xiaochang);
-if (ASSETS.chapter2Intro) load('chapter2_intro', ASSETS.chapter2Intro);
+if (ASSETS.xiaochang) lazyLoad('xiaochang', 'xiaochang', ASSETS.xiaochang);
+if (ASSETS.chapter2Intro) lazyLoad('chapter2', 'chapter2_intro', ASSETS.chapter2Intro);
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
-Object.entries(ASSETS.dialogPortraits || {}).forEach(([k, v]) => load('dialog_' + k, v));
+Object.entries(ASSETS.dialogPortraits || {}).forEach(([k, v]) => lazyLoad('chapter2', 'dialog_' + k, v));   // 立绘目前只在第二章开场用
 document.querySelectorAll('[data-weapon-icon]').forEach(img => {
   const src = ASSETS.ui && ASSETS.ui[img.dataset.weaponIcon];
   if (src) img.src = src;
@@ -64,7 +88,7 @@ const CH = {};
 for (const [name, frames] of Object.entries(ASSETS.chars)) {
   CH[name] = {};
   for (const [f, [src, w, h, ax, ay]] of Object.entries(frames)) {
-    const fr = { img: load(name + '_' + f, src), w, h, ax, ay, white: null };
+    const fr = { img: LAZY_CHARS[name] ? lazyLoad(LAZY_CHARS[name], name + '_' + f, src) : load(name + '_' + f, src), w, h, ax, ay, white: null };
     fr.dark = null;   // 深色剪影（精英兵用）
     fr.img.onload = () => {   // 预先做一张白色剪影，用于受击闪白
       const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
@@ -562,9 +586,9 @@ function prepareChapter2Run(showOpening) {
   if (showOpening && window.CHAPTER2_INTRO) CHAPTER2_INTRO.start(() => startChapter2Battle(1));
   else startChapter2Battle(1);
 }
-function startChapter2Debug() { prepareChapter2Run(false); }
+function startChapter2Debug() { ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => prepareChapter2Run(false)); }
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
-function startChapter2() { prepareChapter2Run(true); }
+function startChapter2() { ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => prepareChapter2Run(true)); }
 function startChapter2Battle(number) {
   if (window.GEAR) GEAR.collectDrops();
   M.W = number === 5 ? 1080 : 3600;

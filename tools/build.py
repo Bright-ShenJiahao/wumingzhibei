@@ -1,30 +1,107 @@
-"""把 game.js 和 art/ 里的素材打包成单文件 index.html。用法：python3 tools/build.py（在仓库根目录运行）"""
-import base64, json, os
+"""把 game.js、js/ 模块打包成 index.html；图片、字体、音频优化后写进 pack/，index.html 只引用它们的网址。
+用法：python3 tools/build.py（在仓库根目录运行）。需要 Pillow、fontTools；装了 brotli 才能输出 WOFF2 字体（否则退回 TTF）。
+
+为什么不再把素材塞进 index.html：
+- 素材单独成文件后，网址带内容指纹（?v=哈希），netlify.toml 给 /pack/* 设长期缓存。
+  没改过的图片，玩家第二次打开就不用再下载；每次更新只下载改动的文件。
+- index.html 本身只剩代码（约 0.5MB），每次发布玩家重新拿到的也只有这些。
+"""
+import base64, hashlib, io, json, os, re
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P = lambda *p: os.path.join(R, *p)
+PACK = P('pack')
+_emitted = set()
 
 
-def uri(path):
-    ext = os.path.splitext(path)[1][1:].lower().replace('jpg', 'jpeg')
-    return f'data:image/{ext};base64,' + base64.b64encode(open(path, 'rb').read()).decode()
+def emit(rel, data):
+    """把字节写到 pack/rel（内容没变就不改动文件），返回带指纹的网址。"""
+    path = os.path.join(PACK, rel)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if not (os.path.exists(path) and open(path, 'rb').read() == data):
+        open(path, 'wb').write(data)
+    _emitted.add(os.path.normpath(path))
+    return 'pack/' + rel.replace(os.sep, '/') + '?v=' + hashlib.sha1(data).hexdigest()[:10]
 
 
-atlas = json.load(open(P('art', 'sprites', 'atlas.json'), encoding='utf-8'))
-import io
+def rel_of(path, ext=None):
+    r = os.path.relpath(path, P('art'))
+    if ext: r = os.path.splitext(r)[0] + '.' + ext
+    return r
+
+
 from PIL import Image
 
 
+def to_webp(im, lossless=False, quality=86):
+    buf = io.BytesIO()
+    if lossless: im.save(buf, 'WEBP', lossless=True, quality=100, method=6)
+    else: im.save(buf, 'WEBP', quality=quality, method=6)
+    return buf.getvalue()
+
+
+# 转换缓存：源文件内容不变就直接复用 pack/ 里上次的结果（无损 webp 编码很慢，全量要一分多钟）
+_CACHE_PATH = os.path.join(PACK, '.cache.json')
+try: _cache = json.load(open(_CACHE_PATH, encoding='utf-8'))
+except Exception: _cache = {}
+_cache_used = {}
+
+
+def cached(kind, path, make):
+    raw = open(path, 'rb').read()
+    key = kind + ':' + hashlib.sha1(raw).hexdigest()
+    hit = _cache.get(key)
+    if hit and os.path.isfile(os.path.join(PACK, hit)):
+        _cache_used[key] = hit
+        return emit(hit, open(os.path.join(PACK, hit), 'rb').read())
+    url = make(raw)
+    _cache_used[key] = url.split('?')[0][len('pack/'):]
+    return url
+
+
+def uri(path):
+    return cached('img', path, lambda raw: _uri(path, raw))
+
+
+def _uri(path, raw):
+    """普通图片：webp 原样拷贝；png（带透明）转无损 webp；jpg 原样。取更小的那个。"""
+    ext = os.path.splitext(path)[1][1:].lower()
+    if ext == 'png':
+        webp = to_webp(Image.open(path).convert('RGBA'), lossless=True)
+        if len(webp) < len(raw): return emit(rel_of(path, 'webp'), webp)
+    return emit(rel_of(path), raw)
+
+
+def photo_uri(path, quality=86):
+    return cached('photo', path, lambda raw: _photo_uri(path, raw, quality))
+
+
+def _photo_uri(path, raw, quality):
+    """手绘立绘这类照片质感的 png：有损 webp（保留透明）。"""
+    webp = to_webp(Image.open(path).convert('RGBA'), quality=quality)
+    return emit(rel_of(path, 'webp'), webp) if len(webp) < len(raw) else emit(rel_of(path), raw)
+
+
+def file_uri(path):
+    return emit(rel_of(path), open(path, 'rb').read())
+
+
+atlas = json.load(open(P('art', 'sprites', 'atlas.json'), encoding='utf-8'))
 def sprite_uri(path):
-    # 像素图颜色很少：转成 256 色调色板 PNG（透明度只有全透明/不透明），体积小很多且看不出差别
+    return cached('sprite', path, lambda raw: _sprite_uri(path, raw))
+
+
+def _sprite_uri(path, raw):
+    # 像素图颜色很少：转成 256 色调色板（透明度只有全透明/不透明），再取 png / 无损 webp 中更小的
     im = Image.open(path).convert('RGBA')
     a = im.getchannel('A').point(lambda v: 255 if v > 127 else 0)
     im.putalpha(a)
     q = im.quantize(colors=255, method=Image.Quantize.FASTOCTREE)
     buf = io.BytesIO(); q.save(buf, 'PNG', optimize=True)
-    raw = open(path, 'rb').read()
-    data = buf.getvalue() if len(buf.getvalue()) < len(raw) else raw
-    return 'data:image/png;base64,' + base64.b64encode(data).decode()
+    best = min([(len(buf.getvalue()), 'png', buf.getvalue()), (len(raw), 'png', raw)], key=lambda t: t[0])
+    webp = to_webp(q.convert('RGBA'), lossless=True)
+    if len(webp) < best[0]: return emit(rel_of(path, 'webp'), webp)
+    return emit(rel_of(path, 'png'), best[2])
 
 
 # Atlas may contain optional frames not present in this checkout; package only available files.
@@ -42,12 +119,12 @@ assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))
 # UI（卷轴/木牌按钮/印章）与回血食物
 assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'w_bow', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone')}
 assets['dialogPortraits'] = {
-    'caocao': uri(P('art', 'ui', 'portrait_caocao.png')),
-    'messenger': uri(P('art', 'ui', 'portrait_messenger.png')),
+    'caocao': photo_uri(P('art', 'ui', 'portrait_caocao.png')),
+    'messenger': photo_uri(P('art', 'ui', 'portrait_messenger.png')),
 }
 assets['ui']['w_blade'] = uri(P('art', 'ui', 'w_blade.webp'))
 assets['ui']['w_halberd'] = uri(P('art', 'ui', 'w_halberd.webp'))
-assets['music'] = {'southernDrum': 'data:audio/wav;base64,' + base64.b64encode(open(P('art', 'audio', 'southern_drum.wav'), 'rb').read()).decode()}
+assets['music'] = {'southernDrum': file_uri(P('art', 'audio', 'southern_drum.wav'))}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
 
@@ -74,8 +151,16 @@ if os.path.exists(FONT_SRC):
     print('font subset', ''.join(sorted(_chars)).__len__(), 'chars,', os.path.getsize(FONT_OUT) // 1024, 'KB')
 FONT_FACE = ''
 if os.path.exists(FONT_OUT):
-    FONT_FACE = '<style>@font-face{font-family:"MaShanZheng";src:url(data:font/ttf;base64,' + base64.b64encode(open(FONT_OUT, 'rb').read()).decode() + ')format("truetype");font-display:swap}</style>'   # 电视屏幕遮罩（绿幕形状，含猫爪镂空）   # 首页背景（电视屏幕是绿的，留给实时演示）
-assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: 'data:audio/mpeg;base64,' + base64.b64encode(open(f, 'rb').read()).decode()
+    try:
+        import brotli  # noqa: F401  （fontTools 输出 woff2 需要）
+        from fontTools.ttLib import TTFont
+        _tt = TTFont(FONT_OUT); _tt.flavor = 'woff2'; _b = io.BytesIO(); _tt.save(_b)
+        _font_url, _fmt = emit('fonts/result.woff2', _b.getvalue()), 'woff2'
+    except ImportError:
+        print('提示：没装 brotli（pip install brotli），字体退回 TTF，体积大一倍')
+        _font_url, _fmt = emit('fonts/result.ttf', open(FONT_OUT, 'rb').read()), 'truetype'
+    FONT_FACE = '<link rel="preload" href="' + _font_url + '" as="font" type="font/' + ('woff2' if _fmt == 'woff2' else 'ttf') + '" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(' + _font_url + ')format("' + _fmt + '");font-display:swap}</style>'
+assets['voice'] = {os.path.splitext(os.path.basename(f))[0]: file_uri(f)
                    for f in sorted(__import__('glob').glob(P('art', 'voice', '*.mp3')))}
 bg = {'mid': uri(P('art', 'bg', 'village_mid.webp')), 'far': uri(P('art', 'bg', 'village_far.jpg')),
       'gnd': uri(P('art', 'bg', 'village_ground.jpg'))}
@@ -90,8 +175,22 @@ assets['chapter2Intro'] = uri(P('art', 'bg', 'chapter2_intro.webp'))
 import glob
 mods = sorted(glob.glob(P('js', '*.js')))
 game = '\n'.join(open(f, encoding='utf-8').read() for f in mods) + '\n' + open(P('game.js'), encoding='utf-8').read()
+
+def _art_literal(m):
+    path = P(*m.group(0).split('/'))
+    if not os.path.isfile(path): return m.group(0)
+    return uri(path) if path.lower().endswith('.png') else file_uri(path)
+game = re.sub(r"art/[A-Za-z0-9_\-/]+\.(?:webp|png|jpg|jpeg)", _art_literal, game)
 h = open(P('index.src.html'), encoding='utf-8').read()
+h = re.sub(r"art/[A-Za-z0-9_\-/]+\.(?:webp|png|jpg|jpeg)", _art_literal, h)
 h = h.replace('__FONT_FACE__', FONT_FACE)
 h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', game)
 open(P('index.html'), 'w', encoding='utf-8').write(h)
-print('index.html', len(h) // 1024, 'KB')
+_stale = 0
+for root, _, files in os.walk(PACK):
+    for f in files:
+        full = os.path.normpath(os.path.join(root, f))
+        if full not in _emitted and f != '.cache.json': os.remove(full); _stale += 1
+json.dump(_cache_used, open(_CACHE_PATH, 'w', encoding='utf-8'), ensure_ascii=False, indent=0, sort_keys=True)
+total = sum(os.path.getsize(f) for f in _emitted)
+print('index.html', len(h.encode('utf-8')) // 1024, 'KB；pack/', len(_emitted), '个文件', total // 1024, 'KB' + ('；清理旧文件 %d 个' % _stale if _stale else ''))
