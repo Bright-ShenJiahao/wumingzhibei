@@ -103,7 +103,7 @@ const WEAP = {
     { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
-  blade: { name: '大刀', class: 'short', reach: 38, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 46, combo: [
+  blade: { name: '大刀', class: 'short', reach: 30, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 38, combo: [
     { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.1, kb: 42 },
     { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.2, kb: 48, multi: true },
     { f: ['blade_3a', 'blade_3b'], d: [.18, .25], dmg: 1.5, kb: 65, multi: true, both: true },

@@ -392,6 +392,49 @@
       }
     `;
     document.head.appendChild(st);
+    const prepStyle=document.createElement('style');prepStyle.id='prepRedesignStyle';prepStyle.textContent=`
+      #tChapterPick,#tPrepScroll{scrollbar-width:thin;scrollbar-color:#7a5b35 transparent}
+      #tChapterPick::-webkit-scrollbar,#tPrepScroll::-webkit-scrollbar{width:6px;height:6px}
+      #tChapterPick::-webkit-scrollbar-track,#tPrepScroll::-webkit-scrollbar-track{background:transparent}
+      #tChapterPick::-webkit-scrollbar-thumb,#tPrepScroll::-webkit-scrollbar-thumb{border-radius:6px;background:rgba(122,91,53,.62)}
+      #tChapterPick:hover::-webkit-scrollbar-thumb,#tPrepScroll:hover::-webkit-scrollbar-thumb{background:#7a5b35}
+      #tChapterPick{padding-right:10px}
+      .tTrainingCard{position:relative;width:100%;min-height:clamp(61px,11.4vh,100px);margin:clamp(8px,1.5vh,15px) 0 0;padding:8px 9px;box-sizing:border-box;display:flex;align-items:center;gap:9px;border:2px solid #d9a548;border-radius:8px;color:#ffe2a0;text-align:left;background:linear-gradient(135deg,#7a2418,#4e150e);box-shadow:inset 0 0 0 2px #35150f,0 3px 8px #120a08aa;cursor:pointer;touch-action:manipulation}
+      .tTrainingCard img{width:30px;height:34px;flex:none;object-fit:contain;image-rendering:pixelated}.tTrainingCopy{min-width:0;flex:1}.tTrainingCopy strong{display:block;font-size:clamp(14px,1.55vw,19px);white-space:nowrap}.tTrainingCopy small{display:block;margin-top:4px;color:#e6c28c;font-size:clamp(9px,1vw,12px);line-height:1.2}.tTrainingProgress{flex:none;padding:4px 6px;border:1px solid #c89a52;border-radius:12px;background:#32140e;color:#f1d28d;font-size:10px;white-space:nowrap}.tTrainingCard:disabled{filter:grayscale(1);opacity:.48;cursor:default}
+      #tChapterPick .tChapterCard{margin-top:8px}
+      #tPrepHeader{min-height:32px;align-items:center}.tPrepHeading{min-width:0;display:flex;align-items:baseline;gap:10px}.tPrepHeading h2{flex:none}#tPrepSync{display:contents}.tPrepHeading #cloudStatus{font-size:11px;white-space:nowrap;color:#d0b980}.tPrepHeading #cloudRetry{min-width:24px;min-height:22px;width:24px;height:22px;padding:0;font-size:17px}.tPrepHeading #cloudStatus:empty{display:none}#tPrepHeader>p{flex:none}
+      #tPrepMain{height:190px;grid-template-columns:minmax(0,1fr) minmax(118px,22%) minmax(0,1fr);grid-template-areas:"left preview right";align-items:stretch;gap:8px}
+      #tPrepPreview{grid-area:preview;width:100%;height:100%;min-height:0;border-radius:7px;background:radial-gradient(ellipse at 50% 78%,rgba(161,112,48,.29),transparent 70%),linear-gradient(145deg,#38291e,#201a15)}
+      #tPrepPreview:after{content:"";position:absolute;bottom:22px;left:26%;width:48%;height:8px;border-radius:50%;background:#100b0780;filter:blur(2px);pointer-events:none}
+      #tPrepPreview canvas{width:100%;height:calc(100% - 18px)}#tPrepPreview small{position:relative;z-index:1}
+      #tPrepSlotsLeft{grid-area:left}#tPrepSlotsRight{grid-area:right}.tPrepSlotColumn{min-width:0;min-height:0;display:grid;grid-template-rows:repeat(3,minmax(0,1fr));gap:5px}
+      .tPrepSlot{position:relative;grid-template-columns:42px minmax(0,1fr);grid-template-rows:minmax(11px,auto) minmax(0,1fr);gap:2px 7px;padding:5px}
+      .tPrepSlot>b{grid-column:2;grid-row:1;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .tPrepIcon{grid-column:1;grid-row:1/3;width:42px;height:42px;max-height:none;align-self:center}
+      .tPrepName{grid-column:2;grid-row:2;align-self:start;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .tPrepSlot .aUnequip,.tPrepSlot .aSlotLock{grid-row:2;align-self:end;min-height:18px;padding:1px 5px;font-size:10px;line-height:1;white-space:nowrap}
+      #tPrepBagTitle{justify-content:flex-start;gap:8px;padding:2px 0}.tBagCount{color:#f0d58f}.tBagSort{margin-left:auto}
+      #tPrepBag{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));grid-auto-rows:auto;justify-content:start;gap:6px;padding:1px 10px 2px 1px;box-sizing:border-box}
+      #aTools{padding:2px 10px 8px 0;flex:none}#aTools details{margin:0}#aTools summary{cursor:pointer;color:#ddb96f;padding:4px 2px}#aTools p{margin:5px 2px;line-height:1.45}
+      #tPrepFooter{position:relative;min-height:72px;padding:7px 9px;gap:8px;align-items:center;background:#241a13f5;border-top:1px solid #8c663c;box-shadow:0 -6px 14px #1a100e88}
+      #aFooterTools{min-width:0;flex:1;display:flex;align-items:center;gap:6px}#aFooterTools button{box-sizing:border-box;min-width:52px;height:49px;padding:5px 8px;border:1px solid #9b7445;border-radius:6px;background:linear-gradient(#60472c,#38281b);color:#e8d2a8;font:700 13px sans-serif;cursor:pointer;white-space:nowrap}#aFooterTools button:disabled{opacity:.4;cursor:default}
+      #aFooterTools .aForgeButton{min-width:0;flex:1;height:58px;display:flex;align-items:center;justify-content:space-between;gap:7px;padding:6px 10px;border:2px solid #f2c36a;background:linear-gradient(135deg,#b8742a,#7a4416);color:#fff0c9;box-shadow:0 0 10px #e1a23a88,inset 0 0 0 1px #713914;font-size:17px}
+      #aForgeTag{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 6px;border:1px solid #f4cf83aa;border-radius:4px;background:#321e0eb8;color:#ffe8bb;font-size:10px;font-weight:600}
+      #aFooterTools #aLock{min-width:64px}#aFooterTools #aDiscard{min-width:58px;border-color:#9c4c43;color:#e7a59a;background:linear-gradient(#4b2822,#2d1916)}
+      #tPrepGo{flex:none;min-width:clamp(100px,15vw,170px);height:58px;padding:8px 16px;font-size:20px}
+      #tPrepStatus{position:absolute;left:10px;top:-19px;z-index:2;padding:2px 6px;background:#20170fe8;color:#efb19e;font-size:11px;pointer-events:none}
+      .x-preparation #tPrepHeader,.x-preparation #tPrepMain,.x-preparation #tPrepBagTitle,.x-preparation #tPrepBag,.x-preparation #aTools,.x-preparation #aFooterTools{display:none!important}
+      @media(max-height:430px){
+        #tTrainingCard{min-height:clamp(32px,8vh,39px);margin-top:4px;padding:3px 5px;gap:4px}.tTrainingCard img{width:20px;height:23px}.tTrainingCopy strong{font-size:clamp(10px,2.5vh,13px)}.tTrainingCopy small{margin-top:1px;font-size:clamp(7px,1.7vh,9px)}.tTrainingProgress{padding:2px 4px;font-size:8px}
+        #tChapterPick .tChapterCard{min-height:clamp(48px,12vh,58px);margin-top:4px;padding:5px}.tChapterCard strong{font-size:clamp(11px,2.8vh,14px)}.tChapterCard small{font-size:8px}
+        #tPrepHeader{min-height:24px}#tPrepHeader h2{font-size:clamp(14px,3.7vh,17px)}.tPrepHeading{gap:5px}.tPrepHeading #cloudStatus{font-size:8px}.tPrepHeading #cloudRetry{width:20px;min-width:20px;height:19px;min-height:19px;font-size:15px}#tPrepTarget{font-size:9px}
+        #tPrepMain{height:clamp(92px,30vh,124px);grid-template-columns:minmax(0,1fr) minmax(76px,22%) minmax(0,1fr);gap:3px}
+        .tPrepSlotColumn{gap:3px}.tPrepSlot{grid-template-columns:34px minmax(0,1fr);grid-template-rows:10px minmax(0,1fr);gap:1px 3px;padding:2px;border-radius:5px}.tPrepSlot>b{font-size:clamp(8px,2.3vh,10px)}.tPrepIcon{width:34px;height:34px}.tPrepName{font-size:clamp(8px,2.3vh,10px)}.tPrepSlot .aUnequip,.tPrepSlot .aSlotLock{min-height:14px;padding:0 3px;font-size:8px}
+        #tPrepBagTitle{font-size:10px;gap:5px}#tPrepBagTitle small{font-size:8px}#tPrepBag{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:4px;padding-right:10px}.aCard{aspect-ratio:1;width:auto;min-height:0!important;padding:3px}.aCard .aEquip img{max-width:33px;max-height:33px}#tPrepBag .aCardName{font-size:clamp(7px,1.8vh,9px)}
+        #tPrepFooter{min-height:54px;padding:4px 5px;gap:4px}#aFooterTools{gap:3px}#aFooterTools button{min-width:39px;height:32px;padding:3px 4px;font-size:10px}#aFooterTools .aForgeButton{height:42px;font-size:clamp(11px,3vh,14px);padding:3px 5px}#aForgeTag{padding:2px 3px;font-size:7px}#aFooterTools #aLock{min-width:41px}#aFooterTools #aDiscard{min-width:37px}#tPrepGo{min-width:72px;height:44px;padding:4px 8px;font-size:clamp(14px,3.5vh,17px)}#tPrepStatus{top:-16px;font-size:9px}
+        .x-preparation #tPrepFooter{min-height:54px}
+      }
+    `;document.head.appendChild(prepStyle);
     setNoviceClass();
     const mk = (tag, id, text) => { const e = document.createElement(tag); e.id = id; if (text) e.textContent = text; document.body.appendChild(e); return e; };
     dom.name = mk('input', 'tName'); dom.name.type = 'text'; dom.name.maxLength = 8;
@@ -442,6 +485,7 @@
     dom.chapter = mk('div', 'tChapter', '');
     dom.chapter.innerHTML = `<div id="tChapterShell">
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
+        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="art/ui/flag.webp" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress">未通过</span></button>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
         <p id="tChapterNotice"></p>
@@ -449,15 +493,17 @@
       </section>
       <section id="tChapterPanel" aria-label="整军备战">
        <div id="tPrepScroll">
-        <header id="tPrepHeader"><h2>整军备战</h2><p id="tPrepTarget"></p></header>
+        <header id="tPrepHeader"><div class="tPrepHeading"><h2>整军备战</h2><div id="tPrepSync"></div></div><p id="tPrepTarget"></p></header>
         <div id="tPrepMain">
           <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
-          <div id="tPrepSlots"></div>
+          <div id="tPrepSlotsLeft" class="tPrepSlotColumn"></div>
+          <div id="tPrepSlotsRight" class="tPrepSlotColumn"></div>
         </div>
-        <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3～5把熔炼</small></div>
+        <div id="tPrepBagTitle"><span class="tBagCount">武器 0/50</span><small>含已装备</small><small class="tBagSort">已锁定的排在最前</small></div>
         <div id="tPrepBag"></div>
+        <div id="aTools"></div>
        </div>
-       <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
+       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">丢弃</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -465,6 +511,11 @@
     dom.chapter.addEventListener('click', e => {
       if (suppressItemClick) { suppressItemClick = false; return; }
       const chapter = e.target.closest('[data-chapter]');
+      if (e.target.closest('#tTrainingCard')) {
+        const card=dom.chapter.querySelector('#tTrainingCard');
+        if(card&&!card.disabled){selectedChapter=1;prepView='xiaochang';renderPreparation();if(window.CLOUD_SAVE)CLOUD_SAVE.enterPreparation();}
+        return;
+      }
       if (chapter) {
         const id = Number(chapter.dataset.chapter);
         if (id === 2 && (!window.CHAPTER2 || !CHAPTER2.canEnter())) return;
@@ -478,10 +529,6 @@
       if (slot) previewEquippedSlot(slot.dataset.slot);
     });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
-    dom.chapter.querySelector('#tPrepTraining').addEventListener('click', () => {
-      if (!window.XIAOCHANG || !XIAOCHANG.CONFIG[selectedChapter] || !hasCleared(S.name,selectedChapter)) return;
-      prepView='xiaochang';renderPreparation();if(window.CLOUD_SAVE)CLOUD_SAVE.enterPreparation();
-    });
     dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
     if (window.WEAPON_TIP) WEAPON_TIP.attach(dom.chapter, id => ITEMS[id]);
     dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
@@ -797,20 +844,16 @@
     }
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
+    const trainingCard=dom.chapter.querySelector('#tTrainingCard');
+    if(trainingCard){const unlocked=hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';dom.chapter.querySelector('#tTrainingProgress').textContent=best?'第'+best+'层':'未通过';trainingCard.classList.toggle('selected',prepView==='xiaochang');}
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
     if (target) target.textContent = `出征目标：${chapterName}`;
 
-    const slots = dom.chapter.querySelector('#tPrepSlots');
-    slots.innerHTML = EQUIPMENT_SLOTS.map(slot => {
-      const id = p.equipped[slot.id], item = ITEMS[id];
-      const display = item ? item.name : (slot.id === 'artifact' ? '未装备' : '空');
-      const extra = slot.id === 'fashion' && !item ? '<small>联系作者购买</small>' : '';
-      const icon = item ? itemIcon(id) : '<span aria-hidden="true">—</span>';
-      return `<div class="tPrepSlot" data-slot="${slot.id}" ${item ? `data-weapon="${id}"` : ''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}">
-        <b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}${extra}</span></div>`;
-    }).join('');
+    const slotMarkup=slot=>{const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
+    dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
+    dom.chapter.querySelector('#tPrepSlotsRight').innerHTML=EQUIPMENT_SLOTS.slice(3,6).map(slotMarkup).join('');
 
     const equipped = new Set(Object.values(p.equipped).filter(Boolean));
     const items = p.owned.filter(id => ITEMS[id] && !equipped.has(id));
@@ -824,13 +867,13 @@
     const ready = EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id]);
     const go = dom.chapter.querySelector('#tPrepGo');
     go.disabled = !!(window.ARMORY && ARMORY.count() >= ARMORY.capacity()) || !ready || (selectedChapter === 2 && !canEnter2);
-    const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
+    const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
     if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
     dom.chapter.dataset.prepView=prepView;
     dom.prep.classList.toggle('x-preparation',prepView==='xiaochang');
     if (window.XIAOCHANG) XIAOCHANG.renderPreparation(dom.chapter, prepView === 'xiaochang',selectedChapter);
-    if (window.CLOUD_SAVE) CLOUD_SAVE.attach(dom.chapter);
+    if (window.CLOUD_SAVE) { CLOUD_SAVE.attach(dom.chapter);const line=dom.chapter.querySelector('#cloudStatus')?.parentElement;if(line&&line.parentElement!==dom.chapter.querySelector('#tPrepSync')){dom.chapter.querySelector('#tPrepSync').append(...line.childNodes);line.remove();} }
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
 
@@ -882,7 +925,7 @@
     if (!frame.img.naturalWidth) return;
     const baseH = 74;   // 以主角身高为基准，所有武器/攻击帧统一比例
     // 不能用 frame.w（武器长度）限制缩放，否则长戟攻击帧会把人物缩小，预览忽大忽小。
-    const scale = Math.max(1, Math.min(2, Math.floor(canvas.height * .78 / baseH)));
+    const scale = Math.max(1, Math.min(3, Math.floor(canvas.height * .78 / baseH)));
     // 长戟按人物同倍率画，锚点向左留出完整135px武器和轨迹的空间。
     const centerX = previewWeapon === 'halberd' ? canvas.width * .32 : canvas.width / 2;
     const x = Math.round(centerX - frame.ax * scale);
