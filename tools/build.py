@@ -17,6 +17,9 @@ _emitted = set()
 def emit(rel, data):
     """把字节写到 pack/rel（内容没变就不改动文件），返回带指纹的网址。"""
     path = os.path.join(PACK, rel)
+    norm = os.path.normpath(path)
+    if norm in _emitted and open(path, 'rb').read() != data:
+        raise SystemExit('打包冲突：两个不同的素材都要写到 pack/' + rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not (os.path.exists(path) and open(path, 'rb').read() == data):
         open(path, 'wb').write(data)
@@ -26,7 +29,8 @@ def emit(rel, data):
 
 def rel_of(path, ext=None):
     r = os.path.relpath(path, P('art'))
-    if ext: r = os.path.splitext(r)[0] + '.' + ext
+    # 转格式时保留原扩展名（home.png → home.png.webp），避免和同名的 home.webp 撞成同一个文件
+    if ext and not r.lower().endswith('.' + ext): r = r + '.' + ext
     return r
 
 
@@ -179,10 +183,13 @@ game = '\n'.join(open(f, encoding='utf-8').read() for f in mods) + '\n' + open(P
 def _art_literal(m):
     path = P(*m.group(0).split('/'))
     if not os.path.isfile(path): return m.group(0)
-    return uri(path) if path.lower().endswith('.png') else file_uri(path)
-game = re.sub(r"art/[A-Za-z0-9_\-/]+\.(?:webp|png|jpg|jpeg)", _art_literal, game)
+    if path.lower().endswith('.png'):
+        return sprite_uri(path) if os.sep + 'sprites' + os.sep in path else uri(path)
+    return file_uri(path)
+_ART_RE = r"(?<=['\"(])art/[A-Za-z0-9_\-/]+\.(?:webp|png|jpg|jpeg)"   # 只换引号、括号里的路径，注释里的不动
+game = re.sub(_ART_RE, _art_literal, game)
 h = open(P('index.src.html'), encoding='utf-8').read()
-h = re.sub(r"art/[A-Za-z0-9_\-/]+\.(?:webp|png|jpg|jpeg)", _art_literal, h)
+h = re.sub(_ART_RE, _art_literal, h)
 h = h.replace('__FONT_FACE__', FONT_FACE)
 h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', game)
 open(P('index.html'), 'w', encoding='utf-8').write(h)
