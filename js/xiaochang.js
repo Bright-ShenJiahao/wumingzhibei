@@ -262,7 +262,13 @@ window.XIAOCHANG = (() => {
 
   function drawBackground() {
     const im = IMG.xiaochang;
-    if (!im || !im.complete || !im.naturalWidth) return;
+    if (!im || !im.complete || !im.naturalWidth) {
+      // 地图还没下载完：先铺一层夯土色，避免画面残影；同时确保开始下载
+      ctx.fillStyle = '#6e5636'; ctx.fillRect(-200, 0, 1120, 300);
+      ctx.fillStyle = '#b8955c'; ctx.fillRect(-200, 166, 1120, 134);
+      if (window.ensureAssets) ensureAssets('xiaochang', { silent: true });
+      return;
+    }
     const scale = Math.max(720 / im.width, 134 / ((1 - FENCE_RATIO) * im.height));
     const w = im.width * scale, h = im.height * scale;
     ctx.imageSmoothingEnabled = true;

@@ -51,7 +51,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=05ccdae312" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=05ccdae312)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=5ba1b6a446" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=5ba1b6a446)format("woff2");font-display:swap}</style></head><body>
 <canvas id="c"></canvas>
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
@@ -5226,7 +5226,13 @@ window.XIAOCHANG = (() => {
 
   function drawBackground() {
     const im = IMG.xiaochang;
-    if (!im || !im.complete || !im.naturalWidth) return;
+    if (!im || !im.complete || !im.naturalWidth) {
+      // 地图还没下载完：先铺一层夯土色，避免画面残影；同时确保开始下载
+      ctx.fillStyle = '#6e5636'; ctx.fillRect(-200, 0, 1120, 300);
+      ctx.fillStyle = '#b8955c'; ctx.fillRect(-200, 166, 1120, 134);
+      if (window.ensureAssets) ensureAssets('xiaochang', { silent: true });
+      return;
+    }
     const scale = Math.max(720 / im.width, 134 / ((1 - FENCE_RATIO) * im.height));
     const w = im.width * scale, h = im.height * scale;
     ctx.imageSmoothingEnabled = true;
