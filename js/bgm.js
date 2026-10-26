@@ -365,6 +365,7 @@
 
   function pump() {
     if (!ac || ac.state !== 'running') return;
+    menuPump();
     const ahead = ac.currentTime + LOOK;
     for (const L of layers.slice()) {
       if (L.time < ac.currentTime - .2) L.time = ac.currentTime + .05;   // 被系统休眠/切后台后别补一堆音
@@ -429,6 +430,8 @@
   // 读 game.js 的全局变量（同一个 <script> 里，let 声明的可以直接读；开局前是 TDZ，用 try 兜住）
   function readState() {
     try {
+      // 主界面、整军备战、校场页：放《灯下》（js/menu_music.js）
+      if (window.MENU_MUSIC && window.TITLE && TITLE.mode && ['title', 'chapter'].includes(TITLE.mode())) return 'menu';
       if (typeof won !== 'undefined' && won) return 'victory';
       if (typeof over !== 'undefined' && over) return 'defeat';
       if (typeof chapter2Run !== 'undefined' && chapter2Run && !(window.TITLE && TITLE.blocks())) {
@@ -445,8 +448,43 @@
     return 'village';
   }
 
+  // ---------- 菜单轻音乐《灯下》：逐小节排程，和战斗音乐交叉淡入淡出 ----------
+  let menuGain = null, menuBus = null, menuOn = false, menuBar = 0, menuNext = 0;
+  const MENU_LEVEL = 1.15;
+  function menuStart() {
+    if (!window.MENU_MUSIC) return;
+    if (!menuGain) { menuGain = ac.createGain(); menuGain.gain.value = .0001; menuGain.connect(out); menuBus = MENU_MUSIC.makeBus(ac, menuGain); }
+    const t = ac.currentTime;
+    menuGain.gain.cancelScheduledValues(t); menuGain.gain.setValueAtTime(Math.max(.0001, menuGain.gain.value), t);
+    menuGain.gain.linearRampToValueAtTime(MENU_LEVEL, t + XFADE);
+    if (!menuOn) { menuOn = true; menuBar = 0; menuNext = t + .1; }
+  }
+  function menuStop() {
+    if (!menuGain || !menuOn) return;
+    menuOn = false;
+    const t = ac.currentTime;
+    menuGain.gain.cancelScheduledValues(t); menuGain.gain.setValueAtTime(Math.max(.0001, menuGain.gain.value), t);
+    menuGain.gain.linearRampToValueAtTime(.0001, t + XFADE);
+  }
+  function menuPump() {
+    if (!menuOn) return;
+    if (menuNext < ac.currentTime - .2) menuNext = ac.currentTime + .05;   // 切后台回来不补放
+    while (menuNext < ac.currentTime + 1.2) {
+      MENU_MUSIC.render(ac, null, menuNext, menuBar, 1, menuBus);
+      MENU_MUSIC.vinyl(ac, menuBus, menuNext, MENU_MUSIC.BAR + .05);
+      menuNext += MENU_MUSIC.BAR; menuBar = (menuBar + 1) % MENU_MUSIC.BARS;
+    }
+  }
+
   function applyState(st) {
     const prev = state; state = st;
+    if (st === 'menu') {
+      stopJingle(.4);
+      layers.filter(L => !L.stopping).forEach(L => stopLayer(L, XFADE));
+      menuStart();
+      return;
+    }
+    menuStop();
     if (st === 'victory' || st === 'defeat') {
       if (layers.length) { layers.slice().forEach(L => stopLayer(L, .6)); }
       if (prev !== st) playJingle(st);

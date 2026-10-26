@@ -1172,6 +1172,7 @@
     },
     show: () => show(),
     active: () => S.mode !== 'game',
+    mode: () => S.mode,   // 'title' 标题 / 'chapter' 整备与校场页 / 'intro' 开场 / 'game' 游戏中
     // 调试用：直接跳过标题页进游戏
     skip: () => {
       S.mode = 'game'; S.intro = 0;
