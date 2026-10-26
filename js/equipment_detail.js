@@ -22,9 +22,9 @@
     .weapon-detail dt{color:#bca47e}.weapon-detail dd{margin:0;color:#efdfbe}
     .weapon-detail .wd-copy{margin:5px 0;font-size:12px;color:#dcc9a7}
     .weapon-detail details{font-size:12px;margin-top:10px;border-top:1px solid #705435;padding-top:7px}
+    .weapon-detail .wd-up{color:#9bd481;font-weight:bold}.weapon-detail .wd-down{color:#ef8c7a;font-weight:bold}
     .weapon-detail summary{cursor:pointer;color:#c9af7d}.weapon-detail summary:focus-visible{outline:1px solid #d5b46d}
-    #aDetail.weapon-detail{max-height:360px;padding:12px;touch-action:pan-y}
-    @media(max-height:430px){.weapon-detail{font-size:12px}.weapon-detail .wd-title{font-size:17px}.weapon-detail .wd-affix{padding:6px 8px}.weapon-detail .wd-effect{font-size:13px}#aDetail.weapon-detail{max-height:240px}}
+    @media(max-height:430px){.weapon-detail{font-size:12px}.weapon-detail .wd-title{font-size:17px}.weapon-detail .wd-affix{padding:6px 8px}.weapon-detail .wd-effect{font-size:13px}}
   `;document.head.append(e);}
   function positiveText(a){const v=a.value;const ordinary={sharp:'攻击伤害',swift:'攻击速度',reach:'攻击距离／射程',health:'最大生命',move:'移动速度',charge:'蓄力攻击伤害'};
     if(ordinary[a.id])return ordinary[a.id]+'＋'+v+'%';
@@ -37,29 +37,39 @@
       pierce:`${v}%概率额外穿透1人，后续伤害50%，不能穿盾`,split:`命中有${v}%概率分裂，对附近最多3名其他敌人造成25%伤害`,scatter:`${v}%概率向随机一侧30°多射1支，伤害35%`,repeat:`${v}%概率追加1次射击，伤害50%`,double:`${v}%概率快速追加1次近战命中，伤害50%`,return:`${v}%概率在最大射程返回，返回伤害35%`,
     };return text[a.id]||'';
   }
+  function metrics(item){
+    const w=WEAP[item.type],st=AFFIX_DATA.stats(item),combos=w.combo;
+    const total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
+    const damages=combos.map(c=>c.dmg*st.damage);
+    const ranges=combos.map(c=>(w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range);
+    return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus};
+  }
   function render(container,item,{compare=null}={}){
     if(!item||typeof WEAP==='undefined'||!WEAP[item.type])return;style();container.replaceChildren();container.classList.add('weapon-detail');
     const D=AFFIX_DATA,w=WEAP[item.type],st=D.stats(item),combos=w.combo,total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
     const heading=node('div',null,'wd-title');if(item.inscription)heading.append(node('span',item.inscription+'·','wd-origin'));
     const title=node('span',D.label(item));title.style.color=D.qualities[item.q].color;heading.append(title);container.append(heading,node('div',({long:'长武器',short:'短武器',ranged:'远程武器'})[w.class]+' · 仅当前手持时生效','wd-category'));
-    container.append(node('h4','词条'));
+    const affixes=node('section',null,'wd-affixes');affixes.append(node('h4','词条'));
     function affix(name,badge,text,cls=''){
-      const card=node('section',null,'wd-affix '+cls),head=node('div',null,'wd-affix-title');head.append(node('span',name),node('span',badge,'wd-badge'));card.append(head,node('div',text,'wd-effect'));container.append(card);return card;
+      const card=node('section',null,'wd-affix '+cls),head=node('div',null,'wd-affix-title');head.append(node('span',name),node('span',badge,'wd-badge'));card.append(head,node('div',text,'wd-effect'));affixes.append(card);return card;
     }
     for(const a of item.affixes){const valid=D.applicable(a,item.type);const card=affix('◆ '+D.positive[a.id].name,['初级','中级','高级'][a.tier],positiveText(a),valid?'':'wd-inactive');if(!valid)card.append(node('div','当前武器不生效','wd-muted'));}
     if(item.negative){const a=item.negative,d=D.negative[a.id];const card=affix('▼ '+d.name,'负面',d.desc+(a.id==='fragile'?'＋':'－')+a.value+(d.unit==='pp'?'个百分点':'%'),'wd-negative');if(a.id==='inaccurate'&&st.crit===0)card.append(node('div','抵消基础暴击后，当前暴击率最低为0%。','wd-muted'));}
     if(item.special)affix('✦ '+D.special[item.special].name,'特殊',D.special[item.special].desc,'wd-special');
-    if(!item.affixes.length&&!item.negative&&!item.special)container.append(node('div','无词条','wd-muted'));
+    if(!item.affixes.length&&!item.negative&&!item.special)affixes.append(node('div','无词条','wd-muted'));
     container.append(node('h4','装备后属性'));
-    const list=node('dl');const row=(label,value,target=list)=>{target.append(node('dt',label),node('dd',value));};
-    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'));
-    row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''));
+    const list=node('dl'),values=metrics(item),other=compare?metrics(compare):null;
+    const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;if(other){const diff=values[key]-other[key];if(Math.abs(diff)>1e-9){const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);}}}target.append(node('dt',label),dd);};
+    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
+    row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
     const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges.at(-1):'各段 '+ranges.join('／');
-    row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''));
-    row('暴击率',fmt(st.crit*100)+'%');row('暴击伤害',fmt(st.critDamage*100)+'%');
-    const related=new Set(item.affixes.map(a=>a.id));if(related.has('health')||item.negative?.id==='frail')row('最大生命',fmt(st.health));if(related.has('guard')||item.negative?.id==='fragile')row(st.guard<0?'额外受伤':'减伤',fmt(Math.abs(st.guard)*100)+'%');
+    row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
+    row('暴击率',fmt(st.crit*100)+'%',list,'crit');row('暴击伤害',fmt(st.critDamage*100)+'%',list,'critDamage');
+    row('最大生命',fmt(st.health),list,'health');row('减伤',fmt(st.guard*100)+'%',list,'guard');row('移动速度',fmt(st.move*100)+'%（相对基础）',list,'move');
+    row('普攻闪避',fmt(st.dodge*100)+'%',list,'dodge');row('冷却缩减',fmt(st.focus*100)+'%',list,'focus');
     container.append(list,node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
+    container.append(affixes);
     container.append(node('h4','攻击方式'));
     const features=combos.map((c,i)=>{const labels=[c.pierce&&'穿透敌人',c.both&&'前后攻击',c.multi&&'多目标命中',c.knock&&'击飞',c.thrust&&'前刺更远',c.daze&&'可造成眩晕'].filter(Boolean);return labels.length?'第'+(i+1)+'段：'+labels.join('、'):'';}).filter(Boolean);
     container.append(node('div',combos.length+'段'+(w.proj?'远程连击':'近战连击')+'；命中后可衔接下一段。'+(w.interrupt?'命中可打断普通敌人蓄力。':''),'wd-copy'));
@@ -72,7 +82,6 @@
     const detail=node('details'),summary=node('summary','展开基础数值与计算说明'),base=node('dl');detail.append(summary);
     row('基础伤害',combos.map(c=>fmt(c.dmg)).join('／'),base);row('基础暴击','1% · 基础暴击伤害150%',base);row('首段动作',fmt(combos[0].d.reduce((a,b)=>a+b,0))+'秒（未计装备加速）',base);row('完整连招',fmt(total/st.speed)+'秒（装备后）',base);
     detail.append(base,node('div','距离为游戏单位，不是米；分段距离是招式差异，不是随机射程。属性包含当前武器常驻词条，不含难度、锦囊、暴击和条件触发加成。','wd-muted'));container.append(detail);
-    if(compare&&compare.uid!==item.uid){const section=node('details');section.append(node('summary','对比当前装备：'+D.label(compare)));const content=node('div');render(content,compare);section.append(content);container.append(section);}
   }
-  window.WEAPON_DETAIL={render};
+  window.WEAPON_DETAIL={render,metrics};
 })();

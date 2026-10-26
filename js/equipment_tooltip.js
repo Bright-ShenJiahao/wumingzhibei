@@ -1,85 +1,125 @@
-// 按文件名先于title.js加载。详情从战斗配置实时读取，不另维护一份数值表。
+// 武器详情仅此一套：桌面可交互悬浮，点击/触屏长按打开同一个居中对比弹窗。
 (() => {
-  let tip, active, root, itemFor, hideTimer;
-  const fmt = value => Number(value.toFixed(2)).toString();
-  const duration = c => c.d.reduce((sum, n) => sum + n, 0);
-  function hide() {
-    clearTimeout(hideTimer);
-    if (active) active.removeAttribute('aria-describedby');
-    active = null;
-    if (tip) tip.hidden = true;
+  let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null, lastPoint=null;
+  let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
+  const now=()=>performance.now();
+  function close(){
+    clearTimeout(hideTimer);clearTimeout(longTimer);
+    if(active)active.removeAttribute('aria-describedby');
+    const restore=mode==='modal'?returnFocus:null;
+    active=null;mode='';lastPoint=null;returnFocus=null;
+    if(tip)tip.hidden=true;
+    if(restore?.isConnected){suppressFocusUntil=now()+300;restore.focus({preventScroll:true});}
   }
-  function place(point) {
-    if (!tip || tip.hidden || !active) return;
-    const rect = active.getBoundingClientRect();
-    const width = tip.offsetWidth, height = tip.offsetHeight;
-    let x = point ? point.x + 16 : rect.right + 12;
-    let y = point ? point.y + 16 : rect.top;
-    if (x + width > innerWidth - 10) x = point ? point.x - width - 16 : rect.left - width - 12;
-    if (y + height > innerHeight - 10) y = innerHeight - height - 10;
-    tip.style.left = Math.max(10, x) + 'px';
-    tip.style.top = Math.max(10, y) + 'px';
+  function hide(){if(mode==='hover')close();}
+  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,180);}
+  function weaponNode(target){
+    const el=target?.closest?.('.aCard[data-uid],.tPrepSlot[data-uid]') || target?.closest?.('[data-item],[data-weapon]');
+    return el&&root?.contains(el)?el:null;
   }
-  function show(node, point) {
-    const id = node && (node.dataset.weapon || node.dataset.item);
-    const item = id && itemFor(id);
-    const w = typeof WEAP !== 'undefined' && WEAP[id];
-    if (!item || !w || !root.classList.contains('open')) { hide(); return; }
-    hide(); active = node;
-    const instance = window.ARMORY && (node.dataset.uid ? ARMORY.byId(node.dataset.uid) : ARMORY.active(id));
-    WEAPON_DETAIL.render(tip, instance || {type:id,q:0,affixes:[],negative:null,special:null,inscription:''});
-    node.setAttribute('aria-describedby', tip.id);
-    tip.hidden = false; place(point);
+  function itemAt(node){
+    if(!node||!window.ARMORY)return null;
+    return node.dataset.uid?ARMORY.byId(node.dataset.uid):ARMORY.active(node.dataset.weapon||node.dataset.item);
   }
-  function weaponNode(target) {
-    const node = target && target.closest && target.closest('[data-item],[data-weapon]');
-    return node && root.contains(node) ? node : null;
+  function place(point=lastPoint){
+    if(!tip||tip.hidden||mode!=='hover'||!active)return;
+    const r=active.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
+    let x=point?point.x+16:r.right+12,y=point?point.y+16:r.top;
+    if(x+w>innerWidth-10)x=point?point.x-w-16:r.left-w-12;
+    tip.style.left=Math.max(10,x)+'px';tip.style.top=Math.max(10,Math.min(y,innerHeight-h-10))+'px';
   }
-  function attach(container, lookup) {
-    if (root) return;
-    root = container; itemFor = lookup;
-    const style = document.createElement('style');
-    style.textContent = `
-      #wWeaponTip { position:fixed; z-index:10000; pointer-events:auto; box-sizing:border-box;
-        width:min(380px,calc(100vw - 20px)); max-height:calc(100vh - 20px); overflow:auto;
-        padding:15px 17px 12px; color:#e8d6af; font-family:inherit; font-size:13px; line-height:1.5;
-        border:1px solid #ba9250; border-radius:5px;
-        background:repeating-linear-gradient(3deg,rgba(211,171,104,.035) 0 1px,transparent 1px 7px),linear-gradient(135deg,#403022,#211b16);
-        box-shadow:inset 0 0 0 3px #2c231b,inset 0 0 0 4px #715637,0 5px 22px #160f0ab3; }
-      #wWeaponTip[hidden] { display:none; }
-      #wWeaponTip strong { display:block; color:#f1cf82; font-size:20px; letter-spacing:2px; }
-      #wWeaponTip small { display:block; color:#bca47e; padding-bottom:8px; border-bottom:1px solid #80623b; }
-      #wWeaponTip dl { display:grid; grid-template-columns:66px minmax(0,1fr); gap:6px 9px; margin:10px 0; }
-      #wWeaponTip dt { color:#bda57f; } #wWeaponTip dd { margin:0; overflow-wrap:anywhere; }
-      #wWeaponTip p { margin:9px 0 0; padding-top:8px; border-top:1px solid #685034; font-size:11px; color:#b29e7d; }
-      @media(max-height:430px) { #wWeaponTip { padding:9px 12px; font-size:11px; line-height:1.3; }
-        #wWeaponTip strong { font-size:16px; } #wWeaponTip dl { margin:6px 0; gap:4px 7px; } }
-    `;
-    document.head.appendChild(style);
-    tip = document.createElement('aside'); tip.id = 'wWeaponTip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true;
-    document.body.appendChild(tip);
-    tip.addEventListener('pointerenter', () => clearTimeout(hideTimer));
-    tip.addEventListener('pointerleave', e => { if(active && !active.contains(e.relatedTarget)) hideTimer=setTimeout(hide,180); });
-    root.addEventListener('pointerover', e => {
-      if (e.pointerType === 'touch') return;
-      clearTimeout(hideTimer);
-      const node = weaponNode(e.target);
-      if (node && node !== active) show(node, { x: e.clientX, y: e.clientY });
+  function content(item){
+    panels.replaceChildren();
+    const equipped=ARMORY.equipped(AFFIX_DATA.slots[item.type]);
+    const compare=equipped&&equipped.uid!==item.uid?equipped:null;
+    dialog.classList.toggle('two',!!compare);
+    function frame(value,label,kind,other){
+      const section=document.createElement('section');section.className='wt-frame '+kind;
+      const title=document.createElement('header');title.textContent=label;
+      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other});
+      section.append(title,body);panels.append(section);
+    }
+    if(compare)frame(compare,'已装备','wt-equipped');
+    frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
+  }
+  function show(node,point){
+    if(mode==='modal'||!root?.classList.contains('open'))return;
+    const item=itemAt(node);if(!item){hide();return;}
+    close();active=node;mode='hover';lastPoint=point||null;content(item);
+    tip.classList.remove('is-modal');tip.setAttribute('aria-modal','false');tip.hidden=false;
+    node.setAttribute('aria-describedby',tip.id);place();
+  }
+  function open(item,trigger){
+    if(!tip||!item)return;
+    close();active=trigger||null;returnFocus=trigger||document.activeElement;mode='modal';content(item);
+    tip.style.left='';tip.style.top='';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
+    closeButton.focus({preventScroll:true});
+  }
+  function attach(container){
+    if(root)return;root=container;
+    const style=document.createElement('style');style.textContent=`
+      #wWeaponTip{position:fixed;z-index:10000;width:min(800px,96vw);max-width:calc(100vw - 20px);color:#e8d6af;font:13px/1.5 sans-serif;pointer-events:auto;box-sizing:border-box}
+      #wWeaponTip[hidden]{display:none!important}#wWeaponTip:not(.is-modal):has(.wt-dialog:not(.two)){width:min(380px,96vw)}
+      .wt-dialog{width:100%;box-sizing:border-box;position:relative}.wt-panels{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}
+      .wt-dialog.two .wt-panels{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-dialog.two .wd-title{min-height:58px}.wt-frame{min-width:0;overflow:hidden;border:2px solid #ba9250;border-radius:6px;background:repeating-linear-gradient(3deg,#d3ab6808 0 1px,transparent 1px 7px),linear-gradient(135deg,#403022,#211b16);box-shadow:inset 0 0 0 3px #2c231b,0 5px 22px #160f0ab3}
+      .wt-frame>header{font-size:13px;font-weight:700;padding:6px 12px;background:#b18b4920;border-bottom:1px solid #80623b;letter-spacing:2px}.wt-equipped{border-color:#6f8fa8}.wt-equipped>header{color:#b7cfdf;background:#6f8fa820}.wt-candidate{border-color:#e2b85c}.wt-candidate>header{color:#f0ce83}
+      .wt-frame>.weapon-detail{padding:12px 14px;box-sizing:border-box;max-height:calc(100dvh - 68px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+      .wt-bar{display:none}#wWeaponTip.is-modal{inset:0;max-width:none;width:auto;display:flex;align-items:center;justify-content:center;background:#100b08c7;padding:12px;overscroll-behavior:contain}
+      #wWeaponTip.is-modal .wt-dialog{width:min(380px,96vw)}#wWeaponTip.is-modal .wt-dialog.two{width:min(800px,96vw)}.is-modal .wt-bar{display:flex;justify-content:flex-end;margin-bottom:7px}.wt-close{border:1px solid #b89459;color:#f0dab0;background:#3e2b1f;border-radius:5px;padding:7px 14px;font:14px sans-serif;cursor:pointer;min-height:36px}
+      .is-modal .wt-frame>.weapon-detail{max-height:calc(100dvh - 115px)}
+      @media(max-width:559px){.wt-dialog.two .wd-title{min-height:0}.wt-dialog.two .wt-panels{grid-template-columns:minmax(0,1fr)}.wt-dialog.two .wt-frame>.weapon-detail{max-height:calc(50dvh - 80px)}}
+      @media(max-height:430px){.wt-frame>.weapon-detail{padding:8px 11px}.wt-frame>header{padding:3px 10px}}
+    `;document.head.append(style);
+    tip=document.createElement('aside');tip.id='wWeaponTip';tip.hidden=true;tip.setAttribute('role','dialog');tip.setAttribute('aria-label','武器详情与装备对比');
+    dialog=document.createElement('div');dialog.className='wt-dialog';
+    const bar=document.createElement('div');bar.className='wt-bar';
+    closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
+    panels=document.createElement('div');panels.className='wt-panels';dialog.append(bar,panels);tip.append(dialog);document.body.append(tip);
+    tip.addEventListener('pointerenter',()=>clearTimeout(hideTimer));
+    tip.addEventListener('pointerleave',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget))later();});
+    tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
+    tip.addEventListener('toggle',()=>place(),true);
+    tip.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
+    root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
+    root.addEventListener('pointerover',e=>{
+      if(e.pointerType==='touch'||mode==='modal')return;
+      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n,{x:e.clientX,y:e.clientY});
     });
-    root.addEventListener('pointermove', e => {
-      if (!active || e.pointerType === 'touch') return;
-      place({ x: e.clientX, y: e.clientY });
+    root.addEventListener('pointermove',e=>{
+      if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}
+      if(e.pointerType!=='touch'&&mode==='hover'&&weaponNode(e.target)===active){lastPoint={x:e.clientX,y:e.clientY};place();}
     });
-    root.addEventListener('pointerout', e => {
-      if (active && !active.contains(e.relatedTarget) && !tip.contains(e.relatedTarget)) hideTimer=setTimeout(hide,180);
-    });
-    root.addEventListener('focusin', e => { const node = weaponNode(e.target); if (node) show(node); });
-    root.addEventListener('focusout', e => { if (active && !active.contains(e.relatedTarget) && !tip.contains(e.relatedTarget)) hide(); });
-    root.addEventListener('pointerdown', hide);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
-    document.addEventListener('scroll', e => { if(!tip.contains(e.target))hide(); }, true);
-    window.addEventListener('resize', hide); window.addEventListener('blur', hide);
-    new MutationObserver(() => { if (!root.classList.contains('open')) hide(); }).observe(root, { attributes: true, attributeFilter: ['class'] });
+    root.addEventListener('pointerout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
+    root.addEventListener('pointerleave',e=>{if(!tip.contains(e.relatedTarget))later();});
+    root.addEventListener('focusin',e=>{const n=weaponNode(e.target);if(now()>=suppressFocusUntil&&n&&e.target.matches(':focus-visible'))show(n);});
+    root.addEventListener('focusout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
+    document.addEventListener('pointerdown',e=>{
+      if(mode==='hover'&&!tip.contains(e.target))hide();
+      if(e.pointerType!=='touch')return;
+      const n=weaponNode(e.target);if(!n)return;
+      clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};
+      longTimer=setTimeout(()=>{const item=itemAt(n);if(touch&&!touch.moved&&n.isConnected&&item){touch.opened=true;suppressClickUntil=now()+800;open(item,n);}},400);
+    },true);
+    function release(e){if(!touch||e.pointerId!==touch.id)return;clearTimeout(longTimer);if(touch.opened)suppressClickUntil=now()+700;touch=null;}
+    document.addEventListener('pointerup',release,true);document.addEventListener('pointercancel',release,true);
+    root.addEventListener('click',e=>{if(now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
+    root.addEventListener('contextmenu',e=>{if(touch||mode==='modal')e.preventDefault();});
+    document.addEventListener('keydown',e=>{
+      if(!mode)return;
+      if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();return;}
+      if(mode==='modal'&&e.key==='Tab'){
+        const focus=[...tip.querySelectorAll('button,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+        const first=focus[0],last=focus.at(-1);
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+      }
+    },true);
+    document.addEventListener('scroll',e=>{if(!tip.contains(e.target))hide();},true);
+    window.addEventListener('resize',()=>{if(mode==='hover')place();});window.addEventListener('blur',hide);
+    new MutationObserver(()=>{
+      if(!root.classList.contains('open'))close();
+      else if(mode==='hover'&&active&&!active.isConnected)hide();
+    }).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   }
-  window.WEAPON_TIP = { attach, hide };
+  window.WEAPON_TIP={attach,hide,open,close};
 })();

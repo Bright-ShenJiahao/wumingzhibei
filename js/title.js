@@ -29,7 +29,7 @@
   const L = {};                 // 布局（CSS 像素）
   let tvMask = null, maskCv = null, layerCv = null, layerX = null, bgHome = null, bgFar = null, bgMid = null, bgGnd = null, demoCv = null, dctx = null, dom = {}, built = false, helpOpen = false;
   let hardMode = false;
-  let selectedChapter = 1, pointerDrag = null, suppressItemClick = false;
+  let selectedChapter = 1, prepView = 'campaign', pointerDrag = null, suppressItemClick = false;
   let previewAnimation = null, previewRaf = 0, previewWeapon = 'staff';
   const debugLoadouts = Object.create(null); // 开发者试用装备不写入正式仓库。
 
@@ -302,7 +302,7 @@
       }
       #tChapter.open { display:flex; }
       #tChapter [hidden] { display:none !important; }
-      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:860px; max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:auto; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
+      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:min(860px,96vw); height:78vh; grid-template-rows:minmax(0,1fr); max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:auto; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
       #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,1.6vw,22px); }
       #tChapterPick { display:flex; flex-direction:column; border-right:2px solid #8b693c; background:linear-gradient(90deg,rgba(26,20,16,.3),rgba(15,12,10,.12)); }
       #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
@@ -352,12 +352,17 @@
       #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
       #tPrepStatus { min-width:0; color:#cbb894; font-size:clamp(10px,1.1vw,13px); }
       #tPrepGo { min-width:clamp(110px,16vw,180px); padding:9px 18px; font-size:clamp(15px,1.7vw,20px); }
+      #tPrepFooter{position:sticky;bottom:0;background:#2c2119f5;padding:10px 0;z-index:2;box-shadow:0 -5px 12px #2b20194d}#tPrepActions{display:flex;gap:8px;width:min(70%,520px);flex:none}#tPrepActions>button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;font-size:clamp(15px,1.7vw,20px)}
+      #tPrepTraining small{font-size:clamp(9px,1vw,12px);line-height:1.4;margin-top:3px}#tPrepTraining[hidden],#xPrep[hidden]{display:none!important}
+      #tPrepActions:has(#tPrepTraining[hidden]){width:clamp(110px,16vw,180px)}.x-preparation #tPrepActions{width:min(65%,340px)}
+      .x-preparation #tPrepHeader,.x-preparation #tPrepMain,.x-preparation #tPrepBagTitle,.x-preparation #tPrepBag,.x-preparation #aTools{display:none!important}
+      #tPrepTarget{white-space:normal}#tPrepStatus{flex:1;min-width:0}
       #tPrepGo:not(:disabled) { border-color:#d3a95f; color:#ffe8b0; }
       #tPrepGhost { position:fixed; z-index:30; pointer-events:none; width:90px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #f0cf81; border-radius:8px; background:rgba(42,31,22,.94); color:#f4e2bb; box-shadow:0 8px 24px #0009; transform:translate(-50%,-50%); }
       #tPrepGhost img { width:48px; height:42px; object-fit:contain; image-rendering:pixelated; }
       @media(max-width:900px) and (orientation:landscape) {
         #tChapter { padding:3vw; }
-        #tChapterShell { width:94vw; min-width:0; min-height:0; max-height:94vh; grid-template-columns:minmax(0,31%) minmax(0,69%); }
+        #tChapterShell { width:94vw; min-width:0; min-height:0; height:94vh; max-height:94vh; grid-template-columns:minmax(0,31%) minmax(0,69%); }
         #tChapterPick,#tChapterPanel { padding:clamp(6px,1.2vw,10px); }
         #tChapterPick .tChapterCard { min-height:clamp(54px,17vh,76px); margin-top:6px; padding:7px; }
         #tChapterPickBack { padding:7px; }
@@ -373,7 +378,7 @@
       }
       @media(max-height:420px) and (orientation:landscape) {
         #tChapter { padding:5px; }
-        #tChapterShell { max-height:96vh; }
+        #tChapterShell { height:96vh; max-height:96vh; }
         #tChapterPick .tChapterCard { min-height:54px; margin-top:4px; }
         #tPrepMain { min-height:104px; flex-basis:104px; }
         #tPrepPreview { min-height:104px; }
@@ -433,7 +438,6 @@
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
-        <button class="tChapterCard" data-xiaochang type="button"><strong>校场演武 · 黄巾劫村</strong><small>通关第一章后开放</small></button>
         <p id="tChapterNotice"></p>
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
@@ -445,22 +449,18 @@
         </div>
         <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3～5把熔炼</small></div>
         <div id="tPrepBag"></div>
-        <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+        <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
     dom.chapter.querySelector('#tChapterPickBack').addEventListener('click', () => closeChapterSelect());
     dom.chapter.addEventListener('click', e => {
       if (suppressItemClick) { suppressItemClick = false; return; }
-      if (e.target.closest('[data-xiaochang]')) {
-        if (!DEBUG && !hasCleared(S.name,1)) return;
-        selectedChapter='xiaochang'; renderPreparation(); return;
-      }
       const chapter = e.target.closest('[data-chapter]');
       if (chapter) {
         const id = Number(chapter.dataset.chapter);
         if (id === 2 && (!window.CHAPTER2 || !CHAPTER2.canEnter())) return;
-        selectedChapter = id === 2 ? 2 : 1;
+        selectedChapter = id === 2 ? 2 : 1; prepView = 'campaign';
         renderPreparation();
         return;
       }
@@ -470,6 +470,10 @@
       if (slot) previewEquippedSlot(slot.dataset.slot);
     });
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
+    dom.chapter.querySelector('#tPrepTraining').addEventListener('click', () => {
+      if (!window.XIAOCHANG || !XIAOCHANG.CONFIG[selectedChapter] || !hasCleared(S.name,selectedChapter)) return;
+      prepView='xiaochang';renderPreparation();
+    });
     dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
     if (window.WEAPON_TIP) WEAPON_TIP.attach(dom.chapter, id => ITEMS[id]);
     dom.chapter.addEventListener('pointerdown', beginLoadoutPointer);
@@ -729,7 +733,9 @@
     setDomVisible(false);
     const note = dom.chapter.querySelector('#tChapterNote');
     if (note) note.textContent = `玩家：${S.name || '未命名'}`;
-    selectedChapter = target;
+    if (target && typeof target === 'object') { selectedChapter=target.chapter || 1;prepView=target.view==='xiaochang'?'xiaochang':'campaign'; }
+    else if (target === 'xiaochang') { prepView='xiaochang'; }
+    else { selectedChapter=target===2?2:1;prepView='campaign'; }
     renderPreparation();
     dom.chapter.classList.add('open');
   }
@@ -766,7 +772,7 @@
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
-    const chapterName = selectedChapter === 'xiaochang' ? '校场演武 · 黄巾劫村' : selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
+    const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
     if (c2) {
@@ -812,7 +818,9 @@
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
     if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
-    if (window.XIAOCHANG) XIAOCHANG.renderPreparation(dom.chapter, selectedChapter === 'xiaochang');
+    dom.chapter.dataset.prepView=prepView;
+    dom.prep.classList.toggle('x-preparation',prepView==='xiaochang');
+    if (window.XIAOCHANG) XIAOCHANG.renderPreparation(dom.chapter, prepView === 'xiaochang',selectedChapter);
     if (window.CLOUD_SAVE) CLOUD_SAVE.attach(dom.chapter);
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
@@ -981,8 +989,8 @@
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
     if (!EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id])) { renderPreparation('至少装备一件武器'); return; }
-    if (selectedChapter === 'xiaochang') {
-      if (window.XIAOCHANG && XIAOCHANG.start()) { dom.chapter.classList.remove('open'); }
+    if (prepView === 'xiaochang') {
+      if (window.XIAOCHANG && XIAOCHANG.start({chapter:selectedChapter})) { dom.chapter.classList.remove('open'); }
       return;
     }
     if (selectedChapter === 2) {
