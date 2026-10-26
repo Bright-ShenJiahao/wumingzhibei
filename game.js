@@ -559,15 +559,14 @@ function waves() {
 }
 
 function addChapter2Props() {
-  const pool = ['hay', 'cart', 'mill'];
-  const cartH = (ASSETS.props.cart && ASSETS.props.cart[2]) || 48;
+  // 第二章军营道具：粮袋、木箱打坏掉回血食物；兵器架打坏只出木屑
+  const pool = ['sacks', 'crate', 'rack'];
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const g = pool[Math.floor(Math.random() * pool.length)];
     const meta = ASSETS.props[g];
     if (!meta) continue;
     const [, pw, ph] = meta;
-    // 石碾按推车的显示高度缩放，避免比推车大一圈
-    const psc = g === 'cart' ? .5 : g === 'mill' ? (cartH * .5) / ph : 1;
+    const psc = 1;   // 新道具在 meta.json 里已是战场上的显示尺寸
     props.push({ g, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: 3, hitT: 0, sc: psc, w: pw * .75 * psc, h: ph * psc, chapter2: true });
   }
 }
@@ -1017,11 +1016,12 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 function hitProp(p, dir) {
-  if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) return;
+  if (p.broken || !['hay', 'cart', 'mill', 'sacks', 'crate', 'rack'].includes(p.g)) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
   const hay = p.g === 'hay', mill = p.g === 'mill', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
-  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const sack = p.g === 'sacks';
+  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : sack ? ['#4a3a34', '#6b564a', '#a98c5a'] : p.g === 'crate' || p.g === 'rack' ? ['#2e221d', '#4a3a30', '#6a5444'] : ['#4b2c12', '#7a4d22', '#a3703c'];
   const n = broken ? 22 : 7;
   for (let i = 0; i < n; i++) {
     const life = broken ? rnd(.42, .65) : rnd(.32, .55);
@@ -1034,7 +1034,8 @@ function hitProp(p, dir) {
   if (broken) {
     p.broken = true; p.solid = false;
     // 第二章的草垛/推车/石碾全部掉落回血；第一章仍保持 65%
-    if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
+    if (p.g === 'rack') {}   // 兵器架只是障碍
+    else if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
   }
 }
 // 棍子第三段的冲击波（锦囊）
@@ -2365,7 +2366,7 @@ function drawProp(p) {
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  if (p.chapter2) ctx.filter = 'brightness(.66) saturate(.6)';   // 第二章暮色战场：道具压暗，不抢人物
+  if (p.chapter2 && ['hay', 'cart', 'mill'].includes(p.g)) ctx.filter = 'brightness(.66) saturate(.6)';   // 第二章暮色战场：道具压暗，不抢人物
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2 + sh), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
 }
