@@ -472,7 +472,7 @@
     dom.chapter.querySelector('#tPrepGo').addEventListener('click', () => startSelectedChapter());
     dom.chapter.querySelector('#tPrepTraining').addEventListener('click', () => {
       if (!window.XIAOCHANG || !XIAOCHANG.CONFIG[selectedChapter] || !hasCleared(S.name,selectedChapter)) return;
-      prepView='xiaochang';renderPreparation();
+      prepView='xiaochang';renderPreparation();if(window.CLOUD_SAVE)CLOUD_SAVE.enterPreparation();
     });
     dom.chapter.querySelector('#tPrepPreview').addEventListener('click', () => playWeaponPreview(previewWeapon));
     if (window.WEAPON_TIP) WEAPON_TIP.attach(dom.chapter, id => ITEMS[id]);
@@ -738,6 +738,7 @@
     else { selectedChapter=target===2?2:1;prepView='campaign'; }
     renderPreparation();
     dom.chapter.classList.add('open');
+    if(window.CLOUD_SAVE)CLOUD_SAVE.enterPreparation();
   }
 
   function closeChapterSelect() {
