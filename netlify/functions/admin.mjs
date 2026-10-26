@@ -3,6 +3,7 @@
 // 查看：/api/admin?key=管理密钥&name=玩家名
 // 清除：/api/admin?key=管理密钥&name=玩家名&action=clear
 // 查熔掉/丢掉的武器：/api/admin?key=管理密钥&name=玩家名&action=lost
+// 补发：/api/admin?key=管理密钥&name=玩家名&action=grant&q=1&count=5&types=staff,hammer,stone（q：0普通 1优良 2精致 3史诗 4传说）
 // 补回一把：/api/admin?key=管理密钥&name=玩家名&action=restore&uid=武器编号（编号从 lost 结果里复制）
 import { timingSafeEqual, createHash, randomUUID } from 'node:crypto';
 import { getStore } from '@netlify/blobs';
@@ -27,6 +28,7 @@ async function history(store, prefix) {
   return { seen, snapshots: keys.length };
 }
 const ADMIN_HASH = '92f4e18af5440512c9b1a1b2bd54099be8e4cf4bb5b7a15197ff65c321f437e6';
+async function affix() { globalThis.window ||= globalThis; if (!globalThis.AFFIX_DATA) await import('../../js/affix_data.js'); return globalThis.AFFIX_DATA; }
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 
 export default async function handler(req) {
@@ -38,13 +40,24 @@ export default async function handler(req) {
   const name = String(url.searchParams.get('name') || '').trim();
   if (!name) return reply({ ok: false, error: '请带上 name=玩家名' }, 400);
   const action = url.searchParams.get('action');
-  if (action === 'lost' || action === 'restore') {
+  if (action === 'lost' || action === 'restore' || action === 'grant') {
     try {
       const store = getStore({ name: 'wumingzhibei-profiles', consistency: 'strong' });
       const prefix = 'player/' + createHash('sha256').update(name).digest('hex') + '/';
       const entry = await store.getWithMetadata(prefix + 'current', { type: 'json' });
       if (!entry) return reply({ ok: false, error: '这个名字没有云存档' }, 404);
       const cur = entry.data, now = new Set((cur.items || []).map(i => i.uid)), back = new Set((cur.items || []).map(i => i.restoredFrom).filter(Boolean));
+      if (action === 'grant') {
+        const D = await affix(), q = Math.max(0, Math.min(4, Number(url.searchParams.get('q') ?? 1) | 0)), count = Math.max(1, Math.min(10, Number(url.searchParams.get('count') || 1) | 0));
+        const types = String(url.searchParams.get('types') || 'staff,hammer,stone').split(',').filter(t => W[t]);
+        if (!types.length) return reply({ ok: false, error: 'types 只能是 staff,hammer,stone,halberd,blade,bow' }, 400);
+        if (now.size + count > globalThis.EQUIPMENT_RULES.CAPACITY) return reply({ ok: false, error: '补发后会超过50把，他现在有' + now.size + '把' }, 409);
+        const items = Array.from({ length: count }, () => ({ ...D.generate(types[Math.floor(Math.random() * types.length)], 'boss', '', q), uid: randomUUID(), negative: null, locked: true, _at: Date.now(), gift: true }));
+        const merged = globalThis.CLOUD_MERGE.merge(cur, { items });
+        const r = await store.set(prefix + 'current', JSON.stringify(merged), { onlyIfMatch: entry.etag });
+        if (!r.modified) return reply({ ok: false, error: '他的存档刚好在更新，请再点一次' }, 409);
+        return reply({ ok: true, name, 已补发: items.map(label), 说明: '已锁定。他刷新网页、进整备页同步后就能看到。只点一次，再点会再发一批。' });
+      }
       const { seen, snapshots } = await history(store, prefix);
       if (action === 'lost') {
         const lost = [...seen.values()].filter(i => !now.has(i.uid)).map(i => ({ uid: i.uid, 武器: label(i) + (back.has(i.uid) ? '【已补回】' : ''), 消失时间: fmt((cur._removed || {})[i.uid]), t: (cur._removed || {})[i.uid] || 0 }))
