@@ -120,6 +120,7 @@
     build();
     last = performance.now();
     requestAnimationFrame(tick);
+    if (auto === 'xiaochang') setTimeout(() => { if (window.XIAOCHANG) XIAOCHANG.start(); }, 900);
     if (auto === 'boss' || auto === 'boss2') setTimeout(() => jumpBoss(auto === 'boss2'), 900);
     if (auto === 'chapter2' || auto === 'chapter2altar') setTimeout(() => {
       if (typeof startChapter2Debug === 'function') startChapter2Debug();

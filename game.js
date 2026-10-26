@@ -51,6 +51,7 @@ if (ASSETS.chapter2) {
   if (ASSETS.chapter2.battlefield) load('chapter2_battlefield', ASSETS.chapter2.battlefield);
   if (ASSETS.chapter2.altar) keyChapter2Map(load('chapter2_altar', ASSETS.chapter2.altar));
 }
+if (ASSETS.xiaochang) load('xiaochang', ASSETS.xiaochang);
 if (ASSETS.chapter2Intro) load('chapter2_intro', ASSETS.chapter2Intro);
 Object.entries(ASSETS.ui || {}).forEach(([k, v]) => load('ui_' + k, v));
 Object.entries(ASSETS.dialogPortraits || {}).forEach(([k, v]) => load('dialog_' + k, v));
@@ -201,6 +202,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 
 function reset() {
   chapter2Run = null;
+  if (window.XIAOCHANG) XIAOCHANG.leave();
   M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
@@ -478,6 +480,7 @@ function drawVillager(v) {
   drawChar(v.ch, frame, v.x, v.y, v.f < 0, 1, v.flash > 0, v.sc);
 }
 function waves() {
+  if (window.XIAOCHANG && XIAOCHANG.active()) return;
   if (chapter2Run) { chapter2Waves(); return; }
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
@@ -1629,7 +1632,7 @@ function update(dt) {
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   gameT += dt;
-  if (window.GEAR && !over && !won) GEAR.tick(dt);
+  if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over && !won) GEAR.tick(dt);
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
   // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
@@ -1640,14 +1643,15 @@ function update(dt) {
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
-    if (window.GEAR && !over && !won) GEAR.tick(0);
+    if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   const bz = zs.find(z => z.T && z.T.boss);
   if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
     archerAddsDone = true; summonArchers(bz);
   }
-  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
+  updateShots(dt); if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
+  if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.clampActors();
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
@@ -1657,7 +1661,7 @@ function update(dt) {
   if (toastT > 0) toastT -= dt;
   // 失败时等主角落地、敌人庆祝一会儿后再显示结算。
   const deathResultReady = over && deathLandedAt != null && gameT >= deathLandedAt + 1.5;
-  if (!result && (won || deathResultReady)) {
+  if (!(window.XIAOCHANG && XIAOCHANG.active()) && !result && (won || deathResultReady)) {
     if (won && window.GEAR) GEAR.collectDrops();
     endT = runT;
     stampPlayed = false; pressAct = null;
@@ -1754,7 +1758,9 @@ function draw() {
   OXs = Math.round(-cam.x * SC + sk);
   ctx.setTransform(SC, 0, 0, SC, OXs, 0); ctx.imageSmoothingEnabled = true;
   const vw = viewW(), ms = .24 / .61, my = 165 - 619 * .24;
-  if (chapter2Run) {
+  if (window.XIAOCHANG && XIAOCHANG.active()) {
+    XIAOCHANG.drawBackground();
+  } else if (chapter2Run) {
     const bossMap = chapter2Run.battle === 5;
     if (bossMap) {
       const im = IMG.chapter2_altar, keyed = im && im.keyedCanvas;
