@@ -11,6 +11,8 @@ function validate(p){
   const clean=JSON.parse(JSON.stringify(p));
   if(!clean.items.every(i=>i&&TYPES.has(i.type)&&typeof i.uid==='string'&&i.uid.length<=100&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&Array.isArray(i.affixes)&&i.affixes.length<=2))throw new Error('装备数据不合法');
   for(const key of ['_removed','_equipAt','equipped','campaign'])if(!clean[key]||typeof clean[key]!=='object'||Array.isArray(clean[key]))clean[key]={};
+  // 校场进度属于 campaign；统一按章节白名单和0～5层校验，云合并取最大值。
+  clean.campaign = globalThis.CLOUD_MERGE.merge({campaign:clean.campaign}).campaign;
   return clean;
 }
 async function loadLegacy(store,prefix){

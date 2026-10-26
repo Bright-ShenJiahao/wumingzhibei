@@ -69,11 +69,11 @@
   }
   function offerCards() {
     // 已获得卡从本局卡池移除，不会再次出现；投石车 / 万箭齐发 互斥，只能二选一。
-    const avail = CARDS.filter(c => !stacks[c.id]
+    const avail = CARDS.filter(c => (!window.XIAOCHANG || XIAOCHANG.cardAllowed(c)) && !stacks[c.id]
       && !(c.id === 'summon' && stacks.catapult)
       && !(c.id === 'catapult' && stacks.summon));
     offer = pickN(avail, 3);
-    anim = 0; setOpen(true); inputLockT = performance.now() + 350;
+    anim = 0; setOpen(offer.length > 0); inputLockT = performance.now() + 350;
     try { if (typeof joy !== 'undefined' && joy) joy = null; } catch (_) {}
   }
   function choose(i) {
@@ -177,7 +177,7 @@
     if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) { e.preventDefault(); e.stopPropagation(); rerollToken = false; offerCards(); return; }
     for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) { e.preventDefault(); e.stopPropagation(); choose(r.i); return; }
   }, { capture: true });
-  addEventListener('keydown', e => { if (!open) return; if (e.code === 'Digit1') choose(0); if (e.code === 'Digit2') choose(1); if (e.code === 'Digit3') choose(2); }, true);
+  addEventListener('keydown', e => { if (!open) return; if(window.XIAOCHANG && XIAOCHANG.active()){e.preventDefault();e.stopImmediatePropagation();} if (e.code === 'Digit1') choose(0); if (e.code === 'Digit2') choose(1); if (e.code === 'Digit3') choose(2); }, true);
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, update, tick, choose, useSummon, useCatapult, absorbHit,
     shieldReady: () => !!S.shield && shieldReady,

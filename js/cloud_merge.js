@@ -6,6 +6,10 @@
     for(const p of profiles){if(!p||typeof p!=='object')continue;
       result.played ||= !!p.played;
       for(const chapter of ['1','2'])if(p.campaign?.[chapter])result.campaign[chapter]=true;
+      for(const chapter of ['1','2']) {
+        const floor=Number(p.campaign?.xiaochang?.[chapter]);
+        if(Number.isInteger(floor)&&floor>=1&&floor<=5){result.campaign.xiaochang ||= {};result.campaign.xiaochang[chapter]=Math.max(result.campaign.xiaochang[chapter]||0,floor);}
+      }
       for(const [id,time] of Object.entries(p._removed||{}))result._removed[id]=Math.max(result._removed[id]||0,Number(time)||1);
       for(const item of p.items||[]){if(!item||typeof item.uid!=='string')continue;const old=items.get(item.uid);if(!old||(item._at||0)>(old._at||0))items.set(item.uid,item);}
       for(const slot of ['long','short','ranged'])if(Object.prototype.hasOwnProperty.call(p.equipped||{},slot)){

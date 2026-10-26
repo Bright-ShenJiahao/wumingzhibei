@@ -433,6 +433,7 @@
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
+        <button class="tChapterCard" data-xiaochang type="button"><strong>校场演武 · 黄巾劫村</strong><small>通关第一章后开放</small></button>
         <p id="tChapterNotice"></p>
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
@@ -451,6 +452,10 @@
     dom.chapter.querySelector('#tChapterPickBack').addEventListener('click', () => closeChapterSelect());
     dom.chapter.addEventListener('click', e => {
       if (suppressItemClick) { suppressItemClick = false; return; }
+      if (e.target.closest('[data-xiaochang]')) {
+        if (!DEBUG && !hasCleared(S.name,1)) return;
+        selectedChapter='xiaochang'; renderPreparation(); return;
+      }
       const chapter = e.target.closest('[data-chapter]');
       if (chapter) {
         const id = Number(chapter.dataset.chapter);
@@ -718,13 +723,13 @@
     setDomVisible(false);   // 输入框/按钮先藏起来；游戏 UI 等真正进场再放出来
   }
 
-  function openChapterSelect() {
+  function openChapterSelect(target = 1) {
     S.mode = 'chapter'; S.chapterReturn = true;
     document.body.classList.add('wzb-intro');
     setDomVisible(false);
     const note = dom.chapter.querySelector('#tChapterNote');
     if (note) note.textContent = `玩家：${S.name || '未命名'}`;
-    selectedChapter = 1;
+    selectedChapter = target;
     renderPreparation();
     dom.chapter.classList.add('open');
   }
@@ -761,7 +766,7 @@
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
-    const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
+    const chapterName = selectedChapter === 'xiaochang' ? '校场演武 · 黄巾劫村' : selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
     if (c2) {
@@ -807,6 +812,7 @@
     const message = status || (!ready ? '至少装备一件武器' : selectedChapter === 2 && !canEnter2 ? '第二章未开放' : '装备会自动保存');
     dom.chapter.querySelector('#tPrepStatus').textContent = message;
     if (window.ARMORY) ARMORY.render(dom.chapter, itemIcon, playWeaponPreview);
+    if (window.XIAOCHANG) XIAOCHANG.renderPreparation(dom.chapter, selectedChapter === 'xiaochang');
     if (window.CLOUD_SAVE) CLOUD_SAVE.attach(dom.chapter);
     if (!previewAnimation) drawPreviewIdle(p.equipped.long || p.equipped.short || p.equipped.ranged || 'staff');
   }
@@ -975,6 +981,10 @@
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
     if (!EQUIPMENT_SLOTS.some(slot => slot.combat && !!p.equipped[slot.id])) { renderPreparation('至少装备一件武器'); return; }
+    if (selectedChapter === 'xiaochang') {
+      if (window.XIAOCHANG && XIAOCHANG.start()) { dom.chapter.classList.remove('open'); }
+      return;
+    }
     if (selectedChapter === 2) {
       if (!window.CHAPTER2 || !CHAPTER2.canEnter()) { renderPreparation('第二章未开放'); return; }
       const begin = window.startChapter2 || window.startChapter2Debug;
@@ -1026,8 +1036,7 @@
     applyCloudProgress: progress => {
       if (DEBUG) return;
       const key=playerKey(S.name),all=readCampaign(); if(!key)return;
-      const merged=Object.assign({}, all[key]);
-      for(const chapter of ['1','2']) if(progress && progress[chapter]) merged[chapter]=true;
+      const merged=CLOUD_MERGE.merge({campaign:all[key]},{campaign:progress}).campaign;
       all[key]=merged;
       try { localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(all)); } catch (_) {}
     },
@@ -1043,6 +1052,16 @@
       if (equip) p.equipped[ITEMS[id].slot] = id;
       p.long = p.equipped.long || null;
       return saveLoadout(S.name, p);
+    },
+    openPreparation: target => openChapterSelect(target),
+    xiaochangProgress: chapter => Number(readCampaign()[playerKey(S.name)]?.xiaochang?.[chapter]) || 0,
+    markXiaochang: (chapter,floor) => {
+      if(DEBUG || !hasCleared(S.name,chapter)) return false;
+      const key=playerKey(S.name),all=readCampaign(); if(!key)return false;
+      all[key] ||= {}; all[key].xiaochang ||= {};
+      all[key].xiaochang[chapter]=Math.max(Number(all[key].xiaochang[chapter])||0,Math.min(5,floor));
+      try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(all));}catch(_){return false;}
+      if(window.CLOUD_SAVE)CLOUD_SAVE.queue(S.name); return true;
     },
     show: () => show(),
     active: () => S.mode !== 'game',

@@ -18,7 +18,7 @@ const Boss = (() => {
   function wxProj() { return WX === 'wind' ? .85 : 1; }
 
   function start(rightEdge) {
-    WX = Math.random() < .5 ? ['rain', 'snow', 'wind'][Math.floor(Math.random() * 3)] : null;
+    WX = window.XIAOCHANG && XIAOCHANG.active() ? null : Math.random() < .5 ? ['rain', 'snow', 'wind'][Math.floor(Math.random() * 3)] : null;
     if (WX && WX_ID[WX]) setTimeout(() => say(WX_ID[WX], 3), 500);
     if (typeof arenaL !== 'undefined') arenaL = rightEdge - (typeof viewW === 'function' ? viewW() : 530) * 1.0;   // 决斗场：1 个屏幕宽
     const z = { type: 'guanhai_horse', T, x: rightEdge + 60, y: (M.top + M.bot) / 2, f: -1, hp: HP, st: 'intro', t: 0, phase: 1,
@@ -31,7 +31,7 @@ const Boss = (() => {
   // 配音（art/voice/guanhai_*.mp3）。只保留 5 句台词：登场 / 喊人 / 落马 / 怒吼 / 战败。
   // 攻击时的吼声（chop / thrust / spin / stagger）已按用户要求去掉：Boss 战一打久了就太吵，而且会互相叠音。
   const vo = (n, p = 1) => { if (window.SFX && Math.random() < p) SFX.voice('guanhai_' + n); };
-  const view = () => [cam.x, cam.x + viewW()];
+  const view = () => window.XIAOCHANG && XIAOCHANG.active() ? [0, M.W] : [cam.x, cam.x + viewW()];
   function moveTo(z, tx, ty, sp, dt) {
     sp *= wxMove();
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
@@ -425,7 +425,8 @@ function hit(z, dmg, dir, ranged) {
     ctx.fillRect(x, y, w * z.hp / HP, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    ctx.strokeText('黄巾流寇·管亥', HW / 2, y + 30); ctx.fillText('黄巾流寇·管亥', HW / 2, y + 30); ctx.textAlign = 'left';
+    const label='黄巾流寇·管亥'+(window.XIAOCHANG && XIAOCHANG.active() && z.xAffix ? ' · '+(z.xAffix==='rage'?'狂暴':'铁甲') : '');
+    ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }
   // 天气的视觉：屏幕空间的雨丝/雪粒 + 一层色调
   let wxT = 0;

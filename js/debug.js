@@ -56,6 +56,8 @@
     btn('回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = 10; });
     const godBtn = btn(god ? '无敌：开' : '无敌：关', 'off', () => { god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off'; });
     btn('复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
+    btn('校场：跳到第6波', 'alt', () => { if(window.XIAOCHANG)XIAOCHANG.skipToSix(); });
+    for(let floor=1;floor<=5;floor++)btn('校场：选层'+floor, 'alt', () => { if(window.XIAOCHANG)XIAOCHANG.start({chapter:1,floor}); });
     btn('测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
     for (const [id, label] of [['halberd', '试用长戟'], ['bow', '试用汉弓'], ['blade', '试用大刀']]) {
       btn(label, 'alt', () => {

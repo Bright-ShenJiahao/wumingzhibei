@@ -232,7 +232,7 @@ function reset() {
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
-function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 玩家受伤减半，击倒判定仍按减半前伤害
+function noviceMode() { if (window.XIAOCHANG && XIAOCHANG.active()) return false; return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 玩家受伤减半，击倒判定仍按减半前伤害
 function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
@@ -245,6 +245,8 @@ let atkHeldSince = 0, charging = false, chargeFx = [], chargeHitFx = [];   // �
 let deathLandedAt = null, enemiesCelebrating = false;
 function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / (CHARGE_MAX_MS * (window.GEAR ? GEAR.chargeScale() : 1)))) : 0; }
 addEventListener('keydown', e => {
+  if (window.XIAOCHANG && XIAOCHANG.blocks()) return;
+  if (e.target && ['INPUT','SELECT','BUTTON'].includes(e.target.tagName) && window.XIAOCHANG && XIAOCHANG.active()) return;
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
   if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
@@ -256,7 +258,7 @@ addEventListener('keydown', e => {
   }
   // KeyI 预留给后续法器技能，暂不绑定
   if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW(shortWeapon()); if (e.code === 'Digit3') setW(rangedWeapon());
-  if (e.code === 'KeyR') reset();
+  if (e.code === 'KeyR') { if(window.XIAOCHANG && XIAOCHANG.active())XIAOCHANG.start();else reset(); }
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit1') chooseChapter2Route('zhang-liang');
   if (chapter2Run && chapter2Run.mode === 'choice' && e.code === 'Digit2') chooseChapter2Route('zhang-bao');
   if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
@@ -385,6 +387,7 @@ function priestCast(z) {
 }
 
 function summonArchers(bz) {
+  if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.summonArchers(bz); return; }
   say('管亥：「弓箭手，放箭！」', 2.4);
   sfx('bladeAlert', bz.x);
   const vw = viewW(), leftX = cam.x - 40, rightX = cam.x + vw + 40;
@@ -420,6 +423,7 @@ function spawn(type, x, y, sleeping = false) {
   zs.push({ type, T, sprite: T.sprite || type, x, y, f: -1, hp: T.hp, st: sleeping ? 'sleep' : 'move', t: sleeping ? 0 : rnd(0, 1), stun: 0, flash: 0, vx: 0, tok: false, cd: rnd(.8, 2), slot: zs.length,
     sc: T.scale || 1, dark: false });
   const z0 = zs[zs.length - 1];
+  if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.decorate(z0);
   if (sleeping) {
     const h = props.find(p => p.g === 'hay' && !p.broken && Math.abs(p.x - x) < 70 && Math.abs(p.y - y) < 40);
     if (h) { z0.hidden = true; z0.hx = h.x; }
@@ -480,7 +484,7 @@ function drawVillager(v) {
   drawChar(v.ch, frame, v.x, v.y, v.f < 0, 1, v.flash > 0, v.sc);
 }
 function waves() {
-  if (window.XIAOCHANG && XIAOCHANG.active()) return;
+  if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.update(); return; }
   if (chapter2Run) { chapter2Waves(); return; }
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
@@ -647,6 +651,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || (z.air && !traits.dot)) return;
+  if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
   if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
@@ -1181,6 +1186,7 @@ function strike() {
 function dmgHero(n, from, kind = 'basic') {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
+  if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n);
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
   const raw = n;   // 保存减半前伤害，保持原有击倒判定。
@@ -1217,7 +1223,7 @@ function zUpdate(z, dt) {
   z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
   if (z.qiCd > 0) z.qiCd -= dt;
   if (z.qi != null) {                     // 老卒蓄力中：0.62 秒后劈出扇形剑气
-    z.qi += dt;
+    z.qi += dt * (window.XIAOCHANG ? XIAOCHANG.actionScale(z) : 1);
     if (z.qi >= .62) {
       z.qi = null;
       qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .28 });
@@ -1628,11 +1634,12 @@ function update(dt) {
   if (critT > 0) critT -= dt;
   if (pdCd > 0) pdCd -= dt;
   if (window.ROOM && ROOM.blocks()) { ROOM.update(dt); return; }   // 开场农房：游戏不推进，由 room.js 自己走
+  if (window.XIAOCHANG && XIAOCHANG.blocks()) return;
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   gameT += dt;
-  if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over && !won) GEAR.tick(dt);
+  if (window.GEAR && !over && !won) GEAR.tick(dt);
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
   if (freeze > 0) { freeze -= dt; return; }
   // 结算板出来后冻结战斗（主角和敌人不动），但火、碎屑这些特效继续演
@@ -1643,14 +1650,14 @@ function update(dt) {
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
     if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
-    if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over && !won) GEAR.tick(0);
+    if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   const bz = zs.find(z => z.T && z.T.boss);
   if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
     archerAddsDone = true; summonArchers(bz);
   }
-  updateShots(dt); if (window.GEAR && !(window.XIAOCHANG && XIAOCHANG.active()) && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
+  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
   if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.clampActors();
   const vw = viewW();
   let tx = hero.x - vw * .4;
@@ -1785,7 +1792,7 @@ function draw() {
   }
   ctx.imageSmoothingEnabled = false;
   // Boss 关：右上角插一面「苍天已死」血字旗（装饰，人物从旗前走过）
-  if (zs.some(z => z.T && z.T.boss)) {
+  if (!(window.XIAOCHANG && XIAOCHANG.active()) && zs.some(z => z.T && z.T.boss)) {
     const im = IMG['ui_boss_flag'];
     if (im && im.complete) {
       const fh2 = 100, fw2 = fh2 * im.width / im.height;   // 缩到 2/3（150 → 100）
@@ -1921,7 +1928,7 @@ function draw() {
   if (catapults.length || allyShots.length || allyFires.length) list.push({ y: M.bot - 1, d: () => drawCatapults() });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
-  for (const z of zs) list.push({ y: z.y, d: () => drawZ(z) });
+  for (const z of zs) list.push({ y: z.y, d: () => { if (window.XIAOCHANG) XIAOCHANG.drawAffix(z); drawZ(z); } });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => {
     if (s.kind === 'arrow') { const ar = IMG['ui_arrow']; ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); if (ar && ar.complete) ctx.drawImage(ar, -ar.width / 2, -ar.height / 2); ctx.restore(); }
@@ -1955,7 +1962,7 @@ function draw() {
     ctx.fillStyle = '#ffd86e'; ctx.fillText(pnm, 14 + bw + 13, 78);
   }
   // 用时：顶部正中的小牌子（原来那一行"击倒/武器/用时"已去掉）
-  {
+  if (!(window.XIAOCHANG && XIAOCHANG.active())) {
     const tstr = fmtTime(runT);
     ctx.save();
     ctx.font = 'bold 18px "PingFang SC","Noto Sans CJK SC",sans-serif';

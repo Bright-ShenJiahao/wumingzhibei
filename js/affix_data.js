@@ -66,8 +66,9 @@
     person ||= pick(Object.keys(personal));
     return personal[person] && Math.random()<.5 ? pick(personal[person]) : pick(templates).replace('{人}',person);
   }
-  function generate(type,source='boss',person='',quality) {
-    const weights = source==='elite'?[35,40,17,6,2]:source==='grunt'?[65,25,8,1.5,.5]:[10,40,25,15,10];
+  const mainWeights = {boss:[12,42,26,15,5],elite:[36,40,17,6,1],grunt:[65,25,8,1.8,.2]};
+  function generate(type,source='boss',person='',quality,qualityWeights) {
+    const weights = qualityWeights || (source==='elite'?[35,40,17,6,2]:source==='grunt'?[65,25,8,1.5,.5]:[10,40,25,15,10]);
     let q = quality == null ? weighted(weights.map((weight,id)=>({weight,id}))).id : Math.min(4,quality);
     const specialId = Math.random()<.05 ? weighted(Object.values(special)).id : null;
     if(q===4 && specialId) q=5;
@@ -95,5 +96,5 @@
     const n=k=>v[k]||0,cap=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
     return {damage:Math.max(.1,1+n('sharp')+n('blunt')),speed:cap(1+n('swift')+n('heavy'),.2,1.4),range:cap(1+n('reach')+n('short'),.2,1.35),crit:cap(.01+n('critical')+n('inaccurate'),0,.35),critDamage:cap(1.5+n('severity')+n('weakcrit'),1,2.5),health:10*(1+cap(n('health')+n('frail'),-.8,1)),guard:cap(n('guard')+n('fragile'),-1,.3),move:cap(1+n('move')+n('clumsy'),.2,1.3),dodge:cap(n('dodge'),0,.2),focus:cap(n('focus'),0,.3)};
   }
-  window.AFFIX_DATA={positive,negative,special,qualities,names,slots,generate,label,lines,stats,applicable,pick};
+  window.AFFIX_DATA={positive,negative,special,qualities,names,slots,mainWeights,generate,label,lines,stats,applicable,pick};
 })();

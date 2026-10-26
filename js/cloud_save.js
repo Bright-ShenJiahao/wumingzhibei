@@ -7,7 +7,7 @@
   const name=()=>window.TITLE?TITLE.playerName():'';
   function payload(player){
     if(player===name())return ARMORY.exportProfile();
-    try{const p=JSON.parse(localStorage.getItem('wzb-equipment-v2')||'{}')[player]||null;if(p)p.campaign=Object.assign({},p.campaign,JSON.parse(localStorage.getItem('wzb-campaign-clear-v1')||'{}')[player]||{});return p;}catch{return null;}
+    try{const p=JSON.parse(localStorage.getItem('wzb-equipment-v2')||'{}')[player]||null;if(p)p.campaign=CLOUD_MERGE.merge({campaign:p.campaign},{campaign:JSON.parse(localStorage.getItem('wzb-campaign-clear-v1')||'{}')[player]}).campaign;return p;}catch{return null;}
   }
   async function request(url,options={}){
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);

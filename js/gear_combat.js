@@ -92,8 +92,8 @@
     const token=s.gearToken;if(!token)return s.C.dmg;return s.C.dmg*primaryBonus(token.s,z,{ranged:true},token)*(token.crit?clamp(1.5+stat(token.s,'severity')+stat(token.s,'weakcrit'),1,2.5):1);
   }
   function enemyTime(z,dt){if(z.dead)return dt;if(z.gearFrozen>gameT)return 0;return dt;}
-  function enemyAttack(z){return 1-Math.max(z.gearNumb>gameT?(z.gearNumbValue||0):0,z.attackSlowT>0?.1:0);}
-  function enemyMove(z){let slow=Math.max(z.gearSlow>gameT?z.gearSlowValue||0:0,z.moveSlowT>0?.15:0);if(z.gearColdUntil>gameT)slow=Math.max(slow,Math.min(3,z.gearCold||0)*.05);return 1-slow;}
+  function enemyAttack(z){return (window.XIAOCHANG ? XIAOCHANG.actionScale(z) : 1)*(1-Math.max(z.gearNumb>gameT?(z.gearNumbValue||0):0,z.attackSlowT>0?.1:0));}
+  function enemyMove(z){let slow=Math.max(z.gearSlow>gameT?z.gearSlowValue||0:0,z.moveSlowT>0?.15:0);if(z.gearColdUntil>gameT)slow=Math.max(slow,Math.min(3,z.gearCold||0)*.05);return (1-slow)*(window.XIAOCHANG ? XIAOCHANG.moveScale(z) : 1);}
   function incoming(n,from,kind='basic'){const s=sync();if(from&&kind==='basic'&&chance(clamp(stat(s,'dodge'),0,.2))){floaters.push({x:hero.x,y:hero.y-28,t:0,txt:'闪避'});return 0;}
     const source=from?.source||from;
     if(from&&kind==='basic'&&source?.gearBlind>gameT&&chance(source.gearBlindValue||0)){floaters.push({x:hero.x,y:hero.y-28,t:0,txt:'未命中'});return 0;}
@@ -104,6 +104,7 @@
   function skillCd(){return 30*(1-reduction(sync()));}
   function refreshSkill(){return sync().special==='favor'&&chance(.05)&&ready('favor',30);}
   function dropEnemy(z){
+    if(window.XIAOCHANG && XIAOCHANG.active()){XIAOCHANG.dropEnemy(z);return;}
     if(z.gearDropped)return;z.gearDropped=true;
     const boss=!!(z.T.boss||z.T.chapterBoss),source=boss?'boss':z.T.elite?'elite':'grunt';
     if(!boss&&!z.T.elite&&!chance(.005))return;
@@ -113,7 +114,7 @@
     if(TITLE.ownsWeapon('halberd')||TITLE.hasCleared(1))pool.push('halberd');
     // 按当前战斗章节限制，而不是按是否拥有；回第一章刷装也不会掉大刀或汉弓。
     if(chapter2Run){pool.push('blade');if(TITLE.ownsWeapon('bow'))pool.push('bow');}
-    for(let i=0;i<count;i++){const type=z.T.boss&&!TITLE.hasCleared(1)&&i===0?'halberd':D.pick(pool),item=D.generate(type,source,person);drops.push({k:'weapon',weapon:type,item,x:z.x+(i-(count-1)/2)*18,y:z.y,z:10,vy:130,t:0,life:Infinity,got:0});}
+    for(let i=0;i<count;i++){const type=z.T.boss&&!TITLE.hasCleared(1)&&i===0?'halberd':D.pick(pool),item=D.generate(type,source,person,undefined,chapter2Run?undefined:D.mainWeights[source]);drops.push({k:'weapon',weapon:type,item,x:z.x+(i-(count-1)/2)*18,y:z.y,z:10,vy:130,t:0,life:Infinity,got:0});}
     if(!boss)return;say('将领已败！靠近拾取武器，失败也会保留。',3);
   }
   function collectDrops(){for(const d of drops)if(d.item&&!d.got&&ARMORY.add(d.item))d.got=1;}
