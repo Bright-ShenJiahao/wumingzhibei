@@ -447,7 +447,7 @@
       #tChapter #aFooterTools{flex:0 1 auto}#tChapter #aFooterTools .aForgeButton{flex:none;justify-content:flex-start}#tChapter #aForgeTag{overflow:visible;text-overflow:clip}
       /* 装备槽：两行——[图标] 槽位名 + 武器名 / 卸下 锁定 */
       #tChapter .tPrepSlot{grid-template-columns:42px auto minmax(0,1fr);grid-template-rows:auto auto;align-content:center;align-items:center;column-gap:6px;row-gap:5px;padding:5px 7px}
-      #tChapter .tPrepSlot>b{grid-column:2;grid-row:1;font-size:11px;color:#c9a96e;letter-spacing:1px}
+      #tChapter .tPrepSlot>b{grid-column:2;grid-row:1;width:3.2em;font-size:11px;color:#c9a96e;letter-spacing:0;overflow:visible;text-overflow:clip;white-space:nowrap}   /* 槽位名固定按3个字宽，「远程」也占同样宽度，武器名对齐 */
       #tChapter .tPrepSlot .tPrepIcon{grid-column:1;grid-row:1/3;width:42px;height:42px}
       #tChapter .tPrepSlot .tPrepName{grid-column:3;grid-row:1;align-self:center}
       #tChapter .tPrepSlot .aSlotActions{grid-column:2/4;grid-row:2;align-self:center;display:flex;gap:5px}

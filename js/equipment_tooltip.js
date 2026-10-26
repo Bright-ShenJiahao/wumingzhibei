@@ -93,6 +93,8 @@
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
       if(e.pointerType==='touch'||mode==='modal')return;
+      // 鼠标在勾选框上时只是想勾选，不弹详情；移回卡片其他地方照常显示
+      if(e.target.closest?.('.aSelect')){if(mode==='hover')hide();return;}
       const n=weaponNode(e.target);
       if(mode==='hover'&&active?.contains(e.target)){clearTimeout(hideTimer);return;}
       if(n&&n!==active)show(n);
