@@ -606,6 +606,7 @@ function startChapter2Battle(number) {
   if (number === 1) {
     spawn('yellow-heavy', hero.x + 190, M.top + 28);
     spawn('yellow-heavy', hero.x + 215, M.bot - 23);
+    spawn('archer', hero.x + 300, (M.top + M.bot) / 2);   // 第一战开场加一名弓箭手（沿用第一章火箭弓手）
     say('第一战：黄巾正规军后翼', 3);
   } else if (number === 2) {
     const lanes = [M.top + 18, (M.top + M.bot) / 2, M.bot - 18, M.top + 47];

@@ -51,7 +51,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=c1aea27231" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=c1aea27231)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=83b081ef8a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=83b081ef8a)format("woff2");font-display:swap}</style></head><body>
 <canvas id="c"></canvas>
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
@@ -1493,11 +1493,12 @@ function hit(z, dmg, dir, ranged) {
   const battles = Object.freeze([
     Object.freeze({
       number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼',
-      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger'], enemyCount: 9,
+      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger', 'archer'], enemyCount: 10,
       // 先让玩家读懂正面大刀兵，再逐步展开两翼与远程支援；左右投石手错开发射。
       waves: [
         Object.freeze({ id: 'center-guard', trigger: 'battle-start', enemies: [
           Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'front-center' }),
+          Object.freeze({ unit: 'archer', count: 1, formation: 'rear-center' }),
         ] }),
         Object.freeze({ id: 'flanking-reserve', trigger: 'first-center-enemy-defeated', enemies: [
           Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-left' }),
@@ -5899,6 +5900,7 @@ function startChapter2Battle(number) {
   if (number === 1) {
     spawn('yellow-heavy', hero.x + 190, M.top + 28);
     spawn('yellow-heavy', hero.x + 215, M.bot - 23);
+    spawn('archer', hero.x + 300, (M.top + M.bot) / 2);   // 第一战开场加一名弓箭手（沿用第一章火箭弓手）
     say('第一战：黄巾正规军后翼', 3);
   } else if (number === 2) {
     const lanes = [M.top + 18, (M.top + M.bot) / 2, M.bot - 18, M.top + 47];

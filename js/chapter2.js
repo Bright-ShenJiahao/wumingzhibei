@@ -8,11 +8,12 @@
   const battles = Object.freeze([
     Object.freeze({
       number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼',
-      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger'], enemyCount: 9,
+      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger', 'archer'], enemyCount: 10,
       // 先让玩家读懂正面大刀兵，再逐步展开两翼与远程支援；左右投石手错开发射。
       waves: [
         Object.freeze({ id: 'center-guard', trigger: 'battle-start', enemies: [
           Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'front-center' }),
+          Object.freeze({ unit: 'archer', count: 1, formation: 'rear-center' }),
         ] }),
         Object.freeze({ id: 'flanking-reserve', trigger: 'first-center-enemy-defeated', enemies: [
           Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-left' }),
