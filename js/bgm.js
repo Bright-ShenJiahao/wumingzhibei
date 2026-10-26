@@ -152,7 +152,7 @@
 
   // ---------- 音频节点 ----------
   let ac = null, out = null, noiseBuf = null, southernDrum = null;
-  let layers = [], state = null, muted = false, started = false, jingle = null;
+  let layers = [], state = null, muted = false, pauseDucked = false, started = false, jingle = null;
   let schedT = 0, pollT = 0, combatHoldUntil = 0, dialogueQuiet = false;
 
   function noiseSrc() {
@@ -467,7 +467,7 @@
     const t = ac.currentTime;
     out.gain.cancelScheduledValues(t);
     out.gain.setValueAtTime(out.gain.value, t);
-    out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL * (dialogueQuiet ? .45 : 1), t + .25);
+    out.gain.linearRampToValueAtTime(muted ? .0001 : OUT_LEVEL * (dialogueQuiet ? .45 : 1) * (pauseDucked ? .3 : 1), t + .25);
   }
 
   // 系统有时会把音频上下文挂起（切后台、来电），在手势或轮询时顺手恢复
@@ -527,5 +527,6 @@
     start: boot,
     state: () => state,
     isMuted: () => muted,
+    setPauseDucked(value) { pauseDucked = !!value; applyVolume(); },
   };
 })();

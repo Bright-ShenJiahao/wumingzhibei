@@ -4,5 +4,8 @@
   "description": "无名之辈 · 英雄榜后端依赖",
   "dependencies": {
     "@netlify/blobs": "10.7.13"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.2"
   }
 }

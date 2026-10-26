@@ -217,7 +217,7 @@ function reset() {
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
   zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
-  runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
+  gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
     const k = PROP_POOL[Math.floor(Math.random() * PROP_POOL.length)], [, pw, ph] = ASSETS.props[k];
     // 草垛和推车有 3 点耐久可以打坏，水井和旗子打不坏（hp 0）
@@ -1629,6 +1629,7 @@ function countComboHit() {
   if (comboNotices.length > 2) comboNotices.shift();   // 最多同时两条
 }
 function update(dt) {
+  if (window.PAUSE && PAUSE.paused()) { PAUSE.update(dt); return; }
   if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) { CHAPTER2_INTRO.update(dt); return; }
   if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
   if (critT > 0) critT -= dt;
@@ -1758,6 +1759,7 @@ function zFrame(z) {
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
 }
 function draw() {
+  if (window.PAUSE) PAUSE.syncButton();
   if (window.TITLE && TITLE.draw()) return;   // 标题界面自己接管整屏
   if (window.ROOM && ROOM.draw()) return;     // 开场农房
   const W = cv.width, H = cv.height; SC = H / M.viewH;
@@ -2518,5 +2520,45 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 let lastTouchEnd = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 let last = performance.now();
+function canPauseGame() {
+  if (over || won || result || !hero || hero.hp <= 0) return false;
+  if (window.TITLE && TITLE.blocks && TITLE.blocks()) return false;
+  if (window.ROOM && ROOM.active && ROOM.active()) return false;
+  if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active && CHAPTER2_INTRO.active()) return false;
+  if (window.ROGUE && ROGUE.blocks && ROGUE.blocks()) return false;
+  if (window.XIAOCHANG && XIAOCHANG.blocks && XIAOCHANG.blocks()) return false;
+  if (chapter2Run && chapter2Run.mode !== 'fight') return false;
+  return true;
+}
+function clearPauseInputs() {
+  for (const k in key) delete key[k];
+  joy = null; jk.style.transform = '';
+  pressAtk = false; pressRoll = false; attackPointer = null;
+  if (hero) hero.q = 0;
+  cancelCharge();
+}
+function restartPausedGame() {
+  if (window.XIAOCHANG && XIAOCHANG.active()) {
+    const r = XIAOCHANG.state(); if (r) XIAOCHANG.start({ chapter: r.chapter, floor: r.floor, wish: r.wish });
+  } else if (chapter2Run) prepareChapter2Run(false);
+  else reset();
+}
+function returnFromPausedGame(toHome = false) {
+  const training = !!(window.XIAOCHANG && XIAOCHANG.active());
+  const run = training && XIAOCHANG.state();
+  const chapter = run ? run.chapter : chapter2Run ? 2 : 1;
+  const view = training ? 'xiaochang' : 'campaign';
+  if (toHome) { if (window.TITLE && TITLE.show) TITLE.show(); else reset(); return; }
+  reset();
+  if (window.ROGUE) ROGUE.reset();
+  if (window.TITLE && TITLE.openPreparation) TITLE.openPreparation({ chapter, view });
+}
+window.GAME_PAUSE = {
+  canPause: canPauseGame,
+  clearInput: clearPauseInputs,
+  restart: restartPausedGame,
+  returnPreparation: () => returnFromPausedGame(false),
+  returnHome: () => returnFromPausedGame(true),
+};
 function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; update(dt); draw(); requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);

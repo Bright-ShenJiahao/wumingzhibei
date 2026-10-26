@@ -65,7 +65,7 @@
     #tChapterPanel{min-height:0;overflow:hidden!important} #tPrepScroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding-bottom:82px;box-sizing:border-box} #tPrepMain,#tPrepFooter{flex-shrink:0} #tPrepBag{height:auto!important;max-height:none;overflow:visible;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
     .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
     .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
-    .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
+    .tPrepName{overflow-wrap:anywhere}.aUnequip{box-sizing:border-box;min-width:2.8em;white-space:nowrap;font-size:clamp(9px,1vw,11px);color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
     .aCard button:active,#aTools button:active{transform:translateY(1px);filter:brightness(.8)}
     .aCard .aEquip{display:flex;flex-direction:column;align-items:center;width:100%;border:0;background:none;color:var(--quality)}
     .aCard img{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}.aCard .aActions{display:flex;gap:4px;justify-content:center;margin-top:5px}

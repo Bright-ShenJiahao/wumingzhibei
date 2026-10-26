@@ -4,7 +4,7 @@
 // 避免连打时像机关枪；按画面左右位置做立体声；主输出经过轻微混响和压缩，让所有声音像在同一个空间里。
 (() => {
   const KEY = 'wzb-muted';
-  let muted = false;
+  let muted = false, pauseDucked = false;
   try { muted = localStorage.getItem(KEY) === '1'; } catch (e) {}
   let ac, master, verb, noiseBuf, fallbackEl;
 
@@ -206,11 +206,12 @@
   // 静音：把主输出在 0.1 秒内渐变到 0，正在播的音效和配音跟着立刻听不见；取消静音再渐变回 .8
   function applyMute() {
     if (muted && fallbackEl) { try { fallbackEl.pause(); } catch (e) {} }   // <audio> 兜底播放的配音不走 Web Audio，得单独停
+    if (fallbackEl && !muted) fallbackEl.volume = pauseDucked ? .3 : 1;
     if (!ac || !master) return;
     const t = ac.currentTime;
     master.gain.cancelScheduledValues(t);
     master.gain.setValueAtTime(master.gain.value, t);
-    master.gain.linearRampToValueAtTime(muted ? 0 : .8, t + .1);
+    master.gain.linearRampToValueAtTime(muted ? 0 : pauseDucked ? .24 : .8, t + .1);
   }
   function updateButton() {
     const b = document.getElementById('bMute'); if (!b) return;
@@ -218,11 +219,12 @@
     b.setAttribute('aria-label', b.title); b.classList.toggle('on', muted);
   }
   const b = document.getElementById('bMute');
-  if (b) b.addEventListener('click', () => {
+  function toggleMute() {
     muted = !muted; try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) {}
     if (!muted) init();
     applyMute(); updateButton();
-  });
+  }
+  if (b) b.addEventListener('click', toggleMute);
   updateButton();
   // 浏览器要求用户操作后才能出声：第一次按键/触摸时启动
   // iPhone：静音拨片打开时网页声音默认也会被静音，这里声明为"媒体播放"让它照常出声（iOS 17+ 支持）
@@ -266,6 +268,8 @@
     voice,
     // 只读：当前是否静音（js/bgm.js 用它同步背景音乐）
     isMuted: () => muted,
+    toggleMute,
+    setPauseDucked(value) { pauseDucked = !!value; applyMute(); },
     // name：音效名；pan：-1（左）到 1（右）
     play(name, pan = 0) {
       if (muted || !S[name]) return;
