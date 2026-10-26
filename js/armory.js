@@ -53,12 +53,14 @@
   function reforge(ids){
     const p=state(),items=ids.map(id=>p.items.find(i=>i.uid===id));
     if(ids.length<3||ids.length>5||new Set(ids).size!==ids.length||items.some(i=>!i||i.locked||Object.values(p.equipped).includes(i.uid)))return false;
-    const plan=EQUIPMENT_RULES.forgePlan(items),type=D.pick(plan.types),base=D.pick(plan.qualities);
-    const upgraded=Math.random()<EQUIPMENT_RULES.upgrades[ids.length][base],q=base+(upgraded?1:0);
+    const plan=EQUIPMENT_RULES.forgePlan(items,p.pity),type=D.pick(plan.types),base=D.pick(plan.qualities);
+    const upgraded=Math.random()<EQUIPMENT_RULES.chanceOf(ids.length,base,p.pity),q=base+(upgraded?1:0);
+    const oldPity=p.pity,oldPityAt=p._pityAt;
+    if(EQUIPMENT_RULES.upgrades[ids.length][base]){p.pity={...(p.pity||{})};p.pity[base]=upgraded?0:(Number(p.pity[base])||0)+1;p._pityAt=Date.now();}
     const fresh=D.generate(type,'boss','',q),old=p.items;
     if(upgraded)fresh.forgeFrom=base;
     p.items=p.items.filter(i=>!ids.includes(i.uid));p.items.push(fresh);
-    if(!save()){p.items=old;return false;}selection.clear();return fresh;
+    if(!save()){p.items=old;p.pity=oldPity;p._pityAt=oldPityAt;return false;}selection.clear();return fresh;
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
     #tChapterPanel{min-height:0;overflow:hidden!important}#tPrepScroll{min-height:0;flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 10px 72px 0;box-sizing:border-box}#tPrepMain,#tPrepFooter{flex-shrink:0}
@@ -88,10 +90,10 @@
       card.onclick=e=>{if(e.target===check||e.target.closest('.aSelect'))return;if(e.target.closest('.aLockMark'))return;if(equip(item.uid)){window.TITLE.refreshPreparation();preview(item.type);}else showMessage('保存失败，未能装备');};card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};bag.append(card);
     }
     let tools=root.querySelector('#aTools');if(!tools){tools=document.createElement('section');tools.id='aTools';bag.after(tools);}
-    if(!tools.querySelector('details'))tools.innerHTML='<details><summary>掉落与熔炼规则</summary><p><b>哪里掉武器</b><br>精英必掉1把；首领掉1～3把；小兵偶尔掉。首领掉的品质最好，精英其次，小兵最差。</p><p><b>去哪里刷</b><br>校场演武比主线更容易出好武器：第1层最高掉优良，每往上一层多一档，第4层起能掉传说。</p><p><b>仓库</b><br>身上加仓库一共50格，满了就捡不起来，记得熔炼或丢弃。</p><p><b>熔炼</b><br>勾选3～5把熔成1把新武器：造型和品质取数量最多的那种，词条全部重新随机。放得越多，越容易升一档品质（每次最多升一档，传说不再升）。具体概率看熔炼按钮上的数字。已装备、已锁定的武器不能熔炼。</p></details>';
+    if(!tools.querySelector('details'))tools.innerHTML='<details><summary>掉落与熔炼规则</summary><p><b>哪里掉武器</b><br>精英必掉1把；首领掉1～3把；小兵偶尔掉。首领掉的品质最好，精英其次，小兵最差。</p><p><b>去哪里刷</b><br>校场演武比主线更容易出好武器：第1层最高掉优良，每往上一层多一档，第4层起能掉传说。</p><p><b>仓库</b><br>身上加仓库一共50格，满了就捡不起来，记得熔炼或丢弃。</p><p><b>熔炼</b><br>勾选3～5把熔成1把新武器：造型和品质取数量最多的那种，词条全部重新随机。放得越多，越容易升一档品质（每次最多升一档，传说不再升）。<br><b>保底：</b>某档品质熔炼没升阶，下次熔这档品质的升阶概率会提高，升阶后清零。放5把时，普通最多第5次、优良最多第7次、精致最多第9次、史诗最多第14次必定升阶。具体概率看熔炼按钮上的数字。已装备、已锁定的武器不能熔炼。</p></details>';
     tools.querySelector('details').open=tools.dataset.open==='1';tools.querySelector('details').ontoggle=e=>tools.dataset.open=e.target.open?'1':'0';
     const forge=root.querySelector('#aForge'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');
-    forge.onclick=()=>{const ids=[...selection],selected=ids.map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),plan=EQUIPMENT_RULES.forgePlan(selected);if(!plan){showMessage('请选择3～5把未装备、未锁定武器');return;}
+    forge.onclick=()=>{const ids=[...selection],selected=ids.map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),plan=EQUIPMENT_RULES.forgePlan(selected,state().pity);if(!plan){showMessage('请选择3～5把未装备、未锁定武器');return;}
       // 吃亏提醒：材料里有比熔出品质更高的，或带特殊词条的
       const top=Math.max(...plan.qualities),costly=selected.filter(i=>Math.min(4,i.q)>top||i.special),warn=costly.length?`\n\n⚠ 注意：目前搭配会出${plan.qualities.map(q=>D.qualities[q].name).join('或')}，${costly.map(i=>D.label(i)+(i.special?'（带特殊词条）':'')).join('、')} 也会被熔掉！`:'';
       askConfirm({title:'确认熔炼',description:`将消耗以下${selected.length}把武器，词条与特殊均重抽：`,items:selected,summary:forgeSummary(plan)+'\n天工按传说统计，特殊独立5%。'+warn,warn:!!warn,action:async()=>{
@@ -107,8 +109,8 @@
   }
   const percent=n=>Number((n*100).toFixed(2))+'%';
   const shortPercent=n=>{const v=n*100;return (v>0&&v<1?v.toFixed(1):String(Math.round(v)))+'%';};   // 按钮标签空间小：取整，不足1%留一位小数
-  function forgeSummary(plan){return '造型：'+plan.types.map(t=>D.names[t]+' '+percent(1/plan.types.length)).join('、')+'\n基础品质：'+plan.qualities.map(q=>D.qualities[q].name+' '+percent(1/plan.qualities.length)).join('、')+'\n升阶机会：'+percent(plan.upgradeChance)+'\n最终基础品质：'+Object.entries(plan.outcomes).filter(([,chance])=>chance>0).map(([q,chance])=>D.qualities[q].name+' '+percent(chance)).join('、');}
-  function updateFooter(root=document){const p=state(),items=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),equippedIds=new Set(Object.values(p.equipped)),invalidLocked=items.some(i=>i.locked),invalidEquipped=items.some(i=>equippedIds.has(i.uid)),plan=EQUIPMENT_RULES.forgePlan(items),forge=root.querySelector('#aForge'),tag=root.querySelector('#aForgeTag'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');if(!forge||!tag||!lock||!discard)return;const valid=!!plan&&!invalidLocked&&!invalidEquipped;forge.disabled=!valid;const prefix=`已选 ${items.length}/5`;tag.textContent=invalidEquipped?`${prefix} · 含已装备`:invalidLocked?`${prefix} · 含已锁定`:!plan?`${prefix} · 至少选3把`: `${prefix} · 升阶 ${shortPercent(plan.upgradeChance)}`;lock.disabled=!items.length;lock.textContent=items.length&&items.every(i=>i.locked)?'解锁':'锁定';discard.disabled=!items.length||invalidLocked||invalidEquipped;}
+  function forgeSummary(plan){return '造型：'+plan.types.map(t=>D.names[t]+' '+percent(1/plan.types.length)).join('、')+'\n基础品质：'+plan.qualities.map(q=>D.qualities[q].name+' '+percent(1/plan.qualities.length)).join('、')+'\n升阶机会：'+percent(plan.upgradeChance)+(plan.pityBonus>0?'（其中保底加成 +'+percent(plan.pityBonus)+'）':'')+'\n最终基础品质：'+Object.entries(plan.outcomes).filter(([,chance])=>chance>0).map(([q,chance])=>D.qualities[q].name+' '+percent(chance)).join('、');}
+  function updateFooter(root=document){const p=state(),items=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),equippedIds=new Set(Object.values(p.equipped)),invalidLocked=items.some(i=>i.locked),invalidEquipped=items.some(i=>equippedIds.has(i.uid)),plan=EQUIPMENT_RULES.forgePlan(items,state().pity),forge=root.querySelector('#aForge'),tag=root.querySelector('#aForgeTag'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');if(!forge||!tag||!lock||!discard)return;const valid=!!plan&&!invalidLocked&&!invalidEquipped;forge.disabled=!valid;const prefix=`已选 ${items.length}/5`;tag.textContent=invalidEquipped?`${prefix} · 含已装备`:invalidLocked?`${prefix} · 含已锁定`:!plan?`${prefix} · 至少选3把`: `${prefix} · 升阶 ${shortPercent(plan.upgradeChance)}${plan.pityBonus>0?'（含保底）':''}`;lock.disabled=!items.length;lock.textContent=items.length&&items.every(i=>i.locked)?'解锁':'锁定';discard.disabled=!items.length||invalidLocked||invalidEquipped;}
   function showMessage(text){const n=document.getElementById('aMessage')||document.getElementById('tPrepStatus');if(n)n.textContent=text;}
   function exportProfile(){const p=copy(state());p.campaign=CLOUD_MERGE.merge({campaign:p.campaign},{campaign:window.TITLE?TITLE.campaignProgress():{}}).campaign;return p;}
   function mergeCloud(profile){

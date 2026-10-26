@@ -2,7 +2,7 @@
 (function(root){
   function merge(...profiles){
     const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true};
-    const items=new Map();
+    const items=new Map();let pityAt=-1;
     for(const p of profiles){if(!p||typeof p!=='object')continue;
       result.played ||= !!p.played;
       for(const chapter of ['1','2'])if(p.campaign?.[chapter])result.campaign[chapter]=true;
@@ -10,6 +10,8 @@
         const floor=Number(p.campaign?.xiaochang?.[chapter]);
         if(Number.isInteger(floor)&&floor>=1&&floor<=5){result.campaign.xiaochang ||= {};result.campaign.xiaochang[chapter]=Math.max(result.campaign.xiaochang[chapter]||0,floor);}
       }
+      // 熔炼保底计数：以最后一次熔炼的那份为准
+      if(p.pity&&typeof p.pity==='object'&&(Number(p._pityAt)||0)>pityAt){pityAt=Number(p._pityAt)||0;result.pity={};for(const q of ['0','1','2','3']){const n=Math.floor(Number(p.pity[q])||0);if(n>0)result.pity[q]=Math.min(30,n);}result._pityAt=pityAt;}
       for(const [id,time] of Object.entries(p._removed||{}))result._removed[id]=Math.max(result._removed[id]||0,Number(time)||1);
       for(const item of p.items||[]){if(!item||typeof item.uid!=='string')continue;const old=items.get(item.uid);if(!old||(item._at||0)>(old._at||0))items.set(item.uid,item);}
       for(const slot of ['long','short','ranged'])if(Object.prototype.hasOwnProperty.call(p.equipped||{},slot)){
