@@ -62,7 +62,7 @@
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;
     const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
-    #tChapterPanel{overflow-y:auto!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
+    #tChapterPanel{overflow-y:auto!important;scroll-padding-bottom:90px;padding-bottom:90px!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
     .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
     .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
     .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}

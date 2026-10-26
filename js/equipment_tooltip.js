@@ -1,18 +1,18 @@
-// 武器详情仅此一套：桌面可交互悬浮，点击/触屏长按打开同一个居中对比弹窗。
+// 武器详情仅此一套：桌面只读悬停预览，点击/触屏长按打开可交互的居中对比弹窗。
 (() => {
-  let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null, lastPoint=null;
+  let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
   let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
   const now=()=>performance.now();
   function close(){
     clearTimeout(hideTimer);clearTimeout(longTimer);
     if(active)active.removeAttribute('aria-describedby');
     const restore=mode==='modal'?returnFocus:null;
-    active=null;mode='';lastPoint=null;returnFocus=null;
+    active=null;mode='';returnFocus=null;
     if(tip)tip.hidden=true;
     if(restore?.isConnected){suppressFocusUntil=now()+300;restore.focus({preventScroll:true});}
   }
   function hide(){if(mode==='hover')close();}
-  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,180);}
+  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,120);}
   function weaponNode(target){
     const el=target?.closest?.('.aCard[data-uid],.tPrepSlot[data-uid]') || target?.closest?.('[data-item],[data-weapon]');
     return el&&root?.contains(el)?el:null;
@@ -21,12 +21,24 @@
     if(!node||!window.ARMORY)return null;
     return node.dataset.uid?ARMORY.byId(node.dataset.uid):ARMORY.active(node.dataset.weapon||node.dataset.item);
   }
-  function place(point=lastPoint){
+  function place(){
     if(!tip||tip.hidden||mode!=='hover'||!active)return;
-    const r=active.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
-    let x=point?point.x+16:r.right+12,y=point?point.y+16:r.top;
-    if(x+w>innerWidth-10)x=point?point.x-w-16:r.left-w-12;
-    tip.style.left=Math.max(10,x)+'px';tip.style.top=Math.max(10,Math.min(y,innerHeight-h-10))+'px';
+    const r=active.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,gap=10,margin=10;
+    const leftSpace=r.left-margin-gap,rightSpace=innerWidth-margin-gap-r.right;
+    let x,y,availableHeight=innerHeight-margin*2;
+    if(r.left+r.width/2>=innerWidth/2&&leftSpace>=w){x=r.left-gap-w;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(r.left+r.width/2<innerWidth/2&&rightSpace>=w){x=r.right+gap;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(leftSpace>=w){x=r.left-gap-w;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(rightSpace>=w){x=r.right+gap;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else {
+      x=Math.max(margin,(innerWidth-w)/2);
+      const above=Math.max(0,r.top-margin-gap),below=Math.max(0,innerHeight-margin-gap-r.bottom);
+      if(above>=below){availableHeight=Math.max(40,above);y=Math.max(margin,r.top-gap-availableHeight);}
+      else {availableHeight=Math.max(40,below);y=r.bottom+gap;}
+      tip.style.maxHeight=Math.min(availableHeight,innerHeight-margin*2)+'px';
+    }
+    if(leftSpace>=w||rightSpace>=w)tip.style.maxHeight=`calc(100dvh - ${margin*2}px)`;
+    tip.style.left=Math.round(x)+'px';tip.style.top=Math.round(y)+'px';
   }
   function content(item){
     panels.replaceChildren();
@@ -36,35 +48,35 @@
     function frame(value,label,kind,other){
       const section=document.createElement('section');section.className='wt-frame '+kind;
       const title=document.createElement('header');title.textContent=label;
-      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other});
+      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,compact:mode==='hover'});
       section.append(title,body);panels.append(section);
     }
     if(compare)frame(compare,'已装备','wt-equipped');
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
   }
-  function show(node,point){
+  function show(node){
     if(mode==='modal'||!root?.classList.contains('open'))return;
     const item=itemAt(node);if(!item){hide();return;}
-    close();active=node;mode='hover';lastPoint=point||null;content(item);
-    tip.classList.remove('is-modal');tip.setAttribute('aria-modal','false');tip.hidden=false;
+    close();active=node;mode='hover';content(item);
+    tip.classList.remove('is-modal');tip.style.pointerEvents='none';tip.style.maxHeight=`calc(100dvh - 20px)`;tip.setAttribute('aria-modal','false');tip.hidden=false;
     node.setAttribute('aria-describedby',tip.id);place();
   }
   function open(item,trigger){
     if(!tip||!item)return;
     close();active=trigger||null;returnFocus=trigger||document.activeElement;mode='modal';content(item);
-    tip.style.left='';tip.style.top='';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
+    tip.style.left='';tip.style.top='';tip.style.maxHeight='';tip.style.pointerEvents='auto';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
     closeButton.focus({preventScroll:true});
   }
   function attach(container){
     if(root)return;root=container;
     const style=document.createElement('style');style.textContent=`
-      #wWeaponTip{position:fixed;z-index:10000;width:min(800px,96vw);max-width:calc(100vw - 20px);color:#e8d6af;font:13px/1.5 sans-serif;pointer-events:auto;box-sizing:border-box}
+      #wWeaponTip{position:fixed;z-index:10000;width:min(640px,90vw);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);overflow:auto;color:#e8d6af;font:13px/1.5 sans-serif;pointer-events:none;box-sizing:border-box}
       #wWeaponTip[hidden]{display:none!important}#wWeaponTip:not(.is-modal):has(.wt-dialog:not(.two)){width:min(380px,96vw)}
       .wt-dialog{width:100%;box-sizing:border-box;position:relative}.wt-panels{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}
       .wt-dialog.two .wt-panels{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-dialog.two .wd-title{min-height:58px}.wt-frame{min-width:0;overflow:hidden;border:2px solid #ba9250;border-radius:6px;background:repeating-linear-gradient(3deg,#d3ab6808 0 1px,transparent 1px 7px),linear-gradient(135deg,#403022,#211b16);box-shadow:inset 0 0 0 3px #2c231b,0 5px 22px #160f0ab3}
       .wt-frame>header{font-size:13px;font-weight:700;padding:6px 12px;background:#b18b4920;border-bottom:1px solid #80623b;letter-spacing:2px}.wt-equipped{border-color:#6f8fa8}.wt-equipped>header{color:#b7cfdf;background:#6f8fa820}.wt-candidate{border-color:#e2b85c}.wt-candidate>header{color:#f0ce83}
-      .wt-frame>.weapon-detail{padding:12px 14px;box-sizing:border-box;max-height:calc(100dvh - 68px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
-      .wt-bar{display:none}#wWeaponTip.is-modal{inset:0;max-width:none;width:auto;display:flex;align-items:center;justify-content:center;background:#100b08c7;padding:12px;overscroll-behavior:contain}
+      .wt-frame>.weapon-detail{padding:12px 14px;box-sizing:border-box;max-height:calc(100dvh - 38px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+      .wt-bar{display:none}#wWeaponTip.is-modal{inset:0;max-width:none;width:auto;max-height:none;overflow:auto;display:flex;align-items:center;justify-content:center;background:#100b08c7;padding:12px;overscroll-behavior:contain}
       #wWeaponTip.is-modal .wt-dialog{width:min(380px,96vw)}#wWeaponTip.is-modal .wt-dialog.two{width:min(800px,96vw)}.is-modal .wt-bar{display:flex;justify-content:flex-end;margin-bottom:7px}.wt-close{border:1px solid #b89459;color:#f0dab0;background:#3e2b1f;border-radius:5px;padding:7px 14px;font:14px sans-serif;cursor:pointer;min-height:36px}
       .is-modal .wt-frame>.weapon-detail{max-height:calc(100dvh - 115px)}
       @media(max-width:559px){.wt-dialog.two .wd-title{min-height:0}.wt-dialog.two .wt-panels{grid-template-columns:minmax(0,1fr)}.wt-dialog.two .wt-frame>.weapon-detail{max-height:calc(50dvh - 80px)}}
@@ -75,26 +87,23 @@
     const bar=document.createElement('div');bar.className='wt-bar';
     closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
     panels=document.createElement('div');panels.className='wt-panels';dialog.append(bar,panels);tip.append(dialog);document.body.append(tip);
-    tip.addEventListener('pointerenter',()=>clearTimeout(hideTimer));
-    tip.addEventListener('pointerleave',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget))later();});
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
     tip.addEventListener('toggle',()=>place(),true);
     tip.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
       if(e.pointerType==='touch'||mode==='modal')return;
-      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n,{x:e.clientX,y:e.clientY});
+      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n);
     });
     root.addEventListener('pointermove',e=>{
       if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}
-      if(e.pointerType!=='touch'&&mode==='hover'&&weaponNode(e.target)===active){lastPoint={x:e.clientX,y:e.clientY};place();}
     });
-    root.addEventListener('pointerout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
+    root.addEventListener('pointerout',e=>{if(mode==='hover'&&active&&e.target!==active&&!active.contains(e.target))return;if(mode==='hover'&&active&&!active.contains(e.relatedTarget))later();});
     root.addEventListener('pointerleave',e=>{if(!tip.contains(e.relatedTarget))later();});
     root.addEventListener('focusin',e=>{const n=weaponNode(e.target);if(now()>=suppressFocusUntil&&n&&e.target.matches(':focus-visible'))show(n);});
     root.addEventListener('focusout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
     document.addEventListener('pointerdown',e=>{
-      if(mode==='hover'&&!tip.contains(e.target))hide();
+      if(mode==='hover'&&!active?.contains(e.target))hide();
       if(e.pointerType!=='touch')return;
       const n=weaponNode(e.target);if(!n)return;
       clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};

@@ -225,7 +225,7 @@ body.wzb-pro #help{display:none}
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;
     const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
-    #tChapterPanel{overflow-y:auto!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
+    #tChapterPanel{overflow-y:auto!important;scroll-padding-bottom:90px;padding-bottom:90px!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
     .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
     .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
     .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
@@ -1993,11 +1993,11 @@ function hit(z, dmg, dir, ranged) {
     const ranges=combos.map(c=>(w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range);
     return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus};
   }
-  function render(container,item,{compare=null}={}){
+  function render(container,item,{compare=null,compact=false}={}){
     if(!item||typeof WEAP==='undefined'||!WEAP[item.type])return;style();container.replaceChildren();container.classList.add('weapon-detail');
     const D=AFFIX_DATA,w=WEAP[item.type],st=D.stats(item),combos=w.combo,total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
     const heading=node('div',null,'wd-title');if(item.inscription)heading.append(node('span',item.inscription+'·','wd-origin'));
-    const title=node('span',D.label(item));title.style.color=D.qualities[item.q].color;heading.append(title);container.append(heading,node('div',({long:'长武器',short:'短武器',ranged:'远程武器'})[w.class]+' · 仅当前手持时生效','wd-category'));
+    const title=node('span',D.label(item));title.style.color=D.qualities[item.q].color;heading.append(title);container.append(heading);if(!compact)container.append(node('div',({long:'长武器',short:'短武器',ranged:'远程武器'})[w.class]+' · 仅当前手持时生效','wd-category'));
     const affixes=node('section',null,'wd-affixes');affixes.append(node('h4','词条'));
     function affix(name,badge,text,cls=''){
       const card=node('section',null,'wd-affix '+cls),head=node('div',null,'wd-affix-title');head.append(node('span',name),node('span',badge,'wd-badge'));card.append(head,node('div',text,'wd-effect'));affixes.append(card);return card;
@@ -2017,8 +2017,9 @@ function hit(z, dmg, dir, ranged) {
     row('暴击率',fmt(st.crit*100)+'%',list,'crit');row('暴击伤害',fmt(st.critDamage*100)+'%',list,'critDamage');
     row('最大生命',fmt(st.health),list,'health');row('减伤',fmt(st.guard*100)+'%',list,'guard');row('移动速度',fmt(st.move*100)+'%（相对基础）',list,'move');
     row('普攻闪避',fmt(st.dodge*100)+'%',list,'dodge');row('冷却缩减',fmt(st.focus*100)+'%',list,'focus');
-    container.append(list,node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
+    container.append(list);if(!compact)container.append(node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
     container.append(affixes);
+    if(compact)return;
     container.append(node('h4','攻击方式'));
     const features=combos.map((c,i)=>{const labels=[c.pierce&&'穿透敌人',c.both&&'前后攻击',c.multi&&'多目标命中',c.knock&&'击飞',c.thrust&&'前刺更远',c.daze&&'可造成眩晕'].filter(Boolean);return labels.length?'第'+(i+1)+'段：'+labels.join('、'):'';}).filter(Boolean);
     container.append(node('div',combos.length+'段'+(w.proj?'远程连击':'近战连击')+'；命中后可衔接下一段。'+(w.interrupt?'命中可打断普通敌人蓄力。':''),'wd-copy'));
@@ -2049,21 +2050,21 @@ function hit(z, dmg, dir, ranged) {
   root.EQUIPMENT_RULES={CAPACITY,upgrades,forgePlan};
 })(typeof window==='undefined'?globalThis:window);
 
-// 武器详情仅此一套：桌面可交互悬浮，点击/触屏长按打开同一个居中对比弹窗。
+// 武器详情仅此一套：桌面只读悬停预览，点击/触屏长按打开可交互的居中对比弹窗。
 (() => {
-  let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null, lastPoint=null;
+  let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
   let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
   const now=()=>performance.now();
   function close(){
     clearTimeout(hideTimer);clearTimeout(longTimer);
     if(active)active.removeAttribute('aria-describedby');
     const restore=mode==='modal'?returnFocus:null;
-    active=null;mode='';lastPoint=null;returnFocus=null;
+    active=null;mode='';returnFocus=null;
     if(tip)tip.hidden=true;
     if(restore?.isConnected){suppressFocusUntil=now()+300;restore.focus({preventScroll:true});}
   }
   function hide(){if(mode==='hover')close();}
-  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,180);}
+  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,120);}
   function weaponNode(target){
     const el=target?.closest?.('.aCard[data-uid],.tPrepSlot[data-uid]') || target?.closest?.('[data-item],[data-weapon]');
     return el&&root?.contains(el)?el:null;
@@ -2072,12 +2073,24 @@ function hit(z, dmg, dir, ranged) {
     if(!node||!window.ARMORY)return null;
     return node.dataset.uid?ARMORY.byId(node.dataset.uid):ARMORY.active(node.dataset.weapon||node.dataset.item);
   }
-  function place(point=lastPoint){
+  function place(){
     if(!tip||tip.hidden||mode!=='hover'||!active)return;
-    const r=active.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
-    let x=point?point.x+16:r.right+12,y=point?point.y+16:r.top;
-    if(x+w>innerWidth-10)x=point?point.x-w-16:r.left-w-12;
-    tip.style.left=Math.max(10,x)+'px';tip.style.top=Math.max(10,Math.min(y,innerHeight-h-10))+'px';
+    const r=active.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,gap=10,margin=10;
+    const leftSpace=r.left-margin-gap,rightSpace=innerWidth-margin-gap-r.right;
+    let x,y,availableHeight=innerHeight-margin*2;
+    if(r.left+r.width/2>=innerWidth/2&&leftSpace>=w){x=r.left-gap-w;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(r.left+r.width/2<innerWidth/2&&rightSpace>=w){x=r.right+gap;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(leftSpace>=w){x=r.left-gap-w;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else if(rightSpace>=w){x=r.right+gap;y=Math.max(margin,Math.min(r.top,innerHeight-h-margin));}
+    else {
+      x=Math.max(margin,(innerWidth-w)/2);
+      const above=Math.max(0,r.top-margin-gap),below=Math.max(0,innerHeight-margin-gap-r.bottom);
+      if(above>=below){availableHeight=Math.max(40,above);y=Math.max(margin,r.top-gap-availableHeight);}
+      else {availableHeight=Math.max(40,below);y=r.bottom+gap;}
+      tip.style.maxHeight=Math.min(availableHeight,innerHeight-margin*2)+'px';
+    }
+    if(leftSpace>=w||rightSpace>=w)tip.style.maxHeight=`calc(100dvh - ${margin*2}px)`;
+    tip.style.left=Math.round(x)+'px';tip.style.top=Math.round(y)+'px';
   }
   function content(item){
     panels.replaceChildren();
@@ -2087,35 +2100,35 @@ function hit(z, dmg, dir, ranged) {
     function frame(value,label,kind,other){
       const section=document.createElement('section');section.className='wt-frame '+kind;
       const title=document.createElement('header');title.textContent=label;
-      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other});
+      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,compact:mode==='hover'});
       section.append(title,body);panels.append(section);
     }
     if(compare)frame(compare,'已装备','wt-equipped');
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
   }
-  function show(node,point){
+  function show(node){
     if(mode==='modal'||!root?.classList.contains('open'))return;
     const item=itemAt(node);if(!item){hide();return;}
-    close();active=node;mode='hover';lastPoint=point||null;content(item);
-    tip.classList.remove('is-modal');tip.setAttribute('aria-modal','false');tip.hidden=false;
+    close();active=node;mode='hover';content(item);
+    tip.classList.remove('is-modal');tip.style.pointerEvents='none';tip.style.maxHeight=`calc(100dvh - 20px)`;tip.setAttribute('aria-modal','false');tip.hidden=false;
     node.setAttribute('aria-describedby',tip.id);place();
   }
   function open(item,trigger){
     if(!tip||!item)return;
     close();active=trigger||null;returnFocus=trigger||document.activeElement;mode='modal';content(item);
-    tip.style.left='';tip.style.top='';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
+    tip.style.left='';tip.style.top='';tip.style.maxHeight='';tip.style.pointerEvents='auto';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
     closeButton.focus({preventScroll:true});
   }
   function attach(container){
     if(root)return;root=container;
     const style=document.createElement('style');style.textContent=`
-      #wWeaponTip{position:fixed;z-index:10000;width:min(800px,96vw);max-width:calc(100vw - 20px);color:#e8d6af;font:13px/1.5 sans-serif;pointer-events:auto;box-sizing:border-box}
+      #wWeaponTip{position:fixed;z-index:10000;width:min(640px,90vw);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);overflow:auto;color:#e8d6af;font:13px/1.5 sans-serif;pointer-events:none;box-sizing:border-box}
       #wWeaponTip[hidden]{display:none!important}#wWeaponTip:not(.is-modal):has(.wt-dialog:not(.two)){width:min(380px,96vw)}
       .wt-dialog{width:100%;box-sizing:border-box;position:relative}.wt-panels{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}
       .wt-dialog.two .wt-panels{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-dialog.two .wd-title{min-height:58px}.wt-frame{min-width:0;overflow:hidden;border:2px solid #ba9250;border-radius:6px;background:repeating-linear-gradient(3deg,#d3ab6808 0 1px,transparent 1px 7px),linear-gradient(135deg,#403022,#211b16);box-shadow:inset 0 0 0 3px #2c231b,0 5px 22px #160f0ab3}
       .wt-frame>header{font-size:13px;font-weight:700;padding:6px 12px;background:#b18b4920;border-bottom:1px solid #80623b;letter-spacing:2px}.wt-equipped{border-color:#6f8fa8}.wt-equipped>header{color:#b7cfdf;background:#6f8fa820}.wt-candidate{border-color:#e2b85c}.wt-candidate>header{color:#f0ce83}
-      .wt-frame>.weapon-detail{padding:12px 14px;box-sizing:border-box;max-height:calc(100dvh - 68px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
-      .wt-bar{display:none}#wWeaponTip.is-modal{inset:0;max-width:none;width:auto;display:flex;align-items:center;justify-content:center;background:#100b08c7;padding:12px;overscroll-behavior:contain}
+      .wt-frame>.weapon-detail{padding:12px 14px;box-sizing:border-box;max-height:calc(100dvh - 38px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+      .wt-bar{display:none}#wWeaponTip.is-modal{inset:0;max-width:none;width:auto;max-height:none;overflow:auto;display:flex;align-items:center;justify-content:center;background:#100b08c7;padding:12px;overscroll-behavior:contain}
       #wWeaponTip.is-modal .wt-dialog{width:min(380px,96vw)}#wWeaponTip.is-modal .wt-dialog.two{width:min(800px,96vw)}.is-modal .wt-bar{display:flex;justify-content:flex-end;margin-bottom:7px}.wt-close{border:1px solid #b89459;color:#f0dab0;background:#3e2b1f;border-radius:5px;padding:7px 14px;font:14px sans-serif;cursor:pointer;min-height:36px}
       .is-modal .wt-frame>.weapon-detail{max-height:calc(100dvh - 115px)}
       @media(max-width:559px){.wt-dialog.two .wd-title{min-height:0}.wt-dialog.two .wt-panels{grid-template-columns:minmax(0,1fr)}.wt-dialog.two .wt-frame>.weapon-detail{max-height:calc(50dvh - 80px)}}
@@ -2126,26 +2139,23 @@ function hit(z, dmg, dir, ranged) {
     const bar=document.createElement('div');bar.className='wt-bar';
     closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
     panels=document.createElement('div');panels.className='wt-panels';dialog.append(bar,panels);tip.append(dialog);document.body.append(tip);
-    tip.addEventListener('pointerenter',()=>clearTimeout(hideTimer));
-    tip.addEventListener('pointerleave',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget))later();});
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
     tip.addEventListener('toggle',()=>place(),true);
     tip.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
       if(e.pointerType==='touch'||mode==='modal')return;
-      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n,{x:e.clientX,y:e.clientY});
+      clearTimeout(hideTimer);const n=weaponNode(e.target);if(n&&n!==active)show(n);
     });
     root.addEventListener('pointermove',e=>{
       if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}
-      if(e.pointerType!=='touch'&&mode==='hover'&&weaponNode(e.target)===active){lastPoint={x:e.clientX,y:e.clientY};place();}
     });
-    root.addEventListener('pointerout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
+    root.addEventListener('pointerout',e=>{if(mode==='hover'&&active&&e.target!==active&&!active.contains(e.target))return;if(mode==='hover'&&active&&!active.contains(e.relatedTarget))later();});
     root.addEventListener('pointerleave',e=>{if(!tip.contains(e.relatedTarget))later();});
     root.addEventListener('focusin',e=>{const n=weaponNode(e.target);if(now()>=suppressFocusUntil&&n&&e.target.matches(':focus-visible'))show(n);});
     root.addEventListener('focusout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
     document.addEventListener('pointerdown',e=>{
-      if(mode==='hover'&&!tip.contains(e.target))hide();
+      if(mode==='hover'&&!active?.contains(e.target))hide();
       if(e.pointerType!=='touch')return;
       const n=weaponNode(e.target);if(!n)return;
       clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};
@@ -4651,6 +4661,7 @@ window.XIAOCHANG = (() => {
     if (document.getElementById('xStyle')) return;
     const style = document.createElement('style'); style.id = 'xStyle';
     style.textContent = `#tChapterPick{overflow-y:auto}#xPrep{padding:8px 10px;margin:5px 0;border:1px solid #9d7845;border-radius:6px;background:#3b2c20;color:#e7d1a9;font:14px/1.7 sans-serif;flex:none}#xPrep{flex:1;padding:clamp(14px,2vw,24px)}#xPrep h2{margin:12px 0 5px;color:#f1d58f;font-size:clamp(20px,2.5vw,28px)}#xPrep h3{margin:16px 0 7px;font-size:15px}#xPrep .x-progress{margin:0;color:#cdb78e}#xPrep button{min-height:44px;padding:9px 17px;border:1px solid #9c7843;border-radius:6px;background:linear-gradient(#62482d,#34261b);color:#e9d4aa;font:inherit;cursor:pointer;touch-action:manipulation}#xPrep .x-options{display:flex;flex-wrap:wrap;gap:9px}#xPrep button.selected{border:2px solid #e2b85c;background:#75542e;color:#ffe8af}#xPrep button:active{transform:translateY(1px)}#xStrength{padding:12px;background:#20180fa6;border:1px solid #836239;border-radius:5px;color:#f2ddb0}#xPrep .x-back{min-height:36px;padding:5px 10px;color:#d4bc91;font-size:13px}#xPrep small{display:block}#xResult{position:fixed;inset:0;z-index:18;display:flex;align-items:center;justify-content:center;background:#130e0bcc;color:#432b1b;font-family:MaShanZheng,serif}#xResult article{box-sizing:border-box;width:min(650px,92vw);max-height:92dvh;padding:clamp(18px,4vh,40px) clamp(24px,5vw,55px);background:#dfc596 center/100% 100% no-repeat;box-shadow:0 12px 60px #0009;overflow:auto;border-radius:14px}#xResult h2{margin:clamp(22px,5vh,48px) 0 10px;text-align:center;font-size:28px}#xResult ul{max-height:35vh;overflow:auto;padding:10px 22px;background:#35271de8;border:1px solid #805d37;color:#e9d8b7;overflow-wrap:anywhere}#xResult li{margin:5px 0}#xResult article>p{padding:9px 12px;background:#2c201acc;color:#f1dfbc;border-radius:5px;font:14px/1.6 sans-serif}#xResult nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}#xResult button{min-height:40px;padding:8px 18px;background:#5a3923 center/100% 100%;color:#f5dfb2;border:1px solid #b98e51;border-radius:7px;font:18px MaShanZheng,serif;cursor:pointer}#xResult button:active{transform:translateY(2px)}#xResult button:disabled{opacity:.5;cursor:default}.wzb-xresult #bA,.wzb-xresult #bK,.wzb-xresult #joy{pointer-events:none}@media(max-height:450px){#xPrep{font-size:12px;padding:3px 8px}#xResult article{padding:12px 30px}#xResult h2{font-size:22px}#xResult ul{max-height:27vh;margin:6px 0}}`;
+    style.textContent += '#tChapterPanel{min-height:0;overflow:hidden!important;padding-bottom:0!important}.x-preparation #tChapterPanel{min-height:0;overflow:hidden!important}#xPrep{min-height:0;flex:1 1 0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:110px;box-sizing:border-box}@media(max-height:450px){#xPrep{padding-bottom:110px}}';
     document.head.appendChild(style);
   }
   function renderPreparation(root, selected, chapter=selection.chapter) {
@@ -4666,7 +4677,7 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或丢弃，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武 · ${c.name}</h2><p class="x-progress">已通过第${highest(chapter)}层</p><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">第${i+1}层</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武 · ${c.name}</h2><p class="x-progress">${completed?'已通过第'+completed+'层':'尚未通过'}</p><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">第${i+1}层</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     function update(){
       box.querySelectorAll('[data-x-floor]').forEach(b=>{const on=Number(b.dataset.xFloor)===selection.floor;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
