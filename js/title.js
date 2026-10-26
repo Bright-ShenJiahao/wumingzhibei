@@ -5,7 +5,7 @@
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
   const TV = { x: .5684, y: .1958, w: .3320, h: .3601 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
-  const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：敌人受双倍伤害）
+  const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：玩家受伤减半，击倒判定按减半前伤害）
   const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
   const ARMORY_KEY = 'wzb-armory-v1';
   const DEBUG = /[?&]debug(?:=|&|$)/.test(location.search);

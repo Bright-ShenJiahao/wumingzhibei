@@ -226,11 +226,11 @@ function reset() {
     { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
-  ];   // 提示对所有人显示（简单模式只影响伤害，不影响提示）
+  ];   // 提示对所有人显示（简单模式只降低玩家受伤，不影响提示）
   say('村子被黄巾贼烧了！往右走 →');
 }
 function say(s, t = 3) { msg = s; msgT = t; }
-function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 敌人受双倍伤害
+function noviceMode() { return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 玩家受伤减半，击倒判定仍按减半前伤害
 function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
@@ -676,7 +676,6 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
-  if (noviceMode()) dmg *= 2;   // 简单模式：只影响伤害，提示文案始终显示
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
@@ -1181,6 +1180,8 @@ function dmgHero(n, from, kind = 'basic') {
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
+  const raw = n;   // 保存减半前伤害，保持原有击倒判定。
+  if (noviceMode()) n *= .5;
   if (n <= 0) return;
   n = Math.max(.01, n);
   const steadyHold = h.hp > n && charging && R_('steady', 0) > 0 && Math.random() < R_('steady', 0);
@@ -1191,7 +1192,7 @@ function dmgHero(n, from, kind = 'basic') {
   if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
-  else if (n >= 2 || h.hp <= 0) {
+  else if (raw >= 2 || h.hp <= 0) {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (h.hp <= 0) h.deathArc = true;
   } else { set(h, 'hurt'); h.vx = dir * 80; }
