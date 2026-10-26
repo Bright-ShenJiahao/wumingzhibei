@@ -586,9 +586,14 @@ function prepareChapter2Run(showOpening) {
   if (showOpening && window.CHAPTER2_INTRO) CHAPTER2_INTRO.start(() => startChapter2Battle(1));
   else startChapter2Battle(1);
 }
-function startChapter2Debug() { ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => prepareChapter2Run(false)); }
+// 加载第二章素材期间 window.CHAPTER_LOADING=2，BGM 据此直接进第二章鼓乐，不会先响第一章的曲子。
+function loadChapter2(showOpening) {
+  window.CHAPTER_LOADING = 2;
+  ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => { prepareChapter2Run(showOpening); window.CHAPTER_LOADING = 0; });
+}
+function startChapter2Debug() { loadChapter2(false); }
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
-function startChapter2() { ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => prepareChapter2Run(true)); }
+function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number) {
   if (window.GEAR) GEAR.collectDrops();
   M.W = number === 5 ? 1080 : 3600;

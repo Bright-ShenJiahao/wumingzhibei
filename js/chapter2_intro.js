@@ -129,9 +129,9 @@
     const lines = wrapText(ctx, shown, Math.max(80, panelW - (left - px) - rightPad)).slice(0, maxLines);
     lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * (small ? 23 : 31)));
 
-    // 参考示意图中的攻击键快进提示，手机/桌面都放在右下角安全区内。
+    // 攻击键快进提示：放在对白框下方右对齐，不能画在右下角，否则会和攻击/翻滚按钮叠在一起。
     const hintW = small ? 142 : 176, hintH = small ? 36 : 42;
-    const hx = W - hintW - (small ? 12 : 22), hy = H - hintH - (small ? 12 : 20);
+    const hx = px + panelW - hintW, hy = py + panelH + (small ? 8 : 12);
     ctx.fillStyle = 'rgba(26,19,17,.84)'; rounded(ctx, hx, hy, hintW, hintH, hintH / 2); ctx.fill();
     ctx.strokeStyle = 'rgba(226,194,130,.42)'; ctx.lineWidth = 1; rounded(ctx, hx, hy, hintW, hintH, hintH / 2); ctx.stroke();
     ctx.fillStyle = '#f4ead7'; ctx.beginPath(); ctx.arc(hx + (small ? 20 : 24), hy + hintH / 2, small ? 12 : 14, 0, Math.PI * 2); ctx.fill();

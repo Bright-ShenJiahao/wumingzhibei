@@ -1,3 +1,6 @@
+// 背景音乐分配（用户定的，不要改）：主页/选章/整军备战/校场页 = 《灯下》（js/menu_music.js）；
+//   第一章 = 本文件的 village/battle/boss；第二章（含第二章校场）= 《旌旗北望》鼓乐 warField/warBattle/warBoss。
+//   同一时刻只能有一首在响。
 // 背景音乐：第一章Web Audio合成；第二章叠加用户参考中分离的大鼓单击采样，旋律原创。
 // 调式：中国五声（宫商角徵羽）羽调式 A-C-D-E-G，乱世村庄的哀凉感。
 // 乐器：低沉战鼓（正弦下坠 + 低频噪声）、拨弦（古筝/琵琶式的多倍频衰减 + 拨弦噪声）、
@@ -431,6 +434,8 @@
     try {
       // 主界面、整军备战、校场页：放《灯下》（js/menu_music.js）
       if (window.MENU_MUSIC && window.TITLE && TITLE.mode && ['title', 'chapter'].includes(TITLE.mode())) return 'menu';
+      // 第二章素材加载中：直接进第二章行军鼓乐（此时 chapter2Run 还没建好，不能落到第一章曲子）
+      if (window.CHAPTER_LOADING === 2) return 'warField';
       if (typeof won !== 'undefined' && won) return 'victory';
       if (typeof over !== 'undefined' && over) return 'defeat';
       if (typeof chapter2Run !== 'undefined' && chapter2Run && !(window.TITLE && TITLE.blocks())) {
@@ -440,6 +445,13 @@
         if (chapter2Run.mode === 'fight' && alive.length) combatHoldUntil = performance.now() + 2400;
         if (['intro', 'choice', 'preview', 'victory', 'complete'].includes(chapter2Run.mode)) return 'warField';
         return performance.now() < combatHoldUntil ? 'warBattle' : 'warField';
+      }
+      // 第二章的校场也用第二章鼓乐
+      const xc = window.XIAOCHANG && XIAOCHANG.active() && XIAOCHANG.state();
+      if (xc && xc.chapter === 2) {
+        const alive = typeof zs !== 'undefined' && zs ? zs.filter(z => z && !z.dead) : [];
+        if (alive.some(z => z.T && (z.T.boss || z.T.chapterBoss))) return 'warBoss';
+        return alive.length ? 'warBattle' : 'warField';
       }
       if (typeof zs !== 'undefined' && zs && zs.some && zs.some(z => z && z.T && z.T.boss && !z.dead)) return 'boss';
       if (typeof lockR !== 'undefined' && lockR < Infinity) return 'battle';
