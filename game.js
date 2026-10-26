@@ -104,10 +104,9 @@ const WEAP = {
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
   ] },
   blade: { name: '大刀', class: 'short', reach: 30, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 38, combo: [
-    { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.1, kb: 42 },
-    { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.2, kb: 48, multi: true },
-    { f: ['blade_3a', 'blade_3b'], d: [.18, .25], dmg: 1.5, kb: 65, multi: true, both: true },
-    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.2, kb: 100, multi: true, knock: true },
+    { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.2, kb: 42 },                              // 斜劈
+    { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.3, kb: 48, multi: true },                 // 横砍
+    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.3, kb: 100, multi: true, knock: true },   // 举刀重劈收尾（短武器统一三段；回身斩帧保留备用）
   ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压

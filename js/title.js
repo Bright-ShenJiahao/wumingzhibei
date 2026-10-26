@@ -440,7 +440,9 @@
       #tChapter .x-preparation #tPrepHeader{display:flex!important;min-height:26px}#tChapter .x-preparation #tPrepHeader h2,#tChapter .x-preparation #tPrepTarget{display:none}
       #tChapter .x-preparation #tPrepStatus{position:static;flex:1 1 auto;min-width:0;padding:0;background:none;color:#cdb78e;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
       #tChapter #tPrepGo{margin-left:auto}
-      #tChapter #tPrepStatus:empty{display:none}   /* 空提示条不再盖住最后一行武器卡 */
+      #tChapter #tPrepStatus:empty{display:none}
+      #tChapter .tTrainingCard{background:url(art/ui/trial_card.webp) right center/auto 100% no-repeat,linear-gradient(135deg,#7a2418,#4e150e);overflow:hidden}#tChapter .tTrainingProgress[hidden]{display:none}
+      #tChapter .tTrainingCopy{position:relative;z-index:1;text-shadow:0 1px 2px #2a0905}   /* 空提示条不再盖住最后一行武器卡 */
       /* 熔炼按钮按内容宽度，不再拉满底栏 */
       #tChapter #aFooterTools{flex:0 1 auto}#tChapter #aFooterTools .aForgeButton{flex:none;justify-content:flex-start}#tChapter #aForgeTag{overflow:visible;text-overflow:clip}
       /* 装备槽：两行——[图标] 槽位名 + 武器名 / 卸下 锁定 */
@@ -519,7 +521,7 @@
     dom.chapter = mk('div', 'tChapter', '');
     dom.chapter.innerHTML = `<div id="tChapterShell">
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
-        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="art/ui/flag.webp" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress">未通过</span></button>
+        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="art/ui/flag.webp" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
         <p id="tChapterNotice"></p>
@@ -880,7 +882,7 @@
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
     const trainingCard=dom.chapter.querySelector('#tTrainingCard');
-    if(trainingCard){const unlocked=hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';dom.chapter.querySelector('#tTrainingProgress').textContent=best?'第'+best+'层':'未通过';trainingCard.classList.toggle('selected',prepView==='xiaochang');}
+    if(trainingCard){const unlocked=hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';{const tag=dom.chapter.querySelector('#tTrainingProgress');tag.textContent=best?'第'+best+'层':'';tag.hidden=!best;}trainingCard.classList.toggle('selected',prepView==='xiaochang');}
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
@@ -947,7 +949,7 @@
     // 画布像素尺寸跟着预览框的比例走（高固定400），CSS 只做等比缩放，人物不会被压扁。
     const box = canvas.getBoundingClientRect();
     if (box.width > 0 && box.height > 0) {
-      const H = 400, W = Math.max(160, Math.round(H * box.width / box.height));
+      const H = 480, W = Math.max(190, Math.round(H * box.width / box.height));   // 高480：3倍时长戟（136像素高）竖着也放得下
       if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
     }
     lastPreviewFrame = frameName;
@@ -967,10 +969,10 @@
     if (!frame.img.naturalWidth) return;
     const baseH = 74;   // 以主角身高为基准，所有武器/攻击帧统一比例
     // 不能用 frame.w（武器长度）限制缩放，否则长戟攻击帧会把人物缩小，预览忽大忽小。
-    const scale = 3;   // 画布高固定400：主角按3倍整数缩放，约占框高55%
+    const scale = 3;   // 画布高固定480：主角按3倍整数缩放，约占框高46%
     // 长戟按人物同倍率画，锚点向左留出完整135px武器和轨迹的空间。
     const centerX = previewWeapon === 'halberd' ? canvas.width * .32 : canvas.width / 2;
-    const footY = Math.round(canvas.height * .8);   // 脚底踩在框高约80%处
+    const footY = Math.round(canvas.height * .9);   // 脚底踩在框高约90%处，头顶留出长武器的位置
     g.fillStyle = 'rgba(12,9,7,.42)';
     g.beginPath(); g.ellipse(previewWeapon === 'halberd' ? centerX + 6 * scale : centerX, footY + 2, 20 * scale, 3.5 * scale, 0, 0, Math.PI * 2); g.fill();
     const x = Math.round(centerX - frame.ax * scale);
