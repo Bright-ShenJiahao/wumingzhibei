@@ -302,10 +302,11 @@
       }
       #tChapter.open { display:flex; }
       #tChapter [hidden] { display:none !important; }
-      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:min(860px,96vw); height:78vh; grid-template-rows:minmax(0,1fr); max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:auto; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
+      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:min(860px,96vw); height:78vh; grid-template-rows:minmax(0,1fr); max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:hidden; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
       #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,1.6vw,22px); }
       #tChapterPick { display:flex; flex-direction:column; border-right:2px solid #8b693c; background:linear-gradient(90deg,rgba(26,20,16,.3),rgba(15,12,10,.12)); }
-      #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
+      #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); overflow:hidden; }
+      #tPrepScroll { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); overflow-y:auto; overscroll-behavior:contain; padding-bottom:82px; box-sizing:border-box; }
       #tChapter h2 { margin:0; color:#f0d58f; font:700 clamp(19px,2.4vw,29px)/1.2 "PingFang SC","Microsoft YaHei",sans-serif; letter-spacing:.08em; }
       #tChapter p { margin:3px 0 0; color:#c4b18e; font-size:clamp(11px,1.2vw,14px); }
       #tChapterNotice { margin:8px 0 0 !important; color:#d7b579 !important; font-size:clamp(10px,1.05vw,12px) !important; line-height:1.5; text-align:left; }
@@ -321,7 +322,7 @@
       #tPrepHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; }
       #tPrepHeader p { margin:0; }
       #tPrepTarget { text-align:right; white-space:nowrap; }
-      #tPrepMain { min-height:180px; flex:1 1 180px; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
+      #tPrepMain { min-height:0; flex:none; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
       #tPrepPreview { width:160px; height:180px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:radial-gradient(ellipse at 50% 68%,rgba(161,112,48,.23),transparent 70%),linear-gradient(145deg,#38291e,#201a15); color:#cbb894; cursor:pointer; touch-action:manipulation; }
       #tPrepPreview canvas { position:static; inset:auto; width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
       #tPrepPreview small { font-size:10px; }
@@ -342,17 +343,17 @@
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
       .tPrepSlot.drag-incompatible { border-color:#a78049; }
       #tPrepBagTitle { display:flex; align-items:center; justify-content:space-between; color:#e7d5af; font-size:clamp(12px,1.4vw,16px); font-weight:700; }
-      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(4px,.7vw,8px); height:clamp(94px,16vh,142px); flex:none; }
+      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(110px,auto); gap:clamp(4px,.7vw,8px); height:auto; flex:none; }
       .tBagItem,.tBagEmpty { min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; border:1px solid #9f7945; border-radius:6px; background:#292119; color:#e8d7b3; touch-action:none; }
       .tBagItem { cursor:grab; }
       .tBagItem:active { cursor:grabbing; }
       .tBagIcon { width:100%; height:62%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
       .tBagItem span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(9px,1vw,12px); }
       .tBagEmpty { border-style:dashed; border-color:#66533a; color:#81745d; font-size:12px; }
-      #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
+      #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:82px; padding:10px 0; box-sizing:border-box; flex:none; }
       #tPrepStatus { min-width:0; color:#cbb894; font-size:clamp(10px,1.1vw,13px); }
       #tPrepGo { min-width:clamp(110px,16vw,180px); padding:9px 18px; font-size:clamp(15px,1.7vw,20px); }
-      #tPrepFooter{position:sticky;bottom:0;background:#2c2119f5;padding:10px 0;z-index:2;box-shadow:0 -5px 12px #2b20194d}#tPrepActions{display:flex;gap:8px;width:min(70%,520px);flex:none}#tPrepActions>button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;font-size:clamp(15px,1.7vw,20px)}
+      #tPrepFooter{position:relative;background:#2c2119f5;z-index:2;box-shadow:0 -5px 12px #2b20194d}#tPrepActions{display:flex;gap:8px;width:min(70%,520px);flex:none}#tPrepActions>button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;font-size:clamp(15px,1.7vw,20px)}
       #tPrepTraining small{font-size:clamp(9px,1vw,12px);line-height:1.4;margin-top:3px}#tPrepTraining[hidden],#xPrep[hidden]{display:none!important}
       #tPrepActions:has(#tPrepTraining[hidden]){width:clamp(110px,16vw,180px)}.x-preparation #tPrepActions{width:min(65%,340px)}
       .x-preparation #tPrepHeader,.x-preparation #tPrepMain,.x-preparation #tPrepBagTitle,.x-preparation #tPrepBag,.x-preparation #aTools{display:none!important}
@@ -360,29 +361,34 @@
       #tPrepGo:not(:disabled) { border-color:#d3a95f; color:#ffe8b0; }
       #tPrepGhost { position:fixed; z-index:30; pointer-events:none; width:90px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #f0cf81; border-radius:8px; background:rgba(42,31,22,.94); color:#f4e2bb; box-shadow:0 8px 24px #0009; transform:translate(-50%,-50%); }
       #tPrepGhost img { width:48px; height:42px; object-fit:contain; image-rendering:pixelated; }
-      @media(max-width:900px) and (orientation:landscape) {
-        #tChapter { padding:3vw; }
-        #tChapterShell { width:94vw; min-width:0; min-height:0; height:94vh; max-height:94vh; grid-template-columns:minmax(0,31%) minmax(0,69%); }
-        #tChapterPick,#tChapterPanel { padding:clamp(6px,1.2vw,10px); }
-        #tChapterPick .tChapterCard { min-height:clamp(54px,17vh,76px); margin-top:6px; padding:7px; }
-        #tChapterPickBack { padding:7px; }
-        #tChapterPanel { gap:5px; }
-        #tPrepMain { min-height:120px; flex:1 1 120px; grid-template-columns:clamp(92px,16vw,120px) minmax(0,1fr); gap:6px; }
-        #tPrepPreview { width:clamp(92px,16vw,120px); height:100%; min-height:120px; }
-        #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:4px; }
-        .tPrepSlot { grid-template-columns:44px minmax(0,1fr); gap:2px 4px; padding:4px; }
-        .tPrepIcon { width:44px; }
-        #tPrepBag { height:clamp(78px,22vh,94px); gap:3px; }
+      @media (orientation:landscape) and (max-height:430px) {
+        #tChapter { padding:2px; }
+        #tChapterShell { width:96vw; min-width:0; min-height:0; height:96dvh; max-height:96dvh; grid-template-columns:minmax(0,27%) minmax(0,73%); }
+        #tChapterPick,#tChapterPanel { padding:clamp(4px,1vw,8px); }
+        #tChapterPick h2,#tChapterPanel h2 { font-size:clamp(15px,2.3vh,19px); }
+        #tChapterPick .tChapterCard { min-height:clamp(46px,12vh,58px); margin-top:4px; padding:6px; }
+        #tChapterPick .tChapterCard small { margin-top:3px; }
+        #tChapterPickBack { padding:6px; }
+        #tChapterPanel,#tPrepScroll { gap:4px; }
+        #tPrepScroll { padding-bottom:64px; }
+        #tPrepHeader h2 { font-size:clamp(16px,2.5vh,20px); }
+        #tPrepMain { min-height:0; flex:none; grid-template-columns:clamp(78px,14vw,102px) minmax(0,1fr); gap:5px; }
+        #tPrepPreview { width:clamp(78px,14vw,102px); height:clamp(88px,27vh,112px); min-height:0; }
+        #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:3px; }
+        .tPrepSlot { grid-template-columns:36px minmax(0,1fr); gap:2px 3px; padding:3px; }
+        .tPrepSlot > b { font-size:clamp(9px,1.5vh,11px); }
+        .tPrepIcon { width:36px; }
+        .tPrepName { font-size:10px; }
+        .tPrepName small { font-size:8px; }
+        #tPrepBagTitle { font-size:12px; }
+        #tPrepBagTitle small { font-size:9px; }
+        #tPrepBag { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(104px,auto); gap:4px; }
         .tBagIcon { height:48%; }
-        #tPrepGo { padding:6px 12px; }
-      }
-      @media(max-height:420px) and (orientation:landscape) {
-        #tChapter { padding:5px; }
-        #tChapterShell { height:96vh; max-height:96vh; }
-        #tChapterPick .tChapterCard { min-height:54px; margin-top:4px; }
-        #tPrepMain { min-height:104px; flex-basis:104px; }
-        #tPrepPreview { min-height:104px; }
-        #tPrepBag { height:76px; }
+        #tPrepFooter { min-height:64px; padding:4px 0; gap:5px; }
+        #tPrepStatus { font-size:10px; line-height:1.25; }
+        #tPrepActions { width:min(67%,340px); gap:5px; }
+        #tPrepActions>button { min-height:54px; padding:5px 6px; font-size:clamp(13px,1.8vh,16px); }
+        #tPrepTraining small { font-size:9px; line-height:1.1; }
       }
     `;
     document.head.appendChild(st);
@@ -442,6 +448,7 @@
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
       <section id="tChapterPanel" aria-label="整军备战">
+       <div id="tPrepScroll">
         <header id="tPrepHeader"><h2>整军备战</h2><p id="tPrepTarget"></p></header>
         <div id="tPrepMain">
           <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
@@ -449,7 +456,8 @@
         </div>
         <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3～5把熔炼</small></div>
         <div id="tPrepBag"></div>
-        <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
+       </div>
+       <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');

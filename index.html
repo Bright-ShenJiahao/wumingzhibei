@@ -225,7 +225,7 @@ body.wzb-pro #help{display:none}
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;
     const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
-    #tChapterPanel{overflow-y:auto!important;scroll-padding-bottom:90px;padding-bottom:90px!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
+    #tChapterPanel{min-height:0;overflow:hidden!important} #tPrepScroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding-bottom:82px;box-sizing:border-box} #tPrepMain,#tPrepFooter{flex-shrink:0} #tPrepBag{height:auto!important;max-height:none;overflow:visible;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
     .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
     .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
     .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
@@ -233,14 +233,14 @@ body.wzb-pro #help{display:none}
     .aCard .aEquip{display:flex;flex-direction:column;align-items:center;width:100%;border:0;background:none;color:var(--quality)}
     .aCard img{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}.aCard .aActions{display:flex;gap:4px;justify-content:center;margin-top:5px}
     .aCard input{accent-color:#b28a4a}#aTools{font-size:12px;color:#cdb78f;line-height:1.5;padding:8px 0}#aTools p{margin:4px 0}#aTools details{margin:5px 0}#aTools button{margin-right:6px}#aTools button:disabled{opacity:.45;cursor:default}#aMessage{color:#f2d28b}
-    @media(max-height:450px){#tPrepBag{height:130px!important;max-height:150px}.aCard{min-height:95px;font-size:11px}#aTools{font-size:11px}}
+    @media (orientation:landscape) and (max-height:430px){#tPrepScroll{padding-bottom:64px!important}#tPrepBag{grid-auto-rows:minmax(102px,auto)}#aTools{font-size:9px;line-height:1.15;padding:2px 0}#aTools p{margin:1px 0;line-height:1.15}#aTools details{margin:1px 0}#aTools #aForgePreview{margin:2px 0!important;padding:3px!important;font-size:9px;line-height:1.1!important}#aTools>p:last-child{display:flex;align-items:center;gap:4px;flex-wrap:wrap}#aTools>p:last-child button{margin:0;padding:3px 5px}.aCard{box-sizing:border-box;min-height:92px!important;padding:3px;font-size:10px}.aCard .aEquip img{width:30px;height:30px}.aCard .aActions{flex-wrap:wrap;gap:3px;margin-top:3px}.aCard .aActions button{padding:2px 4px}.aCard .aActions label{font-size:9px;white-space:nowrap}}
     `;document.head.append(style);
   }
   function render(root,icon,preview){
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('#tPrepBagTitle > span');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.CAPACITY+'（含已装备）';countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
     const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{const item=equipped(node.dataset.slot);if(item){node.dataset.uid=item.uid;const label=node.querySelector('.tPrepName');label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};node.append(remove);}});
-    bag.replaceChildren();bag.style.gridTemplateColumns='repeat(auto-fill,minmax(116px,1fr))';
+    bag.replaceChildren();
     const eq=new Set(Object.values(p.equipped));
     for(const item of p.items.filter(i=>!eq.has(i.uid))){
       const card=document.createElement('div');card.className='aCard'+(selection.has(item.uid)?' selected':'');card.style.setProperty('--quality',D.qualities[item.q].color);card.dataset.uid=item.uid;
@@ -3660,10 +3660,11 @@ function hit(z, dmg, dir, ranged) {
       }
       #tChapter.open { display:flex; }
       #tChapter [hidden] { display:none !important; }
-      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:min(860px,96vw); height:78vh; grid-template-rows:minmax(0,1fr); max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:auto; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
+      #tChapterShell { display:grid; grid-template-columns:minmax(0,35%) minmax(0,65%); width:min(62vw,1180px); min-width:min(860px,96vw); height:78vh; grid-template-rows:minmax(0,1fr); max-height:78vh; min-height:min(560px,78vh); box-sizing:border-box; overflow:hidden; border:2px solid #98713e; border-radius:12px; background:repeating-linear-gradient(3deg,rgba(222,185,124,.025) 0 2px,transparent 2px 12px),linear-gradient(135deg,#453123,#241d18 65%,#33261b); box-shadow:0 18px 48px #0009,inset 0 0 0 1px rgba(227,194,132,.16); }
       #tChapterPick,#tChapterPanel { min-width:0; min-height:0; box-sizing:border-box; padding:clamp(12px,1.6vw,22px); }
       #tChapterPick { display:flex; flex-direction:column; border-right:2px solid #8b693c; background:linear-gradient(90deg,rgba(26,20,16,.3),rgba(15,12,10,.12)); }
-      #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); }
+      #tChapterPanel { display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); overflow:hidden; }
+      #tPrepScroll { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; gap:clamp(7px,1.2vh,13px); overflow-y:auto; overscroll-behavior:contain; padding-bottom:82px; box-sizing:border-box; }
       #tChapter h2 { margin:0; color:#f0d58f; font:700 clamp(19px,2.4vw,29px)/1.2 "PingFang SC","Microsoft YaHei",sans-serif; letter-spacing:.08em; }
       #tChapter p { margin:3px 0 0; color:#c4b18e; font-size:clamp(11px,1.2vw,14px); }
       #tChapterNotice { margin:8px 0 0 !important; color:#d7b579 !important; font-size:clamp(10px,1.05vw,12px) !important; line-height:1.5; text-align:left; }
@@ -3679,7 +3680,7 @@ function hit(z, dmg, dir, ranged) {
       #tPrepHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; }
       #tPrepHeader p { margin:0; }
       #tPrepTarget { text-align:right; white-space:nowrap; }
-      #tPrepMain { min-height:180px; flex:1 1 180px; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
+      #tPrepMain { min-height:0; flex:none; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
       #tPrepPreview { width:160px; height:180px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:radial-gradient(ellipse at 50% 68%,rgba(161,112,48,.23),transparent 70%),linear-gradient(145deg,#38291e,#201a15); color:#cbb894; cursor:pointer; touch-action:manipulation; }
       #tPrepPreview canvas { position:static; inset:auto; width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
       #tPrepPreview small { font-size:10px; }
@@ -3700,17 +3701,17 @@ function hit(z, dmg, dir, ranged) {
       .tPrepSlot.drop-ok { border-color:#f0ce7d; box-shadow:inset 0 0 0 2px rgba(229,186,101,.35),0 0 12px rgba(229,186,101,.28); }
       .tPrepSlot.drag-incompatible { border-color:#a78049; }
       #tPrepBagTitle { display:flex; align-items:center; justify-content:space-between; color:#e7d5af; font-size:clamp(12px,1.4vw,16px); font-weight:700; }
-      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(4px,.7vw,8px); height:clamp(94px,16vh,142px); flex:none; }
+      #tPrepBag { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(110px,auto); gap:clamp(4px,.7vw,8px); height:auto; flex:none; }
       .tBagItem,.tBagEmpty { min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; border:1px solid #9f7945; border-radius:6px; background:#292119; color:#e8d7b3; touch-action:none; }
       .tBagItem { cursor:grab; }
       .tBagItem:active { cursor:grabbing; }
       .tBagIcon { width:100%; height:62%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
       .tBagItem span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(9px,1vw,12px); }
       .tBagEmpty { border-style:dashed; border-color:#66533a; color:#81745d; font-size:12px; }
-      #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
+      #tPrepFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:82px; padding:10px 0; box-sizing:border-box; flex:none; }
       #tPrepStatus { min-width:0; color:#cbb894; font-size:clamp(10px,1.1vw,13px); }
       #tPrepGo { min-width:clamp(110px,16vw,180px); padding:9px 18px; font-size:clamp(15px,1.7vw,20px); }
-      #tPrepFooter{position:sticky;bottom:0;background:#2c2119f5;padding:10px 0;z-index:2;box-shadow:0 -5px 12px #2b20194d}#tPrepActions{display:flex;gap:8px;width:min(70%,520px);flex:none}#tPrepActions>button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;font-size:clamp(15px,1.7vw,20px)}
+      #tPrepFooter{position:relative;background:#2c2119f5;z-index:2;box-shadow:0 -5px 12px #2b20194d}#tPrepActions{display:flex;gap:8px;width:min(70%,520px);flex:none}#tPrepActions>button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;font-size:clamp(15px,1.7vw,20px)}
       #tPrepTraining small{font-size:clamp(9px,1vw,12px);line-height:1.4;margin-top:3px}#tPrepTraining[hidden],#xPrep[hidden]{display:none!important}
       #tPrepActions:has(#tPrepTraining[hidden]){width:clamp(110px,16vw,180px)}.x-preparation #tPrepActions{width:min(65%,340px)}
       .x-preparation #tPrepHeader,.x-preparation #tPrepMain,.x-preparation #tPrepBagTitle,.x-preparation #tPrepBag,.x-preparation #aTools{display:none!important}
@@ -3718,29 +3719,34 @@ function hit(z, dmg, dir, ranged) {
       #tPrepGo:not(:disabled) { border-color:#d3a95f; color:#ffe8b0; }
       #tPrepGhost { position:fixed; z-index:30; pointer-events:none; width:90px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #f0cf81; border-radius:8px; background:rgba(42,31,22,.94); color:#f4e2bb; box-shadow:0 8px 24px #0009; transform:translate(-50%,-50%); }
       #tPrepGhost img { width:48px; height:42px; object-fit:contain; image-rendering:pixelated; }
-      @media(max-width:900px) and (orientation:landscape) {
-        #tChapter { padding:3vw; }
-        #tChapterShell { width:94vw; min-width:0; min-height:0; height:94vh; max-height:94vh; grid-template-columns:minmax(0,31%) minmax(0,69%); }
-        #tChapterPick,#tChapterPanel { padding:clamp(6px,1.2vw,10px); }
-        #tChapterPick .tChapterCard { min-height:clamp(54px,17vh,76px); margin-top:6px; padding:7px; }
-        #tChapterPickBack { padding:7px; }
-        #tChapterPanel { gap:5px; }
-        #tPrepMain { min-height:120px; flex:1 1 120px; grid-template-columns:clamp(92px,16vw,120px) minmax(0,1fr); gap:6px; }
-        #tPrepPreview { width:clamp(92px,16vw,120px); height:100%; min-height:120px; }
-        #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:4px; }
-        .tPrepSlot { grid-template-columns:44px minmax(0,1fr); gap:2px 4px; padding:4px; }
-        .tPrepIcon { width:44px; }
-        #tPrepBag { height:clamp(78px,22vh,94px); gap:3px; }
+      @media (orientation:landscape) and (max-height:430px) {
+        #tChapter { padding:2px; }
+        #tChapterShell { width:96vw; min-width:0; min-height:0; height:96dvh; max-height:96dvh; grid-template-columns:minmax(0,27%) minmax(0,73%); }
+        #tChapterPick,#tChapterPanel { padding:clamp(4px,1vw,8px); }
+        #tChapterPick h2,#tChapterPanel h2 { font-size:clamp(15px,2.3vh,19px); }
+        #tChapterPick .tChapterCard { min-height:clamp(46px,12vh,58px); margin-top:4px; padding:6px; }
+        #tChapterPick .tChapterCard small { margin-top:3px; }
+        #tChapterPickBack { padding:6px; }
+        #tChapterPanel,#tPrepScroll { gap:4px; }
+        #tPrepScroll { padding-bottom:64px; }
+        #tPrepHeader h2 { font-size:clamp(16px,2.5vh,20px); }
+        #tPrepMain { min-height:0; flex:none; grid-template-columns:clamp(78px,14vw,102px) minmax(0,1fr); gap:5px; }
+        #tPrepPreview { width:clamp(78px,14vw,102px); height:clamp(88px,27vh,112px); min-height:0; }
+        #tPrepSlots { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:3px; }
+        .tPrepSlot { grid-template-columns:36px minmax(0,1fr); gap:2px 3px; padding:3px; }
+        .tPrepSlot > b { font-size:clamp(9px,1.5vh,11px); }
+        .tPrepIcon { width:36px; }
+        .tPrepName { font-size:10px; }
+        .tPrepName small { font-size:8px; }
+        #tPrepBagTitle { font-size:12px; }
+        #tPrepBagTitle small { font-size:9px; }
+        #tPrepBag { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(104px,auto); gap:4px; }
         .tBagIcon { height:48%; }
-        #tPrepGo { padding:6px 12px; }
-      }
-      @media(max-height:420px) and (orientation:landscape) {
-        #tChapter { padding:5px; }
-        #tChapterShell { height:96vh; max-height:96vh; }
-        #tChapterPick .tChapterCard { min-height:54px; margin-top:4px; }
-        #tPrepMain { min-height:104px; flex-basis:104px; }
-        #tPrepPreview { min-height:104px; }
-        #tPrepBag { height:76px; }
+        #tPrepFooter { min-height:64px; padding:4px 0; gap:5px; }
+        #tPrepStatus { font-size:10px; line-height:1.25; }
+        #tPrepActions { width:min(67%,340px); gap:5px; }
+        #tPrepActions>button { min-height:54px; padding:5px 6px; font-size:clamp(13px,1.8vh,16px); }
+        #tPrepTraining small { font-size:9px; line-height:1.1; }
       }
     `;
     document.head.appendChild(st);
@@ -3800,6 +3806,7 @@ function hit(z, dmg, dir, ranged) {
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
       </section>
       <section id="tChapterPanel" aria-label="整军备战">
+       <div id="tPrepScroll">
         <header id="tPrepHeader"><h2>整军备战</h2><p id="tPrepTarget"></p></header>
         <div id="tPrepMain">
           <button id="tPrepPreview" type="button" aria-label="点击播放当前武器攻击预览"><canvas width="400" height="400"></canvas><small>点击预览攻击</small></button>
@@ -3807,7 +3814,8 @@ function hit(z, dmg, dir, ranged) {
         </div>
         <div id="tPrepBagTitle"><span>物品栏</span><small>点击装备 · 详情比较 · 选3～5把熔炼</small></div>
         <div id="tPrepBag"></div>
-        <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
+       </div>
+       <footer id="tPrepFooter"><span id="tPrepStatus" role="status"></span><div id="tPrepActions"><button class="tChapterButton" id="tPrepGo" type="button">出征</button><button class="tChapterButton" id="tPrepTraining" type="button"><span>校场演武</span><small>试炼刷武器 · 更易出好装备</small></button></div></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -4663,7 +4671,7 @@ window.XIAOCHANG = (() => {
     if (document.getElementById('xStyle')) return;
     const style = document.createElement('style'); style.id = 'xStyle';
     style.textContent = `#tChapterPick{overflow-y:auto}#xPrep{padding:8px 10px;margin:5px 0;border:1px solid #9d7845;border-radius:6px;background:#3b2c20;color:#e7d1a9;font:14px/1.7 sans-serif;flex:none}#xPrep{flex:1;padding:clamp(14px,2vw,24px)}#xPrep h2{margin:12px 0 5px;color:#f1d58f;font-size:clamp(20px,2.5vw,28px)}#xPrep h3{margin:16px 0 7px;font-size:15px}#xPrep .x-progress{margin:0;color:#cdb78e}#xPrep button{min-height:44px;padding:9px 17px;border:1px solid #9c7843;border-radius:6px;background:linear-gradient(#62482d,#34261b);color:#e9d4aa;font:inherit;cursor:pointer;touch-action:manipulation}#xPrep .x-options{display:flex;flex-wrap:wrap;gap:9px}#xPrep button.selected{border:2px solid #e2b85c;background:#75542e;color:#ffe8af}#xPrep button:active{transform:translateY(1px)}#xStrength{padding:12px;background:#20180fa6;border:1px solid #836239;border-radius:5px;color:#f2ddb0}#xPrep .x-back{min-height:36px;padding:5px 10px;color:#d4bc91;font-size:13px}#xPrep small{display:block}#xResult{position:fixed;inset:0;z-index:18;display:flex;align-items:center;justify-content:center;background:#130e0bcc;color:#432b1b;font-family:MaShanZheng,serif}#xResult article{box-sizing:border-box;width:min(650px,92vw);max-height:92dvh;padding:clamp(18px,4vh,40px) clamp(24px,5vw,55px);background:#dfc596 center/100% 100% no-repeat;box-shadow:0 12px 60px #0009;overflow:auto;border-radius:14px}#xResult h2{margin:clamp(22px,5vh,48px) 0 10px;text-align:center;font-size:28px}#xResult ul{max-height:35vh;overflow:auto;padding:10px 22px;background:#35271de8;border:1px solid #805d37;color:#e9d8b7;overflow-wrap:anywhere}#xResult li{margin:5px 0}#xResult article>p{padding:9px 12px;background:#2c201acc;color:#f1dfbc;border-radius:5px;font:14px/1.6 sans-serif}#xResult nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}#xResult button{min-height:40px;padding:8px 18px;background:#5a3923 center/100% 100%;color:#f5dfb2;border:1px solid #b98e51;border-radius:7px;font:18px MaShanZheng,serif;cursor:pointer}#xResult button:active{transform:translateY(2px)}#xResult button:disabled{opacity:.5;cursor:default}.wzb-xresult #bA,.wzb-xresult #bK,.wzb-xresult #joy{pointer-events:none}@media(max-height:450px){#xPrep{font-size:12px;padding:3px 8px}#xResult article{padding:12px 30px}#xResult h2{font-size:22px}#xResult ul{max-height:27vh;margin:6px 0}}`;
-    style.textContent += '#tChapterPanel{min-height:0;overflow:hidden!important;padding-bottom:0!important}.x-preparation #tChapterPanel{min-height:0;overflow:hidden!important}#xPrep{min-height:0;flex:1 1 0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:110px;box-sizing:border-box}@media(max-height:450px){#xPrep{padding-bottom:110px}}';
+    style.textContent += '#tChapterPanel{min-height:0;overflow:hidden!important;padding-bottom:0!important}.x-preparation #tChapterPanel{min-height:0;overflow:hidden!important}#tPrepScroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding-bottom:82px;box-sizing:border-box}#xPrep{min-height:0;flex:none;overflow:visible;padding-bottom:12px;box-sizing:border-box}@media (orientation:landscape) and (max-height:430px){#tPrepScroll{padding-bottom:64px}}';
     document.head.appendChild(style);
   }
   function renderPreparation(root, selected, chapter=selection.chapter) {

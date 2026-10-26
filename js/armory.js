@@ -62,7 +62,7 @@
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;
     const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
-    #tChapterPanel{overflow-y:auto!important;scroll-padding-bottom:90px;padding-bottom:90px!important} #tPrepMain,#tPrepFooter,#aTools{flex-shrink:0} #tPrepBag{height:220px!important;max-height:230px;overflow-y:auto;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
+    #tChapterPanel{min-height:0;overflow:hidden!important} #tPrepScroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding-bottom:82px;box-sizing:border-box} #tPrepMain,#tPrepFooter{flex-shrink:0} #tPrepBag{height:auto!important;max-height:none;overflow:visible;align-content:start;grid-template-rows:none!important;grid-auto-rows:minmax(110px,auto)}
     .aCard{position:relative;min-height:110px;padding:7px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:3px;background:linear-gradient(135deg,#453324,#261e18);color:#e8d4ad;font-size:12px}
     .aCard.selected{outline:2px solid #edc465;background:#574124}.aCard button,#aTools button{font:inherit;color:#ecd6ac;background:linear-gradient(#60472c,#38281b);border:1px solid #a6834d;border-radius:3px;cursor:pointer;padding:4px 7px}
     .tPrepName{overflow-wrap:anywhere}.aUnequip{font-size:11px;color:#dcc493;border:1px solid #80613c;background:#38291d;cursor:pointer}
@@ -70,14 +70,14 @@
     .aCard .aEquip{display:flex;flex-direction:column;align-items:center;width:100%;border:0;background:none;color:var(--quality)}
     .aCard img{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}.aCard .aActions{display:flex;gap:4px;justify-content:center;margin-top:5px}
     .aCard input{accent-color:#b28a4a}#aTools{font-size:12px;color:#cdb78f;line-height:1.5;padding:8px 0}#aTools p{margin:4px 0}#aTools details{margin:5px 0}#aTools button{margin-right:6px}#aTools button:disabled{opacity:.45;cursor:default}#aMessage{color:#f2d28b}
-    @media(max-height:450px){#tPrepBag{height:130px!important;max-height:150px}.aCard{min-height:95px;font-size:11px}#aTools{font-size:11px}}
+    @media (orientation:landscape) and (max-height:430px){#tPrepScroll{padding-bottom:64px!important}#tPrepBag{grid-auto-rows:minmax(102px,auto)}#aTools{font-size:9px;line-height:1.15;padding:2px 0}#aTools p{margin:1px 0;line-height:1.15}#aTools details{margin:1px 0}#aTools #aForgePreview{margin:2px 0!important;padding:3px!important;font-size:9px;line-height:1.1!important}#aTools>p:last-child{display:flex;align-items:center;gap:4px;flex-wrap:wrap}#aTools>p:last-child button{margin:0;padding:3px 5px}.aCard{box-sizing:border-box;min-height:92px!important;padding:3px;font-size:10px}.aCard .aEquip img{width:30px;height:30px}.aCard .aActions{flex-wrap:wrap;gap:3px;margin-top:3px}.aCard .aActions button{padding:2px 4px}.aCard .aActions label{font-size:9px;white-space:nowrap}}
     `;document.head.append(style);
   }
   function render(root,icon,preview){
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('#tPrepBagTitle > span');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.CAPACITY+'（含已装备）';countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
     const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{const item=equipped(node.dataset.slot);if(item){node.dataset.uid=item.uid;const label=node.querySelector('.tPrepName');label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};node.append(remove);}});
-    bag.replaceChildren();bag.style.gridTemplateColumns='repeat(auto-fill,minmax(116px,1fr))';
+    bag.replaceChildren();
     const eq=new Set(Object.values(p.equipped));
     for(const item of p.items.filter(i=>!eq.has(i.uid))){
       const card=document.createElement('div');card.className='aCard'+(selection.has(item.uid)?' selected':'');card.style.setProperty('--quality',D.qualities[item.q].color);card.dataset.uid=item.uid;
