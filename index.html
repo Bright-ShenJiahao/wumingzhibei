@@ -2417,7 +2417,8 @@ function hit(z, dmg, dir, ranged) {
   const style = document.createElement('style');
   style.id = 'pauseStyle';
   style.textContent = `
-    #bPause{width:40px;height:42px;min-width:40px;padding:0;font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
+    #bPause{width:40px;height:42px;min-width:40px;padding:0;display:flex;align-items:center;justify-content:center;gap:3px}
+    #bPause .pause-icon-bar{display:block;width:4px;height:16px;border-radius:2px;background:currentColor}
     #bPause[hidden]{display:none!important}
     #pauseScreen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(8,6,5,.76);color:#f2dfb9;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
     #pauseScreen[hidden],#pauseMenu[hidden],#pauseConfirm[hidden]{display:none!important}
@@ -2433,12 +2434,13 @@ function hit(z, dmg, dir, ranged) {
     .pause-confirm-actions{display:flex;gap:10px;justify-content:center}
     .pause-confirm-actions .pause-action{flex:1;min-height:48px}
     @media(pointer:coarse){#bPause{width:46px;height:46px;min-width:46px}}
-    @media(max-height:430px){.pause-paper{padding:14px 30px;max-height:96dvh}.pause-paper h2{margin:1px 0 8px;font-size:24px}.pause-actions{grid-template-columns:1fr 1fr;gap:6px}.pause-action{min-height:44px;padding:5px 9px;font-size:15px}.pause-volume{margin-top:7px}.pause-volume button{min-height:40px}}
+    @media(max-height:430px){.pause-paper{padding:26px 30px 14px;max-height:96dvh}.pause-paper h2{margin:6px 0 8px;font-size:24px}.pause-actions{grid-template-columns:1fr 1fr;gap:6px}.pause-action{min-height:44px;padding:5px 9px;font-size:15px}.pause-volume{margin-top:7px}.pause-volume button{min-height:40px}}
   `;
   document.head.appendChild(style);
 
   const pauseButton = document.createElement('button');
-  pauseButton.id = 'bPause'; pauseButton.type = 'button'; pauseButton.textContent = '⏸';
+  pauseButton.id = 'bPause'; pauseButton.type = 'button';
+  pauseButton.innerHTML = '<span class="pause-icon-bar" aria-hidden="true"></span><span class="pause-icon-bar" aria-hidden="true"></span>';
   pauseButton.title = '暂停'; pauseButton.setAttribute('aria-label', '暂停'); pauseButton.hidden = true;
   const toolbar = document.getElementById('wp'), muteButton = document.getElementById('bMute');
   if (toolbar) muteButton ? muteButton.after(pauseButton) : toolbar.append(pauseButton);

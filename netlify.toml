@@ -1,6 +1,9 @@
 [build]
   publish = "."
 
+[build.environment]
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
