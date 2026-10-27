@@ -3,7 +3,7 @@
 // 换正式背景图时只改下面 TV 和 drawBg() 里的图片即可。
 (() => {
   // 电视屏幕区域：按首页原图（art/title/home.png）里的绿幕实测出来的比例
-  const TV = { x: .5684, y: .2014, w: .3395, h: .3839 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
+  const TV = { x: .5684, y: .2008, w: .3398, h: .3835 };   // 绿幕外接矩形（tools/make_tv_mask.py 输出）
   const NAME_KEY = 'wzb-name';
   const HARD_KEY = 'wzb-hard-mode';   // 困难模式（默认关 = 简单：玩家受伤减半，击倒判定按减半前伤害）
   const CAMPAIGN_KEY = 'wzb-campaign-clear-v1'; // 与英雄榜积分完全分离的本机章节进度
