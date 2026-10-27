@@ -142,7 +142,7 @@ const WEAP = {
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
     { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .79, kb: 38, spd: 330, life: 1.05 },
     { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .79, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: 1.49, kb: 75, spd: 390, life: 1.15, pierce: true },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .45, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
 // 长戟使用白衣专用帧。
@@ -220,6 +220,7 @@ let bluntHits = [];
 let bleedFx = [];
 let hammerFx = [];
 let bladeFx = [];
+let bowFx = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
@@ -252,7 +253,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -1102,6 +1103,16 @@ function updateFx(dt) {
   hammerFx = hammerFx.filter(f => f.t < f.T);
   for (const f of bladeFx) f.t += dt;
   bladeFx = bladeFx.filter(f => f.t < f.T);
+  const bowImpacts = [];
+  for (const f of bowFx) {
+    f.t += dt;
+    if (f.kind === 'sky' && !f.resolved && f.t >= .5) {
+      f.resolved = true; resolveBowSky(f);
+      bowImpacts.push({ kind: 'impact', x: f.x, y: f.y, t: 0, T: .2 });
+    }
+  }
+  bowFx = bowFx.filter(f => f.kind === 'sky' ? f.t < .6 : f.t < f.T);
+  bowFx.push(...bowImpacts);
   for (const q of chargeHitFx) q.t += dt;
   chargeHitFx = chargeHitFx.filter(q => q.t < q.T);
   for (const q of blessFx) q.t += dt;
@@ -1155,6 +1166,18 @@ function cancelCharge() { charging = false; atkHeldSince = 0; chargeTier = 0; ch
 
 // 长戟「裂伤」：与血刃词条完全分开的一套层数/流血状态。
 function halberdStacks(z) { return z && z.halberdBleed > 0 && gameT < z.halberdBleedUntil ? z.halberdBleed : 0; }
+function bowRangeMult(d) { return d < 50 ? .7 : d < 100 ? 1 : d < 200 ? 1.15 : 1.3; }
+function resolveBowSky(f) {
+  const d = f.data;
+  for (const z of zs) {
+    if (z.dead || Math.hypot(z.x - f.x, z.y - f.y) > d.radius + (z.T.w || 0)) continue;
+    const boss = z.T.boss || z.T.chapterBoss;
+    const stun = boss ? d.stun / 2 : d.stun;
+    hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
+    if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
+  }
+  sfx('finisher', f.x);
+}
 function addHalberdBleed(z, base, stacks = 1) {
   if (!z || z.dead) return 0;
   const alive = halberdStacks(z);
@@ -1243,10 +1266,19 @@ function chargedAttack(power, tier = 1) {
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
   const R = (weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : (W.chargeReach || 46)) * (window.GEAR ? GEAR.range() : 1);
-  if (weapon === 'bow') {                         // 汉弓蓄力：一支普通箭，1.5×force
-    const C = Object.assign({}, W.combo[0], { dmg: 1.5 * force });
-    const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
-    shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd, vy: 0, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, kind: 'arrow' });
+  if (weapon === 'bow') {                         // 穿云箭：先标记落点，再从右上方落下
+    const data = tier === 3 ? { radius: 55, dmg: 2.8, stun: 1 }
+      : tier === 2 ? { radius: 45, dmg: 2.2, stun: .8 }
+      : { radius: 35, dmg: 1.6, stun: .6 };
+    let target = null, best = Infinity;
+    for (const z of zs) {
+      if (z.dead) continue;
+      const dx = (z.x - h.x) * h.f;
+      if (dx > 0 && dx <= 250 && dx < best) { best = dx; target = z; }
+    }
+    const landX = target ? target.x : h.x + h.f * 150;
+    const landY = target ? target.y : h.y;
+    bowFx.push({ kind: 'sky', x: landX, y: landY, t: 0, T: .6, dir: h.f, data, resolved: false });
     return;
   }
   if (weapon === 'stone') {                        // 石子蓄力：按档位 3/4/5 颗，0.12 夹角
@@ -1331,6 +1363,16 @@ function strike() {
   if (W.proj) {
     sfx('swing_stone', h.x); h.lastShotC = c;
     const finisher = c === W.combo.length - 1;
+    if (weapon === 'bow' && finisher) {                        // 连珠箭：3~5 支 ±8° 小扇形
+      const n = 3 + Math.floor(rnd(0, 3)), spread = 8 * Math.PI / 180;
+      bowFx.push({ kind: 'volley', x: h.x + h.f * 20, y: h.y - 22, t: 0, T: .2, dir: h.f });
+      for (let i = 0; i < n; i++) {
+        const ang = n === 1 ? 0 : (i - (n - 1) / 2) * (spread * 2 / (n - 1));
+        const C2 = { ...C, dmg: .45, pierce: false, noPierce: true };
+        shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C: C2, c, hitSet: [], gearToken: h.atk.gearToken, kind: 'arrow', volley: true, final: true });
+      }
+      return;
+    }
     const mainC = C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? rnd(-6, 6) : 0;                   // 跑动中弹道偏 ±6，站定不偏
@@ -1685,6 +1727,7 @@ function updateShots(dt) {
   for (const s of shots) {
     if (window.GEAR && !s.gearInitialized) { s.gearInitialized=true; GEAR.projectile(s); }
     s.x += s.vx * dt; s.y += (s.vy || 0) * dt; s.life -= dt;
+    if (s.kind === 'arrow' && !s.sky) s.traveled = (s.traveled || 0) + Math.hypot(s.vx, s.vy || 0) * dt;
     if (s.life <= 0 && s.gearReturn && !s.returning) { s.returning=true; s.secondary=true; s.gearReturn=false; s.vx=-s.originalVx; s.vy=-s.originalVy; s.life=s.gearLife; s.hitSet=[]; s.C={...s.C,dmg:s.C.dmg*.35,pierce:true,pierceOff:1}; }
     // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
@@ -1702,7 +1745,8 @@ function updateShots(dt) {
     const projectileTargets = chapter2Run ? zs.slice().sort((a, b) => s.vx >= 0 ? a.x - b.x : b.x - a.x) : zs;
     for (const z of projectileTargets) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       const baseDmg = window.GEAR ? GEAR.projectileDamage(s,z) : s.C.dmg;
-      const pdmg = s.hitSet.length > 0 ? baseDmg * (s.C.pierce ? (s.C.pierceOff || .4) : .5) : baseDmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
+      let pdmg = s.hitSet.length > 0 ? baseDmg * (s.C.pierce ? (s.C.pierceOff || .4) : .5) : baseDmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
+      if (s.kind === 'arrow') pdmg *= bowRangeMult(s.traveled || 0);   // 汉弓远射：按已飞行距离结算
       const traits = window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter };
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
@@ -2221,6 +2265,7 @@ function draw() {
   for (const f of bleedFx) list.push({ y: f.y, d: () => drawBleedFx(f) });
   for (const f of hammerFx) list.push({ y: f.y, d: () => drawHammerFx(f) });
   for (const f of bladeFx) list.push({ y: f.y, d: () => drawBladeFx(f) });
+  for (const f of bowFx) list.push({ y: f.y, d: () => drawBowFx(f) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2594,6 +2639,10 @@ function drawShot(s) {
   if (s.kind === 'arrow') {
     const ar = IMG.ui_arrow;
     ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1));
+    if (s.volley) {
+      ctx.strokeStyle = 'rgba(255,228,150,.65)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-19, 0); ctx.stroke();
+    }
     if (ar && ar.complete) { ctx.imageSmoothingEnabled = false; ctx.drawImage(ar, -ar.width * PX / 2, -ar.height * PX / 2, ar.width * PX, ar.height * PX); }
     ctx.restore();
     return;
@@ -2663,6 +2712,38 @@ function drawBladeFx(f) {
   ctx.translate(f.x, f.y);
   if (f.dir < 0) ctx.scale(-1, 1);
   ctx.drawImage(img, frame * fw, 0, fw, fw === 96 ? 48 : 96, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+function drawBowFx(f) {
+  if (f.kind === 'volley') {
+    const img = IMG.ui_bow_volley; if (!img || !img.complete) return;
+    const frame = Math.min(2, Math.floor(f.t / (f.T / 3)));
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(f.x, f.y); if (f.dir < 0) ctx.scale(-1, 1);
+    ctx.drawImage(img, frame * 72, 0, 72, 40, 0, -8.5, 30, 17);
+    ctx.restore(); return;
+  }
+  if (f.kind === 'impact') {
+    const img = IMG.ui_bow_impact; if (!img || !img.complete) return;
+    const frame = Math.min(2, Math.floor(f.t / (f.T / 3)));
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, frame * 96, 0, 96, 56, f.x - 30, f.y - 17.5, 60, 35);
+    ctx.restore(); return;
+  }
+  if (f.kind !== 'sky') return;
+  if (f.t < .3) {
+    const p = f.t / .3, a = .35 + .35 * Math.sin(p * Math.PI);
+    ctx.save(); ctx.strokeStyle = `rgba(255,221,112,${a})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, 24, 7, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = `rgba(255,205,80,${a * .22})`; ctx.fill();
+    ctx.restore(); return;
+  }
+  if (f.t >= .5) return;
+  const img = IMG.ui_bow_sky; if (!img || !img.complete) return;
+  const p = (f.t - .3) / .2, sx = f.x + f.dir * 60, sy = f.y - 60;
+  const tipX = sx + (f.x - sx) * p, tipY = sy + (f.y - sy) * p;
+  const frame = Math.min(2, Math.floor(p * 3));
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(tipX, tipY); if (f.dir < 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, frame * 48, 0, 48, 96, -10, -40, 20, 40);
   ctx.restore();
 }
 function drawHalberdBleedDots(z, top) {

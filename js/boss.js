@@ -94,6 +94,7 @@ const Boss = (() => {
     const actionDt = dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1));
     z.t += actionDt; z.flash = Math.max(0, z.flash - dt); z.cd -= actionDt;
     if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - actionDt; z.throwCd = (z.throwCd || 0) - actionDt; }
+    if (z.stun > 0) { z.stun = Math.max(0, z.stun - dt); return; }
     if (z.daze > 0) { z.daze = Math.max(0, z.daze - dt); z.stun = Math.max(0, z.stun - dt); return; }
     if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => moveTo(o, tx, ty, sp, d2), z.phase === 1 ? 55 : 56)) return;
     // 掷出去的长戟：飞 → 落地 → 等他去捡

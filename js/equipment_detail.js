@@ -7,7 +7,7 @@
     hammer: ['三段连招：下砸 → 横抡 → 回旋锤', '终段攻击·回旋锤：环绕一圈，击倒身边所有敌人。', '蓄力攻击·千斤坠：举锤砸地，击倒前方一片敌人。'],
     blade: ['三段连招：斜劈 → 横砍 → 举刀重劈', '终段攻击·举刀重劈：必定暴击，斩杀残血敌人。', '蓄力攻击·半月斩：前方上下大范围横扫，高概率暴击。'],
     stone: ['三段连招：左手掷 → 右手掷 → 全力投', '终段攻击·全力投：必定眩晕，附带左右散射。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗。'],
-    bow: ['三段连招：速射 → 速射 → 穿透箭', '终段攻击·穿透箭：贯穿一排敌人。', '蓄力攻击·重箭：射出一支重箭。'],
+    bow: ['三段连招：速射 → 速射 → 连珠箭', '终段攻击·连珠箭：随机射出3～5支箭。', '蓄力攻击·穿云箭：金箭从天而降，范围伤害并造成硬直，首领无法格挡。', '远射——箭飞得越远伤害越高，贴脸只有七成。'],
   };
   function node(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;}
   function style(){if(document.getElementById('weaponDetailStyle'))return;const e=node('style');e.id='weaponDetailStyle';e.textContent=`
@@ -86,7 +86,7 @@
     if (moves) {
       const details = node('details', null, 'wd-moves');
       details.append(node('summary', '招式'));
-      moves.forEach((text, i) => details.append(node('div', text, item.type === 'halberd' && i === moves.length - 1 ? 'wd-muted' : '')));
+      moves.forEach((text, i) => details.append(node('div', text, (item.type === 'halberd' || item.type === 'bow') && i === moves.length - 1 ? 'wd-muted' : '')));
       container.append(details);
     }
     if(!compact)container.append(node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
