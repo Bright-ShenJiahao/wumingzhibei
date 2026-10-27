@@ -948,7 +948,7 @@ function updateDrops(dt) {
         }
       } else {
         h.hp = Math.min(maxHeroHp(), h.hp + d.heal);
-        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal });
+        floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '+' + d.heal, heal: true });
       }
       sfx('food', d.x);
     }
@@ -1057,7 +1057,11 @@ function drawFloaters() {
       ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
       ctx.fillStyle = '#ffe27a';
     } else {
-      ctx.fillStyle = '#8ef07a';
+      // 颜色按用途分：回血绿色；暴击/背击/补刀/格挡橙色；掉落按品级色；其他提示米白
+      const c = f.color || (f.heal ? '#8ef07a' : f.big ? '#ffa94d' : '#f3e6c4');
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(30,18,10,.85)'; ctx.lineJoin = 'round';
+      ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
+      ctx.fillStyle = c;
     }
     ctx.fillText(f.txt, f.x, f.y - f.t * 26);
   }

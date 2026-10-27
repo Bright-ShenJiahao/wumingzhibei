@@ -18,7 +18,7 @@
   }
   const ready=(key,seconds)=>{if((cool[key]||-99)>gameT)return false;cool[key]=gameT+seconds;return true;};
   const chance=p=>Math.random()<p;
-  function heal(amount){healLog=healLog.filter(e=>gameT-e.t<3);const used=healLog.reduce((n,e)=>n+e.n,0);amount=Math.min(amount,Math.max(0,.5-used));if(amount>0){hero.hp=Math.min(maxHp(),hero.hp+amount);healLog.push({t:gameT,n:amount});floaters.push({x:hero.x,y:hero.y-28,t:0,txt:'+'+Number(amount.toFixed(2)),color:'#9bc981'});}}
+  function heal(amount){healLog=healLog.filter(e=>gameT-e.t<3);const used=healLog.reduce((n,e)=>n+e.n,0);amount=Math.min(amount,Math.max(0,.5-used));if(amount>0){hero.hp=Math.min(maxHp(),hero.hp+amount);healLog.push({t:gameT,n:amount});/* 汲取回血不飘数字（用户定） */}}
   function attackToken(charged=false){const s=JSON.parse(JSON.stringify(sync()));return {s,charged,crit:critT>0||chance(clamp(.01+stat(s,'critical')+stat(s,'inaccurate')+rogue('crit')+(D.qualities[s.q]?.crit||0),0,.35)),thunderChecked:false,spiritCounted:false,dualChecked:false,leechChecked:false,chainHits:new Set()};}
   function abnormal(z){return (z.gearDot&&Object.values(z.gearDot).some(a=>a.length))||z.poisonT>0||z.moveSlowT>0||z.attackSlowT>0||z.daze>0||z.gearSlow>gameT||z.gearNumb>gameT||z.gearBlind>gameT||z.gearFrozen>gameT||z.gearColdUntil>gameT;}
   function primaryBonus(s,z,traits,token){
