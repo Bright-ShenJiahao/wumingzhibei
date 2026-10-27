@@ -62,6 +62,16 @@ def main():
     fixed = int(fix.sum())
     print('去绿：%d 个像素（绿幕内部 + 外侧 %d 像素内）' % (fixed, RING))
 
+    # 猫尾压在绿幕上，尾巴边缘会留一圈抗锯齿绿边；只在电视矩形内把残余绿压成中性。
+    # 不碰矩形外的绿植，也不直接涂黑，避免破坏电视边框的抗锯齿过渡。
+    in_tv = np.zeros((H, W), dtype=bool)
+    in_tv[y0:y1 + 1, x0:x1 + 1] = True
+    edge_green = in_tv & (g > np.maximum(r, b) + 2)
+    grown_g = np.maximum(r, b) - 4
+    out[..., 1] = np.where(edge_green, grown_g, out[..., 1])
+    out[..., 2] = np.where(edge_green, grown_g, out[..., 2])
+    print('猫尾边缘残余绿：%d 个像素已去绿' % int(edge_green.sum()))
+
     # 4) 导出背景（打包用）
     Image.fromarray(out.clip(0, 255).astype('uint8')).save(OUT_WEBP, 'WEBP', quality=90, method=6)
     print('背景已写入 %s (%.0f KB)' % (os.path.basename(OUT_WEBP), os.path.getsize(OUT_WEBP) / 1024))
