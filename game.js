@@ -693,6 +693,8 @@ function startChapter2Battle(number) {
 function chapter2Waves() {
   if (!chapter2Run) return;
   if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
+    // 战四/战五掉的大刀、汉弓：转场去祭台会换地图，没捡的自动收下，避免掉在够不着的地方
+    for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
     startChapter2Battle(chapter2Run.nextBattle || chapter2Run.battle + 1); return;
   }
   if (chapter2Run.mode === 'clearing' && gameT >= chapter2Run.nextAt) {
@@ -933,10 +935,11 @@ function updateDrops(dt) {
       if (d.weapon) {
         if (window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, true)) {
           d.got = 1;
-          if (weapon === 'stone') setW(d.weapon); else ui();
+          const blade = d.weapon === 'blade';
+          if (weapon === (blade ? 'hammer' : 'stone')) setW(d.weapon); else ui();
           sfx('food', d.x);
-          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '获得汉弓' });
-          say('汉弓已装备远程槽，按 3 或点武器栏的弓切换。', 4);
+          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: blade ? '获得大刀' : '获得汉弓' });
+          say(blade ? '大刀已装备短武器槽，按 2 或点武器栏的刀切换。' : '汉弓已装备远程槽，按 3 或点武器栏的弓切换。', 4);
         }
         continue;
       }

@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=ea060563aa" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ea060563aa)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=eb45bed44b" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=eb45bed44b)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -6940,6 +6940,8 @@ function startChapter2Battle(number) {
 function chapter2Waves() {
   if (!chapter2Run) return;
   if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
+    // 战四/战五掉的大刀、汉弓：转场去祭台会换地图，没捡的自动收下，避免掉在够不着的地方
+    for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
     startChapter2Battle(chapter2Run.nextBattle || chapter2Run.battle + 1); return;
   }
   if (chapter2Run.mode === 'clearing' && gameT >= chapter2Run.nextAt) {
@@ -7180,10 +7182,11 @@ function updateDrops(dt) {
       if (d.weapon) {
         if (window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, true)) {
           d.got = 1;
-          if (weapon === 'stone') setW(d.weapon); else ui();
+          const blade = d.weapon === 'blade';
+          if (weapon === (blade ? 'hammer' : 'stone')) setW(d.weapon); else ui();
           sfx('food', d.x);
-          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: '获得汉弓' });
-          say('汉弓已装备远程槽，按 3 或点武器栏的弓切换。', 4);
+          floaters.push({ x: d.x, y: d.y - 10, t: 0, txt: blade ? '获得大刀' : '获得汉弓' });
+          say(blade ? '大刀已装备短武器槽，按 2 或点武器栏的刀切换。' : '汉弓已装备远程槽，按 3 或点武器栏的弓切换。', 4);
         }
         continue;
       }
