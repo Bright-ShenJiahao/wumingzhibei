@@ -843,6 +843,7 @@ function heroUpdate(dt) {
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
   }
+  updateHalberdDash(h, dt);
   pressRoll = false;
   if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
@@ -1209,6 +1210,27 @@ function drawChargeHitFx() {
   }
 }
 
+// 长戟蓄力「回马突」的冲刺：每帧前进，经过的敌人各打一次并叠裂伤，身后留残影
+function updateHalberdDash(h, dt) {
+  const d = h.halberdDash; if (!d) return;
+  const step = Math.min(d.left, d.sp * dt);
+  moveEnt(h, h.f * step, 0); d.left -= step;
+  d.ghostT -= dt;
+  if (d.ghostT <= 0) { d.ghostT = .035; ghosts.push({ x: h.x, y: h.y, f: h.f, a: .4, t: 0 }); }
+  for (const z of zs) {
+    if (z.dead || z.air || d.hitSet.has(z)) continue;
+    const dx = (z.x - h.x) * h.f, bw = z.T.w || 0;
+    if (dx < -14 - bw || dx > 18 + bw || Math.abs(z.y - h.y) > d.dy) continue;
+    d.hitSet.add(z);
+    hit(z, d.dmg, d.kb, h.f, false, 0, .35, WEAP.halberd.interrupt, false, { finisher: true, halberdCharge: true });
+    if (!z.dead) {
+      addHalberdBleed(z, window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1, d.stacks);
+      bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
+    }
+    if (d.hitSet.size === 1) { sfx('hit_staff', z.x); sfx('finisher', h.x); }
+  }
+  if (d.left <= 0 || h.st === 'hurt' || h.st === 'down') h.halberdDash = null;
+}
 function chargedAttack(power, tier = 1) {
   const h = hero, W = WEAP[weapon];
   h.q = 0; h.comboWin = 0;
@@ -1240,21 +1262,9 @@ function chargedAttack(power, tier = 1) {
       : tier === 2 ? { dist: 60, dmg: 2.2, stacks: 3 }
       : { dist: 40, dmg: 1.6, stacks: 2 };
     const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
-    const x0 = h.x, endX = x0 + h.f * data.dist;
-    let hitAny = false;
-    for (const z of zs) {
-      if (z.dead || z.air) continue;
-      const along = (z.x - x0) * h.f;
-      if (along < -12 || along > data.dist + 12 || Math.abs(z.y - h.y) > W.dy + 8) continue;
-      hitAny = true;
-      hit(z, dmg, W.combo[0].kb, h.f, false, 0, .35, W.interrupt, false, { finisher: true, halberdCharge: true });
-      if (!z.dead) {
-        addHalberdBleed(z, window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1, data.stacks);
-        bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
-      }
-    }
-    moveEnt(h, endX - x0, 0);
-    if (hitAny) { sfx('hit_staff', h.x + h.f * 20); sfx('finisher', h.x); }
+    // 不再瞬移：交给 updateHalberdDash 每帧往前冲，能看到身形和残影
+    h.halberdDash = { left: data.dist, sp: 260, dmg, stacks: data.stacks, hitSet: new Set(), ghostT: 0, kb: W.combo[0].kb, dy: W.dy + 8 };
+    h.inv = Math.max(h.inv || 0, data.dist / 260 + .05);   // 冲刺途中无敌，方便突围
     return;
   }
   if (weapon === 'hammer') {                       // 锤子蓄力「千斤坠」：按档位前方扇形，全部击倒（首领只打断）
@@ -1263,7 +1273,7 @@ function chargedAttack(power, tier = 1) {
       : { range: 50, dmg: 2.0, size: 60 };
     const range = data.range * (window.GEAR ? GEAR.range() : 1);
     const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
-    hammerFx.push({ kind: 'slam', x: h.x + h.f * Math.min(range * .55, 48), y: h.y, t: 0, T: .28, size: data.size });
+    hammerFx.push({ kind: 'slam', x: h.x + h.f * 30, y: h.y, t: 0, T: .28, size: data.size });   // 锤头落点在正前方
     for (const z of zs) {
       if (z.dead || z.air) continue;
       const dx = (z.x - h.x) * h.f, dy = z.y - h.y, bw = z.T.w || 0;
@@ -2635,7 +2645,8 @@ function drawHammerFx(f) {
   const w = f.size, h = w * 60 / 96;
   const frame = Math.min(2, Math.max(0, Math.floor(f.t / .1)));
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, frame * 96, 0, 96, 60, f.x - w / 2, f.y - h / 2, w, h);
+  const cy = f.kind === 'spin' ? f.y - h * .35 : f.y - h * .6;   // 图的下沿贴着地面，不再以脚底为中心（之前偏下）
+  ctx.drawImage(img, frame * 96, 0, 96, 60, f.x - w / 2, cy - h / 2, w, h);
   ctx.restore();
 }
 function drawBladeFx(f) {
