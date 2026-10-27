@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=27cbd678b0" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=27cbd678b0)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=721b1bbec1" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=721b1bbec1)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -2358,7 +2358,7 @@ const Boss = (() => {
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
-    row('连招伤害（'+combos.length+'段）',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
+    row('连招伤害（'+combos.length+'段）',combos.map((c,i)=>fmt(c.dmg*st.damage*qBase)+(item.type==='bow'&&i===combos.length-1?'×3~5支':'')).join('／'),list,'damage');   // 连珠箭是每支的伤害
     if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
     row('平均攻速',fmt(values.speed)+'次/秒',list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
@@ -9006,7 +9006,7 @@ function drawBowFx(f) {
   }
   if (f.t >= .5) return;
   const img = IMG.ui_bow_sky; if (!img || !img.complete) return;
-  const p = (f.t - .3) / .2, sx = f.x + f.dir * 60, sy = f.y - 60;
+  const p = (f.t - .3) / .2, sx = f.x - f.dir * 60, sy = f.y - 60;   // 图里箭尾在左上，箭从主角这一侧的斜上方落下
   const tipX = sx + (f.x - sx) * p, tipY = sy + (f.y - sy) * p;
   const frame = Math.min(2, Math.floor(p * 3));
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(tipX, tipY); if (f.dir < 0) ctx.scale(-1, 1);

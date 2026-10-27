@@ -2739,7 +2739,7 @@ function drawBowFx(f) {
   }
   if (f.t >= .5) return;
   const img = IMG.ui_bow_sky; if (!img || !img.complete) return;
-  const p = (f.t - .3) / .2, sx = f.x + f.dir * 60, sy = f.y - 60;
+  const p = (f.t - .3) / .2, sx = f.x - f.dir * 60, sy = f.y - 60;   // 图里箭尾在左上，箭从主角这一侧的斜上方落下
   const tipX = sx + (f.x - sx) * p, tipY = sy + (f.y - sy) * p;
   const frame = Math.min(2, Math.floor(p * 3));
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(tipX, tipY); if (f.dir < 0) ctx.scale(-1, 1);

@@ -72,7 +72,7 @@
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
-    row('连招伤害（'+combos.length+'段）',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
+    row('连招伤害（'+combos.length+'段）',combos.map((c,i)=>fmt(c.dmg*st.damage*qBase)+(item.type==='bow'&&i===combos.length-1?'×3~5支':'')).join('／'),list,'damage');   // 连珠箭是每支的伤害
     if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
     row('平均攻速',fmt(values.speed)+'次/秒',list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
