@@ -2,12 +2,12 @@
 (() => {
   const fmt=n=>Number(n.toFixed(2)).toString();
   const MOVES = {
-    staff: ['终段攻击·戳：必定眩晕。', '蓄力攻击·横扫：身前大范围横扫，50%眩晕。'],
-    halberd: ['终段攻击·撕开：引爆裂伤造成额外伤害。', '蓄力攻击·回马突：向前冲刺穿刺，沿途叠裂伤。', '每次命中叠1层裂伤，最多5层，持续流血。'],
-    hammer: ['终段攻击·回旋锤：前后都打，击倒敌人。', '蓄力攻击·重砸：向前重砸。'],
-    blade: ['终段攻击·举刀重劈：大范围劈砍，击倒敌人。', '蓄力攻击·重斩：向前重斩。'],
-    stone: ['终段攻击·全力投：必定眩晕，附带左右散射。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗。'],
-    bow: ['终段攻击·穿透箭：贯穿一排敌人。', '蓄力攻击·重箭：射出一支重箭。'],
+    staff: ['四段连招：劈 → 扫 → 回身扫 → 戳', '终段攻击·戳：必定眩晕。', '蓄力攻击·横扫：身前大范围横扫，50%眩晕。'],
+    halberd: ['四段连招：劈 → 扫 → 回身扫 → 撕开', '终段攻击·撕开：引爆裂伤造成额外伤害。', '蓄力攻击·回马突：向前冲刺穿刺，沿途叠裂伤。', '每次命中叠1层裂伤，最多5层，持续流血。'],
+    hammer: ['三段连招：下砸 → 横抡 → 回旋锤', '终段攻击·回旋锤：前后都打，击倒敌人。', '蓄力攻击·重砸：向前重砸。'],
+    blade: ['三段连招：斜劈 → 横砍 → 举刀重劈', '终段攻击·举刀重劈：大范围劈砍，击倒敌人。', '蓄力攻击·重斩：向前重斩。'],
+    stone: ['三段连招：左手掷 → 右手掷 → 全力投', '终段攻击·全力投：必定眩晕，附带左右散射。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗。'],
+    bow: ['三段连招：速射 → 速射 → 穿透箭', '终段攻击·穿透箭：贯穿一排敌人。', '蓄力攻击·重箭：射出一支重箭。'],
   };
   function node(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;}
   function style(){if(document.getElementById('weaponDetailStyle'))return;const e=node('style');e.id='weaponDetailStyle';e.textContent=`
@@ -72,7 +72,7 @@
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
-    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
+    row('连招伤害（'+combos.length+'段）',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
     if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
     row('平均攻速',fmt(values.speed)+'次/秒',list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
