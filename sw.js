@@ -1,6 +1,6 @@
 // 模板由 build.py 注入首页指纹及预缓存地址；不要手改生成的 sw.js。
-const CACHE='wzb-b5fb4d6d13d81944';
-const PRECACHE=["/index.html", "/pack/title/home.webp?v=dd7b8a9ba8", "/pack/title/tv_mask.png.webp?v=f657c4d64c", "/pack/fonts/result.woff2?v=eb45bed44b"];
+const CACHE='wzb-4896c0e027ca3efe';
+const PRECACHE=["/index.html", "/pack/title/home.webp?v=dd7b8a9ba8", "/pack/title/tv_mask.png.webp?v=f657c4d64c", "/pack/fonts/result.woff2?v=84bd9c74e4"];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
  await cache.addAll(PRECACHE);

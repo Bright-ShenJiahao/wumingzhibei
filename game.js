@@ -165,6 +165,7 @@ const TYPES = {
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   priest:  { name: '黄巾方士', hp: 4, spd: 40, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
+  priest_fire: { name: '黄巾火术士', hp: 4, spd: 40, priest: true, firePriest: true, w: 10, sprite: 'priest', scale: .9 },   // 保持距离，念咒1秒后投慢速火球
   'yellow-heavy': { name: '黄巾大刀兵', hp: 7, spd: 25, wind: .9, reach: 31, dmg: 2, heavy: true, sprite: 'yellow_heavy', scale: 1.02 },
   'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .5, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
@@ -196,7 +197,7 @@ const WAVES = [
 // 威胁值：随机填充时按点数抽兵
 const THREAT = { priest: 3, grunt: 1, blade: 2, slinger: 2, archer: 2, elite: 4 };
 // 第二章沿用换新图前的数值；第一章的削弱不能影响第二章（含第二章校场）。
-const CH2_LEGACY_STATS = { blade: { dmg: 2 }, priest: { hp: 5, spd: 44 } };
+const CH2_LEGACY_STATS = { blade: { dmg: 2 }, priest: { hp: 5, spd: 44 }, priest_fire: { hp: 5, spd: 44 } };
 function inChapter2Context() {
   if (chapter2Run) return true;
   return !!(window.XIAOCHANG && XIAOCHANG.active() && XIAOCHANG.state()?.chapter === 2);
@@ -446,6 +447,11 @@ function priestCast(z) {
   }
 }
 
+function firePriestCast(z) {
+  const tx = hero.x, ty = hero.y;
+  eshots.push({ k: 'fire', ball: true, x0: z.x + z.f * 12, y0: z.y - 12, tx, ty, t: 0, T: 1, short: 2 });
+  sfx('sling', z.x);
+}
 function summonArchers(bz) {
   if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.summonArchers(bz); return; }
   say('管亥：「弓箭手，放箭！」', 2.4);
@@ -640,7 +646,7 @@ const CHAPTER2_WAVES = {
   ],
   5: [
     () => { for (const y of [M.top + 18, (M.top + M.bot) / 2, M.bot - 18]) spawn('yellow-shield', hero.x + 190, y); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 + 20); },
-    () => { spawn('yellow-shield', hero.x + 190, M.top + 24); spawn('yellow-shield', hero.x + 190, M.bot - 24); for (let i = 0; i < 3; i++) spawn('priest', hero.x + 330, M.top + 22 + i * ((M.bot - M.top - 44) / 2)); },
+    () => { spawn('yellow-shield', hero.x + 190, M.top + 24); spawn('yellow-shield', hero.x + 190, M.bot - 24); spawn('priest', hero.x + 330, M.top + 22); spawn('priest_fire', hero.x + 330, (M.top + M.bot) / 2); spawn('priest_fire', hero.x + 330, M.bot - 22); },
     () => { spawn('zhang_bao', hero.x + 280, (M.top + M.bot) / 2); const boss = zs[zs.length - 1]; boss.f = -1; boss.cd = 1.4; boss.bossLabel = TYPES.zhang_bao.name; spawn('yellow-shield', hero.x + 200, (M.top + M.bot) / 2 - 22); spawn('priest', hero.x + 320, (M.top + M.bot) / 2 + 22); },
   ],
   6: [],
@@ -767,7 +773,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (!traits.secondary && z.T.priest && z.st === 'chant') {   // 打断念咒：这一轮白念，冷却照走
-      set(z, 'hurt'); z.t = 0; z.chantCd = 8; z.chant = 0;
+      set(z, 'hurt'); z.t = 0; z.chantCd = z.T.firePriest ? 5 : 8; z.chant = 0;
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
@@ -1576,20 +1582,21 @@ function zUpdate(z, dt) {
     return;
   }
   if (z.st === 'wake') { if (z.t > (z.T.elite ? 1.0 : .55)) set(z, 'move'); else return; }
-  if (T.priest) {                        // 方士：远离玩家 → 念咒 2 秒 → 回血+加速，念咒可被打断
+  if (T.priest) {                        // 方士：远离玩家 → 念咒 → 回血/火球，念咒可被打断
+    const firePriest = !!T.firePriest;
     if (z.daze > 0) { z.daze -= dt; z.stun = Math.max(0, z.stun - dt); moveEnt(z, z.vx * dt, 0); z.vx *= .85; return; }
     if (z.stun > 0) { z.stun -= dt; moveEnt(z, z.vx * dt, 0); z.vx *= .85; if (z.stun <= 0) set(z, 'idle'); return; }
     if (z.st === 'hurt') set(z, 'idle');
     if (z.chantCd == null) z.chantCd = 1.5;
     z.chantCd -= dt;
     if (z.st === 'chant') {
-      if (z.t >= 2) { priestCast(z); set(z, 'idle'); z.chantCd = 8; }
+      if (z.t >= (firePriest ? 1 : 2)) { firePriest ? firePriestCast(z) : priestCast(z); set(z, 'idle'); z.chantCd = firePriest ? 5 : 8; }
       return;
     }
     if (z.chantCd <= 0) {
-      // 只有真的有友军受伤（<70% 血）才念咒，避免开场满血白念
+      // 火术士按冷却主动念咒；普通方士只有真的有友军受伤才念咒
       const hurtAlly = zs.some(o => o !== z && !o.dead && !o.T.boss && o.hp < o.T.hp * .7);
-      if (hurtAlly) { set(z, 'chant'); return; }
+      if (firePriest || hurtAlly) { set(z, 'chant'); return; }
     }
     const pdx = hero.x - z.x, pad = Math.abs(pdx);
     if (pdx) z.f = Math.sign(pdx);
@@ -1691,11 +1698,27 @@ function updateChapter2Catapult(z, dt) {
     const tx = Math.min(z.x - 70, Math.max(hero.x - 40, hero.x + rnd(-18, 18)));
     const ty = Math.max(M.top + 5, Math.min(M.bot - 5, hero.y + yOffset));
     eshots.push({ k: 'catapult', x0: z.x - 18, y0: z.y - 12, tx, ty, t: 0, T: 1.15, short: 2.2 });
-    z.st = 'recoil'; z.t = 0; z.cd = 7.5; sfx('sling', z.x); return;
+    z.st = 'recoil'; z.t = 0; z.cd = 10; sfx('sling', z.x); return;
   }
   if (z.st === 'recoil' && z.t > .45) { z.st = 'idle'; z.t = 0; return; }
   if (z.st === 'wind') return;
   if (z.cd <= 0) { z.st = 'wind'; z.t = 0; }
+}
+function chapter2BossSummon(z) {
+  if (!z || z.dead || z.summonedHalf) return;
+  z.summonedHalf = true;
+  const bx = z.x - z.f * 58, mid = (M.top + M.bot) / 2;
+  if (z.type === 'zhang_liang') {
+    spawn('yellow-heavy', bx, mid - 28);
+    spawn('yellow-heavy', bx, mid + 28);
+    say('张梁：「给我上！」', 2.4);
+    floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '给我上！', big: true, gold: true });
+  } else if (z.type === 'zhang_bao') {
+    spawn('priest', bx, mid - 28);
+    spawn('priest_fire', bx, mid + 28);
+    say('张宝：「众弟子，助我！」', 2.4);
+    floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '众弟子，助我！', big: true, gold: true });
+  }
 }
 function updateChapter2Boss(z, dt) {
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
@@ -1709,6 +1732,7 @@ function updateChapter2Boss(z, dt) {
     return;
   }
   if (z.dead) return;
+  if (!z.summonedHalf && z.hp < z.T.hp * .5) chapter2BossSummon(z);
   if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => {
     const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
     moveEnt(o, dx / d * sp * d2, dy / d * sp * .5 * d2);
@@ -2279,7 +2303,7 @@ function draw() {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
       const p = Math.min(1, s.t / s.T), x = s.x0 + (s.tx - s.x0) * p, gy = s.y0 + (s.ty - s.y0) * p, z = 24 + Math.sin(p * Math.PI) * 60;
-      list.push({ y: gy, d: () => { shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = '#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = '#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
+      list.push({ y: gy, d: () => { if (s.ball) { shadow(x, gy, 4); ctx.save(); ctx.translate(x, gy - z); ctx.fillStyle = 'rgba(255,120,30,.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a24'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(-1, -1, 1.4, 0, 7); ctx.fill(); ctx.restore(); return; } shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = '#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = '#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -2940,7 +2964,10 @@ function drawZ(z) {
   shadow(z.x, z.y, 10);
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
+  const firePriest = z.type === 'priest_fire';
+  if (firePriest) { ctx.save(); ctx.filter = 'sepia(1) saturate(2.2) hue-rotate(-28deg) brightness(.86)'; }
   drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
+  if (firePriest) ctx.restore();
   if (z.celebrating) drawCheer(z);
   if (z.dead || z.air || z.st === 'land') return;
   drawHalberdBleedDots(z, z.y - 40);
