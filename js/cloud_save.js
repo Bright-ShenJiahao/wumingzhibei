@@ -6,7 +6,6 @@
   const pending=new Set(),wanted=new Set(),inFlight=new Map(),states=new Map();
   const name=()=>window.TITLE?TITLE.playerName():'';
   const state=player=>{if(!states.has(player))states.set(player,{phase:'syncing',at:0,detail:''});return states.get(player);};
-  function isPreparation(){return !!(window.TITLE&&TITLE.active()&&document.querySelector('#tChapter.open'));}
   function settlement(){
     if(window.XIAOCHANG&&XIAOCHANG.blocks())return true;
     return typeof result!=='undefined'&&!!result&&typeof gameT!=='undefined'&&gameT>=result.born;

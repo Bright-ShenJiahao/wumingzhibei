@@ -780,17 +780,6 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (knock && !(z.T.boss || z.T.chapterBoss) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 
 }
-function applyPoison(z, scale = 1) {
-  if (!z || z.dead) return;
-  const active = z.poisonT > 0;
-  z.poisonScale = scale;   // 散射副弹只有半效
-  z.poisonStacks = Math.min(2, (z.poisonStacks || 0) + 1);
-  z.poisonT = 2; if (!active) z.poisonTick = 1;
-}
-function splitHit(target, damage) {
-  for (const other of zs) if (other !== target && !other.dead && !other.air && Math.hypot(other.x - target.x, other.y - target.y) <= 45)
-    hit(other, damage * .3, 0, Math.sign(other.x - target.x), false, 0, .12, false, false, { secondary: true, scaled: true });
-}
 function summonArchersVolley() {
   const angles = [-12, -8.6, -5.1, -1.7, 1.7, 5.1, 8.6, 12].map(a => a * Math.PI / 180);   // 收束成 24° 的窄扇形
   for (const a of angles) {
@@ -895,7 +884,6 @@ function spawnDrop(x, y, forceK) {
   }
   drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
-function spawnRerollDrop(x, y) { drops.push({ k: 'roll', x, y, z: 10, vy: 130, t: 0, life: 24, got: 0 }); }
 function spawnWeaponDrop(id, x, y) {
   if (id !== 'bow' || drops.some(d => d.weapon === id && !d.got)) return;
   drops.push({ k: 'weapon', weapon: id, x, y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
@@ -1265,7 +1253,7 @@ function chargedAttack(power, tier = 1) {
   chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power, tier });
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
-  const R = (weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : (W.chargeReach || 46)) * (window.GEAR ? GEAR.range() : 1);
+  const R = 64 * (window.GEAR ? GEAR.range() : 1);
   if (weapon === 'bow') {                         // 穿云箭：先标记落点，再从右上方落下
     const data = tier === 3 ? { radius: 55, dmg: 2.8, stun: 1 }
       : tier === 2 ? { radius: 45, dmg: 2.2, stun: .8 }
@@ -1338,18 +1326,16 @@ function chargedAttack(power, tier = 1) {
     const dx = (z.x - h.x) * h.f, dy = z.y - h.y;
     if (Math.abs(dy) > 26) continue;
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
-    const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
-    if (inFan) {
-      const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
-      hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', (weapon === 'staff' || weapon === 'hammer') ? .5 : 0, .35, weapon === 'hammer', false, weapon === 'staff' ? { dazeChance: .5 } : {});
-      addChargeHitFx(weapon, z.x, z.y - (weapon === 'hammer' ? 2 : 15), h.f);
+    if (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) {
+      const dmg = 1.6 * force;
+      hit(z, dmg, 140 * force, h.f, true, .5, .35, false, false, { dazeChance: .5 });
+      addChargeHitFx('staff', z.x, z.y - 15, h.f);
     }
   }
   for (const v of villagers) {
     if (v.state === 'gone') continue;
     const dx = (v.x - h.x) * h.f, dy = v.y - h.y;
-    const inRange = weapon === 'staff' ? Math.hypot(dx, dy) < R + 10 : dx > -14 && dx < R + 10;
-    if (inRange && Math.abs(dy) < 26) v.flash = .12;
+    if (Math.hypot(dx, dy) < R + 10 && Math.abs(dy) < 26) v.flash = .12;
   }
 }
 function startAtk() {
