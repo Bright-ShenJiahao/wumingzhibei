@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=2539e83117" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2539e83117)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=72cdd66540" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=72cdd66540)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -1096,30 +1096,8 @@ const Boss = (() => {
   function heroIn(x, y, rx, ry) { return Math.abs(hero.x - x) < rx && Math.abs(hero.y - y) < ry; }
 
   // ---------- 受击 ----------
-  function deflectRanged(z) {
-  for (let i = 0; i < 7; i++) {
-    const life = rnd(.12, .3);
-    propFx.push({ x: z.x + rnd(-8, 8), y: z.y - rnd(18, 36), vx: rnd(-110, 110), vy: rnd(-120, -20),
-      w: rnd(1, 2), h: rnd(1, 2), life, max: life, c: Math.random() < .6 ? '#fff4c2' : '#ffc45e' });
-  }
-  sfx('hit_stone', z.x); sfx('crack', z.x);
-  floaters.push({ x: z.x, y: z.y - 44, t: 0, txt: '挡！', big: true });
-}
-
-function hit(z, dmg, dir, ranged) {
-  // 远程格挡：连续被远程武器命中时，中等概率举戟拨开，接下来 0.5 秒免疫远程
-  if (ranged) {
-    if (z.blockCd > 0) z.blockCd -= 0;                 // 冷却在 update 里递减
-    if ((z.blockT || 0) > 0) { deflectRanged(z); return 'blocked'; }
-    if (gameT - (z.rangedHitAt || -9) < 2.5) z.rangedHits = (z.rangedHits || 0) + 1;
-    else z.rangedHits = 1;
-    z.rangedHitAt = gameT;
-    if (z.rangedHits >= 2 && (z.blockCd || 0) <= 0 && Math.random() < .45) {
-      z.blockT = .5; z.blockCd = 2.5; z.rangedHits = 0;   // 格挡 0.5 秒，之后 2 秒不会再格挡
-      deflectRanged(z);
-      return 'blocked';
-    }
-  }
+  function hit(z, dmg, dir, ranged, traits = {}) {
+  if (ranged && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
     if (z.dead || z.st === 'fall' || z.st === 'roar' || z.st === 'intro') return;
     // 去捡戟的路上无敌（飞在空中），只溅火星表示"打不动"，避免玩家以为没打中
     if (z.spear && (z.st === 'leap' || z.st === 'pickup')) {
@@ -1154,6 +1132,10 @@ function hit(z, dmg, dir, ranged) {
       z.hp = 0; z.dead = 1; kills++; set(z, 'kneel'); fx = [];
       say('管亥：「这……这小子是什么人……」', 3.5); vo('defeat'); sfx('enemyDown', z.x); shake = .3;
     }
+    if (ranged) {
+      if (window.BOSS_BLOCK) BOSS_BLOCK.recordRanged(z, dir);
+      if (window.BOSS_BLOCK) BOSS_BLOCK.tryStun(z, traits);
+    }
   }
 
   // ---------- 行为 ----------
@@ -1162,8 +1144,8 @@ function hit(z, dmg, dir, ranged) {
     const actionDt = dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1));
     z.t += actionDt; z.flash = Math.max(0, z.flash - dt); z.cd -= actionDt;
     if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - actionDt; z.throwCd = (z.throwCd || 0) - actionDt; }
-    if (z.blockT > 0) z.blockT -= dt;
-    if (z.blockCd > 0) z.blockCd -= dt;
+    if (z.daze > 0) { z.daze = Math.max(0, z.daze - dt); z.stun = Math.max(0, z.stun - dt); return; }
+    if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => moveTo(o, tx, ty, sp, d2), z.phase === 1 ? 55 : 56)) return;
     // 掷出去的长戟：飞 → 落地 → 等他去捡
     if (z.spear && !z.spear.land) {
       const p = z.spear; p.x += p.vx * actionDt;
@@ -1379,6 +1361,7 @@ function hit(z, dmg, dir, ranged) {
     // 冲锋前马身后的抖动、狂暴时泛红
     const jitter = z.st === 'charge_prep' ? Math.sin(z.t * 60) * .8 : 0;
     drawChar(z.type, frame(z), z.x + jitter, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, 1, !!z.dark);
+    if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.phase === 2 && !z.dead && z.hp <= HP * .25 && Math.floor(performance.now() / 150) % 2) drawChar(z.type, frame(z), z.x, z.y, z.f < 0, .25, true);
     // 飞出去的长戟 / 掉在地上的长戟
     if (z.spear) {
@@ -1513,6 +1496,103 @@ function hit(z, dmg, dir, ranged) {
   }
   return { start, update, hit, draw, drawHorse, drawGround, updateFx, hud, T, wx: () => WX, wxMove, wxAspd, wxProj, wxDraw,
     reset() { fx = []; horse = null; WX = null; } };
+})();
+
+// 首领共用：连续远程命中后的格挡架势、格挡判定、架势结束冲刺与外观。
+(() => {
+  const WINDOW = 2, NEED = 3, STANCE = 1.5, COOLDOWN = 6;
+  const isBoss = z => !!(z && (z.T.boss || z.T.chapterBoss));
+  const front = (z, dir) => Math.sign(dir || 1) * Math.sign(z.f || 1) < 0;
+  const canEnter = z => {
+    if (!isBoss(z) || z.dead || z.air || z.stun > 0 || z.daze > 0 || (z.blockT || 0) > 0 || (z.blockChargeT || 0) > 0) return false;
+    if (gameT < (z.blockCdUntil || 0)) return false;
+    return ['idle', 'walk', 'move'].includes(z.st);
+  };
+  function sparks(z) {
+    if (typeof propFx === 'undefined') return;
+    for (let i = 0; i < 10; i++) {
+      const life = rnd(.12, .3);
+      propFx.push({ x: z.x + z.f * rnd(12, 30), y: z.y - rnd(12, 42), vx: rnd(-110, 110), vy: rnd(-130, -20),
+        w: rnd(1, 2.5), h: rnd(1, 2.5), life, max: life, c: Math.random() < .65 ? '#ffe6a0' : '#ffc14f' });
+    }
+    if (typeof sfx === 'function') { sfx('hit_stone', z.x); sfx('crack', z.x); }
+  }
+  function effect(z) {
+    sparks(z);
+    if (typeof floaters !== 'undefined') floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '格挡！', big: true });
+  }
+  function isBlocking(z, dir) {
+    if (!isBoss(z) || (z.blockT || 0) <= 0) return false;
+    return front(z, dir);
+  }
+  function recordRanged(z, dir) {
+    if (!isBoss(z) || z.dead || (z.blockT || 0) > 0 || (z.blockChargeT || 0) > 0) return false;
+    z.blockHits = (z.blockHits || []).filter(t => gameT - t <= WINDOW);
+    z.blockHits.push(gameT);
+    if (z.blockHits.length < NEED || !canEnter(z)) return false;
+    z.blockHits = [];
+    z.blockT = STANCE;
+    z.blockCdUntil = gameT + STANCE + COOLDOWN;
+    z.blockChargeT = 0;
+    effect(z);
+    return true;
+  }
+  function tryStun(z, traits) {
+    if (!isBoss(z) || z.dead || !traits || !traits.dazeChance) return false;
+    if (Math.random() >= .5) return false;
+    z.daze = Math.max(z.daze || 0, .6);
+    z.stun = Math.max(z.stun || 0, .6);
+    return true;
+  }
+  // moveFn(z, tx, ty, speed, dt)：沿用各首领自己的移动函数。
+  function update(z, dt, moveFn, baseSpeed) {
+    if ((z.blockT || 0) > 0) {
+      z.blockT = Math.max(0, z.blockT - dt);
+      z.f = Math.sign(hero.x - z.x) || z.f;
+      if (z.blockT <= 0) {
+        z.blockChargeT = 1.5;
+        z.blockCdUntil = gameT + COOLDOWN;   // 冷却从架势结束开始
+      }
+      return true;
+    }
+    if ((z.blockChargeT || 0) > 0) {
+      z.blockChargeT = Math.max(0, z.blockChargeT - dt);
+      const dx = hero.x - z.x, dy = hero.y - z.y, d = Math.hypot(dx, dy) || 1;
+      z.f = Math.sign(dx) || z.f;
+      if (d > 30 && z.blockChargeT > 0 && typeof moveFn === 'function') moveFn(z, hero.x, hero.y, (baseSpeed || z.T.spd || 30) * 1.5, dt);
+      if (d <= 30 || z.blockChargeT <= 0) z.blockChargeT = 0;
+      return true;
+    }
+    return false;
+  }
+  function draw(z) {
+    if (!z || (z.blockT || 0) <= 0) return;
+    const shield = z.type === 'zhang_bao' || z.sprite === 'zhang_bao';
+    const pulse = .72 + .28 * Math.sin(gameT * 10);
+    ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.f < 0 ? -1 : 1, 1);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (shield) {
+      ctx.fillStyle = `rgba(255,211,92,${.16 + .05 * pulse})`;
+      ctx.strokeStyle = `rgba(255,221,126,${.78 + .16 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(9, -43, 20, 47, 4) : ctx.rect(9, -43, 20, 47); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,238,174,.9)'; ctx.lineWidth = 1;
+      ctx.strokeRect(13, -36, 12, 34);
+      ctx.beginPath(); ctx.moveTo(15, -30); ctx.lineTo(23, -30); ctx.moveTo(15, -23); ctx.lineTo(23, -23); ctx.moveTo(15, -16); ctx.lineTo(23, -16); ctx.stroke();
+      ctx.beginPath(); ctx.arc(19, -11, 3, 0, 7); ctx.stroke();
+    } else {
+      ctx.strokeStyle = `rgba(255,221,126,${.62 + .25 * pulse})`;
+      ctx.shadowColor = 'rgba(255,198,78,.8)'; ctx.shadowBlur = 8;
+      ctx.lineWidth = 2.4;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath(); ctx.arc(0, -22, 23 + i * 4, -1.12, 1.12); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,245,190,.9)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, -22, 31, -.95, .95); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  window.BOSS_BLOCK = { isBoss, isBlocking, recordRanged, tryStun, update, draw, effect };
 })();
 
 // 第二章「黄巾决战」关卡规划。已从章节选择开放；第五战祭台地图已接入，张角 Boss 待完成。
@@ -6835,12 +6915,13 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || (z.air && !traits.dot)) return;
+  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
   if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
-    const res = Boss.hit(z, dmg, dir, ranged);
+    const res = Boss.hit(z, dmg, dir, ranged, traits);
     if (z.hp < hp0) {
       if (traits.dot) return res;
 
@@ -6869,6 +6950,10 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK) {
+    BOSS_BLOCK.recordRanged(z, dir);
+    BOSS_BLOCK.tryStun(z, traits);
+  }
   if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
@@ -7640,6 +7725,7 @@ function updateChapter2Catapult(z, dt) {
 }
 function updateChapter2Boss(z, dt) {
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
+  z.daze = Math.max(0, (z.daze || 0) - dt);
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') {
     if (z.t > .45) {
@@ -7649,6 +7735,10 @@ function updateChapter2Boss(z, dt) {
     return;
   }
   if (z.dead) return;
+  if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => {
+    const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
+    moveEnt(o, dx / d * sp * d2, dy / d * sp * .5 * d2);
+  }, z.T.spd || 30)) return;
   if (z.stun > 0) { z.stun -= dt; return; }
   if (z.st === 'wind') {
     if (z.t >= z.T.wind) {
@@ -7693,7 +7783,9 @@ function updateShots(dt) {
       const traits = window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter };
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
-      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
+      if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = .5; traits.dazeTime = .6; }
+      const result = hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
+      if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
@@ -8758,6 +8850,7 @@ function drawZ(z) {
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);
     drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
+    if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.dead) return;
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);

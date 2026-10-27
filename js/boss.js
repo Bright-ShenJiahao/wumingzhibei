@@ -44,30 +44,8 @@ const Boss = (() => {
   function heroIn(x, y, rx, ry) { return Math.abs(hero.x - x) < rx && Math.abs(hero.y - y) < ry; }
 
   // ---------- 受击 ----------
-  function deflectRanged(z) {
-  for (let i = 0; i < 7; i++) {
-    const life = rnd(.12, .3);
-    propFx.push({ x: z.x + rnd(-8, 8), y: z.y - rnd(18, 36), vx: rnd(-110, 110), vy: rnd(-120, -20),
-      w: rnd(1, 2), h: rnd(1, 2), life, max: life, c: Math.random() < .6 ? '#fff4c2' : '#ffc45e' });
-  }
-  sfx('hit_stone', z.x); sfx('crack', z.x);
-  floaters.push({ x: z.x, y: z.y - 44, t: 0, txt: '挡！', big: true });
-}
-
-function hit(z, dmg, dir, ranged) {
-  // 远程格挡：连续被远程武器命中时，中等概率举戟拨开，接下来 0.5 秒免疫远程
-  if (ranged) {
-    if (z.blockCd > 0) z.blockCd -= 0;                 // 冷却在 update 里递减
-    if ((z.blockT || 0) > 0) { deflectRanged(z); return 'blocked'; }
-    if (gameT - (z.rangedHitAt || -9) < 2.5) z.rangedHits = (z.rangedHits || 0) + 1;
-    else z.rangedHits = 1;
-    z.rangedHitAt = gameT;
-    if (z.rangedHits >= 2 && (z.blockCd || 0) <= 0 && Math.random() < .45) {
-      z.blockT = .5; z.blockCd = 2.5; z.rangedHits = 0;   // 格挡 0.5 秒，之后 2 秒不会再格挡
-      deflectRanged(z);
-      return 'blocked';
-    }
-  }
+  function hit(z, dmg, dir, ranged, traits = {}) {
+  if (ranged && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
     if (z.dead || z.st === 'fall' || z.st === 'roar' || z.st === 'intro') return;
     // 去捡戟的路上无敌（飞在空中），只溅火星表示"打不动"，避免玩家以为没打中
     if (z.spear && (z.st === 'leap' || z.st === 'pickup')) {
@@ -102,6 +80,10 @@ function hit(z, dmg, dir, ranged) {
       z.hp = 0; z.dead = 1; kills++; set(z, 'kneel'); fx = [];
       say('管亥：「这……这小子是什么人……」', 3.5); vo('defeat'); sfx('enemyDown', z.x); shake = .3;
     }
+    if (ranged) {
+      if (window.BOSS_BLOCK) BOSS_BLOCK.recordRanged(z, dir);
+      if (window.BOSS_BLOCK) BOSS_BLOCK.tryStun(z, traits);
+    }
   }
 
   // ---------- 行为 ----------
@@ -110,8 +92,8 @@ function hit(z, dmg, dir, ranged) {
     const actionDt = dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1));
     z.t += actionDt; z.flash = Math.max(0, z.flash - dt); z.cd -= actionDt;
     if (z.phase === 2) { z.dashCd = (z.dashCd || 0) - actionDt; z.throwCd = (z.throwCd || 0) - actionDt; }
-    if (z.blockT > 0) z.blockT -= dt;
-    if (z.blockCd > 0) z.blockCd -= dt;
+    if (z.daze > 0) { z.daze = Math.max(0, z.daze - dt); z.stun = Math.max(0, z.stun - dt); return; }
+    if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => moveTo(o, tx, ty, sp, d2), z.phase === 1 ? 55 : 56)) return;
     // 掷出去的长戟：飞 → 落地 → 等他去捡
     if (z.spear && !z.spear.land) {
       const p = z.spear; p.x += p.vx * actionDt;
@@ -327,6 +309,7 @@ function hit(z, dmg, dir, ranged) {
     // 冲锋前马身后的抖动、狂暴时泛红
     const jitter = z.st === 'charge_prep' ? Math.sin(z.t * 60) * .8 : 0;
     drawChar(z.type, frame(z), z.x + jitter, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, 1, !!z.dark);
+    if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.phase === 2 && !z.dead && z.hp <= HP * .25 && Math.floor(performance.now() / 150) % 2) drawChar(z.type, frame(z), z.x, z.y, z.f < 0, .25, true);
     // 飞出去的长戟 / 掉在地上的长戟
     if (z.spear) {

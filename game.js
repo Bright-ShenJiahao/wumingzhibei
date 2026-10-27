@@ -693,12 +693,13 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || (z.air && !traits.dot)) return;
+  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
   if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
-    const res = Boss.hit(z, dmg, dir, ranged);
+    const res = Boss.hit(z, dmg, dir, ranged, traits);
     if (z.hp < hp0) {
       if (traits.dot) return res;
 
@@ -727,6 +728,10 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK) {
+    BOSS_BLOCK.recordRanged(z, dir);
+    BOSS_BLOCK.tryStun(z, traits);
+  }
   if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
@@ -1498,6 +1503,7 @@ function updateChapter2Catapult(z, dt) {
 }
 function updateChapter2Boss(z, dt) {
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
+  z.daze = Math.max(0, (z.daze || 0) - dt);
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') {
     if (z.t > .45) {
@@ -1507,6 +1513,10 @@ function updateChapter2Boss(z, dt) {
     return;
   }
   if (z.dead) return;
+  if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => {
+    const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
+    moveEnt(o, dx / d * sp * d2, dy / d * sp * .5 * d2);
+  }, z.T.spd || 30)) return;
   if (z.stun > 0) { z.stun -= dt; return; }
   if (z.st === 'wind') {
     if (z.t >= z.T.wind) {
@@ -1551,7 +1561,9 @@ function updateShots(dt) {
       const traits = window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter };
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
-      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
+      if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = .5; traits.dazeTime = .6; }
+      const result = hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
+      if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
@@ -2616,6 +2628,7 @@ function drawZ(z) {
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);
     drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
+    if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.dead) return;
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);
