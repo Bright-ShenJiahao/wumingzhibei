@@ -128,9 +128,9 @@ const WEAP = {
     { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 3.0, kb: 70, multi: true, knock: true },   // 回旋锤：以自身为中心一圈
   ] },
   blade: { name: '大刀', class: 'short', reach: 30, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 38, combo: [
-    { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.2, kb: 42 },                              // 斜劈
-    { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.3, kb: 48, multi: true },                 // 横砍
-    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.3, kb: 100, multi: true, knock: true },   // 举刀重劈收尾（短武器统一三段；回身斩帧保留备用）
+    { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.1, kb: 42 },                              // 斜劈
+    { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.2, kb: 48, multi: true },                 // 横砍
+    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.2, kb: 100, multi: true, knock: true },   // 举刀重劈收尾（短武器统一三段；回身斩帧保留备用）
   ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
@@ -219,6 +219,7 @@ let stoneHits = [];
 let bluntHits = [];
 let bleedFx = [];
 let hammerFx = [];
+let bladeFx = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
@@ -251,7 +252,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -1094,6 +1095,8 @@ function updateFx(dt) {
   bluntHits = bluntHits.filter(h => h.t < h.T);
   for (const f of hammerFx) f.t += dt;
   hammerFx = hammerFx.filter(f => f.t < f.T);
+  for (const f of bladeFx) f.t += dt;
+  bladeFx = bladeFx.filter(f => f.t < f.T);
   for (const q of chargeHitFx) q.t += dt;
   chargeHitFx = chargeHitFx.filter(q => q.t < q.T);
   for (const q of blessFx) q.t += dt;
@@ -1270,6 +1273,20 @@ function chargedAttack(power, tier = 1) {
     }
     return;
   }
+  if (weapon === 'blade') {                        // 大刀蓄力「半月斩」：前方上下各45，高概率暴击
+    const data = tier === 3 ? { dmg: 2.6, chance: .8, knock: true }
+      : tier === 2 ? { dmg: 2.0, chance: .6, knock: false }
+      : { dmg: 1.4, chance: .4, knock: false };
+    const atk = .35 + .65 * power, dmg = data.dmg * atk;
+    bladeFx.push({ kind: 'crescent', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .3, dir: h.f });
+    for (const z of zs) {
+      if (z.dead || z.air) continue;
+      const dx = (z.x - h.x) * h.f, dy = z.y - h.y, bw = z.T.w || 0;
+      if (dx < -12 || dx > 45 + bw || Math.abs(dy) > 45) continue;
+      hit(z, dmg, data.knock ? 80 : 55, h.f, data.knock, 0, .15, W.interrupt, false, { critChance: data.chance, critCap: 2, guaranteedCrit: critT > 0, noBossKnock: data.knock });
+    }
+    return;
+  }
   for (const z of zs) {
     if (z.dead) continue;
     if (z.hidden && Math.hypot(hero.x - z.x, hero.y - z.y) > 88) continue;   // 还藏着的伏兵不画
@@ -1321,7 +1338,9 @@ function strike() {
   const isFinisher = finisher;
   const fin = 1;
   const hammerFinisher = weapon === 'hammer' && isFinisher;
+  const bladeFinisher = weapon === 'blade' && isFinisher;
   if (hammerFinisher) hammerFx.push({ kind: 'spin', x: h.x, y: h.y, t: 0, T: .3, size: 70 });
+  if (bladeFinisher) bladeFx.push({ kind: 'slash', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .24, dir: h.f });
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
@@ -1341,7 +1360,14 @@ function strike() {
       let attackDmg = C.dmg * fin * mult;
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
-      hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
+      hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0 || bladeFinisher, ...(bladeFinisher ? { critCap: 2 } : {}), ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
+      if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * .25) {
+        z.hp = 0; z.dead = 1; kills++; set(z, 'land');
+        if (z.villagerChaser) thankVillagers();
+        if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); }
+        floaters.push({ x: z.x, y: z.y - 40, t: 0, txt: '斩！', big: true, gold: true });
+        sfx('finisher', z.x);
+      }
       if (weapon === 'halberd') {
         if (!z.dead) {
           const unit = mult * (window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1);   // 主攻击（不含段数倍率）
@@ -2181,6 +2207,7 @@ function draw() {
   for (const h of bluntHits) list.push({ y: h.y, d: () => drawBluntHit(h) });
   for (const f of bleedFx) list.push({ y: f.y, d: () => drawBleedFx(f) });
   for (const f of hammerFx) list.push({ y: f.y, d: () => drawHammerFx(f) });
+  for (const f of bladeFx) list.push({ y: f.y, d: () => drawBladeFx(f) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2610,6 +2637,18 @@ function drawHammerFx(f) {
   const frame = Math.min(2, Math.max(0, Math.floor(f.t / .1)));
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, frame * 96, 0, 96, 60, f.x - w / 2, f.y - h / 2, w, h);
+  ctx.restore();
+}
+function drawBladeFx(f) {
+  const slash = f.kind === 'slash';
+  const img = slash ? IMG.ui_blade_slash : IMG.ui_blade_crescent;
+  if (!img || !img.complete) return;
+  const fw = slash ? 96 : 56, w = 50, h = slash ? 25 : 90;
+  const frame = Math.min(2, Math.max(0, Math.floor(f.t / (f.T / 3))));
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.translate(f.x, f.y);
+  if (f.dir < 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, frame * fw, 0, fw, fw === 96 ? 48 : 96, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
 function drawHalberdBleedDots(z, top) {
