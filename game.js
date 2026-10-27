@@ -1239,8 +1239,7 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { dist: 80, dmg: 2.8, stacks: 4 }
       : tier === 2 ? { dist: 60, dmg: 2.2, stacks: 3 }
       : { dist: 40, dmg: 1.6, stacks: 2 };
-    const atk = .35 + .65 * power;
-    const dmg = data.dmg * atk;
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     const x0 = h.x, endX = x0 + h.f * data.dist;
     let hitAny = false;
     for (const z of zs) {
@@ -1262,8 +1261,8 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { range: 80, dmg: 3.6, size: 90 }
       : tier === 2 ? { range: 65, dmg: 2.8, size: 75 }
       : { range: 50, dmg: 2.0, size: 60 };
-    const atk = .35 + .65 * power, range = data.range * (window.GEAR ? GEAR.range() : 1);
-    const dmg = data.dmg * atk;
+    const range = data.range * (window.GEAR ? GEAR.range() : 1);
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     hammerFx.push({ kind: 'slam', x: h.x + h.f * Math.min(range * .55, 48), y: h.y, t: 0, T: .28, size: data.size });
     for (const z of zs) {
       if (z.dead || z.air) continue;
@@ -1277,7 +1276,7 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { dmg: 2.6, chance: .8, knock: true }
       : tier === 2 ? { dmg: 2.0, chance: .6, knock: false }
       : { dmg: 1.4, chance: .4, knock: false };
-    const atk = .35 + .65 * power, dmg = data.dmg * atk;
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     bladeFx.push({ kind: 'crescent', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .3, dir: h.f });
     for (const z of zs) {
       if (z.dead || z.air) continue;

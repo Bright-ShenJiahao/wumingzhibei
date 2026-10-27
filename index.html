@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=b95487fb16" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=b95487fb16)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=8248472b46" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=8248472b46)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -7504,8 +7504,7 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { dist: 80, dmg: 2.8, stacks: 4 }
       : tier === 2 ? { dist: 60, dmg: 2.2, stacks: 3 }
       : { dist: 40, dmg: 1.6, stacks: 2 };
-    const atk = .35 + .65 * power;
-    const dmg = data.dmg * atk;
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     const x0 = h.x, endX = x0 + h.f * data.dist;
     let hitAny = false;
     for (const z of zs) {
@@ -7527,8 +7526,8 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { range: 80, dmg: 3.6, size: 90 }
       : tier === 2 ? { range: 65, dmg: 2.8, size: 75 }
       : { range: 50, dmg: 2.0, size: 60 };
-    const atk = .35 + .65 * power, range = data.range * (window.GEAR ? GEAR.range() : 1);
-    const dmg = data.dmg * atk;
+    const range = data.range * (window.GEAR ? GEAR.range() : 1);
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     hammerFx.push({ kind: 'slam', x: h.x + h.f * Math.min(range * .55, 48), y: h.y, t: 0, T: .28, size: data.size });
     for (const z of zs) {
       if (z.dead || z.air) continue;
@@ -7542,7 +7541,7 @@ function chargedAttack(power, tier = 1) {
     const data = tier === 3 ? { dmg: 2.6, chance: .8, knock: true }
       : tier === 2 ? { dmg: 2.0, chance: .6, knock: false }
       : { dmg: 1.4, chance: .4, knock: false };
-    const atk = .35 + .65 * power, dmg = data.dmg * atk;
+    const dmg = data.dmg;   // 档位已决定伤害，不再乘蓄力系数
     bladeFx.push({ kind: 'crescent', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .3, dir: h.f });
     for (const z of zs) {
       if (z.dead || z.air) continue;
