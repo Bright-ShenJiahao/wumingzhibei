@@ -1285,7 +1285,8 @@ function strike() {
       let attackDmg = C.dmg * fin * mult;
 
       hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
-      if (weapon === 'staff' || weapon === 'hammer' || weapon === 'halberd') bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
+      if (weapon === 'staff' && isFinisher) { bluntHits.push({ x: z.x, y: z.y - 14, t: 0, T: .2, big: true }); freeze = Math.max(freeze, .12); }   // 棍子终段「戳」专属爆发
+      else if (weapon === 'staff' || weapon === 'hammer' || weapon === 'halberd') bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
       if (!C.multi && !aoe) break;
     }
   }
@@ -2499,6 +2500,14 @@ function drawStoneHit(h) {
   ctx.restore();
 }
 function drawBluntHit(h) {
+  if (h.big) {   // 终段爆发：80×80 三帧，画成 30 像素
+    const im = IMG.ui_hit_finisher;
+    if (!im || !im.complete) return;
+    const fr = Math.min(2, Math.floor(h.t / .067));
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(im, fr * 80, 0, 80, 80, h.x - 15, h.y - 15, 30, 30);
+    ctx.restore(); return;
+  }
   const img = IMG.ui_hit_blunt;
   if (!img || !img.complete) return;
   const frame = Math.min(2, Math.max(0, Math.floor(h.t / .05)));
