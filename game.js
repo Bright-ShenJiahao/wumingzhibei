@@ -603,16 +603,27 @@ function waves(dt = 0) {
   }
 }
 
-function addChapter2Props() {
-  // 第二章军营道具：粮袋、木箱打坏掉回血食物；兵器架打坏只出木屑
-  const pool = ['sacks', 'crate', 'rack'];
-  for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
-    const g = pool[Math.floor(Math.random() * pool.length)];
+function addChapter2Props(battle = 1) {
+  // 每战重新摆放；jumo 挡路可打碎，其余新道具与旗帜只作装饰。
+  props = props.filter(p => !p.chapter2);
+  const layouts = {
+    1: [['jumo', 85, (M.top + M.bot) / 2 + 25], ['sacks', 130, M.top + 52], ['crate', 60, M.bot - 45], ['flag_y', 155, M.top + 92]],
+    2: [['debris', 85, M.top + 58], ['rack', 135, M.bot - 55], ['jumo', 70, (M.top + M.bot) / 2 - 32], ['flag_y', 160, M.top + 90]],
+    3: [['stones', 85, M.top + 58], ['brazier', 135, M.bot - 45], ['crate', 60, (M.top + M.bot) / 2 + 35], ['flag_y', 160, M.top + 92]],
+    4: [['flag_ren', 85, M.top + 92], ['jumo', 130, (M.top + M.bot) / 2 + 20], ['rack', 65, M.bot - 48]],
+    5: [['flag_di', 85, M.top + 92], ['sacks', 130, M.top + 55], ['stones', 65, M.bot - 45]],
+    6: [['flag_tian', 250, M.top + 90], ['flag_tian', 520, M.top + 60], ['flag_tian', 810, M.top + 90], ['flag_cang', 340, (M.top + M.bot) / 2 + 28], ['flag_huang', 740, (M.top + M.bot) / 2 + 28]],
+  };
+  const place = layouts[battle] || [];
+  for (const [g, dx, y] of place) {
     const meta = ASSETS.props[g];
     if (!meta) continue;
     const [, pw, ph] = meta;
-    const psc = 1;   // 新道具在 meta.json 里已是战场上的显示尺寸
-    props.push({ g, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: 3, hitT: 0, sc: psc, w: pw * .75 * psc, h: ph * psc, chapter2: true });
+    const solid = g === 'jumo' || g === 'sacks' || g === 'crate' || g === 'rack';
+    const oldProp = g === 'sacks' || g === 'crate' || g === 'rack';
+    props.push({ g, x: battle === 6 ? dx : hero.x + dx, y, solid, broken: false,
+      hp: g === 'jumo' ? 3 : solid ? 3 : 0, hitT: 0, sc: 1,
+      w: pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
   }
 }
 
@@ -660,7 +671,6 @@ function prepareChapter2Run(showOpening) {
   M.top = 190;   // 第二章前景栅栏更低：人物脚底不能走进栅栏和营帐
   M.W = 3600;
   props = [];
-  addChapter2Props();
   chapter2Run = { battle: 1, wave: 0, mode: showOpening ? 'intro' : 'fight', nextAt: 0, route: null };
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
@@ -686,6 +696,7 @@ function startChapter2Battle(number) {
   if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
   setRetreatLimit(hero.x);
   lockR = Infinity; clearAt = 0;
+  addChapter2Props(number);
   if (number === 6) {
     chapter2Run.mode = 'preview';
     say('第六战：祭台决战（张角战待接入）', 4);
@@ -1086,9 +1097,9 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 function hitProp(p, dir) {
-  if (p.broken || !['hay', 'cart', 'mill', 'sacks', 'crate', 'rack'].includes(p.g)) return;
+  if (p.broken || !['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo'].includes(p.g)) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
-  const hay = p.g === 'hay', mill = p.g === 'mill', broken = p.hp <= 0;
+  const hay = p.g === 'hay', mill = p.g === 'mill', jumo = p.g === 'jumo', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
   const sack = p.g === 'sacks';
   const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : sack ? ['#4a3a34', '#6b564a', '#a98c5a'] : p.g === 'crate' || p.g === 'rack' ? ['#2e221d', '#4a3a30', '#6a5444'] : ['#4b2c12', '#7a4d22', '#a3703c'];
@@ -1102,10 +1113,16 @@ function hitProp(p, dir) {
       c: cols[Math.floor(Math.random() * cols.length)] });
   }
   if (broken) {
-    p.broken = true; p.solid = false;
-    // 第二章的草垛/推车/石碾全部掉落回血；第一章仍保持 65%
-    if (p.g === 'rack') {}   // 兵器架只是障碍
-    else if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
+    if (jumo) {
+      const meta = ASSETS.props.jumo_broken;
+      p.g = 'jumo_broken'; p.solid = false; p.hp = 0;
+      if (meta) { p.w = meta[1]; p.h = meta[2]; }
+    } else {
+      p.broken = true; p.solid = false;
+      // 第二章的草垛/推车/石碾全部掉落回血；第一章仍保持 65%
+      if (p.g === 'rack') {}   // 兵器架只是障碍
+      else if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
+    }
   }
 }
 // 命中/蓄力等临时特效
@@ -1472,7 +1489,7 @@ function strike() {
   }
   // 草垛、推车、石碾也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
-    if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) continue;
+    if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill' && p.g !== 'jumo')) continue;
     const dx = (p.x - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < rch + p.w / 2 : dx > -4 - p.w / 2 && dx < rch + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
@@ -1764,7 +1781,7 @@ function updateShots(dt) {
     if (s.life <= 0 && s.gearReturn && !s.returning) { s.returning=true; s.secondary=true; s.gearReturn=false; s.vx=-s.originalVx; s.vy=-s.originalVy; s.life=s.gearLife; s.hitSet=[]; s.C={...s.C,dmg:s.C.dmg*.35,pierce:true,pierceOff:1}; }
     // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
-      if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill')) continue;
+      if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill' && p.g !== 'jumo')) continue;
       if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
@@ -2155,9 +2172,9 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   // Boss 关：右上角插一面「苍天已死」血字旗（装饰，人物从旗前走过）
   if (!(window.XIAOCHANG && XIAOCHANG.active()) && zs.some(z => z.T && z.T.boss)) {
-    const im = IMG['ui_boss_flag'];
+    const im = IMG['p_flag_cang'];
     if (im && im.complete) {
-      const fh2 = 100, fw2 = fh2 * im.width / im.height;   // 缩到 2/3（150 → 100）
+      const fh2 = 100, fw2 = fh2 * 240 / 566;   // 保持原旗子的绘制尺寸
       const fx2 = 3211, fy2 = 189;   // 候选③：右侧上方背景（世界坐标，固定不随镜头）
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);
@@ -2299,10 +2316,11 @@ function draw() {
     ctx.strokeStyle = `rgba(230,40,30,${.4 + .5 * p})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s.tx, s.ty, radius * (1.3 - p * .3), radius * .38 * (1.3 - p * .3), 0, 0, 7); ctx.stroke();
   }
   Boss.drawGround();
+  for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
-  for (const p of props) list.push({ y: p.y, d: () => drawProp(p) });
+  for (const p of props) if (!p.back) list.push({ y: p.y, d: () => drawProp(p) });
   if (catapults.length || allyShots.length || allyFires.length) list.push({ y: M.bot - 1, d: () => drawCatapults() });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
