@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=a1660a85da" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a1660a85da)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=bbac7825a2" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=bbac7825a2)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -2679,7 +2679,8 @@ const Boss = (() => {
     fx.forEach(e=>e.life-=dt);fx=fx.filter(e=>e.life>0);
   }
   function draw(){for(const e of fx){ctx.save();ctx.globalAlpha=e.life/.28;ctx.strokeStyle='#d9e6f5';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.x-10,e.y-150);ctx.lineTo(e.x+5,e.y-85);ctx.lineTo(e.x-4,e.y-65);ctx.lineTo(e.x,e.y);ctx.stroke();ctx.strokeStyle='#a7a0d6';ctx.beginPath();ctx.ellipse(e.x,e.y,45,22,0,0,Math.PI*2);ctx.stroke();ctx.restore();}}
-  window.GEAR={snapshot,sync,attackToken,hit:hitPrimary,range,maxHp,speed,tick,draw,incoming,tryRevive,skillCd,refreshSkill,enemyTime,enemyMove,enemyAttack,projectile,projectileTraits,projectileDamage,collectDrops,
+  function attackScale(z){const s=sync();return z&&s?primaryBonus(s,z,{},{charged:false}):1;}   // 长戟裂伤等按主攻击结算的伤害用
+  window.GEAR={attackScale,snapshot,sync,attackToken,hit:hitPrimary,range,maxHp,speed,tick,draw,incoming,tryRevive,skillCd,refreshSkill,enemyTime,enemyMove,enemyAttack,projectile,projectileTraits,projectileDamage,collectDrops,
     chargeScale:()=>1-reduction(sync()),
     reset(){current=null;currentUid='';cool={};pending=[];spirit=0;lastSpirit=-99;chain=0;chainTarget=null;victoryUntil=-1;soulUntil=-1;revived=false;healLog=[];fx=[];sync();},
     switch(){currentUid='';sync();victoryUntil=-1;soulUntil=-1;chain=0;chainTarget=null;},
@@ -7495,7 +7496,7 @@ function chargedAttack(power, tier = 1) {
       hitAny = true;
       hit(z, dmg, W.combo[0].kb, h.f, false, 0, .35, W.interrupt, false, { finisher: true, halberdCharge: true });
       if (!z.dead) {
-        addHalberdBleed(z, dmg, data.stacks);
+        addHalberdBleed(z, window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1, data.stacks);
         bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
       }
     }
@@ -7576,9 +7577,10 @@ function strike() {
       hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
       if (weapon === 'halberd') {
         if (!z.dead) {
-          const stacks = addHalberdBleed(z, attackDmg, 1);
+          const unit = mult * (window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1);   // 主攻击（不含段数倍率）
+          const stacks = addHalberdBleed(z, unit, 1);
           if (isFinisher) {
-            const rupture = stacks * .3 * attackDmg;
+            const rupture = stacks * .3 * unit;
             clearHalberdBleed(z);
             hit(z, rupture, 0, 0, false, 0, 0, false, false, { secondary: true, halberdRupture: true });
             bleedFx.push({ kind: 'rip', x: z.x, y: z.y - 12, t: 0, T: .2 });
@@ -8830,7 +8832,7 @@ function drawBleedFx(f) {
   if (!img || !img.complete) return;
   const fw = kind === 'rip' ? 64 : kind === 'splash' ? 48 : 32;
   const frame = Math.min(2, Math.max(0, Math.floor(f.t / (kind === 'rip' ? .067 : .05))));
-  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 8;
+  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 12;   // 滴血 8 像素看不见，放到 12
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, frame * fw, 0, fw, fw, f.x - size / 2, f.y - size / 2, size, size);
   ctx.restore();

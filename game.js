@@ -1270,7 +1270,7 @@ function chargedAttack(power, tier = 1) {
       hitAny = true;
       hit(z, dmg, W.combo[0].kb, h.f, false, 0, .35, W.interrupt, false, { finisher: true, halberdCharge: true });
       if (!z.dead) {
-        addHalberdBleed(z, dmg, data.stacks);
+        addHalberdBleed(z, window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1, data.stacks);
         bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
       }
     }
@@ -1351,9 +1351,10 @@ function strike() {
       hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
       if (weapon === 'halberd') {
         if (!z.dead) {
-          const stacks = addHalberdBleed(z, attackDmg, 1);
+          const unit = mult * (window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1);   // 主攻击（不含段数倍率）
+          const stacks = addHalberdBleed(z, unit, 1);
           if (isFinisher) {
-            const rupture = stacks * .3 * attackDmg;
+            const rupture = stacks * .3 * unit;
             clearHalberdBleed(z);
             hit(z, rupture, 0, 0, false, 0, 0, false, false, { secondary: true, halberdRupture: true });
             bleedFx.push({ kind: 'rip', x: z.x, y: z.y - 12, t: 0, T: .2 });
@@ -2605,7 +2606,7 @@ function drawBleedFx(f) {
   if (!img || !img.complete) return;
   const fw = kind === 'rip' ? 64 : kind === 'splash' ? 48 : 32;
   const frame = Math.min(2, Math.max(0, Math.floor(f.t / (kind === 'rip' ? .067 : .05))));
-  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 8;
+  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 12;   // 滴血 8 像素看不见，放到 12
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, frame * fw, 0, fw, fw, f.x - size / 2, f.y - size / 2, size, size);
   ctx.restore();
