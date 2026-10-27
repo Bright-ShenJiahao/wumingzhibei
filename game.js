@@ -151,9 +151,9 @@ WEAP.halberd = Object.assign({}, WEAP.staff, {
   aspd: 1,   // 长戟不继承棍子的 +8% 攻速
   reach: 46,
   combo: [
-    { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.0, kb: 56, daze: .2 },
-    { f: ['halberd_2a', 'halberd_2b'], d: [.11, .19], dmg: 1.0, kb: 50, daze: .3 },
-    { f: ['halberd_3a', 'halberd_3b'], d: [.16, .25], dmg: 1.1, kb: 150, daze: .6, multi: true, knock: true },
+    { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.0, kb: 56, daze: 0 },
+    { f: ['halberd_2a', 'halberd_2b'], d: [.11, .19], dmg: 1.0, kb: 50, daze: 0 },
+    { f: ['halberd_3a', 'halberd_3b'], d: [.16, .25], dmg: 1.1, kb: 150, daze: 0, multi: true, knock: true },
     { f: ['halberd_4a', 'halberd_4b'], d: [.10, .24], dmg: 1.9, kb: 90, daze: 0, thrust: true },
   ],
 });
