@@ -1196,7 +1196,7 @@ function updateHalberdBleed(dt) {
       if (dot > 0) hit(z, dot, 0, 0, false, 0, 0, false, false, { dot: true, secondary: true, halberdBleed: true });
     }
     if (z.halberdBleedDripAt && gameT >= z.halberdBleedDripAt) {
-      z.halberdBleedDripAt = gameT + rnd(.3, .65);
+      z.halberdBleedDripAt = gameT + rnd(.3, .65) * (1.2 - z.halberdBleed * .15);   // 层数越多滴得越快
       bleedFx.push({ kind: 'drip', x: z.x + rnd(-7, 7), y: z.y - rnd(8, 26), t: 0, T: .16 });
     }
   }
@@ -2612,6 +2612,7 @@ function drawBleedFx(f) {
   ctx.restore();
 }
 function drawHalberdBleedDots(z, top) {
+  return;   // 用户定：头顶层数红点不好看，取消；层数改由滴血频率表现
   const n = halberdStacks(z);
   if (!n) return;
   ctx.save();
