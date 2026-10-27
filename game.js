@@ -2052,13 +2052,29 @@ function tileLayer(img, s, par, y) {
 }
 function shadow(x, y, r) { ctx.fillStyle = 'rgba(40,30,30,.3)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * .3, 0, 0, 7); ctx.fill(); }
 // 像素角色在屏幕坐标里按整数倍放大绘制，保证像素清晰
-function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
+// 偏红版本（火术士）：预先算好一张画布，不依赖 ctx.filter（部分 iPhone 浏览器不支持滤镜，会和普通方士一模一样）
+function redFrame(fr) {
+  if (fr.red) return fr.red;
+  const c = document.createElement('canvas'); c.width = fr.img.naturalWidth || fr.img.width; c.height = fr.img.naturalHeight || fr.img.height;
+  const g = c.getContext('2d'); g.drawImage(fr.img, 0, 0);
+  try {
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      if (!p[i + 3]) continue;
+      const r = p[i], g = p[i + 1], b = p[i + 2];
+      if (r > 60 && g > r * .6 && b < r * .45) { p[i + 1] = b; p[i + 2] = b * .8; }   // 只把黄褐色的袍子、头巾换成红色
+    }
+    g.putImageData(d, 0, 0);
+  } catch (e) { return fr.img; }
+  return (fr.red = c);
+}
+function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false, red = false) {
   const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
   const sp = Math.max(.5, SC * PX) * sc;
   const sx = Math.round(x * SC + OXs), sy = Math.round(y * SC);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
   ctx.globalAlpha = alpha;
-  const im = white && fr.white ? fr.white : (dark && fr.dark ? fr.dark : fr.img);
+  const im = white && fr.white ? fr.white : (dark && fr.dark ? fr.dark : (red ? redFrame(fr) : fr.img));
   if (dark && !fr.dark) {
     try { if ('filter' in ctx) ctx.filter = 'brightness(.78) saturate(.82)'; } catch (e) {}
   }
@@ -2965,9 +2981,7 @@ function drawZ(z) {
   const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) * (Math.floor(z.t * 12) % 2 ? .4 : 1) : 1;
   const hop = z.celebrating ? Math.abs(Math.sin(z.celebrateT * 7)) * 2.5 : 0;
   const firePriest = z.type === 'priest_fire';
-  if (firePriest) { ctx.save(); ctx.filter = 'sepia(1) saturate(2.2) hue-rotate(-28deg) brightness(.86)'; }
-  drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
-  if (firePriest) ctx.restore();
+  drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark, firePriest);
   if (z.celebrating) drawCheer(z);
   if (z.dead || z.air || z.st === 'land') return;
   drawHalberdBleedDots(z, z.y - 40);
