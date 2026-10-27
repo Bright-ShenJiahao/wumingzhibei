@@ -79,6 +79,7 @@
     head.addEventListener('click', e => { e.stopPropagation(); setCollapsed(!panel.classList.contains('collapsed')); });
 
     const heroGroup = addGroup('hero', '主角');
+    btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
     btn(heroGroup, '回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = maxHeroHp(); });
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
