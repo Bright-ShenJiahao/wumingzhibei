@@ -135,14 +135,14 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .56, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .56, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.12, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
+    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .62, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .62, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.24, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
-    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .79, kb: 38, spd: 330, life: 1.05 },
-    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .79, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .45, kb: 75, spd: 390, life: 1.15 },
+    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .85, kb: 38, spd: 330, life: 1.05 },
+    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .85, kb: 38, spd: 340, life: 1.08 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .5, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
 // 长戟使用白衣专用帧。
@@ -1368,14 +1368,14 @@ function strike() {
       bowFx.push({ kind: 'volley', x: h.x + h.f * 20, y: h.y - 22, t: 0, T: .2, dir: h.f });
       for (let i = 0; i < n; i++) {
         const ang = n === 1 ? 0 : (i - (n - 1) / 2) * (spread * 2 / (n - 1));
-        const C2 = { ...C, dmg: .45, pierce: false, noPierce: true };
+        const C2 = { ...C, dmg: .5, pierce: false, noPierce: true };
         shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C: C2, c, hitSet: [], gearToken: h.atk.gearToken, kind: 'arrow', volley: true, final: true });
       }
       return;
     }
     const mainC = C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
-    const sOff = running ? rnd(-6, 6) : 0;                   // 跑动中弹道偏 ±6，站定不偏
+    const sOff = running ? (weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0;   // 跑动中弹道偏：石子 ±6、汉弓 ±3，站定不偏
     shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
     if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
       const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;
