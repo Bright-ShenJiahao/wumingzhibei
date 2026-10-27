@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=f251cc61fe" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=f251cc61fe)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=428721c9c9" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=428721c9c9)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -5090,7 +5090,7 @@ const Boss = (() => {
     dom.chapter = mk('div', 'tChapter', '');
     dom.chapter.innerHTML = `<div id="tChapterShell">
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
-        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="art/ui/flag.webp" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
+        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="${(window.ASSETS && ASSETS.props && ASSETS.props.flag_y && ASSETS.props.flag_y[0]) || 'pack/props/flag_y.png.webp?v=39a3474f71'}" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
         <p id="tChapterNotice"></p>
@@ -6853,13 +6853,15 @@ function waves(dt = 0) {
 function addChapter2Props(battle = 1) {
   // 每战重新摆放；jumo 挡路可打碎，其余新道具与旗帜只作装饰。
   props = props.filter(p => !p.chapter2);
+  // 旗子插在场地最后排（贴着上边缘，像背景的一部分）；其他道具分散在前 120～420 的范围，留出中间的通道
+  const T = M.top, B = M.bot, C = (M.top + M.bot) / 2;
   const layouts = {
-    1: [['jumo', 85, (M.top + M.bot) / 2 + 25], ['sacks', 130, M.top + 52], ['crate', 60, M.bot - 45], ['flag_y', 155, M.top + 92]],
-    2: [['debris', 85, M.top + 58], ['rack', 135, M.bot - 55], ['jumo', 70, (M.top + M.bot) / 2 - 32], ['flag_y', 160, M.top + 90]],
-    3: [['stones', 85, M.top + 58], ['brazier', 135, M.bot - 45], ['crate', 60, (M.top + M.bot) / 2 + 35], ['flag_y', 160, M.top + 92]],
-    4: [['flag_ren', 85, M.top + 92], ['jumo', 130, (M.top + M.bot) / 2 + 20], ['rack', 65, M.bot - 48]],
-    5: [['flag_di', 85, M.top + 92], ['sacks', 130, M.top + 55], ['stones', 65, M.bot - 45]],
-    6: [['flag_tian', 250, M.top + 90], ['flag_tian', 520, M.top + 60], ['flag_tian', 810, M.top + 90], ['flag_cang', 340, (M.top + M.bot) / 2 + 28], ['flag_huang', 740, (M.top + M.bot) / 2 + 28]],
+    1: [['jumo', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
+    2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo', 120, C - 30], ['flag_y', 240, T + 4]],
+    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
+    4: [['flag_ren', 200, T + 4], ['jumo', 130, C + 20], ['rack', 330, B - 14]],
+    5: [['flag_di', 200, T + 4], ['sacks', 300, T + 22], ['stones', 140, B - 14]],
+    6: [['flag_tian', 200, T + 4], ['flag_tian', 540, T + 2], ['flag_tian', 880, T + 4], ['flag_cang', 400, T + 6], ['flag_huang', 680, T + 6]],
   };
   const place = layouts[battle] || [];
   for (const [g, dx, y] of place) {
@@ -8421,7 +8423,7 @@ function draw() {
   if (!(window.XIAOCHANG && XIAOCHANG.active()) && zs.some(z => z.T && z.T.boss)) {
     const im = IMG['p_flag_cang'];
     if (im && im.complete) {
-      const fh2 = 100, fw2 = fh2 * 240 / 566;   // 保持原旗子的绘制尺寸
+      const fh2 = 100, fw2 = fh2 * im.width / im.height;   // 高度和原旗子一样，宽度按新旗图比例，避免压扁
       const fx2 = 3211, fy2 = 189;   // 候选③：右侧上方背景（世界坐标，固定不随镜头）
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);

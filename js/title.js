@@ -529,7 +529,7 @@
     dom.chapter = mk('div', 'tChapter', '');
     dom.chapter.innerHTML = `<div id="tChapterShell">
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
-        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="art/ui/flag.webp" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
+        <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="${(window.ASSETS && ASSETS.props && ASSETS.props.flag_y && ASSETS.props.flag_y[0]) || 'art/props/flag_y.png'}" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
         <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
         <p id="tChapterNotice"></p>

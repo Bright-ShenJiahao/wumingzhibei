@@ -606,13 +606,15 @@ function waves(dt = 0) {
 function addChapter2Props(battle = 1) {
   // 每战重新摆放；jumo 挡路可打碎，其余新道具与旗帜只作装饰。
   props = props.filter(p => !p.chapter2);
+  // 旗子插在场地最后排（贴着上边缘，像背景的一部分）；其他道具分散在前 120～420 的范围，留出中间的通道
+  const T = M.top, B = M.bot, C = (M.top + M.bot) / 2;
   const layouts = {
-    1: [['jumo', 85, (M.top + M.bot) / 2 + 25], ['sacks', 130, M.top + 52], ['crate', 60, M.bot - 45], ['flag_y', 155, M.top + 92]],
-    2: [['debris', 85, M.top + 58], ['rack', 135, M.bot - 55], ['jumo', 70, (M.top + M.bot) / 2 - 32], ['flag_y', 160, M.top + 90]],
-    3: [['stones', 85, M.top + 58], ['brazier', 135, M.bot - 45], ['crate', 60, (M.top + M.bot) / 2 + 35], ['flag_y', 160, M.top + 92]],
-    4: [['flag_ren', 85, M.top + 92], ['jumo', 130, (M.top + M.bot) / 2 + 20], ['rack', 65, M.bot - 48]],
-    5: [['flag_di', 85, M.top + 92], ['sacks', 130, M.top + 55], ['stones', 65, M.bot - 45]],
-    6: [['flag_tian', 250, M.top + 90], ['flag_tian', 520, M.top + 60], ['flag_tian', 810, M.top + 90], ['flag_cang', 340, (M.top + M.bot) / 2 + 28], ['flag_huang', 740, (M.top + M.bot) / 2 + 28]],
+    1: [['jumo', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
+    2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo', 120, C - 30], ['flag_y', 240, T + 4]],
+    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
+    4: [['flag_ren', 200, T + 4], ['jumo', 130, C + 20], ['rack', 330, B - 14]],
+    5: [['flag_di', 200, T + 4], ['sacks', 300, T + 22], ['stones', 140, B - 14]],
+    6: [['flag_tian', 200, T + 4], ['flag_tian', 540, T + 2], ['flag_tian', 880, T + 4], ['flag_cang', 400, T + 6], ['flag_huang', 680, T + 6]],
   };
   const place = layouts[battle] || [];
   for (const [g, dx, y] of place) {
@@ -2174,7 +2176,7 @@ function draw() {
   if (!(window.XIAOCHANG && XIAOCHANG.active()) && zs.some(z => z.T && z.T.boss)) {
     const im = IMG['p_flag_cang'];
     if (im && im.complete) {
-      const fh2 = 100, fw2 = fh2 * 240 / 566;   // 保持原旗子的绘制尺寸
+      const fh2 = 100, fw2 = fh2 * im.width / im.height;   // 高度和原旗子一样，宽度按新旗图比例，避免压扁
       const fx2 = 3211, fy2 = 189;   // 候选③：右侧上方背景（世界坐标，固定不随镜头）
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(im, Math.round(fx2 - fw2 / 2), Math.round(fy2 - fh2), fw2, fh2);
