@@ -12,7 +12,12 @@ function validate(p){
   const clean=JSON.parse(JSON.stringify(p));
   if(!clean.items.every(i=>i&&TYPES.has(i.type)&&typeof i.uid==='string'&&i.uid.length<=100&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&Array.isArray(i.affixes)&&i.affixes.length<=2))throw new Error('装备数据不合法');
   for(const key of ['_removed','_equipAt','equipped','campaign'])if(!clean[key]||typeof clean[key]!=='object'||Array.isArray(clean[key]))clean[key]={};
-  // 校场进度属于 campaign；统一按章节白名单和0～5层校验，云合并取最大值。
+  const int=(v,fallback=0)=>{const n=Number(v);return Number.isInteger(n)&&n>=0&&n<=1e9?n:fallback;};
+  if(clean.wallet!=null&&(typeof clean.wallet!=='object'||Array.isArray(clean.wallet)))throw new Error('金币数据不合法');
+  if(clean.fruit!=null&&(typeof clean.fruit!=='object'||Array.isArray(clean.fruit)))throw new Error('彩色果数据不合法');
+  clean.wallet={earned:int(clean.wallet?.earned),spent:int(clean.wallet?.spent)};
+  clean.fruit={got:clean.fruit?int(clean.fruit.got,0):6,used:int(clean.fruit?.used)};
+  // 校场进度属于 campaign；统一按章节白名单和0～6层校验，云合并取最大值。
   clean.campaign = globalThis.CLOUD_MERGE.merge({campaign:clean.campaign}).campaign;
   return clean;
 }

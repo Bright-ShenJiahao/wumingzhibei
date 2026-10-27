@@ -1,9 +1,14 @@
 // 浏览器和后端共用：按武器UID合并，删除标记胜过旧快照，关卡进度取并集。
 (function(root){
   function merge(...profiles){
-    const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true};
+    const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true,wallet:{earned:0,spent:0},fruit:{got:6,used:0}};
     const items=new Map();let pityAt=-1;
+    const count=(v)=>{const n=Number(v);return Number.isInteger(n)&&n>=0?Math.min(1e9,n):0;};
     for(const p of profiles){if(!p||typeof p!=='object')continue;
+      result.wallet.earned=Math.max(result.wallet.earned,count(p.wallet?.earned));
+      result.wallet.spent=Math.max(result.wallet.spent,count(p.wallet?.spent));
+      result.fruit.got=Math.max(result.fruit.got,count(p.fruit?.got));
+      result.fruit.used=Math.max(result.fruit.used,count(p.fruit?.used));
       result.played ||= !!p.played;
       for(const chapter of ['1','2'])if(p.campaign?.[chapter])result.campaign[chapter]=true;
       for(const chapter of ['1','2']) {

@@ -23,6 +23,9 @@
     }catch(e){return false;}
   }
   function starter(type){const item=D.generate(type,'boss','',0);item.special=null;item.inscription='';return item;}
+  const counter=(value,limit=1e9)=>{const n=Number(value);return Number.isInteger(n)&&n>=0?Math.min(limit,n):0;};
+  function normalizeWallet(v){return {earned:counter(v?.earned),spent:counter(v?.spent)};}
+  function normalizeFruit(v){if(!v||typeof v!=='object'||Array.isArray(v))return {got:6,used:0};return {got:counter(v.got),used:counter(v.used)};}
   function state(){
     const name=player();if(cache&&cacheName===name)return cache;
     cacheName=name;baseline=null;const all=debug?memory:read();freshLocal=!Object.prototype.hasOwnProperty.call(all,name);cache=!freshLocal&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
@@ -31,6 +34,8 @@
     cache.items=cache.items.filter(i=>i&&D.names[i.type]&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&typeof i.uid==='string');
     for(const item of cache.items){item.affixes=(item.affixes||[]).filter(a=>D.positive[a.id]&&Number.isInteger(a.tier)&&a.tier>=0&&a.tier<=2).map(a=>({...a,value:D.positive[a.id].values[a.tier]}));if(!D.special[item.special])item.special=null;if(item.negative&&!D.negative[item.negative.id])item.negative=null;}
     cache.equipped ||= {};
+    cache.wallet=normalizeWallet(cache.wallet);
+    cache.fruit=normalizeFruit(cache.fruit);
     for(const slot of ['long','short','ranged'])if(!cache.items.some(i=>i.uid===cache.equipped[slot]&&D.slots[i.type]===slot))cache.equipped[slot]=null;
     const legacy=window.TITLE&&TITLE.legacyLoadout?TITLE.legacyLoadout():null;
     // 旧版v1会自动赠送大刀，不把这份误赠记录再次迁入；已存在的v2实例不批量删除。
@@ -134,7 +139,7 @@
     return true;
   }
   function setMastery(next){const p=state();p.mastery=next;save();}
-  window.ARMORY={setMastery,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();

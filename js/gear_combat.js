@@ -122,7 +122,7 @@
   function collectDrops(){for(const d of drops)if(d.item&&!d.got&&ARMORY.add(d.item))d.got=1;}
   function tick(dt){sync();if(gameT-lastSpirit>5)spirit=0;
     const due=pending.filter(p=>p.t<=gameT);pending=pending.filter(p=>p.t>gameT);for(const p of due)if(p.uid===current.uid&&!over&&!hero.air&&hero.st!=='hurt')p.run();
-    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(s.special==='soul'||s.special2==='soul')soulUntil=gameT+3;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
+    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;if(window.WALLET)WALLET.awardKill(z);const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(s.special==='soul'||s.special2==='soul')soulUntil=gameT+3;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
       if(z.gearDot)for(const entries of Object.values(z.gearDot))for(let i=entries.length-1;i>=0;i--){const e=entries[i];if(e.next<=gameT&&e.next<=e.until){e.next+=1;hit(z,e.damage,0,0,false,0,0,false,false,{secondary:true,scaled:true,dot:true});}if(e.until<=gameT)entries.splice(i,1);}
       if(z.dead)dropEnemy(z);
     }

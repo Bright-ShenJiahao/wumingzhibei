@@ -225,6 +225,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 function reset() {
   chapter2Run = null;
   if (window.XIAOCHANG) XIAOCHANG.leave();
+  if (window.WALLET) WALLET.startRun();
   M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
@@ -1738,11 +1739,13 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
+      coins: window.WALLET ? WALLET.runCoins() : 0,
       // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
+    if (window.WALLET) WALLET.flush();
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);   // 第二章通关记第二章，不再误记成第一章
@@ -2176,6 +2179,9 @@ function drawResult(HW, HH) {
   ctx.font = Math.round(sh * .058) + 'px ' + F;
   ctx.fillStyle = '#4a3a2a';
   ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .40);
+  ctx.fillStyle = '#6b4d22';
+  ctx.font = Math.round(sh * .045) + 'px ' + F;
+  ctx.fillText('本局获得金币 ' + (result.coins || 0), px0 + pw * .50, sy + sh * .445);
 
   // 台词
   const line = result.line || '';

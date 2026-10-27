@@ -836,6 +836,7 @@
   }
 
   function openChapterSelect(target = 1) {
+    if (window.WALLET) WALLET.flush();
     S.mode = 'chapter'; S.chapterReturn = true;
     if (window.ensureAssets) { ensureAssets('xiaochang', { silent: true }); if (window.CHAPTER2 && CHAPTER2.canEnter()) ensureAssets('chapter2', { silent: true }); }
     document.body.classList.add('wzb-intro');
@@ -857,6 +858,7 @@
     previewRaf = 0;
     document.body.classList.remove('wzb-intro');
     document.body.classList.add('wzb-title');
+    if (window.WALLET) WALLET.flush();
     if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.leave(); if (window.ROGUE) ROGUE.reset(); }
     if (typeof reset === 'function') reset();
     S.mode = 'title'; S.chapterReturn = false;
@@ -906,7 +908,7 @@
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
-    if (target) { target.innerHTML = '<button type="button" id="tMastery">⚔ 武器熟练度 <small></small></button>'; target.querySelector('small').textContent = window.MASTERY ? MASTERY.summary() : ''; target.querySelector('button').onclick = () => window.MASTERY && MASTERY.open(); }
+    if (target) { target.innerHTML = `${window.SHOP ? SHOP.entryMarkup() : ''}<button type="button" id="tMastery">⚔ 武器熟练度</button>`; if (window.SHOP) SHOP.bind(target); target.querySelector('#tMastery').onclick = () => window.MASTERY && MASTERY.open(); }
 
     const slotMarkup=slot=>{const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
@@ -1139,6 +1141,7 @@
 
   function show() {
     S.mode = 'title'; S.intro = 0;
+    if (window.WALLET) WALLET.flush();
     if (dom.chapter) dom.chapter.classList.remove('open');
     if (typeof reset === 'function') reset();   // 回首页时把这一局清掉（背景音乐也会回到村庄曲）
     document.body.classList.remove('wzb-intro');

@@ -425,7 +425,7 @@ function hit(z, dmg, dir, ranged) {
     ctx.fillRect(x, y, w * z.hp / HP, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    const affix = window.XIAOCHANG && XIAOCHANG.affixText ? XIAOCHANG.affixText(z) : '';
+    const affix = window.XIAOCHANG && XIAOCHANG.affixText && z.affixT < (z.affixHold == null ? 4 : z.affixHold) + .5 ? XIAOCHANG.affixText(z) : '';
     const label='黄巾流寇·管亥'+(window.XIAOCHANG && XIAOCHANG.active() && affix ? ' · '+affix : '');
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }

@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=0c678e9ff8" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=0c678e9ff8)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=9a1a2ce69a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=9a1a2ce69a)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -203,6 +203,9 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     }catch(e){return false;}
   }
   function starter(type){const item=D.generate(type,'boss','',0);item.special=null;item.inscription='';return item;}
+  const counter=(value,limit=1e9)=>{const n=Number(value);return Number.isInteger(n)&&n>=0?Math.min(limit,n):0;};
+  function normalizeWallet(v){return {earned:counter(v?.earned),spent:counter(v?.spent)};}
+  function normalizeFruit(v){if(!v||typeof v!=='object'||Array.isArray(v))return {got:6,used:0};return {got:counter(v.got),used:counter(v.used)};}
   function state(){
     const name=player();if(cache&&cacheName===name)return cache;
     cacheName=name;baseline=null;const all=debug?memory:read();freshLocal=!Object.prototype.hasOwnProperty.call(all,name);cache=!freshLocal&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
@@ -211,6 +214,8 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     cache.items=cache.items.filter(i=>i&&D.names[i.type]&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&typeof i.uid==='string');
     for(const item of cache.items){item.affixes=(item.affixes||[]).filter(a=>D.positive[a.id]&&Number.isInteger(a.tier)&&a.tier>=0&&a.tier<=2).map(a=>({...a,value:D.positive[a.id].values[a.tier]}));if(!D.special[item.special])item.special=null;if(item.negative&&!D.negative[item.negative.id])item.negative=null;}
     cache.equipped ||= {};
+    cache.wallet=normalizeWallet(cache.wallet);
+    cache.fruit=normalizeFruit(cache.fruit);
     for(const slot of ['long','short','ranged'])if(!cache.items.some(i=>i.uid===cache.equipped[slot]&&D.slots[i.type]===slot))cache.equipped[slot]=null;
     const legacy=window.TITLE&&TITLE.legacyLoadout?TITLE.legacyLoadout():null;
     // 旧版v1会自动赠送大刀，不把这份误赠记录再次迁入；已存在的v2实例不批量删除。
@@ -314,7 +319,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     return true;
   }
   function setMastery(next){const p=state();p.mastery=next;save();}
-  window.ARMORY={setMastery,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();
@@ -1464,7 +1469,7 @@ function hit(z, dmg, dir, ranged) {
     ctx.fillRect(x, y, w * z.hp / HP, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    const affix = window.XIAOCHANG && XIAOCHANG.affixText ? XIAOCHANG.affixText(z) : '';
+    const affix = window.XIAOCHANG && XIAOCHANG.affixText && z.affixT < (z.affixHold == null ? 4 : z.affixHold) + .5 ? XIAOCHANG.affixText(z) : '';
     const label='黄巾流寇·管亥'+(window.XIAOCHANG && XIAOCHANG.active() && affix ? ' · '+affix : '');
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }
@@ -1753,9 +1758,14 @@ function hit(z, dmg, dir, ranged) {
 // 浏览器和后端共用：按武器UID合并，删除标记胜过旧快照，关卡进度取并集。
 (function(root){
   function merge(...profiles){
-    const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true};
+    const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true,wallet:{earned:0,spent:0},fruit:{got:6,used:0}};
     const items=new Map();let pityAt=-1;
+    const count=(v)=>{const n=Number(v);return Number.isInteger(n)&&n>=0?Math.min(1e9,n):0;};
     for(const p of profiles){if(!p||typeof p!=='object')continue;
+      result.wallet.earned=Math.max(result.wallet.earned,count(p.wallet?.earned));
+      result.wallet.spent=Math.max(result.wallet.spent,count(p.wallet?.spent));
+      result.fruit.got=Math.max(result.fruit.got,count(p.fruit?.got));
+      result.fruit.used=Math.max(result.fruit.used,count(p.fruit?.used));
       result.played ||= !!p.played;
       for(const chapter of ['1','2'])if(p.campaign?.[chapter])result.campaign[chapter]=true;
       for(const chapter of ['1','2']) {
@@ -2500,7 +2510,7 @@ function hit(z, dmg, dir, ranged) {
   function collectDrops(){for(const d of drops)if(d.item&&!d.got&&ARMORY.add(d.item))d.got=1;}
   function tick(dt){sync();if(gameT-lastSpirit>5)spirit=0;
     const due=pending.filter(p=>p.t<=gameT);pending=pending.filter(p=>p.t>gameT);for(const p of due)if(p.uid===current.uid&&!over&&!hero.air&&hero.st!=='hurt')p.run();
-    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(s.special==='soul'||s.special2==='soul')soulUntil=gameT+3;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
+    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;if(window.WALLET)WALLET.awardKill(z);const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(s.special==='soul'||s.special2==='soul')soulUntil=gameT+3;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
       if(z.gearDot)for(const entries of Object.values(z.gearDot))for(let i=entries.length-1;i>=0;i--){const e=entries[i];if(e.next<=gameT&&e.next<=e.until){e.next+=1;hit(z,e.damage,0,0,false,0,0,false,false,{secondary:true,scaled:true,dot:true});}if(e.until<=gameT)entries.splice(i,1);}
       if(z.dead)dropEnemy(z);
     }
@@ -3902,6 +3912,208 @@ function hit(z, dmg, dir, ranged) {
   window.SHARE = { send, text: (r) => (r.win ? WIN : LOSE)[0](r) };
 })();
 
+// 金币、彩色果与货郎铺。数据存进武器存档，按累计值合并，避免多设备刷钱。
+(() => {
+  const MAX = 1e9;
+  const clamp = n => Math.max(0, Math.min(MAX, Math.floor(Number(n) || 0)));
+  const profile = () => window.ARMORY && ARMORY.state ? ARMORY.state() : null;
+  let pending = 0, runEarned = 0;
+
+  function walletOf(p) {
+    p.wallet = p.wallet && typeof p.wallet === 'object' ? p.wallet : {};
+    p.wallet.earned = clamp(p.wallet.earned);
+    p.wallet.spent = clamp(p.wallet.spent);
+    return p.wallet;
+  }
+  function fruitOf(p) {
+    p.fruit = p.fruit && typeof p.fruit === 'object' ? p.fruit : { got: 6, used: 0 };
+    p.fruit.got = clamp(p.fruit.got);
+    p.fruit.used = clamp(p.fruit.used);
+    return p.fruit;
+  }
+  function save() { if (window.ARMORY && ARMORY.saveNow) return ARMORY.saveNow(); return false; }
+  function balance() { const p = profile(); if (!p) return 0; const w = walletOf(p); return Math.max(0, w.earned - w.spent); }
+  function fruitCount() { const p = profile(); if (!p) return 0; const f = fruitOf(p); return Math.max(0, f.got - f.used); }
+  function flush() {
+    if (!pending) return true;
+    const p = profile(); if (!p) return false;
+    const w = walletOf(p); w.earned = clamp(w.earned + pending); pending = 0;
+    const ok = save(); if (window.SHOP) SHOP.refresh(); return ok;
+  }
+  function awardKill(z) {
+    if (!z || !z.T) return 0;
+    const base = (z.T.boss || z.T.chapterBoss) ? 20 : z.T.elite ? 5 : 1;
+    let mult = 1;
+    if (window.XIAOCHANG && XIAOCHANG.active()) {
+      const floor = Number(XIAOCHANG.state()?.floor) || 1;
+      mult = floor >= 6 ? 2 : 1 + .1 * (floor - 1);
+    } else if (typeof chapter2Run !== 'undefined' && chapter2Run) mult = 1.5;
+    const n = Math.max(1, Math.round(base * mult));
+    pending += n; runEarned += n;
+    return n;
+  }
+  function startRun() {
+    flush();
+    runEarned = 0;
+  }
+  function spendCoins(n) {
+    n = Math.floor(Number(n) || 0);
+    if (n <= 0) return false;
+    flush();
+    const p = profile(); if (!p) return false;
+    const w = walletOf(p);
+    if (w.earned - w.spent < n) return false;
+    w.spent = clamp(w.spent + n);
+    if (!save()) { w.spent = clamp(w.spent - n); return false; }
+    if (window.SHOP) SHOP.refresh();
+    return true;
+  }
+  function addFruits(n) {
+    n = Math.floor(Number(n) || 0); if (n <= 0) return false;
+    const p = profile(); if (!p) return false;
+    const f = fruitOf(p); f.got = clamp(f.got + n);
+    if (!save()) { f.got = clamp(f.got - n); return false; }
+    if (window.SHOP) SHOP.refresh();
+    return true;
+  }
+  function useFruits(n) {
+    n = Math.floor(Number(n) || 0); if (n <= 0) return false;
+    const p = profile(); if (!p) return false;
+    const f = fruitOf(p);
+    if (f.got - f.used < n) return false;
+    f.used = clamp(f.used + n);
+    if (!save()) { f.used = clamp(f.used - n); return false; }
+    if (window.SHOP) SHOP.refresh();
+    return true;
+  }
+
+  window.WALLET = {
+    coins: () => balance() + pending,
+    fruits: fruitCount,
+    runCoins: () => runEarned,
+    pendingCoins: () => pending,
+    awardKill, startRun, flush,
+    spendCoins, addFruits, useFruits,
+  };
+
+  const OPEN_LINES = ['客官，看看？', '彩色果可是西域来的稀罕物！', '钱不够？去校场多练练。'];
+  const SHOP_ITEMS = [
+    { id: 'fruit', name: '彩色果', desc: '换一个部位的颜色需要 2 个', price: 50, kind: 'stack', amounts: [1, 5, 10], buy: n => WALLET.addFruits(n) },
+  ];
+  let root = null, overlay = null, line = '', owned = {};
+  const fmt = n => Number(n || 0).toLocaleString('zh-CN');
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
+  function injectStyle() {
+    if (document.getElementById('shopStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'shopStyle';
+    style.textContent = `
+      .tWallet{display:inline-block;margin-right:8px;color:#e8c97c;font:700 13px "PingFang SC",sans-serif;vertical-align:middle;white-space:nowrap}
+      #tShop{padding:4px 12px;border:1px solid #9c7843;border-radius:6px;background:linear-gradient(#62482d,#34261b);color:#f1d58f;font:700 14px sans-serif;cursor:pointer;text-shadow:none;margin-right:8px}
+      #tShop:active{transform:translateY(1px);filter:brightness(1.15)}
+      #shopOverlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(10,7,6,.72)}
+      #shopPanel{width:min(780px,94vw);max-height:88dvh;display:flex;flex-direction:column;box-sizing:border-box;border:2px solid #b58b4c;border-radius:10px;background:linear-gradient(145deg,#3b2a1d,#1d1713);box-shadow:inset 0 0 0 2px #2b2017,0 18px 60px #000c;color:#ecd6ab;overflow:hidden}
+      .shopHead{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid #765b38;background:linear-gradient(#5b4028,#2e2218)}
+      .shopHead h2{margin:0;color:#f3d27c;font:700 20px MaShanZheng,"STKaiti",serif;letter-spacing:1px}.shopClose{width:34px;height:34px;border:1px solid #927044;border-radius:50%;background:#34251a;color:#f3d27c;font:700 18px sans-serif;cursor:pointer}
+      .shopBody{display:grid;grid-template-columns:32% minmax(0,1fr);gap:12px;min-height:0;overflow:hidden;padding:12px}
+      .shopLeft{min-width:0;display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #6f5537;border-radius:7px;background:linear-gradient(160deg,#493324,#251d17);overflow:auto}
+      .shopPortrait{height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #745a3c;border-radius:6px;background:radial-gradient(ellipse at 50% 65%,#71502c66,transparent 70%),#211914;overflow:hidden}
+      .shopPortrait img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated}.shopPortrait.empty::after{content:"货郎";color:#9c7d50;font:16px MaShanZheng,serif}
+      .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
+      .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
+      .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
+      .shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+      .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}
+      .shopCardIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid #6d5336;border-radius:5px;background:#1c1511}
+      .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
+      .fruitIcon::after{content:"";position:absolute;left:15px;top:-4px;width:2px;height:9px;background:#6c8d3a;transform:rotate(18deg)}
+      .shopName{color:#f4d98f;font:700 15px "PingFang SC",sans-serif}.shopDesc{color:#cbb58e;font:12px/1.45 "PingFang SC",sans-serif}
+      .shopPrice{color:#ffcf62;font:700 13px "PingFang SC",sans-serif}.shopBuyRow{grid-column:1/-1;display:flex;gap:5px;flex-wrap:wrap}
+      .shopBuy{border:1px solid #a77e47;border-radius:4px;background:#593d27;color:#ffe5b0;padding:5px 7px;font:700 12px "PingFang SC",sans-serif;cursor:pointer}.shopBuy:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1)}.shopBuy:active:not(:disabled){filter:brightness(1.2)}
+      .shopEmpty{color:#c3aa83;font:13px "PingFang SC",sans-serif;padding:12px}
+      @media(max-height:430px){#shopPanel{max-height:94dvh}.shopBody{grid-template-columns:26% minmax(0,1fr);gap:7px;padding:7px}.shopLeft{padding:6px;gap:5px}.shopPortrait{height:82px}.shopLine{font-size:10px;padding:5px;min-height:30px}.shopWallet{font-size:10px;padding:4px}.shopWallet b{font-size:13px}.shopGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.shopCard{grid-template-columns:34px minmax(0,1fr);padding:6px;gap:4px}.shopCardIcon{width:34px;height:34px}.shopName{font-size:12px}.shopDesc{font-size:10px}.shopPrice{font-size:11px}.shopBuy{font-size:10px;padding:4px 5px}.shopHead h2{font-size:17px}.shopHead{padding:6px 10px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function entryMarkup() {
+    injectStyle();
+    return `<span class="tWallet" data-shop-wallet>💰 ${fmt(WALLET.coins())}</span><button type="button" id="tShop">🏮 货郎铺</button>`;
+  }
+  function bind(target) {
+    const button = target && target.querySelector('#tShop');
+    if (button) button.onclick = open;
+    refreshEntry();
+  }
+  function refreshEntry() {
+    document.querySelectorAll('[data-shop-wallet]').forEach(n => { n.textContent = '💰 ' + fmt(WALLET.coins()); });
+  }
+  function portraitHTML() {
+    const src = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.shopkeeper;
+    return src ? `<img src="${src}" alt="货郎">` : '';
+  }
+  function render() {
+    if (!overlay) return;
+    const balance = WALLET.coins(), fruits = WALLET.fruits();
+    const left = overlay.querySelector('.shopWallet');
+    if (left) left.innerHTML = `💰 余额 <b>${fmt(balance)}</b><br>🍎 彩色果 <b>${fmt(fruits)}</b>`;
+    const lineNode = overlay.querySelector('.shopLine'); if (lineNode) lineNode.textContent = line;    const grid = overlay.querySelector('.shopGrid'); if (!grid) return;
+    grid.innerHTML = '';
+    if (!SHOP_ITEMS.length) { grid.innerHTML = '<p class="shopEmpty">货郎今天没进货。</p>'; return; }
+    for (const item of SHOP_ITEMS) {
+      const card = document.createElement('div'); card.className = 'shopCard';
+      const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : '<span aria-hidden="true">🎁</span>';
+      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币</div><div class="shopBuyRow"></div>`;
+      const row = card.querySelector('.shopBuyRow');
+      if (item.kind === 'stack') {
+        for (const amount of item.amounts || [1]) {
+          const total = item.price * amount;
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = `买${amount} · ${fmt(total)}`; b.disabled = balance < total;
+          b.onclick = () => buy(item, amount);
+          row.append(b);
+        }
+      } else {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = owned[item.id] ? '已拥有' : '购买'; b.disabled = !!owned[item.id] || balance < item.price;
+        b.onclick = () => buy(item, 1);
+        row.append(b);
+      }
+      grid.append(card);
+    }
+  }
+  function buy(item, amount) {
+    const n = item.kind === 'stack' ? amount : 1;
+    const total = item.price * n;
+    if (!WALLET.spendCoins(total)) { line = '钱不够？去校场多练练。'; render(); return false; }
+    if (item.kind !== 'stack') { owned[item.id] = true; if (item.buy) item.buy(1); }
+    else if (item.buy) item.buy(n);
+    line = '多谢惠顾！'; render(); refreshEntry();
+    const walletNode = overlay && overlay.querySelector('.shopWallet');
+    if (walletNode) { walletNode.classList.remove('bump'); void walletNode.offsetWidth; walletNode.classList.add('bump'); }
+    return true;
+  }
+  function open() {
+    if (overlay) return;
+    injectStyle();
+    line = pick(OPEN_LINES);
+    overlay = document.createElement('div'); overlay.id = 'shopOverlay';
+    overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="货郎铺">
+      <header class="shopHead"><h2>🏮 货郎铺</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
+      <div class="shopBody"><aside class="shopLeft"><div class="shopPortrait${portraitHTML()?'':' empty'}">${portraitHTML()}</div><p class="shopLine"></p><div class="shopWallet"></div></aside><div class="shopRight"><div class="shopGrid"></div></div></div>
+    </section>`;
+    overlay.addEventListener('pointerdown', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('.shopClose').onclick = close;
+    document.body.appendChild(overlay);
+    render(); refreshEntry();
+  }
+  function close() { if (overlay) { overlay.remove(); overlay = null; refreshEntry(); } }
+  function refresh() { if (overlay) render(); refreshEntry(); }
+
+  window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) WALLET.flush(); });
+  window.addEventListener('pagehide', () => WALLET.flush());
+})();
+
 // 开始界面（登录页）：标题 / 电视演示 / 名字输入 / 开始按钮 / 操作说明 / 穿越转场。
 // 只在 game.js 里挂 3 处：update 开头挡推进、draw 开头接管整屏、HUD 取名字。
 // 换正式背景图时只改下面 TV 和 drawBg() 里的图片即可。
@@ -4740,6 +4952,7 @@ function hit(z, dmg, dir, ranged) {
   }
 
   function openChapterSelect(target = 1) {
+    if (window.WALLET) WALLET.flush();
     S.mode = 'chapter'; S.chapterReturn = true;
     if (window.ensureAssets) { ensureAssets('xiaochang', { silent: true }); if (window.CHAPTER2 && CHAPTER2.canEnter()) ensureAssets('chapter2', { silent: true }); }
     document.body.classList.add('wzb-intro');
@@ -4761,6 +4974,7 @@ function hit(z, dmg, dir, ranged) {
     previewRaf = 0;
     document.body.classList.remove('wzb-intro');
     document.body.classList.add('wzb-title');
+    if (window.WALLET) WALLET.flush();
     if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.leave(); if (window.ROGUE) ROGUE.reset(); }
     if (typeof reset === 'function') reset();
     S.mode = 'title'; S.chapterReturn = false;
@@ -4810,7 +5024,7 @@ function hit(z, dmg, dir, ranged) {
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
-    if (target) { target.innerHTML = '<button type="button" id="tMastery">⚔ 武器熟练度 <small></small></button>'; target.querySelector('small').textContent = window.MASTERY ? MASTERY.summary() : ''; target.querySelector('button').onclick = () => window.MASTERY && MASTERY.open(); }
+    if (target) { target.innerHTML = `${window.SHOP ? SHOP.entryMarkup() : ''}<button type="button" id="tMastery">⚔ 武器熟练度</button>`; if (window.SHOP) SHOP.bind(target); target.querySelector('#tMastery').onclick = () => window.MASTERY && MASTERY.open(); }
 
     const slotMarkup=slot=>{const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
@@ -5043,6 +5257,7 @@ function hit(z, dmg, dir, ranged) {
 
   function show() {
     S.mode = 'title'; S.intro = 0;
+    if (window.WALLET) WALLET.flush();
     if (dom.chapter) dom.chapter.classList.remove('open');
     if (typeof reset === 'function') reset();   // 回首页时把这一局清掉（背景音乐也会回到村庄曲）
     document.body.classList.remove('wzb-intro');
@@ -5288,11 +5503,12 @@ window.XIAOCHANG = (() => {
       z.dark = true;
       z.ghost = z.ghost || 0;
       z.blinkT = 6;
+      z.affixT = 0; z.affixHold = 4;
       return;
     }
     if (run.floor >= 3 && z.T.elite) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
     if (run.floor >= 4 && (z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
-    if (z.xAffix) z.xAffixes = [z.xAffix];
+    if (z.xAffix) { z.xAffixes = [z.xAffix]; z.affixT = 0; z.affixHold = 4; }
   }
   function spawnSide(type, index = 0) {
     // 出生点与玩家至少相距90，极端贴边时全部改从另一侧进入。
@@ -5357,7 +5573,10 @@ window.XIAOCHANG = (() => {
     for (const link of ghostLinks) link.t += dt;
     for (const link of ghostLinks) {
       if (link.t >= link.T) {
-        if (link.target && !link.target.dead) link.target.ghost = Math.min(3, (link.target.ghost || 0) + 1);
+        if (link.target && !link.target.dead) {
+          link.target.ghost = Math.min(3, (link.target.ghost || 0) + 1);
+          link.target.affixT = 0; link.target.affixHold = 2;
+        }
         link.done = true;
       }
     }
@@ -5367,6 +5586,7 @@ window.XIAOCHANG = (() => {
   }
   function update(dt = 0) {
     if (!active || !run || run.status === 'result' || over) return;
+    for (const z of zs) if (z.affixT != null) z.affixT += dt;
     magicUpdate(dt);
     if (run.status === 'cards') { if (!ROGUE.blocks()) spawnWave(); return; }
     if (run.status === 'fight' && !zs.some(z => !z.dead)) { run.status = 'rest'; run.nextAt = gameT + 1.5; }
@@ -5412,6 +5632,8 @@ window.XIAOCHANG = (() => {
       GEAR.collectDrops();
       if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
     }
+    run.coins = window.WALLET ? WALLET.runCoins() : 0;
+    if (window.WALLET) WALLET.flush();
     run.status = 'result'; run.win = win;
     cancelCharge(); if(hero.st==='atk')set(hero,'idle'); hero.atk = null; pressAtk = false; pressRoll = false;
     for (const k in key) delete key[k];
@@ -5461,6 +5683,7 @@ window.XIAOCHANG = (() => {
     const list=document.createElement('ul'), earned=ARMORY.state().items.filter(i=>!run.initial.has(i.uid));
     for(const item of earned){const li=document.createElement('li');li.style.color=AFFIX_DATA.qualities[item.q].color;li.textContent=AFFIX_DATA.label(item);list.appendChild(li);}
     if(!earned.length){const li=document.createElement('li');li.textContent='本局未拾取武器';list.appendChild(li);}article.appendChild(list);
+    const coins=document.createElement('p');coins.textContent=`本局获得金币 ${run.coins || 0}`;article.appendChild(coins);
     const space=document.createElement('p');space.textContent=`仓库格数 ${ARMORY.count()}/50 · ${ARMORY.count()>=50?'已满，请返回整备熔炼或丢弃':'已拾取装备全部保留'}`;article.appendChild(space);
     const nav=document.createElement('nav');
     const button=(text,action,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.style.backgroundImage=`url("${ASSETS.ui.btn}")`;b.onclick=action;nav.appendChild(b);};
@@ -5512,11 +5735,14 @@ window.XIAOCHANG = (() => {
     }
     const names = affixNames(z);
     if (!names.length) return;
+    const t = z.affixT == null ? 0 : z.affixT, hold = z.affixHold == null ? 4 : z.affixHold;
+    if (t >= hold + .5) return;
     const y = z.y - (z.T.boss ? 69 : 43);
     const color = z.xAffixes && z.xAffixes.includes('armor') ? '#9b9b94' : '#bd594d';
     ctx.save(); ctx.globalAlpha = .20 + .06 * Math.sin(gameT * 4); ctx.fillStyle = color;
     ctx.beginPath(); ctx.ellipse(z.x, z.y - 18, z.T.boss ? 27 : 16, z.T.boss ? 36 : 25, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#38291f';
+    ctx.globalAlpha = t > hold ? Math.max(0, 1 - (t - hold) / .5) : 1;
+    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#38291f';
     ctx.fillStyle = z.xAffixes && z.xAffixes.includes('rage') ? '#f3a18d' : '#dad6ca';
     const text = names.join(' · ');
     ctx.strokeText(text, z.x, y); ctx.fillText(text, z.x, y); ctx.restore();
@@ -5798,6 +6024,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 function reset() {
   chapter2Run = null;
   if (window.XIAOCHANG) XIAOCHANG.leave();
+  if (window.WALLET) WALLET.startRun();
   M.W = 3600;
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 序章：黄巾流寇';
@@ -7311,11 +7538,13 @@ function update(dt) {
     stampPlayed = false; pressAct = null;
     const zoneNow = won ? 6 : Math.max(1, Math.min(6, gateI + 1));
     result = { win: won, kills, time: endT, hit: hitsTaken, zone: zoneNow,
+      coins: window.WALLET ? WALLET.runCoins() : 0,
       // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
       rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
+    if (window.WALLET) WALLET.flush();
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);   // 第二章通关记第二章，不再误记成第一章
@@ -7749,6 +7978,9 @@ function drawResult(HW, HH) {
   ctx.font = Math.round(sh * .058) + 'px ' + F;
   ctx.fillStyle = '#4a3a2a';
   ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .40);
+  ctx.fillStyle = '#6b4d22';
+  ctx.font = Math.round(sh * .045) + 'px ' + F;
+  ctx.fillText('本局获得金币 ' + (result.coins || 0), px0 + pw * .50, sy + sh * .445);
 
   // 台词
   const line = result.line || '';

@@ -135,11 +135,12 @@ window.XIAOCHANG = (() => {
       z.dark = true;
       z.ghost = z.ghost || 0;
       z.blinkT = 6;
+      z.affixT = 0; z.affixHold = 4;
       return;
     }
     if (run.floor >= 3 && z.T.elite) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
     if (run.floor >= 4 && (z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
-    if (z.xAffix) z.xAffixes = [z.xAffix];
+    if (z.xAffix) { z.xAffixes = [z.xAffix]; z.affixT = 0; z.affixHold = 4; }
   }
   function spawnSide(type, index = 0) {
     // 出生点与玩家至少相距90，极端贴边时全部改从另一侧进入。
@@ -204,7 +205,10 @@ window.XIAOCHANG = (() => {
     for (const link of ghostLinks) link.t += dt;
     for (const link of ghostLinks) {
       if (link.t >= link.T) {
-        if (link.target && !link.target.dead) link.target.ghost = Math.min(3, (link.target.ghost || 0) + 1);
+        if (link.target && !link.target.dead) {
+          link.target.ghost = Math.min(3, (link.target.ghost || 0) + 1);
+          link.target.affixT = 0; link.target.affixHold = 2;
+        }
         link.done = true;
       }
     }
@@ -214,6 +218,7 @@ window.XIAOCHANG = (() => {
   }
   function update(dt = 0) {
     if (!active || !run || run.status === 'result' || over) return;
+    for (const z of zs) if (z.affixT != null) z.affixT += dt;
     magicUpdate(dt);
     if (run.status === 'cards') { if (!ROGUE.blocks()) spawnWave(); return; }
     if (run.status === 'fight' && !zs.some(z => !z.dead)) { run.status = 'rest'; run.nextAt = gameT + 1.5; }
@@ -259,6 +264,8 @@ window.XIAOCHANG = (() => {
       GEAR.collectDrops();
       if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
     }
+    run.coins = window.WALLET ? WALLET.runCoins() : 0;
+    if (window.WALLET) WALLET.flush();
     run.status = 'result'; run.win = win;
     cancelCharge(); if(hero.st==='atk')set(hero,'idle'); hero.atk = null; pressAtk = false; pressRoll = false;
     for (const k in key) delete key[k];
@@ -308,6 +315,7 @@ window.XIAOCHANG = (() => {
     const list=document.createElement('ul'), earned=ARMORY.state().items.filter(i=>!run.initial.has(i.uid));
     for(const item of earned){const li=document.createElement('li');li.style.color=AFFIX_DATA.qualities[item.q].color;li.textContent=AFFIX_DATA.label(item);list.appendChild(li);}
     if(!earned.length){const li=document.createElement('li');li.textContent='本局未拾取武器';list.appendChild(li);}article.appendChild(list);
+    const coins=document.createElement('p');coins.textContent=`本局获得金币 ${run.coins || 0}`;article.appendChild(coins);
     const space=document.createElement('p');space.textContent=`仓库格数 ${ARMORY.count()}/50 · ${ARMORY.count()>=50?'已满，请返回整备熔炼或丢弃':'已拾取装备全部保留'}`;article.appendChild(space);
     const nav=document.createElement('nav');
     const button=(text,action,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.style.backgroundImage=`url("${ASSETS.ui.btn}")`;b.onclick=action;nav.appendChild(b);};
@@ -359,11 +367,14 @@ window.XIAOCHANG = (() => {
     }
     const names = affixNames(z);
     if (!names.length) return;
+    const t = z.affixT == null ? 0 : z.affixT, hold = z.affixHold == null ? 4 : z.affixHold;
+    if (t >= hold + .5) return;
     const y = z.y - (z.T.boss ? 69 : 43);
     const color = z.xAffixes && z.xAffixes.includes('armor') ? '#9b9b94' : '#bd594d';
     ctx.save(); ctx.globalAlpha = .20 + .06 * Math.sin(gameT * 4); ctx.fillStyle = color;
     ctx.beginPath(); ctx.ellipse(z.x, z.y - 18, z.T.boss ? 27 : 16, z.T.boss ? 36 : 25, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#38291f';
+    ctx.globalAlpha = t > hold ? Math.max(0, 1 - (t - hold) / .5) : 1;
+    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#38291f';
     ctx.fillStyle = z.xAffixes && z.xAffixes.includes('rage') ? '#f3a18d' : '#dad6ca';
     const text = names.join(' · ');
     ctx.strokeText(text, z.x, y); ctx.fillText(text, z.x, y); ctx.restore();

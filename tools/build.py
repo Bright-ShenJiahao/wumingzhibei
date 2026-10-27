@@ -128,6 +128,8 @@ assets['dialogPortraits'] = {
 }
 assets['ui']['w_blade'] = uri(P('art', 'ui', 'w_blade.webp'))
 assets['ui']['w_halberd'] = uri(P('art', 'ui', 'w_halberd.webp'))
+if os.path.exists(P('art', 'ui', 'shopkeeper.png')):
+    assets['ui']['shopkeeper'] = uri(P('art', 'ui', 'shopkeeper.png'))
 assets['music'] = {'southernDrum': file_uri(P('art', 'audio', 'southern_drum.wav'))}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}
