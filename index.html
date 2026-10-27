@@ -51,7 +51,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=a317c195fb" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a317c195fb)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=cbc54556bb" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=cbc54556bb)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -5151,7 +5151,7 @@ window.XIAOCHANG = (() => {
       name: '黄巾劫村', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
       melee: ['grunt', 'blade'], ranged: ['slinger', 'archer'],
       weapons: ['staff', 'hammer', 'stone', 'halberd'],
-      hp: [1.15, 1.25, 1.35, 1.47, 1.60], damage: [1, 1.06, 1.12, 1.18, 1.24],
+      hp: [1.2, 1.45, 1.75, 2.1, 2.5], damage: [1, 1.12, 1.25, 1.4, 1.55],
       waves: [
         { budget: 4, pool: ['grunt', 'blade'] },
         { budget: 5, pool: ['grunt', 'blade'], ranged: true },
@@ -5255,7 +5255,8 @@ window.XIAOCHANG = (() => {
     z.xiaochang = true;
     z.x=Math.max(12,Math.min(708,z.x));
     if(Math.abs(z.x-hero.x)<90)z.x=hero.x<360?700:20;
-    if (run.floor >= 4 && (z.T.elite || z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
+    if (run.floor >= 3 && z.T.elite) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
+    if (run.floor >= 4 && (z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
   }
   function spawnSide(type, index = 0) {
     // 出生点与玩家至少相距90，极端贴边时全部改从另一侧进入。
@@ -5419,7 +5420,7 @@ window.XIAOCHANG = (() => {
     ctx.imageSmoothingEnabled = false;
   }
 
-  return { CONFIG, active: () => active, state: () => run, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers,
+  return { CONFIG, active: () => active, state: () => run, tokenCap: () => active && run ? (run.floor >= 4 ? 3 : 2) : M.token, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers,
     renderPreparation, drawAffix, skipToSix, clampActors, drawBackground, refillXiaochangProps,
     cardAllowed: card => { if(!active)return true;const long=!!ARMORY.equipped('long'),short=!!ARMORY.equipped('short'),ranged=!!ARMORY.equipped('ranged');return card.school==='长武器'?long:card.school==='短武器'?short:card.school==='远程'?ranged:card.school==='近战'?(long||short):true; },
     enemyDamage: (z,n) => active && run ? n/config().hp[run.floor-1]*(z.xAffix==='armor'?.75:1) : n,
@@ -6863,7 +6864,7 @@ function zUpdate(z, dt) {
     if (z.cd <= 0 && ad > T.range[0] * .7 && ad < T.range[1] * 1.2 && Math.abs(dy) < (T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = T.cd; return; }
   } else {          // 近战：最多 M.token 个同时贴身，其余在旁边游走
     const tokens = zs.filter(o => o.tok && !o.dead).length;
-    if (!z.tok && tokens < M.token && Math.abs(dx) < 130) z.tok = true;
+    if (!z.tok && tokens < (window.XIAOCHANG && XIAOCHANG.tokenCap ? XIAOCHANG.tokenCap() : M.token) && Math.abs(dx) < 130) z.tok = true;
     tx = hero.x - z.f * (z.tok ? T.reach - 6 : 52 + (z.slot % 3) * 14); ty = hero.y + (z.tok ? 0 : (z.slot % 2 ? 16 : -16));
     // 老卒专属：站到中距离就蓄力放剑气（6.5 秒一次）
     if (T.elite && !z.qi && (z.qiCd || 0) <= 0 && Math.abs(dx) < 130 && Math.abs(dy) < 26) {

@@ -8,7 +8,7 @@ window.XIAOCHANG = (() => {
       name: '黄巾劫村', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
       melee: ['grunt', 'blade'], ranged: ['slinger', 'archer'],
       weapons: ['staff', 'hammer', 'stone', 'halberd'],
-      hp: [1.15, 1.25, 1.35, 1.47, 1.60], damage: [1, 1.06, 1.12, 1.18, 1.24],
+      hp: [1.2, 1.45, 1.75, 2.1, 2.5], damage: [1, 1.12, 1.25, 1.4, 1.55],
       waves: [
         { budget: 4, pool: ['grunt', 'blade'] },
         { budget: 5, pool: ['grunt', 'blade'], ranged: true },
@@ -112,7 +112,8 @@ window.XIAOCHANG = (() => {
     z.xiaochang = true;
     z.x=Math.max(12,Math.min(708,z.x));
     if(Math.abs(z.x-hero.x)<90)z.x=hero.x<360?700:20;
-    if (run.floor >= 4 && (z.T.elite || z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
+    if (run.floor >= 3 && z.T.elite) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
+    if (run.floor >= 4 && (z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
   }
   function spawnSide(type, index = 0) {
     // 出生点与玩家至少相距90，极端贴边时全部改从另一侧进入。
@@ -276,7 +277,7 @@ window.XIAOCHANG = (() => {
     ctx.imageSmoothingEnabled = false;
   }
 
-  return { CONFIG, active: () => active, state: () => run, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers,
+  return { CONFIG, active: () => active, state: () => run, tokenCap: () => active && run ? (run.floor >= 4 ? 3 : 2) : M.token, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers,
     renderPreparation, drawAffix, skipToSix, clampActors, drawBackground, refillXiaochangProps,
     cardAllowed: card => { if(!active)return true;const long=!!ARMORY.equipped('long'),short=!!ARMORY.equipped('short'),ranged=!!ARMORY.equipped('ranged');return card.school==='长武器'?long:card.school==='短武器'?short:card.school==='远程'?ranged:card.school==='近战'?(long||short):true; },
     enemyDamage: (z,n) => active && run ? n/config().hp[run.floor-1]*(z.xAffix==='armor'?.75:1) : n,
