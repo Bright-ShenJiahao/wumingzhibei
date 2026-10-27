@@ -34,6 +34,7 @@ const Boss = (() => {
   const view = () => window.XIAOCHANG && XIAOCHANG.active() ? [0, M.W] : [cam.x, cam.x + viewW()];
   function moveTo(z, tx, ty, sp, dt) {
     sp *= wxMove();
+    if (z.halberdBleed > 0 && gameT < z.halberdBleedUntil) sp *= .9;   // 长戟裂伤减速
     const dx = tx - z.x, dy = ty - z.y, l = Math.hypot(dx, dy);
     if (l < 2) return true;
     const k = Math.min(1, sp * dt * (window.GEAR ? GEAR.enemyMove(z) : 1) / l); z.x += dx * k; z.y += dy * .7 * k;

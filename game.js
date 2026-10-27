@@ -151,10 +151,10 @@ WEAP.halberd = Object.assign({}, WEAP.staff, {
   aspd: 1,   // 长戟不继承棍子的 +8% 攻速
   reach: 46,
   combo: [
-    { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.1, kb: 56, daze: .3 },
-    { f: ['halberd_2a', 'halberd_2b'], d: [.11, .19], dmg: 1.1, kb: 50, daze: .45 },
-    { f: ['halberd_3a', 'halberd_3b'], d: [.16, .25], dmg: 1.3, kb: 150, daze: 1, multi: true, knock: true },
-    { f: ['halberd_4a', 'halberd_4b'], d: [.10, .24], dmg: 2.2, kb: 90, daze: .5, thrust: true },
+    { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.0, kb: 56, daze: .2 },
+    { f: ['halberd_2a', 'halberd_2b'], d: [.11, .19], dmg: 1.0, kb: 50, daze: .3 },
+    { f: ['halberd_3a', 'halberd_3b'], d: [.16, .25], dmg: 1.1, kb: 150, daze: .6, multi: true, knock: true },
+    { f: ['halberd_4a', 'halberd_4b'], d: [.10, .24], dmg: 1.9, kb: 90, daze: 0, thrust: true },
   ],
 });
 // 黄巾兵
@@ -217,6 +217,7 @@ const RETREAT_SCREENS = 1.2;   // 非 Boss 战最多后退 1.2 个屏幕，防�
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 let stoneHits = [];
 let bluntHits = [];
+let bleedFx = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
@@ -249,7 +250,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -396,6 +397,7 @@ function blocked(x, y) {
 }
 function moveEnt(e, dx, dy) {
   if (window.GEAR && e !== hero) { const mult=GEAR.enemyMove(e); dx*=mult; dy*=mult; }
+  if (e !== hero && e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
@@ -1049,7 +1051,11 @@ function drawFloaters() {
     ctx.globalAlpha = Math.max(0, 1 - f.t / 1.1);
     ctx.font = 'bold ' + (emph ? 17 : 13) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';
     ctx.textAlign = 'center';
-    if (f.dodge || f.gold) {
+    if (f.red) {
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(45,8,8,.9)'; ctx.lineJoin = 'round';
+      ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
+      ctx.fillStyle = '#ff5a4d';
+    } else if (f.dodge || f.gold) {
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(40,24,10,.85)'; ctx.lineJoin = 'round';
       ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
       ctx.fillStyle = '#ffe27a';
@@ -1163,6 +1169,41 @@ function atkRelease() {
 }
 function cancelCharge() { charging = false; atkHeldSince = 0; chargeTier = 0; chargeTierFlash = 0; }
 
+// 长戟「裂伤」：与血刃词条完全分开的一套层数/流血状态。
+function halberdStacks(z) { return z && z.halberdBleed > 0 && gameT < z.halberdBleedUntil ? z.halberdBleed : 0; }
+function addHalberdBleed(z, base, stacks = 1) {
+  if (!z || z.dead) return 0;
+  const alive = halberdStacks(z);
+  z.halberdBleed = Math.min(5, (alive || 0) + stacks);
+  z.halberdBleedUntil = gameT + 3;
+  z.halberdBleedBase = base;
+  if (!alive || !z.halberdBleedNext || z.halberdBleedNext <= gameT) z.halberdBleedNext = gameT + 1;
+  if (!z.halberdBleedDripAt || z.halberdBleedDripAt <= gameT) z.halberdBleedDripAt = gameT + rnd(.25, .55);
+  return z.halberdBleed;
+}
+function clearHalberdBleed(z) {
+  if (!z) return;
+  z.halberdBleed = 0; z.halberdBleedUntil = 0; z.halberdBleedBase = 0;
+  z.halberdBleedNext = 0; z.halberdBleedDripAt = 0;
+}
+function updateHalberdBleed(dt) {
+  for (const z of zs) {
+    if (z.dead || !(z.halberdBleed > 0)) continue;
+    if (gameT >= z.halberdBleedUntil) { clearHalberdBleed(z); continue; }
+    if (z.halberdBleedNext && gameT >= z.halberdBleedNext) {
+      z.halberdBleedNext += 1;
+      const dot = z.halberdBleed * .08 * (z.halberdBleedBase || 0);
+      if (dot > 0) hit(z, dot, 0, 0, false, 0, 0, false, false, { dot: true, secondary: true, halberdBleed: true });
+    }
+    if (z.halberdBleedDripAt && gameT >= z.halberdBleedDripAt) {
+      z.halberdBleedDripAt = gameT + rnd(.3, .65);
+      bleedFx.push({ kind: 'drip', x: z.x + rnd(-7, 7), y: z.y - rnd(8, 26), t: 0, T: .16 });
+    }
+  }
+  for (const f of bleedFx) f.t += dt;
+  bleedFx = bleedFx.filter(f => f.t < f.T);
+}
+
 // 蓄力重击：三种武器各不相同；命中只在释放时结算一次，动画仅作表现。
 function addChargeHitFx(kind, x, y, f = 1) {
   const T = kind === 'hammer' ? .27 : .22;
@@ -1212,6 +1253,29 @@ function chargedAttack(power, tier = 1) {
       const C = Object.assign({}, W.combo[0], { dmg: data.dmg, spd: 310, life: .8, dazeChance: data.chance, dazeTime: data.time, daze: 1 });
       shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, chargeTier: tier });
     }
+    return;
+  }
+  if (weapon === 'halberd') {                      // 长戟蓄力「回马突」：按档位向前冲并沿途叠裂伤
+    const data = tier === 3 ? { dist: 80, dmg: 2.8, stacks: 4 }
+      : tier === 2 ? { dist: 60, dmg: 2.2, stacks: 3 }
+      : { dist: 40, dmg: 1.6, stacks: 2 };
+    const atk = .35 + .65 * power;
+    const dmg = data.dmg * atk;
+    const x0 = h.x, endX = x0 + h.f * data.dist;
+    let hitAny = false;
+    for (const z of zs) {
+      if (z.dead || z.air) continue;
+      const along = (z.x - x0) * h.f;
+      if (along < -12 || along > data.dist + 12 || Math.abs(z.y - h.y) > W.dy + 8) continue;
+      hitAny = true;
+      hit(z, dmg, W.combo[0].kb, h.f, false, 0, .35, W.interrupt, false, { finisher: true, halberdCharge: true });
+      if (!z.dead) {
+        addHalberdBleed(z, dmg, data.stacks);
+        bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
+      }
+    }
+    moveEnt(h, endX - x0, 0);
+    if (hitAny) { sfx('hit_staff', h.x + h.f * 20); sfx('finisher', h.x); }
     return;
   }
   for (const z of zs) {
@@ -1285,8 +1349,27 @@ function strike() {
       let attackDmg = C.dmg * fin * mult;
 
       hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
-      if (weapon === 'staff' && isFinisher) { bluntHits.push({ x: z.x, y: z.y - 14, t: 0, T: .2, big: true }); freeze = Math.max(freeze, .12); }   // 棍子终段「戳」专属爆发
-      else if (weapon === 'staff' || weapon === 'hammer' || weapon === 'halberd') bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
+      if (weapon === 'halberd') {
+        if (!z.dead) {
+          const stacks = addHalberdBleed(z, attackDmg, 1);
+          if (isFinisher) {
+            const rupture = stacks * .3 * attackDmg;
+            clearHalberdBleed(z);
+            hit(z, rupture, 0, 0, false, 0, 0, false, false, { secondary: true, halberdRupture: true });
+            bleedFx.push({ kind: 'rip', x: z.x, y: z.y - 12, t: 0, T: .2 });
+            bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
+            floaters.push({ x: z.x, y: z.y - 38, t: 0, txt: (Math.round(rupture * 10) / 10).toFixed(1), big: true, red: true });
+            freeze = Math.max(freeze, .12);
+          } else {
+            bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
+          }
+        }
+      } else if (weapon === 'staff' && isFinisher) {
+        bluntHits.push({ x: z.x, y: z.y - 14, t: 0, T: .2, big: true });
+        freeze = Math.max(freeze, .12);   // 棍子终段「戳」专属爆发
+      } else if (weapon === 'staff' || weapon === 'hammer') {
+        bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
+      }
       if (!C.multi && !aoe) break;
     }
   }
@@ -1804,7 +1887,7 @@ function update(dt) {
   if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
     archerAddsDone = true; summonArchers(bz);
   }
-  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateVillagers(dt);
+  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateHalberdBleed(dt); updateVillagers(dt);
   if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.clampActors();
   const vw = viewW();
   let tx = hero.x - vw * .4;
@@ -2103,6 +2186,7 @@ function draw() {
   for (const s of shots) list.push({ y: s.y + .1, d: () => drawShot(s) });
   for (const h of stoneHits) list.push({ y: h.y, d: () => drawStoneHit(h) });
   for (const h of bluntHits) list.push({ y: h.y, d: () => drawBluntHit(h) });
+  for (const f of bleedFx) list.push({ y: f.y, d: () => drawBleedFx(f) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2515,6 +2599,28 @@ function drawBluntHit(h) {
   ctx.drawImage(img, frame * 48, 0, 48, 48, h.x - 7, h.y - 7, 14, 14);
   ctx.restore();
 }
+function drawBleedFx(f) {
+  const kind = f.kind;
+  const img = kind === 'rip' ? IMG.ui_halberd_rip : kind === 'splash' ? IMG.ui_bleed_splash : IMG.ui_bleed_drip;
+  if (!img || !img.complete) return;
+  const fw = kind === 'rip' ? 64 : kind === 'splash' ? 48 : 32;
+  const frame = Math.min(2, Math.max(0, Math.floor(f.t / (kind === 'rip' ? .067 : .05))));
+  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 8;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * fw, 0, fw, fw, f.x - size / 2, f.y - size / 2, size, size);
+  ctx.restore();
+}
+function drawHalberdBleedDots(z, top) {
+  const n = halberdStacks(z);
+  if (!n) return;
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const x = z.x + (i - (n - 1) / 2) * 5;
+    ctx.fillStyle = '#5b1715'; ctx.beginPath(); ctx.arc(x, top, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef4b42'; ctx.beginPath(); ctx.arc(x, top - .4, 1.7, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
@@ -2670,7 +2776,7 @@ function drawHero() {
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
-  if (z.T.boss) { Boss.draw(z); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
+  if (z.T.boss) { Boss.draw(z); drawHalberdBleedDots(z, z.y - 68); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
     if (z.defDownT > 0) { ctx.fillStyle = '#b9a2dc'; ctx.fillRect(z.x + 4, z.y - 61, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
@@ -2678,6 +2784,7 @@ function drawZ(z) {
     drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.dead) return;
+    drawHalberdBleedDots(z, z.y - 58);
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);
     ctx.fillStyle = '#c93420'; ctx.fillRect(z.x - w / 2 + 1, y + 1, (w - 2) * Math.max(0, z.hp / z.T.hp), 2);
@@ -2691,6 +2798,7 @@ function drawZ(z) {
   drawChar(z.sprite || z.type, zFrame(z), z.x, z.y - (z.z || 0) - hop, z.f < 0, a, z.flash > 0, z.sc || 1, !!z.dark);
   if (z.celebrating) drawCheer(z);
   if (z.dead || z.air || z.st === 'land') return;
+  drawHalberdBleedDots(z, z.y - 40);
   const top = z.y - 34;
   if (z.st === 'sleep') {
     const bob = Math.sin(performance.now() / 300) * 2;
