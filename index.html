@@ -51,7 +51,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=2361179ce4" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2361179ce4)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=a317c195fb" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a317c195fb)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -2007,8 +2007,13 @@ function hit(z, dmg, dir, ranged) {
   function build() {
     panel = document.createElement('div'); panel.id = 'dbg';
     document.body.appendChild(panel);
-    const head = document.createElement('b'); head.textContent = '开发者模式';
-    panel.appendChild(head);
+    // 点标题收起/展开面板（手机上没有 F2），记住上次状态
+    const head = document.createElement('b'); panel.appendChild(head);
+    const css = document.createElement('style'); css.textContent = '#dbg>b{cursor:pointer;user-select:none}#dbg.collapsed>:not(b){display:none!important}'; document.head.appendChild(css);
+    const setCollapsed = v => { panel.classList.toggle('collapsed', v); head.textContent = '开发者模式 ' + (v ? '▸' : '▾'); try { localStorage.setItem('wzb-dbg-collapsed', v ? '1' : ''); } catch (e) {} };
+    let saved = false; try { saved = localStorage.getItem('wzb-dbg-collapsed') === '1'; } catch (e) {}
+    setCollapsed(saved);
+    head.addEventListener('click', e => { e.stopPropagation(); setCollapsed(!panel.classList.contains('collapsed')); });
     btn('Boss 一阶段', 'alt', () => jumpBoss(false));
     btn('Boss 二阶段', 'alt', () => jumpBoss(true));
     btn('清空本区域', '', () => { if (typeof zs !== 'undefined') zs.forEach(z => { z.dead = 1; z.hp = 0; }); });
@@ -2595,7 +2600,7 @@ function hit(z, dmg, dir, ranged) {
   const TYPES = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'];
   const NAMES = { staff: '棍子', hammer: '锤子', stone: '石子', halberd: '长戟', blade: '大刀', bow: '汉弓' };
   const RANGED = { stone: true, bow: true };
-  const NEED = [50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];   // 升到 Lv.1～10 的累计经验
+  const NEED = [60, 180, 360, 600, 900, 1260, 1680, 2160, 2700, 3300];   // 原表×1.2（用户定：升级再慢约20%）   // 升到 Lv.1～10 的累计经验
   let pending = {};   // 本局还没写进存档的经验
 
   const saved = () => (window.ARMORY && ARMORY.state().mastery) || {};
@@ -4355,6 +4360,13 @@ function hit(z, dmg, dir, ranged) {
         #tChapter .tPrepSlot .tPrepIcon{width:30px;height:30px}
         #tChapter .tPrepSlot>b{font-size:8px;letter-spacing:0}#tChapter .tPrepSlot .tPrepName{font-size:10px}
         #tChapter .tPrepSlot .aSlotActions{gap:3px}#tChapter .tPrepSlot .aSlotActions button{min-height:15px;padding:1px 5px;font-size:8px}
+        @media(pointer:coarse){   /* 手机：卸下/锁定放到右侧竖排，按钮加大好点 */
+          #tChapter .tPrepSlot[data-uid]{grid-template-columns:30px minmax(0,1fr) auto}
+          #tChapter .tPrepSlot[data-uid]>b{grid-column:2;grid-row:1}#tChapter .tPrepSlot[data-uid] .tPrepName{grid-column:2;grid-row:2}
+          #tChapter .tPrepSlot .aSlotActions{grid-column:3;grid-row:1/3;flex-direction:row;align-items:center;gap:4px}
+          #tChapter .tPrepSlot .aSlotActions button{min-height:30px;min-width:42px;padding:2px 6px;font-size:12px}
+          #tChapter .tPrepSlot[data-uid] .tPrepName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        }
         #tChapter #tPrepPreview small{font-size:8px}
         /* 校场页按80%缩小 */
         #tChapter #xPrep{padding:6px 10px}#tChapter #xPrep h2{margin:4px 0 2px;font-size:17px}#tChapter #xPrep h3{margin:7px 0 4px;font-size:11px}
@@ -5108,6 +5120,10 @@ function hit(z, dmg, dir, ranged) {
     demoReset();
     addEventListener('resize', layout);
     addEventListener('orientationchange', () => setTimeout(layout, 260));
+    // 主屏幕模式刚启动时 iPhone 报的窗口尺寸可能还不对，开始按钮会被排到屏幕外；多排几次版面
+    if (window.visualViewport) visualViewport.addEventListener('resize', layout);
+    addEventListener('pageshow', layout); addEventListener('load', layout);
+    [100, 400, 1000, 2500].forEach(ms => setTimeout(layout, ms));
     let last = performance.now();
     const tick = (t) => {
       const dt = Math.min(.05, (t - last) / 1000); last = t;

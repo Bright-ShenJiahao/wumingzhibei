@@ -38,8 +38,13 @@
   function build() {
     panel = document.createElement('div'); panel.id = 'dbg';
     document.body.appendChild(panel);
-    const head = document.createElement('b'); head.textContent = '开发者模式';
-    panel.appendChild(head);
+    // 点标题收起/展开面板（手机上没有 F2），记住上次状态
+    const head = document.createElement('b'); panel.appendChild(head);
+    const css = document.createElement('style'); css.textContent = '#dbg>b{cursor:pointer;user-select:none}#dbg.collapsed>:not(b){display:none!important}'; document.head.appendChild(css);
+    const setCollapsed = v => { panel.classList.toggle('collapsed', v); head.textContent = '开发者模式 ' + (v ? '▸' : '▾'); try { localStorage.setItem('wzb-dbg-collapsed', v ? '1' : ''); } catch (e) {} };
+    let saved = false; try { saved = localStorage.getItem('wzb-dbg-collapsed') === '1'; } catch (e) {}
+    setCollapsed(saved);
+    head.addEventListener('click', e => { e.stopPropagation(); setCollapsed(!panel.classList.contains('collapsed')); });
     btn('Boss 一阶段', 'alt', () => jumpBoss(false));
     btn('Boss 二阶段', 'alt', () => jumpBoss(true));
     btn('清空本区域', '', () => { if (typeof zs !== 'undefined') zs.forEach(z => { z.dead = 1; z.hp = 0; }); });

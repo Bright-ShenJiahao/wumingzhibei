@@ -4,7 +4,7 @@
   const TYPES = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'];
   const NAMES = { staff: '棍子', hammer: '锤子', stone: '石子', halberd: '长戟', blade: '大刀', bow: '汉弓' };
   const RANGED = { stone: true, bow: true };
-  const NEED = [50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];   // 升到 Lv.1～10 的累计经验
+  const NEED = [60, 180, 360, 600, 900, 1260, 1680, 2160, 2700, 3300];   // 原表×1.2（用户定：升级再慢约20%）   // 升到 Lv.1～10 的累计经验
   let pending = {};   // 本局还没写进存档的经验
 
   const saved = () => (window.ARMORY && ARMORY.state().mastery) || {};

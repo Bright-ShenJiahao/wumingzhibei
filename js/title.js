@@ -463,6 +463,13 @@
         #tChapter .tPrepSlot .tPrepIcon{width:30px;height:30px}
         #tChapter .tPrepSlot>b{font-size:8px;letter-spacing:0}#tChapter .tPrepSlot .tPrepName{font-size:10px}
         #tChapter .tPrepSlot .aSlotActions{gap:3px}#tChapter .tPrepSlot .aSlotActions button{min-height:15px;padding:1px 5px;font-size:8px}
+        @media(pointer:coarse){   /* 手机：卸下/锁定放到右侧竖排，按钮加大好点 */
+          #tChapter .tPrepSlot[data-uid]{grid-template-columns:30px minmax(0,1fr) auto}
+          #tChapter .tPrepSlot[data-uid]>b{grid-column:2;grid-row:1}#tChapter .tPrepSlot[data-uid] .tPrepName{grid-column:2;grid-row:2}
+          #tChapter .tPrepSlot .aSlotActions{grid-column:3;grid-row:1/3;flex-direction:row;align-items:center;gap:4px}
+          #tChapter .tPrepSlot .aSlotActions button{min-height:30px;min-width:42px;padding:2px 6px;font-size:12px}
+          #tChapter .tPrepSlot[data-uid] .tPrepName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        }
         #tChapter #tPrepPreview small{font-size:8px}
         /* 校场页按80%缩小 */
         #tChapter #xPrep{padding:6px 10px}#tChapter #xPrep h2{margin:4px 0 2px;font-size:17px}#tChapter #xPrep h3{margin:7px 0 4px;font-size:11px}
@@ -1216,6 +1223,10 @@
     demoReset();
     addEventListener('resize', layout);
     addEventListener('orientationchange', () => setTimeout(layout, 260));
+    // 主屏幕模式刚启动时 iPhone 报的窗口尺寸可能还不对，开始按钮会被排到屏幕外；多排几次版面
+    if (window.visualViewport) visualViewport.addEventListener('resize', layout);
+    addEventListener('pageshow', layout); addEventListener('load', layout);
+    [100, 400, 1000, 2500].forEach(ms => setTimeout(layout, ms));
     let last = performance.now();
     const tick = (t) => {
       const dt = Math.min(.05, (t - last) / 1000); last = t;
