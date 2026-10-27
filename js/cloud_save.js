@@ -62,7 +62,7 @@
     setTimeout(()=>pinBox.querySelector('input')?.focus(),30);
     const close=()=>{pinBox.hidden=true;pinBox.style.display='none';};
     pinBox.querySelector('[data-pin="cancel"]').onclick=()=>{close();if(mode==='enter')releasePinWait();};
-    pinBox.onkeydown=e=>{if(e.key==='Enter')pinBox.querySelector('[data-pin="ok"]').click();if(e.key==='Escape')close();};
+    pinBox.onkeydown=e=>{if(e.key==='Enter')pinBox.querySelector('[data-pin="ok"]').click();if(e.key==='Escape'){close();if(mode==='enter')releasePinWait();}};
     pinBox.querySelector('[data-pin="ok"]').onclick=async()=>{
       const pin=val('pinNew');
       if(!/^\d{4,6}$/.test(pin)){msg.textContent='口令要4～6位数字';return;}

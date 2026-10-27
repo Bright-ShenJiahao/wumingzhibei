@@ -65,7 +65,7 @@
     row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
     row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
-    const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges.at(-1):'各段 '+ranges.join('／');
+    const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges[ranges.length-1]:'各段 '+ranges.join('／');
     row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
     const crit=node('dd',null);crit.dataset.stat='crit';crit.append(node('span',fmt(st.crit*100)+'%'));diffMark(crit,'crit');crit.append(node('span',' · '));crit.append(node('span',fmt(st.critDamage*100)+'%'));diffMark(crit,'critDamage');list.append(node('dt','暴击'),crit);
     conditional('最大生命',fmt(st.health),'health',10);conditional('减伤',fmt(st.guard*100)+'%','guard',0);conditional('移动速度',fmt(st.move*100)+'%（相对基础）','move',1);

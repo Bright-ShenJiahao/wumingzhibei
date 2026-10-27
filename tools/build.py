@@ -201,3 +201,10 @@ for root, _, files in os.walk(PACK):
 json.dump(_cache_used, open(_CACHE_PATH, 'w', encoding='utf-8'), ensure_ascii=False, indent=0, sort_keys=True)
 total = sum(os.path.getsize(f) for f in _emitted)
 print('index.html', len(h.encode('utf-8')) // 1024, 'KB；pack/', len(_emitted), '个文件', total // 1024, 'KB' + ('；清理旧文件 %d 个' % _stale if _stale else ''))
+
+# 每次打包使用首页内容指纹；首页必需素材在此维护。
+_sw_template = open(P('tools', 'sw.template.js'), encoding='utf-8-sig').read()
+_sw_hash = __import__('hashlib').sha256(h.encode('utf-8')).hexdigest()[:16]
+_pre_cache = ['/index.html', '/' + assets['title'], '/' + assets['tvMask']]
+if FONT_FACE: _pre_cache.append('/' + _font_url)
+open(P('sw.js'), 'w', encoding='utf-8').write(_sw_template.replace('__CACHE__', 'wzb-' + _sw_hash).replace('__PRECACHE__', json.dumps(_pre_cache)))

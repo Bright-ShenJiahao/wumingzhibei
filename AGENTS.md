@@ -170,3 +170,6 @@
 ## 存档口令
 - 规则和接口见 `docs/cloud-save.md`「存档口令」一节：`netlify/lib/pins.mjs`（口令存储与校验）、`netlify/functions/pin.mjs`（设置/修改）、`netlify/functions/admin.mjs`（站长查看/清除，需要环境变量 `WZB_ADMIN_KEY`）。
 - 口令按用户要求以原文保存，方便站长找回，不要改成哈希。
+
+## 启动与离线缓存
+- sw.js 由 tools/build.py 自动改版本号；以后新增首页必需的素材，记得加进预缓存列表。API 不缓存，导航网络优先（4秒回退缓存），版本素材缓存优先；不在战斗中刷新更新。

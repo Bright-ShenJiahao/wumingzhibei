@@ -51,7 +51,19 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=83b081ef8a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=83b081ef8a)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=a435bc864e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a435bc864e)format("woff2");font-display:swap}</style></head><body>
+<div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
+<strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
+<script>
+(function(){
+var ready=false,failed=false,timer=setTimeout(function(){if(!ready)document.getElementById('bootRefresh').hidden=false;},8000);
+function error(message){if(ready)return;failed=true;document.getElementById('bootText').textContent='加载出错';document.getElementById('bootRefresh').hidden=false;document.getElementById('bootError').textContent=String(message||'未知错误');}
+window.addEventListener('error',function(e){if(e.message)error(e.message);});
+window.addEventListener('unhandledrejection',function(e){error(e.reason&&e.reason.message||e.reason);});
+window.finishBoot=function(){if(failed)return;ready=true;clearTimeout(timer);var el=document.getElementById('bootSplash');if(el)el.remove();};
+if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
+})();
+</script>
 <canvas id="c"></canvas>
 <div id="rot">📱↻<br>请把手机横过来玩
   <small>并关闭「竖屏锁定」，打开自动旋转</small></div>
@@ -296,7 +308,7 @@ body.wzb-pro #help{display:none}
     for(const uid of [...selection])if(!state().items.some(i=>i.uid===uid))selection.delete(uid);
     return true;
   }
-  window.ARMORY={count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.CAPACITY,state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();
@@ -1825,7 +1837,7 @@ function hit(z, dmg, dir, ranged) {
     setTimeout(()=>pinBox.querySelector('input')?.focus(),30);
     const close=()=>{pinBox.hidden=true;pinBox.style.display='none';};
     pinBox.querySelector('[data-pin="cancel"]').onclick=()=>{close();if(mode==='enter')releasePinWait();};
-    pinBox.onkeydown=e=>{if(e.key==='Enter')pinBox.querySelector('[data-pin="ok"]').click();if(e.key==='Escape')close();};
+    pinBox.onkeydown=e=>{if(e.key==='Enter')pinBox.querySelector('[data-pin="ok"]').click();if(e.key==='Escape'){close();if(mode==='enter')releasePinWait();}};
     pinBox.querySelector('[data-pin="ok"]').onclick=async()=>{
       const pin=val('pinNew');
       if(!/^\d{4,6}$/.test(pin)){msg.textContent='口令要4～6位数字';return;}
@@ -2154,7 +2166,7 @@ function hit(z, dmg, dir, ranged) {
     row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
     row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
-    const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges.at(-1):'各段 '+ranges.join('／');
+    const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges[ranges.length-1]:'各段 '+ranges.join('／');
     row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
     const crit=node('dd',null);crit.dataset.stat='crit';crit.append(node('span',fmt(st.crit*100)+'%'));diffMark(crit,'crit');crit.append(node('span',' · '));crit.append(node('span',fmt(st.critDamage*100)+'%'));diffMark(crit,'critDamage');list.append(node('dt','暴击'),crit);
     conditional('最大生命',fmt(st.health),'health',10);conditional('减伤',fmt(st.guard*100)+'%','guard',0);conditional('移动速度',fmt(st.move*100)+'%（相对基础）','move',1);
@@ -2200,6 +2212,8 @@ function hit(z, dmg, dir, ranged) {
 (() => {
   let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
   let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
+  const coarse=()=>matchMedia('(pointer: coarse)').matches;
+  let actions;
   const now=()=>performance.now();
   function close(){
     clearTimeout(hideTimer);clearTimeout(longTimer);
@@ -2249,8 +2263,9 @@ function hit(z, dmg, dir, ranged) {
       const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,peer,compact:mode==='hover'});
       section.append(title,body);panels.append(section);
     }
-    if(compare)frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
+    if(compare&&!coarse())frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
+    if(compare&&coarse())frame(compare,'已装备','wt-equipped',null,item);
   }
   function show(node){
     if(mode==='modal'||!root?.classList.contains('open'))return;
@@ -2263,6 +2278,14 @@ function hit(z, dmg, dir, ranged) {
     if(!tip||!item)return;
     close();active=trigger||null;returnFocus=trigger||document.activeElement;mode='modal';content(item);
     tip.style.left='';tip.style.top='';tip.style.maxHeight='';tip.style.pointerEvents='auto';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
+    actions.replaceChildren();actions.hidden=!coarse();
+    if(coarse()){
+      const slot=AFFIX_DATA.slots[item.type],isEquipped=ARMORY.equipped(slot)?.uid===item.uid;
+      const add=(label,fn)=>{const b=document.createElement('button');b.className='wt-close';b.textContent=label;b.onclick=fn;actions.append(b);};
+      add(isEquipped?'卸下':'装备',()=>{isEquipped?ARMORY.unequip(slot):ARMORY.equip(item.uid);TITLE.refreshPreparation();close();});
+      add(item.locked?'解锁':'锁定',()=>{ARMORY.toggleLock(item.uid);TITLE.refreshPreparation();open(ARMORY.byId(item.uid));});
+      add('关闭',close);
+    }
     closeButton.focus({preventScroll:true});
   }
   function attach(container){
@@ -2279,18 +2302,22 @@ function hit(z, dmg, dir, ranged) {
       .is-modal .wt-frame>.weapon-detail{max-height:calc(100dvh - 115px)}
       @media(max-width:559px){.wt-dialog.two .wd-title{min-height:0}.wt-dialog.two .wt-panels{grid-template-columns:minmax(0,1fr)}.wt-dialog.two .wt-frame>.weapon-detail{max-height:calc(50dvh - 80px)}}
       @media(max-height:430px){.wt-frame>.weapon-detail{padding:8px 11px}.wt-frame>header{padding:3px 10px}}
+      @media(pointer:coarse){.aCard,.tPrepSlot,#wWeaponTip{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}#wWeaponTip.is-modal{justify-content:flex-end;padding:6px}#wWeaponTip.is-modal .wt-dialog,#wWeaponTip.is-modal .wt-dialog.two{width:min(480px,50vw);max-height:calc(100dvh - 12px);overflow:auto}.wt-dialog.two .wt-panels{grid-template-columns:1fr}.is-modal .wt-frame>.weapon-detail{max-height:none}.wt-actions{position:sticky;bottom:0;display:flex;justify-content:space-around;gap:5px;padding:8px 2px;background:#271c15}.wt-actions[hidden]{display:none}.wt-dialog.two .wd-title{min-height:0}}
+      @media(pointer:coarse) and (orientation:portrait){#wWeaponTip.is-modal .wt-dialog,#wWeaponTip.is-modal .wt-dialog.two{width:96vw}}
     `;document.head.append(style);
     tip=document.createElement('aside');tip.id='wWeaponTip';tip.hidden=true;tip.setAttribute('role','dialog');tip.setAttribute('aria-label','武器详情与装备对比');
     dialog=document.createElement('div');dialog.className='wt-dialog';
     const bar=document.createElement('div');bar.className='wt-bar';
     closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
-    panels=document.createElement('div');panels.className='wt-panels';dialog.append(bar,panels);tip.append(dialog);document.body.append(tip);
+    panels=document.createElement('div');panels.className='wt-panels';actions=document.createElement('div');actions.className='wt-actions';actions.hidden=true;dialog.append(bar,panels,actions);tip.append(dialog);document.body.append(tip);
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
     tip.addEventListener('toggle',()=>place(),true);
+    tip.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
+    root.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
     tip.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
-      if(e.pointerType==='touch'||mode==='modal')return;
+      if(coarse()||e.pointerType==='touch'||mode==='modal')return;
       // 鼠标在勾选框上时只是想勾选，不弹详情；移回卡片其他地方照常显示
       if(e.target.closest?.('.aSelect')){if(mode==='hover')hide();return;}
       const n=weaponNode(e.target);
@@ -2307,20 +2334,20 @@ function hit(z, dmg, dir, ranged) {
     document.addEventListener('pointerdown',e=>{
       if(mode==='hover'&&!active?.contains(e.target))hide();
       if(e.pointerType!=='touch')return;
-      const n=weaponNode(e.target);if(!n)return;
+      const n=weaponNode(e.target);if(!n||e.target.closest('.aSelect,button,input'))return;
       clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};
       longTimer=setTimeout(()=>{const item=itemAt(n);if(touch&&!touch.moved&&n.isConnected&&item){touch.opened=true;suppressClickUntil=now()+800;open(item,n);}},400);
     },true);
     function release(e){if(!touch||e.pointerId!==touch.id)return;clearTimeout(longTimer);if(touch.opened)suppressClickUntil=now()+700;touch=null;}
     document.addEventListener('pointerup',release,true);document.addEventListener('pointercancel',release,true);
-    root.addEventListener('click',e=>{if(now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
+    root.addEventListener('click',e=>{if(now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();return;}if(coarse()&&!e.target.closest('.aSelect,button,input')){const n=weaponNode(e.target),item=itemAt(n);if(item){e.preventDefault();e.stopImmediatePropagation();open(item,n);}}},true);
     root.addEventListener('contextmenu',e=>{if(touch||mode==='modal')e.preventDefault();});
     document.addEventListener('keydown',e=>{
       if(!mode)return;
       if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();return;}
       if(mode==='modal'&&e.key==='Tab'){
         const focus=[...tip.querySelectorAll('button,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
-        const first=focus[0],last=focus.at(-1);
+        const first=focus[0],last=focus[focus.length-1];
         if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
         else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
       }
@@ -2747,7 +2774,7 @@ function hit(z, dmg, dir, ranged) {
   const scroll = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.scroll;
   const btn = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.btn;
   if (scroll) { menu.style.backgroundImage = `url("${scroll}")`; }
-  menu.innerHTML = '<h2 id="pauseTitle">暂停</h2><div class="pause-actions"><button class="pause-action" data-pause="resume">继续</button><button class="pause-action" data-pause="restart">重新开始</button><button class="pause-action" data-pause="preparation">返回整备</button><button class="pause-action" data-pause="home">返回主界面</button></div><p class="pause-volume">音量 <button type="button" data-pause="volume"></button></p>';
+  menu.innerHTML = '<h2 id="pauseTitle">暂停</h2><div class="pause-actions"><button class="pause-action" data-pause="resume">继续</button><button class="pause-action" data-pause="restart">重新开始</button><button class="pause-action" data-pause="preparation">返回整备</button><button class="pause-action" data-pause="home">返回主界面</button><button class="pause-action" data-pause="reload">重新载入游戏</button></div><p class="pause-volume">音量 <button type="button" data-pause="volume"></button></p>';
   menu.querySelectorAll('.pause-action').forEach(b => { b.type = 'button'; if (btn) b.style.backgroundImage = `url("${btn}")`; });
   const volumeButton = menu.querySelector('[data-pause="volume"]');
   confirm.innerHTML = '<section class="pause-paper"><h2>确认退出</h2><p>确定退出这一局？已拾取的装备会保留。</p><div class="pause-confirm-actions"><button class="pause-action" data-confirm="yes">确定</button><button class="pause-action" data-confirm="no">取消</button></div></section>';
@@ -2782,9 +2809,11 @@ function hit(z, dmg, dir, ranged) {
     return true;
   }
   function ask(action) {
+    confirm.querySelector('p').textContent=action==='reload'?'重新载入会退出这一局，已拾取的装备会保留':'确定退出这一局？已拾取的装备会保留。';
     confirm.dataset.action = action; menu.hidden = true; confirm.hidden = false;
   }
   function execute(action) {
+    if(action==='reload'){location.reload();return;}
     const api = game(); setPaused(false);
     if (!api) return;
     if (action === 'restart' && api.restart) api.restart();
@@ -2795,7 +2824,7 @@ function hit(z, dmg, dir, ranged) {
   menu.addEventListener('click', e => {
     const action = e.target.closest('[data-pause]')?.dataset.pause;
     if (action === 'resume') setPaused(false);
-    else if (action === 'restart' || action === 'preparation' || action === 'home') ask(action);
+    else if (action === 'restart' || action === 'preparation' || action === 'home' || action === 'reload') ask(action);
     else if (action === 'volume') {
       if (window.SFX && SFX.toggleMute) SFX.toggleMute(); else if (muteButton) muteButton.click();
       syncVolume();
@@ -4588,7 +4617,14 @@ function hit(z, dmg, dir, ranged) {
     if (window.CLOUD_SAVE && !DEBUG) {
       startPending=true; dom.start.disabled=true; dom.name.disabled=true;
       const savedLabel=dom.start.textContent; dom.start.textContent='同步存档…';
-      try { await CLOUD_SAVE.sync(n); if (CLOUD_SAVE.waitPin) await CLOUD_SAVE.waitPin(); } finally { startPending=false; dom.start.disabled=false; dom.name.disabled=false; dom.start.textContent=savedLabel; }
+      const refresh=document.createElement('button');refresh.textContent='卡住了？点此刷新';refresh.hidden=true;refresh.onclick=()=>location.reload();dom.start.after(refresh);
+      const stuck=setTimeout(()=>{refresh.hidden=false;},10000);
+      let deadline;
+      try {
+        const finished=await Promise.race([CLOUD_SAVE.sync(n).then(()=>true),new Promise(ok=>{deadline=setTimeout(()=>ok(false),5000);})]);
+        if(CLOUD_SAVE.waitPin)await CLOUD_SAVE.waitPin();
+        if(!finished){const notice=document.createElement('div');notice.textContent='网络较慢，已先用本机存档进入，稍后自动同步';notice.style.cssText='position:fixed;bottom:12px;left:10%;right:10%;z-index:80;padding:12px;background:#302017ee;color:#ffe0a0;text-align:center;font:14px sans-serif';document.body.append(notice);setTimeout(()=>notice.remove(),6500);}
+      } finally {clearTimeout(deadline);clearTimeout(stuck);refresh.remove();startPending=false;dom.start.disabled=false;dom.name.disabled=false;dom.start.textContent=savedLabel;}
     }
     if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
     if (window.ARMORY) ARMORY.markPlayed();
@@ -5001,6 +5037,7 @@ function hit(z, dmg, dir, ranged) {
     requestAnimationFrame(tick);
   }
   boot();
+  requestAnimationFrame(() => { if (dom.start && window.finishBoot) window.finishBoot(); });
 })();
 
 // 每章独立五层；地图、波次、掉落、许愿和无评分结算均由本模块管理。
@@ -5301,23 +5338,22 @@ const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2' };
 function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
 function ensureAssets(group, { silent = false, label = '' } = {}) {
-  if (LAZY_DONE[group]) return LAZY_DONE[group];
   const list = LAZY[group] || [];
-  let done = 0, overlay = null;
-  const tick = () => { done++; if (overlay) overlay.querySelector('b').textContent = Math.round(done / Math.max(1, list.length) * 100) + '%'; };
-  const show = silent ? 0 : setTimeout(() => {
-    overlay = document.createElement('div'); overlay.id = 'wzbLoading';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#120c08e8;color:#f1d58f;font:16px sans-serif;letter-spacing:2px';
-    overlay.innerHTML = '<span>' + (label || '加载中') + '</span><b>0%</b>';
-    document.body.appendChild(overlay); tick(); done--;
-  }, 120);
-  LAZY_DONE[group] = Promise.all(list.map(([img, src]) => new Promise(ok => {
-    if (img.complete && img.naturalWidth) { tick(); ok(); return; }
-    img.addEventListener('load', () => { tick(); ok(); }, { once: true });
-    img.addEventListener('error', () => { tick(); ok(); }, { once: true });   // 个别图失败也继续，不卡住游戏
-    if (!img.src) img.src = src;
-  }))).then(() => { clearTimeout(show); if (overlay) overlay.remove(); });
-  return LAZY_DONE[group];
+  if(!LAZY_DONE[group]) LAZY_DONE[group]=Promise.all(list.map(([img,src])=>new Promise(ok=>{
+    if(img.complete&&img.naturalWidth){ok();return;}
+    img.addEventListener('load',ok,{once:true});img.addEventListener('error',ok,{once:true});
+    if(!img.src)img.src=src;
+  })));
+  if(silent)return LAZY_DONE[group];
+  let overlay=null,progress;
+  const show=setTimeout(()=>{
+    overlay=document.createElement('div');overlay.id='wzbLoading';
+    overlay.style.cssText='position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#120c08e8;color:#f1d58f;font:16px sans-serif;letter-spacing:2px';
+    const title=document.createElement('span');title.textContent=label||'加载中';const percent=document.createElement('b');overlay.append(title,percent);document.body.append(overlay);
+    const tick=()=>{percent.textContent=Math.round(list.filter(([im])=>im.complete&&im.src).length/Math.max(1,list.length)*100)+'%';};tick();progress=setInterval(tick,200);
+  },120);
+  const refresh=setTimeout(()=>{if(overlay){const button=document.createElement('button');button.textContent='网络较慢，点此刷新';button.onclick=()=>location.reload();overlay.append(button);}},10000);
+  return LAZY_DONE[group].finally(()=>{clearTimeout(show);clearTimeout(refresh);clearInterval(progress);if(overlay)overlay.remove();});
 }
 window.ensureAssets = ensureAssets;
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);

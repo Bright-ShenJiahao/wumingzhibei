@@ -2,6 +2,8 @@
 (() => {
   let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
   let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
+  const coarse=()=>matchMedia('(pointer: coarse)').matches;
+  let actions;
   const now=()=>performance.now();
   function close(){
     clearTimeout(hideTimer);clearTimeout(longTimer);
@@ -51,8 +53,9 @@
       const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,peer,compact:mode==='hover'});
       section.append(title,body);panels.append(section);
     }
-    if(compare)frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
+    if(compare&&!coarse())frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
+    if(compare&&coarse())frame(compare,'已装备','wt-equipped',null,item);
   }
   function show(node){
     if(mode==='modal'||!root?.classList.contains('open'))return;
@@ -65,6 +68,14 @@
     if(!tip||!item)return;
     close();active=trigger||null;returnFocus=trigger||document.activeElement;mode='modal';content(item);
     tip.style.left='';tip.style.top='';tip.style.maxHeight='';tip.style.pointerEvents='auto';tip.classList.add('is-modal');tip.setAttribute('aria-modal','true');tip.hidden=false;
+    actions.replaceChildren();actions.hidden=!coarse();
+    if(coarse()){
+      const slot=AFFIX_DATA.slots[item.type],isEquipped=ARMORY.equipped(slot)?.uid===item.uid;
+      const add=(label,fn)=>{const b=document.createElement('button');b.className='wt-close';b.textContent=label;b.onclick=fn;actions.append(b);};
+      add(isEquipped?'卸下':'装备',()=>{isEquipped?ARMORY.unequip(slot):ARMORY.equip(item.uid);TITLE.refreshPreparation();close();});
+      add(item.locked?'解锁':'锁定',()=>{ARMORY.toggleLock(item.uid);TITLE.refreshPreparation();open(ARMORY.byId(item.uid));});
+      add('关闭',close);
+    }
     closeButton.focus({preventScroll:true});
   }
   function attach(container){
@@ -81,18 +92,22 @@
       .is-modal .wt-frame>.weapon-detail{max-height:calc(100dvh - 115px)}
       @media(max-width:559px){.wt-dialog.two .wd-title{min-height:0}.wt-dialog.two .wt-panels{grid-template-columns:minmax(0,1fr)}.wt-dialog.two .wt-frame>.weapon-detail{max-height:calc(50dvh - 80px)}}
       @media(max-height:430px){.wt-frame>.weapon-detail{padding:8px 11px}.wt-frame>header{padding:3px 10px}}
+      @media(pointer:coarse){.aCard,.tPrepSlot,#wWeaponTip{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}#wWeaponTip.is-modal{justify-content:flex-end;padding:6px}#wWeaponTip.is-modal .wt-dialog,#wWeaponTip.is-modal .wt-dialog.two{width:min(480px,50vw);max-height:calc(100dvh - 12px);overflow:auto}.wt-dialog.two .wt-panels{grid-template-columns:1fr}.is-modal .wt-frame>.weapon-detail{max-height:none}.wt-actions{position:sticky;bottom:0;display:flex;justify-content:space-around;gap:5px;padding:8px 2px;background:#271c15}.wt-actions[hidden]{display:none}.wt-dialog.two .wd-title{min-height:0}}
+      @media(pointer:coarse) and (orientation:portrait){#wWeaponTip.is-modal .wt-dialog,#wWeaponTip.is-modal .wt-dialog.two{width:96vw}}
     `;document.head.append(style);
     tip=document.createElement('aside');tip.id='wWeaponTip';tip.hidden=true;tip.setAttribute('role','dialog');tip.setAttribute('aria-label','武器详情与装备对比');
     dialog=document.createElement('div');dialog.className='wt-dialog';
     const bar=document.createElement('div');bar.className='wt-bar';
     closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
-    panels=document.createElement('div');panels.className='wt-panels';dialog.append(bar,panels);tip.append(dialog);document.body.append(tip);
+    panels=document.createElement('div');panels.className='wt-panels';actions=document.createElement('div');actions.className='wt-actions';actions.hidden=true;dialog.append(bar,panels,actions);tip.append(dialog);document.body.append(tip);
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
     tip.addEventListener('toggle',()=>place(),true);
+    tip.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
+    root.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
     tip.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('pointerover',e=>{
-      if(e.pointerType==='touch'||mode==='modal')return;
+      if(coarse()||e.pointerType==='touch'||mode==='modal')return;
       // 鼠标在勾选框上时只是想勾选，不弹详情；移回卡片其他地方照常显示
       if(e.target.closest?.('.aSelect')){if(mode==='hover')hide();return;}
       const n=weaponNode(e.target);
@@ -109,20 +124,20 @@
     document.addEventListener('pointerdown',e=>{
       if(mode==='hover'&&!active?.contains(e.target))hide();
       if(e.pointerType!=='touch')return;
-      const n=weaponNode(e.target);if(!n)return;
+      const n=weaponNode(e.target);if(!n||e.target.closest('.aSelect,button,input'))return;
       clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};
       longTimer=setTimeout(()=>{const item=itemAt(n);if(touch&&!touch.moved&&n.isConnected&&item){touch.opened=true;suppressClickUntil=now()+800;open(item,n);}},400);
     },true);
     function release(e){if(!touch||e.pointerId!==touch.id)return;clearTimeout(longTimer);if(touch.opened)suppressClickUntil=now()+700;touch=null;}
     document.addEventListener('pointerup',release,true);document.addEventListener('pointercancel',release,true);
-    root.addEventListener('click',e=>{if(now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
+    root.addEventListener('click',e=>{if(now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();return;}if(coarse()&&!e.target.closest('.aSelect,button,input')){const n=weaponNode(e.target),item=itemAt(n);if(item){e.preventDefault();e.stopImmediatePropagation();open(item,n);}}},true);
     root.addEventListener('contextmenu',e=>{if(touch||mode==='modal')e.preventDefault();});
     document.addEventListener('keydown',e=>{
       if(!mode)return;
       if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();return;}
       if(mode==='modal'&&e.key==='Tab'){
         const focus=[...tip.querySelectorAll('button,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
-        const first=focus[0],last=focus.at(-1);
+        const first=focus[0],last=focus[focus.length-1];
         if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
         else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
       }

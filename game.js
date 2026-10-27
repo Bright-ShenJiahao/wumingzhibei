@@ -7,23 +7,22 @@ const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2' };
 function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
 function ensureAssets(group, { silent = false, label = '' } = {}) {
-  if (LAZY_DONE[group]) return LAZY_DONE[group];
   const list = LAZY[group] || [];
-  let done = 0, overlay = null;
-  const tick = () => { done++; if (overlay) overlay.querySelector('b').textContent = Math.round(done / Math.max(1, list.length) * 100) + '%'; };
-  const show = silent ? 0 : setTimeout(() => {
-    overlay = document.createElement('div'); overlay.id = 'wzbLoading';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#120c08e8;color:#f1d58f;font:16px sans-serif;letter-spacing:2px';
-    overlay.innerHTML = '<span>' + (label || '加载中') + '</span><b>0%</b>';
-    document.body.appendChild(overlay); tick(); done--;
-  }, 120);
-  LAZY_DONE[group] = Promise.all(list.map(([img, src]) => new Promise(ok => {
-    if (img.complete && img.naturalWidth) { tick(); ok(); return; }
-    img.addEventListener('load', () => { tick(); ok(); }, { once: true });
-    img.addEventListener('error', () => { tick(); ok(); }, { once: true });   // 个别图失败也继续，不卡住游戏
-    if (!img.src) img.src = src;
-  }))).then(() => { clearTimeout(show); if (overlay) overlay.remove(); });
-  return LAZY_DONE[group];
+  if(!LAZY_DONE[group]) LAZY_DONE[group]=Promise.all(list.map(([img,src])=>new Promise(ok=>{
+    if(img.complete&&img.naturalWidth){ok();return;}
+    img.addEventListener('load',ok,{once:true});img.addEventListener('error',ok,{once:true});
+    if(!img.src)img.src=src;
+  })));
+  if(silent)return LAZY_DONE[group];
+  let overlay=null,progress;
+  const show=setTimeout(()=>{
+    overlay=document.createElement('div');overlay.id='wzbLoading';
+    overlay.style.cssText='position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#120c08e8;color:#f1d58f;font:16px sans-serif;letter-spacing:2px';
+    const title=document.createElement('span');title.textContent=label||'加载中';const percent=document.createElement('b');overlay.append(title,percent);document.body.append(overlay);
+    const tick=()=>{percent.textContent=Math.round(list.filter(([im])=>im.complete&&im.src).length/Math.max(1,list.length)*100)+'%';};tick();progress=setInterval(tick,200);
+  },120);
+  const refresh=setTimeout(()=>{if(overlay){const button=document.createElement('button');button.textContent='网络较慢，点此刷新';button.onclick=()=>location.reload();overlay.append(button);}},10000);
+  return LAZY_DONE[group].finally(()=>{clearTimeout(show);clearTimeout(refresh);clearInterval(progress);if(overlay)overlay.remove();});
 }
 window.ensureAssets = ensureAssets;
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);

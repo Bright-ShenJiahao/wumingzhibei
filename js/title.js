@@ -809,7 +809,14 @@
     if (window.CLOUD_SAVE && !DEBUG) {
       startPending=true; dom.start.disabled=true; dom.name.disabled=true;
       const savedLabel=dom.start.textContent; dom.start.textContent='同步存档…';
-      try { await CLOUD_SAVE.sync(n); if (CLOUD_SAVE.waitPin) await CLOUD_SAVE.waitPin(); } finally { startPending=false; dom.start.disabled=false; dom.name.disabled=false; dom.start.textContent=savedLabel; }
+      const refresh=document.createElement('button');refresh.textContent='卡住了？点此刷新';refresh.hidden=true;refresh.onclick=()=>location.reload();dom.start.after(refresh);
+      const stuck=setTimeout(()=>{refresh.hidden=false;},10000);
+      let deadline;
+      try {
+        const finished=await Promise.race([CLOUD_SAVE.sync(n).then(()=>true),new Promise(ok=>{deadline=setTimeout(()=>ok(false),5000);})]);
+        if(CLOUD_SAVE.waitPin)await CLOUD_SAVE.waitPin();
+        if(!finished){const notice=document.createElement('div');notice.textContent='网络较慢，已先用本机存档进入，稍后自动同步';notice.style.cssText='position:fixed;bottom:12px;left:10%;right:10%;z-index:80;padding:12px;background:#302017ee;color:#ffe0a0;text-align:center;font:14px sans-serif';document.body.append(notice);setTimeout(()=>notice.remove(),6500);}
+      } finally {clearTimeout(deadline);clearTimeout(stuck);refresh.remove();startPending=false;dom.start.disabled=false;dom.name.disabled=false;dom.start.textContent=savedLabel;}
     }
     if (hasCleared(n, 1) || (window.ARMORY && ARMORY.played())) { openChapterSelect(); return; }
     if (window.ARMORY) ARMORY.markPlayed();
@@ -1222,4 +1229,5 @@
     requestAnimationFrame(tick);
   }
   boot();
+  requestAnimationFrame(() => { if (dom.start && window.finishBoot) window.finishBoot(); });
 })();
