@@ -19,6 +19,7 @@ OUT = os.path.join(R, 'art', 'sprites', 'hero_mask')
 ONLY = sys.argv[1:]   # 可只处理指定帧（调试用）
 
 
+SLEEVE = {'idle', 'stone0', 'blade_1a'}   # 袖子离衣服主体较远的帧
 TILTED = {'fly1', 'fly2', 'down', 'bounce', 'roll1', 'roll2', 'getup', 'hurt'}   # 不是直立的帧，按接触关系判断
 
 
@@ -55,20 +56,39 @@ def classify(rgba, name=''):
         m = near(lab == i, 1) & light
         if m.sum() < 20 or thick(m) < 2.5 or not (near(m, 2) & skin).any(): continue
         yy, xx = np.nonzero(m); ev = np.linalg.eigvalsh(np.cov(np.vstack([yy, xx])) + 1e-3 * np.eye(2))
-        if ev[1] / ev[0] > 20: continue   # 细长的（刀身、刀光）不是衣服；长宽比约>4.5
+        if ev[1] / ev[0] > 14: continue   # 细长的（刀身、刀光）不是衣服；长宽比约>4.5
         parts.append(m)
     for m in parts:                      # 先收挨着头发/裤子的
         if (near(m, 5) & bodyDark).any(): shirt |= m
     if not shirt.any():                  # 一块都没找到时，取最大最厚的一块（被武器挡开的情况）
-        big = [m for m in parts if m.sum() >= 60 and thick(m) >= 3.5]
+        big = [m for m in parts if m.sum() >= 60 and thick(m) >= 3.5] or [m for m in parts if m.sum() >= 40]
         if big: shirt |= max(big, key=lambda m: m.sum())
     for _ in range(3):                   # 再收挨着已认定上衣的（被手臂隔开的另一半衣服）
         for m in parts:
-            if not (m & shirt).any() and (near(m, 3) & shirt).any(): shirt |= m
+            if not (m & shirt).any() and (near(m, 8) & shirt).any(): shirt |= m   # 肩膀上的袖子可能隔着手臂 7 像素
+    # 被手臂隔开的小块袖子：离上衣 3 像素内、落在上衣外框里的浅色小块也算上衣
+    if shirt.any():
+        yy, xx = np.where(shirt); box = np.zeros_like(a)
+        box[max(0, yy.min() - 3):yy.max() + 4, max(0, xx.min() - 10):xx.max() + 11] = True
+        lab, n = ndimage.label(light & box & ~shirt, structure=st)
+        for i in range(1, n + 1):
+            m = lab == i
+            if m.sum() >= 6 and (near(m, 3) & shirt).any(): shirt |= m
+        if name in SLEEVE:   # 少数帧袖子隔得更远，单独放宽
+            lab, n = ndimage.label(light & ~shirt, structure=st)
+            dist = ndimage.distance_transform_edt(~shirt); top = np.where(shirt)[0].min() - 4
+            for i in range(1, n + 1):
+                m = lab == i
+                if m.sum() >= 6 and dist[m].min() <= 12 and (near(m, 2) & skin).any() and ndimage.center_of_mass(m)[0] >= top: shirt |= m   # 眼白在上面，不算
     for d in blobs: d['ts'] = int((near(d['m'], 2) & shirt).sum())
     hair = np.zeros_like(a); pants = np.zeros_like(a)
     if not blobs: return hair, shirt, pants
-    if name in TILTED:
+    if name in ('roll1', 'roll2'):
+        # 缩成一团：挨皮肤最多的是头发（脸），另一块是裤子
+        h = max(blobs, key=lambda d: d['tk']); hair |= h['m']
+        for d in blobs:
+            if d is not h: pants |= d['m']
+    elif name in TILTED:
         # 歪着的帧：挨上衣最多的是裤子，其余挨皮肤最多的是头发
         p = max(blobs, key=lambda d: d['ts']); pants |= p['m']
         rest = [d for d in blobs if d is not p and d['tk'] > 0]
@@ -78,13 +98,28 @@ def classify(rgba, name=''):
         sy = ndimage.center_of_mass(shirt)[0] if shirt.any() else rgba.shape[0] * .5
         tops = [d for d in blobs if d['tk'] > 0 and d['cy'] < sy and thick(d['m']) >= 3]
         h = max(tops, key=lambda d: d['tk']) if tops else None   # 挨脸最多的才是头发（锤头只挨着手）
-        if h: hair |= h['m']
+        if h:
+            hair |= h['m']
+            for d in tops:                 # 被棍子隔开的另一半头发
+                if d is not h and (near(d['m'], 3) & hair).any(): hair |= d['m']
         for d in blobs:
-            if d is not h and d['cy'] > sy: pants |= d['m']
+            if d is not h and d['cy'] > sy:
+                yy, xx = np.nonzero(d['m']); ev = np.linalg.eigvalsh(np.cov(np.vstack([yy, xx])) + 1e-3 * np.eye(2))
+                if ev[1] / ev[0] <= 16: pants |= d['m']   # 细长的是刀身/兵器，不是裤子
         # 裤子只留在上衣左右范围内（伸出去的戟杆、锤头不算）
         if shirt.any():
             yy, xx = np.where(shirt); box = np.zeros_like(a)
             box[yy.min():, max(0, xx.min() - 6):xx.max() + 7] = True; pants &= box
+        # 去掉细长的戟杆：开运算后再在原裤子范围里长回 1 像素
+        core = ndimage.binary_opening(pants, structure=st)
+        pants = near(core, 1) & pants
+        # 腰部以下的浅色块是贴着腿的刀身，不是衣服
+        if pants.any():
+            top = np.where(pants)[0].min() + 3
+            lab, n = ndimage.label(shirt, structure=st)
+            for i in range(1, n + 1):
+                m = lab == i
+                if ndimage.center_of_mass(m)[0] > top: shirt &= ~m
     return hair, shirt, pants
 
 
