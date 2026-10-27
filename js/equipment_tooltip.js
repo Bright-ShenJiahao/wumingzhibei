@@ -14,7 +14,12 @@
     if(restore?.isConnected){suppressFocusUntil=now()+300;restore.focus({preventScroll:true});}
   }
   function hide(){if(mode==='hover')close();}
-  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,120);}
+  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,200);}
+  function inBridge(x,y){
+    if(mode!=='hover'||!active||!tip||tip.hidden)return false;
+    const a=active.getBoundingClientRect(),t=tip.getBoundingClientRect(),pad=8;
+    return x>=Math.min(a.left,t.left)-pad&&x<=Math.max(a.right,t.right)+pad&&y>=Math.min(a.top,t.top)-pad&&y<=Math.max(a.bottom,t.bottom)+pad;
+  }
   function weaponNode(target){
     const el=target?.closest?.('.aCard[data-uid],.tPrepSlot[data-uid]') || target?.closest?.('[data-item],[data-weapon]');
     return el&&root?.contains(el)?el:null;
@@ -50,18 +55,17 @@
     function frame(value,label,kind,other,peer=null){
       const section=document.createElement('section');section.className='wt-frame '+kind;
       const title=document.createElement('header');title.textContent=label;
-      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,peer,compact:mode==='hover'});
+      const body=document.createElement('div');WEAPON_DETAIL.render(body,value,{compare:other,peer,compact:mode==='hover'||coarse()});
       section.append(title,body);panels.append(section);
     }
-    if(compare&&!coarse())frame(compare,'已装备','wt-equipped',null,item);   // 左框只借右框判断哪些属性行要显示，不标▲▼
+    if(compare)frame(compare,'已装备','wt-equipped',null,item);   // 手机/桌面都用同一顺序：已装备在左，待选在右
     frame(item,compare?'待选':equipped?'已装备':'武器详情',compare?'wt-candidate':'',compare);
-    if(compare&&coarse())frame(compare,'已装备','wt-equipped',null,item);
   }
   function show(node){
     if(mode==='modal'||!root?.classList.contains('open'))return;
     const item=itemAt(node);if(!item){hide();return;}
     close();active=node;mode='hover';content(item);
-    tip.classList.remove('is-modal');tip.style.pointerEvents='none';tip.style.maxHeight=`calc(100dvh - 20px)`;tip.setAttribute('aria-modal','false');tip.hidden=false;
+    tip.classList.remove('is-modal');tip.style.pointerEvents='auto';tip.style.maxHeight=`calc(100dvh - 20px)`;tip.setAttribute('aria-modal','false');tip.hidden=false;
     node.setAttribute('aria-describedby',tip.id);place();
   }
   function open(item,trigger){
@@ -101,6 +105,9 @@
     closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='关闭 ×';closeButton.className='wt-close';closeButton.onclick=close;bar.append(closeButton);
     panels=document.createElement('div');panels.className='wt-panels';actions=document.createElement('div');actions.className='wt-actions';actions.hidden=true;dialog.append(bar,panels,actions);tip.append(dialog);document.body.append(tip);
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
+    tip.addEventListener('pointerenter',()=>{if(mode==='hover')clearTimeout(hideTimer);});
+    tip.addEventListener('pointerleave',()=>{if(mode==='hover')later();});
+    document.addEventListener('pointermove',e=>{if(inBridge(e.clientX,e.clientY))clearTimeout(hideTimer);},true);
     tip.addEventListener('toggle',()=>place(),true);
     tip.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
@@ -122,7 +129,7 @@
     root.addEventListener('focusin',e=>{const n=weaponNode(e.target);if(now()>=suppressFocusUntil&&n&&e.target.matches(':focus-visible'))show(n);});
     root.addEventListener('focusout',e=>{if(mode==='hover'&&!active?.contains(e.relatedTarget)&&!tip.contains(e.relatedTarget))later();});
     document.addEventListener('pointerdown',e=>{
-      if(mode==='hover'&&!active?.contains(e.target))hide();
+      if(mode==='hover'&&!active?.contains(e.target)&&!tip.contains(e.target))hide();
       if(e.pointerType!=='touch')return;
       const n=weaponNode(e.target);if(!n||e.target.closest('.aSelect,button,input'))return;
       clearTimeout(longTimer);touch={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,opened:false};
