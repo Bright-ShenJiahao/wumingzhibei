@@ -322,6 +322,7 @@
       #tPrepHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; }
       #tPrepHeader p { margin:0; }
       #tPrepTarget { text-align:right; white-space:nowrap; }
+      #tMastery{padding:4px 12px;border:1px solid #9c7843;border-radius:6px;background:linear-gradient(#62482d,#34261b);color:#f1d58f;font:700 14px sans-serif;cursor:pointer;text-shadow:none}#tMastery small{font-weight:400;color:#d8c393;margin-left:4px}
       #tPrepMain { min-height:0; flex:none; display:grid; grid-template-columns:160px minmax(0,1fr); gap:clamp(8px,1.2vw,16px); }
       #tPrepPreview { width:160px; height:180px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; box-sizing:border-box; border:1px solid #a78049; border-radius:8px; background:radial-gradient(ellipse at 50% 68%,rgba(161,112,48,.23),transparent 70%),linear-gradient(145deg,#38291e,#201a15); color:#cbb894; cursor:pointer; touch-action:manipulation; }
       #tPrepPreview canvas { position:static; inset:auto; width:100%; height:calc(100% - 20px); image-rendering:pixelated; }
@@ -895,7 +896,7 @@
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
-    if (target) target.textContent = `出征目标：${chapterName}`;
+    if (target) { target.innerHTML = '<button type="button" id="tMastery">⚔ 武器熟练度 <small></small></button>'; target.querySelector('small').textContent = window.MASTERY ? MASTERY.summary() : ''; target.querySelector('button').onclick = () => window.MASTERY && MASTERY.open(); }
 
     const slotMarkup=slot=>{const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');

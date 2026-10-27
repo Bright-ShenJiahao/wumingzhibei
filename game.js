@@ -1000,11 +1000,11 @@ function drawDrop(d) {
 }
 function drawFloaters() {
   for (const f of floaters) {
-    const emph = f.big || f.dodge;
+    const emph = f.big || f.dodge || f.gold;
     ctx.globalAlpha = Math.max(0, 1 - f.t / 1.1);
     ctx.font = 'bold ' + (emph ? 17 : 13) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';
     ctx.textAlign = 'center';
-    if (f.dodge) {
+    if (f.dodge || f.gold) {
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(40,24,10,.85)'; ctx.lineJoin = 'round';
       ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
       ctx.fillStyle = '#ffe27a';

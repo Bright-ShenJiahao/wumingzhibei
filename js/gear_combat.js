@@ -13,7 +13,7 @@
   function lowHp(){return hero?clamp((.5-hero.hp/maxHp())/.3,0,1):0;}
   function speed(k,base){const s=sync();
     if(k==='move')return clamp(base+stat(s,'move')+stat(s,'clumsy'),.2,1.3);
-    if(k==='aspd')return 1/clamp(1/base+stat(s,'swift')+stat(s,'heavy')+(s.special==='spirit'?spirit*.01:0),.2,1.4);
+    if(k==='aspd')return 1/clamp(1/base+stat(s,'swift')+stat(s,'heavy')+(window.MASTERY?MASTERY.bonus(s.type).aspd:0)+(s.special==='spirit'?spirit*.01:0),.2,1.4);
     return base;
   }
   const ready=(key,seconds)=>{if((cool[key]||-99)>gameT)return false;cool[key]=gameT+seconds;return true;};
@@ -22,7 +22,7 @@
   function attackToken(charged=false){const s=JSON.parse(JSON.stringify(sync()));return {s,charged,crit:critT>0||chance(clamp(.01+stat(s,'critical')+stat(s,'inaccurate')+rogue('crit'),0,.35)),thunderChecked:false,spiritCounted:false,dualChecked:false,leechChecked:false,chainHits:new Set()};}
   function abnormal(z){return (z.gearDot&&Object.values(z.gearDot).some(a=>a.length))||z.poisonT>0||z.moveSlowT>0||z.attackSlowT>0||z.daze>0||z.gearSlow>gameT||z.gearNumb>gameT||z.gearBlind>gameT||z.gearFrozen>gameT||z.gearColdUntil>gameT;}
   function primaryBonus(s,z,traits,token){
-    let add=stat(s,'sharp')+stat(s,'blunt')+rogue(traits.ranged?'rangedDmg':'meleeDmg',1)-1;
+    let add=stat(s,'sharp')+stat(s,'blunt')+rogue(traits.ranged?'rangedDmg':'meleeDmg',1)-1+(window.MASTERY?MASTERY.bonus(s.type).dmg:0);
     const boss=z.T.boss||z.T.chapterBoss;
     add+=stat(s,boss?'hunt':'troops');if(abnormal(z))add+=stat(s,'exploit');
     if(victoryUntil>gameT)add+=stat(s,'victory');
@@ -44,6 +44,7 @@
     kb*=Math.max(0,1+stat(s,'soft'));if(chance(stat(s,'push'))&&!z.T.boss&&!z.T.chapterBoss)kb+=40;
     const hp=z.hp;const result=rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,{...traits,scaled:true});
     if(z.hp>=hp)return result;
+    if(window.MASTERY)MASTERY.gain(s.type,z,!!z.dead);   // 武器熟练度：只算主角武器的直接命中
     z.lastGear=s;
     // 发射后可以保留原伤害，但换武器后旧武器不能再施加新词条效果。
     if(sync().uid!==s.uid)return result;
