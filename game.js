@@ -125,7 +125,7 @@ const WEAP = {
   hammer: { name: '锤子', class: 'short', reach: 25, dy: 15, snd: 'staff', lunge: 80, lungeT: .12, interrupt: true, move: 0, combo: [
     { f: ['hammer_1a', 'hammer_1b'], d: [.14, .24], dmg: 1.5, kb: 30 },                           // 举锤下砸
     { f: ['hammer_2a', 'hammer_2b'], d: [.13, .24], dmg: 1.5, kb: 30 },                           // 反手横抡
-    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 2.6, kb: 70, multi: true, both: true, knock: true },   // 转身回旋锤（前后都打）
+    { f: ['hammer_3a', 'hammer_3b', 'hammer_3c'], d: [.16, .09, .30], dmg: 3.0, kb: 70, multi: true, knock: true },   // 回旋锤：以自身为中心一圈
   ] },
   blade: { name: '大刀', class: 'short', reach: 30, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 38, combo: [
     { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.2, kb: 42 },                              // 斜劈
@@ -218,10 +218,11 @@ let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg
 let stoneHits = [];
 let bluntHits = [];
 let bleedFx = [];
+let hammerFx = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
-let drops = [], floaters = [], reviveUsed = false, revives = 0, pwaves = [];   // 掉落物 / 飘字 / 复活标记 / 复活次数 / 棍子冲击波
+let drops = [], floaters = [], reviveUsed = false, revives = 0;
 let villagers = [], villagersStarted = false, villagersRewarded = false, villagersThanksT = -1;
 let extraDone = false;
 let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一局只召一次）
@@ -250,7 +251,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -718,16 +719,12 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
-  if (z.defDownT > 0 && !traits.dot) dmg *= 1.1; // 冲击波减防（按受伤倍率实现）
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
     const res = Boss.hit(z, dmg, dir, ranged, traits);
     if (z.hp < hp0) {
       if (traits.dot) return res;
-
-      if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
-      if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
 
       countComboHit();
     }
@@ -751,8 +748,6 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
-  if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
-  if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
@@ -780,7 +775,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
-  if (knock && !z.T.siege) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+  if (knock && !(z.T.boss || z.T.chapterBoss) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 
 }
 function applyPoison(z, scale = 1) {
@@ -1089,41 +1084,22 @@ function hitProp(p, dir) {
     else if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
   }
 }
-// 棍子第三段的冲击波（锦囊）
-function updatePWaves(dt) {
-  for (const w of pwaves) {
-    w.t += dt; w.x += w.vx * dt;
-    for (const z of zs) if (!z.dead && !w.hit.has(z) && Math.abs(z.x - w.x) < 18 && Math.abs(z.y - w.y) < 16) {
-      w.hit.add(z); hit(z, w.dmg, 60, Math.sign(w.vx), false, 0, .3, false, false, { secondary: true, shockwave: true });
-    }
-  }
-  pwaves = pwaves.filter(w => w.t < w.T);
+// 命中/蓄力等临时特效
+function updateFx(dt) {
   for (const q of qiFx) q.t += dt;
   qiFx = qiFx.filter(q => q.t < q.T);
   for (const q of chargeFx) q.t += dt;
   chargeFx = chargeFx.filter(q => q.t < q.T);
   for (const h of bluntHits) h.t += dt;
   bluntHits = bluntHits.filter(h => h.t < h.T);
+  for (const f of hammerFx) f.t += dt;
+  hammerFx = hammerFx.filter(f => f.t < f.T);
   for (const q of chargeHitFx) q.t += dt;
   chargeHitFx = chargeHitFx.filter(q => q.t < q.T);
   for (const q of blessFx) q.t += dt;
   blessFx = blessFx.filter(q => q.t < q.T);
   for (const gh of ghosts) gh.t += dt;
   ghosts = ghosts.filter(gh => gh.t < .45);
-}
-function drawPWaves() {
-  for (const w of pwaves) {
-    const a = 1 - w.t / w.T, img = IMG.ui_shockwave;
-    if (!img || !img.complete) continue;
-    const frame = Math.floor(w.t / .08) % 3;
-    ctx.save();
-    ctx.globalAlpha = a;
-    ctx.translate(w.x, w.y - 4);
-    if (w.vx < 0) ctx.scale(-1, 1);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, frame * 64, 0, 64, 32, -16, -8, 32, 16);
-    ctx.restore();
-  }
 }
 function updatePropFx(dt) {
   for (const p of props) if (p.hitT > 0) p.hitT = Math.max(0, p.hitT - dt);
@@ -1279,6 +1255,21 @@ function chargedAttack(power, tier = 1) {
     if (hitAny) { sfx('hit_staff', h.x + h.f * 20); sfx('finisher', h.x); }
     return;
   }
+  if (weapon === 'hammer') {                       // 锤子蓄力「千斤坠」：按档位前方扇形，全部击倒（首领只打断）
+    const data = tier === 3 ? { range: 80, dmg: 3.6, size: 90 }
+      : tier === 2 ? { range: 65, dmg: 2.8, size: 75 }
+      : { range: 50, dmg: 2.0, size: 60 };
+    const atk = .35 + .65 * power, range = data.range * (window.GEAR ? GEAR.range() : 1);
+    const dmg = data.dmg * atk;
+    hammerFx.push({ kind: 'slam', x: h.x + h.f * Math.min(range * .55, 48), y: h.y, t: 0, T: .28, size: data.size });
+    for (const z of zs) {
+      if (z.dead || z.air) continue;
+      const dx = (z.x - h.x) * h.f, dy = z.y - h.y, bw = z.T.w || 0;
+      if (dx < -12 || dx > range + bw || Math.abs(dy) > Math.max(24, dx * .7 + 14)) continue;
+      hit(z, dmg, W.combo[W.combo.length - 1].kb, h.f, true, 0, .35, W.interrupt, false, { noBossKnock: true, knockSiege: true, hammerSlam: true });
+    }
+    return;
+  }
   for (const z of zs) {
     if (z.dead) continue;
     if (z.hidden && Math.hypot(hero.x - z.x, hero.y - z.y) > 88) continue;   // 还藏着的伏兵不画
@@ -1329,15 +1320,15 @@ function strike() {
   const finisher = c === W.combo.length - 1;
   const isFinisher = finisher;
   const fin = 1;
-  const aoe = (W.class === 'short' && c === 2) ? R_('hammerAoe', 0) : 0; // 锦囊：短武器第三段震地
+  const hammerFinisher = weapon === 'hammer' && isFinisher;
+  if (hammerFinisher) hammerFx.push({ kind: 'spin', x: h.x, y: h.y, t: 0, T: .3, size: 70 });
   for (const z of zs) {
     if (z.dead || z.air) continue;
     const dx = (z.x - h.x) * h.f;
     const bw = z.T.w || 0;
-    const inAoE = aoe > 0 && dx > -aoe - bw && dx < aoe + bw && Math.abs(z.y - h.y) < W.dy + 12;
     const backTol = Math.max(16, rch * .6);   // 贴身/刚冲过头也算命中
-    const inRange = inAoE || (C.both ? Math.abs(dx) < rch + bw : dx > -backTol - bw && dx < rch + bw);
-    if (inRange && Math.abs(z.y - h.y) < W.dy + (inAoE ? 12 : 0)) {
+    const inRange = hammerFinisher ? Math.hypot(z.x - h.x, z.y - h.y) <= 40 + bw : (C.both ? Math.abs(dx) < rch + bw : dx > -backTol - bw && dx < rch + bw);
+    if (inRange && (hammerFinisher || Math.abs(z.y - h.y) < W.dy)) {
       landed = hitEnemy = true;
       // 背刺：从敌人背后打 ×1.5；补刀：敌人倒地中 ×2；完美闪避暴击 ×2
       const behind = Math.sign(h.x - z.x) !== z.f;   // 主角在敌人背后（敌人朝另一侧）
@@ -1349,7 +1340,8 @@ function strike() {
       if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
       let attackDmg = C.dmg * fin * mult;
 
-      hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
+      const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
+      hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
       if (weapon === 'halberd') {
         if (!z.dead) {
           const unit = mult * (window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1);   // 主攻击（不含段数倍率）
@@ -1369,14 +1361,11 @@ function strike() {
       } else if (weapon === 'staff' && isFinisher) {
         bluntHits.push({ x: z.x, y: z.y - 14, t: 0, T: .2, big: true });
         freeze = Math.max(freeze, .12);   // 棍子终段「戳」专属爆发
-      } else if (weapon === 'staff' || weapon === 'hammer') {
+      } else if (weapon === 'staff' || (weapon === 'hammer' && !isFinisher)) {
         bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
       }
-      if (!C.multi && !aoe) break;
+      if (!C.multi) break;
     }
-  }
-  if (W.class === 'long' && c === 2 && R_('staffWave', 0)) {   // 锦囊：长武器第三段冲击波
-    pwaves.push({ x: h.x + h.f * 28, y: h.y, vx: h.f * 330, t: 0, T: .9, hit: new Set(), f: h.f, dmg: 1.2 * R_('waveBonus', 1) });
   }
   // 误伤村民只闪一下，不扣血、不计击倒，也不改变连招判定。
   for (const v of villagers) {
@@ -1891,7 +1880,7 @@ function update(dt) {
   if (bz && !bz.dead && bz.phase === 2 && !archerAddsDone && bz.st !== 'roar' && bz.st !== 'fall') {
     archerAddsDone = true; summonArchers(bz);
   }
-  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updatePWaves(dt); updateHalberdBleed(dt); updateVillagers(dt);
+  updateShots(dt); if (window.GEAR && !over) GEAR.tick(0); Boss.updateFx(dt); updatePropFx(dt); updateDrops(dt); updateFx(dt); updateHalberdBleed(dt); updateVillagers(dt);
   if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.clampActors();
   const vw = viewW();
   let tx = hero.x - vw * .4;
@@ -2191,6 +2180,7 @@ function draw() {
   for (const h of stoneHits) list.push({ y: h.y, d: () => drawStoneHit(h) });
   for (const h of bluntHits) list.push({ y: h.y, d: () => drawBluntHit(h) });
   for (const f of bleedFx) list.push({ y: f.y, d: () => drawBleedFx(f) });
+  for (const f of hammerFx) list.push({ y: f.y, d: () => drawHammerFx(f) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2200,7 +2190,6 @@ function draw() {
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
   if (window.XIAOCHANG) XIAOCHANG.drawMagicFx();
-  drawPWaves();
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
@@ -2614,6 +2603,15 @@ function drawBleedFx(f) {
   ctx.drawImage(img, frame * fw, 0, fw, fw, f.x - size / 2, f.y - size / 2, size, size);
   ctx.restore();
 }
+function drawHammerFx(f) {
+  const img = f.kind === 'spin' ? IMG.ui_hammer_spin : IMG.ui_hammer_slam;
+  if (!img || !img.complete) return;
+  const w = f.size, h = w * 60 / 96;
+  const frame = Math.min(2, Math.max(0, Math.floor(f.t / .1)));
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * 96, 0, 96, 60, f.x - w / 2, f.y - h / 2, w, h);
+  ctx.restore();
+}
 function drawHalberdBleedDots(z, top) {
   return;   // 用户定：头顶层数红点不好看，取消；层数改由滴血频率表现
   const n = halberdStacks(z);
@@ -2782,7 +2780,6 @@ function drawHero() {
 }
 function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); drawHalberdBleedDots(z, z.y - 68); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
-    if (z.defDownT > 0) { ctx.fillStyle = '#b9a2dc'; ctx.fillRect(z.x + 4, z.y - 61, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);

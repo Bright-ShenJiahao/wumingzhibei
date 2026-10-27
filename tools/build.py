@@ -125,7 +125,7 @@ assets['title'] = uri(P('art', 'title', 'home.webp'))
 assets['room'] = uri(P('art', 'room', 'wake_outside.webp'))   # 农房内景
 assets['tvMask'] = uri(P('art', 'title', 'tv_mask.png'))
 # UI（卷轴/木牌按钮/印章）与回血食物
-assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'w_bow', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone', 'stone_shot', 'stone_shot_final', 'stone_shot_charge', 'stone_hit', 'staff_sweep', 'hit_blunt', 'shockwave', 'hit_finisher', 'halberd_rip', 'bleed_splash', 'bleed_drip')}
+assets['ui'] = {k: uri(P('art', 'ui', k + '.webp')) for k in ('scroll', 'btn', 'btn_red', 'seal_square', 'seal_round', 'seal_rect', 'w_staff', 'w_hammer', 'w_stone', 'w_bow', 'arrow', 'flag', 'boss_flag', 'fire0', 'fire1', 'fire2', 'fire3', 'rogue_card', 'charge_hit_staff', 'charge_hit_hammer', 'charge_hit_stone', 'stone_shot', 'stone_shot_final', 'stone_shot_charge', 'stone_hit', 'staff_sweep', 'hit_blunt', 'shockwave', 'hit_finisher', 'halberd_rip', 'bleed_splash', 'bleed_drip', 'hammer_spin', 'hammer_slam')}
 assets['dialogPortraits'] = {
     'caocao': photo_uri(P('art', 'ui', 'portrait_caocao.png')),
     'messenger': photo_uri(P('art', 'ui', 'portrait_messenger.png')),

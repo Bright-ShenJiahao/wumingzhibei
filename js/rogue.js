@@ -3,8 +3,7 @@
   const S = {
     meleeDmg: 1, rangedDmg: 1, finMelee: 1, finRanged: 1,
     move: 1, aspd: 1, chargedDmg: 1, steady: 0,
-    lifesteal: 0, shield: 0, stoneExtra: 0, scatter: 0,
-    hammerAoe: 0, hammerBonus: 1, staffWave: 0, waveBonus: 1,
+    lifesteal: 0, shield: 0, scatter: 0,
     crit: 0, poison: 0, summon: 0, catapult: 0, fireAura: 0, split: 0,
   };
   const DEFAULT = { ...S };
@@ -15,9 +14,6 @@
     { id: 'shield', name: '金光盾', school: '防御', w: 8, desc: '每 10 秒生成护盾，完全抵挡一次伤害；就绪时有淡金光圈', apply: () => { S.shield = 1; } },
     { id: 'leech', name: '汲取', school: '续航', w: 7, desc: '命中后每 3 秒最多恢复 0.5 点生命', apply: () => { S.lifesteal = .5; } },
     { id: 'steady', name: '稳身', school: '蓄力', w: 7, desc: '蓄力伤害 +20%（远程 +10%）；蓄力受击时有 30% 概率不中断', apply: () => { S.chargedDmg = 1.2; S.steady = .3; } },
-    { id: 'combo', name: '连击', school: '远程', w: 7, desc: '远程攻击有 20% 概率追加一次半伤攻击', apply: () => { S.stoneExtra = .2; } },
-    { id: 'quake', name: '震地', school: '短武器', w: 6, desc: '第三段变为范围攻击，略增伤害；命中减移速 15%、减攻速 10%，持续 0.5 秒', apply: () => { S.hammerAoe = 34; S.hammerBonus = 1.15; } },
-    { id: 'wave', name: '冲击波', school: '长武器', w: 6, desc: '第三段附带直线冲击波，略增伤害；命中减防 10%，持续 0.5 秒', apply: () => { S.staffWave = 1; S.waveBonus = 1.15; } },
     { id: 'crit', name: '致命一击', school: '暴击', w: 6, desc: '主动攻击有 10% 概率造成 150% 伤害', apply: () => { S.crit = .1; } },
     { id: 'poison', name: '淬毒', school: '持续伤害', w: 6, desc: '主动攻击使敌人中毒3秒，最多2层；每层每秒至少造成0.25伤害，与武器淬毒共享层数', apply: () => { S.poison = 1; } },
     { id: 'summon', name: '万箭齐发', school: '主动技能', w: 5, desc: '发射 8 箭，每箭 0.5 伤害并穿透（后续 30%）；30 秒冷却，无次数限制', apply: () => { S.summon = 1; summonCd = 0; updateSkillButton(); } },
@@ -32,11 +28,7 @@
   // 献祭：敌人贴身时每秒叠 1 层，最多 3 层；层数越高灼烧越痛、身上红晕越亮。
   let auraStacks = 0, auraHold = 0, auraIdle = 0;
 
-  const WEAPON_CARD = { long: 'wave', short: 'quake', ranged: 'combo' };
-  const weightOf = c => {
-    const kind = typeof weapon !== 'undefined' && typeof WEAP !== 'undefined' && WEAP[weapon] ? WEAP[weapon].class : '';
-    return c.w * (WEAPON_CARD[kind] === c.id ? 3 : 1);
-  };
+  const weightOf = c => c.w;
   function pickN(pool, n) {
     const out = [], p = pool.slice(), schools = [];
     while (out.length < n && p.length) {
@@ -98,7 +90,6 @@
     return true;
   }
   function tick(dt) {
-    if (typeof zs !== 'undefined') for (const z of zs) if (z && z.defDownT > 0) z.defDownT = Math.max(0, z.defDownT - dt);
     if (S.shield && !shieldReady) { shieldTimer -= dt; if (shieldTimer <= 0) { shieldReady = true; shieldTimer = 0; } }
     if (summonCd > 0) { summonCd = Math.max(0, summonCd - dt); updateSkillButton(); }
     if (catapultCd > 0) { catapultCd = Math.max(0, catapultCd - dt); updateSkillButton(); }

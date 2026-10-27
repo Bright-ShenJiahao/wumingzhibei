@@ -95,7 +95,7 @@ window.XIAOCHANG = (() => {
     cancelCharge(); pressAtk=false; pressRoll=false;
     for (const k in key) delete key[k];
     // 保留未拾取装备；清掉上一波飞行物和火场，选卡期间不偷袭玩家。
-    shots = []; eshots = []; fires = []; pwaves = []; allyShots = []; allyFires = [];
+    shots = []; eshots = []; fires = []; allyShots = []; allyFires = [];
     catapults = []; if (typeof Boss !== 'undefined') Boss.reset();
     zs = [];
     if (run.wave === 3 || run.wave === 5) refillXiaochangProps();

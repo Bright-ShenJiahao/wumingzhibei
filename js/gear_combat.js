@@ -31,7 +31,6 @@
     if(s.special==='execute'&&z.hp/z.T.hp<.3)add+=.2;
     if((s.special==='soul'||s.special2==='soul')&&soulUntil>gameT)add+=.1;
     if(traits.finisher)add+=rogue(traits.ranged?'finRanged':'finMelee',1)-1;
-    if(traits.quake)add+=rogue('hammerBonus',1)-1;
     if(token.charged)add+=stat(s,'charge')+rogue('chargedDmg',1)-1;
     const qualityBase=D.qualities[s.q]?.base||1;
     return Math.max(.1,1+add)*qualityBase;
@@ -87,7 +86,7 @@
     const scatter=clamp(stat(snap,'scatter')+(rogue('scatter')?.2:0),0,.4);
     if(!token.projectileExtrasChecked){token.projectileExtrasChecked=true;
       if(chance(scatter))shots.push(extraShot(.35,Math.random()<.5?-Math.PI/6:Math.PI/6));
-      if(chance(clamp(stat(snap,'repeat')+rogue('stoneExtra'),0,.4)))pending.push({t:gameT+.15,uid:snap.uid,run:()=>shots.push({...extraShot(.5),x:hero.x+hero.f*16,y:hero.y})});
+      if(chance(clamp(stat(snap,'repeat'),0,.4)))pending.push({t:gameT+.15,uid:snap.uid,run:()=>shots.push({...extraShot(.5),x:hero.x+hero.f*16,y:hero.y})});
     }
   }
   function projectileTraits(s){return {secondary:!!s.secondary,scaled:!!s.secondary,gearToken:s.gearToken,finisher:!s.secondary&&s.c===WEAP[s.gearToken?.s.type||weapon].combo.length-1,charged:s.charged};}
