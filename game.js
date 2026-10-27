@@ -114,10 +114,10 @@ const WEAP = {
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, aspd: 1.08, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
-    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
+    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .4 },                   // 劈：举棍过顶 → 砸下
+    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .55 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
-    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：前刺收尾（更长、更快）
+    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: 1, thrust: true },          // 戳：必晕
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -216,6 +216,7 @@ const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 200
 const RETREAT_SCREENS = 1.2;   // 非 Boss 战最多后退 1.2 个屏幕，防止无限风筝
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
 let stoneHits = [];
+let bluntHits = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
@@ -248,7 +249,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -1067,6 +1068,8 @@ function updatePWaves(dt) {
   qiFx = qiFx.filter(q => q.t < q.T);
   for (const q of chargeFx) q.t += dt;
   chargeFx = chargeFx.filter(q => q.t < q.T);
+  for (const h of bluntHits) h.t += dt;
+  bluntHits = bluntHits.filter(h => h.t < h.T);
   for (const q of chargeHitFx) q.t += dt;
   chargeHitFx = chargeHitFx.filter(q => q.t < q.T);
   for (const q of blessFx) q.t += dt;
@@ -1076,13 +1079,16 @@ function updatePWaves(dt) {
 }
 function drawPWaves() {
   for (const w of pwaves) {
-    const a = 1 - w.t / w.T;
-    for (let k = 0; k < 4; k++) {
-      const x = w.x - Math.sign(w.vx) * k * 8, hh = (7 - k) * (1 + Math.sin(w.t * 30 + k) * .3);
-      ctx.fillStyle = 'rgba(120,86,44,' + (.75 * a) + ')';
-      ctx.beginPath(); ctx.moveTo(x - 4, w.y + 2); ctx.lineTo(x, w.y + 2 - hh); ctx.lineTo(x + 4, w.y + 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,230,170,' + (.7 * a) + ')'; ctx.fillRect(x - 1, w.y - hh * .6, 2, 2);
-    }
+    const a = 1 - w.t / w.T, img = IMG.ui_shockwave;
+    if (!img || !img.complete) continue;
+    const frame = Math.floor(w.t / .08) % 3;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(w.x, w.y - 4);
+    if (w.vx < 0) ctx.scale(-1, 1);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, frame * 64, 0, 64, 32, -16, -8, 32, 16);
+    ctx.restore();
   }
 }
 function updatePropFx(dt) {
@@ -1183,7 +1189,7 @@ function chargedAttack(power) {
     const inFan = weapon === 'staff' ? (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) : (dx > -14 && dx < R + (z.T.w || 0));
     if (inFan) {
       const dmg = (weapon === 'staff' ? 1.6 : 2.4) * force;
-      hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', weapon === 'hammer' ? .5 : 0, .35, weapon === 'hammer');
+      hit(z, dmg, (weapon === 'staff' ? 140 : 90) * force, h.f, weapon === 'staff', (weapon === 'staff' || weapon === 'hammer') ? .5 : 0, .35, weapon === 'hammer', false, weapon === 'staff' ? { dazeChance: .5 } : {});
       addChargeHitFx(weapon, z.x, z.y - (weapon === 'hammer' ? 2 : 15), h.f);
     }
   }
@@ -1244,7 +1250,8 @@ function strike() {
       if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
       let attackDmg = C.dmg * fin * mult;
 
-      hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0 });
+      hit(z, attackDmg, C.kb, C.both ? Math.sign(z.x - h.x) || h.f : h.f, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, quake: !!aoe, guaranteedCrit: critT > 0, ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}) });
+      if (weapon === 'staff' || weapon === 'hammer' || weapon === 'halberd') bluntHits.push({ x: z.x, y: z.y - 12, t: 0, T: .15 });
       if (!C.multi && !aoe) break;
     }
   }
@@ -1925,13 +1932,26 @@ function draw() {
   drawChargeHitFx();
   // 蓄力重击的冲击环
   for (const q of chargeFx) {
+    if (q.w === 'staff') {
+      if (q.t >= .3) continue;
+      const img = IMG.ui_staff_sweep;
+      if (!img || !img.complete) continue;
+      const frame = Math.min(3, Math.floor(q.t / .075));
+      ctx.save();
+      ctx.globalAlpha = 1 - q.t / .3;
+      ctx.translate(q.x + q.f * 30, q.y - 14);
+      if (q.f < 0) ctx.scale(-1, 1);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, frame * 96, 0, 96, 72, -35, -27.5, 70, 55);
+      ctx.restore();
+      continue;
+    }
     const k = Math.min(1, q.t / q.T), R2 = 20 + 90 * k, a2 = 1 - k;
     ctx.save(); ctx.translate(q.x, q.y - 12); ctx.scale(q.f, 1);
     ctx.strokeStyle = q.w === 'hammer' ? 'rgba(255,190,90,' + (.9 * a2) + ')' : 'rgba(240,250,255,' + (.9 * a2) + ')';
     ctx.lineWidth = 4 * (1 - k) + 1;
     ctx.beginPath();
-    if (q.w === 'staff') ctx.arc(0, 0, R2, -2.094, 2.094);
-    else ctx.ellipse(0, 0, R2, R2 * .42, 0, 0, 7);
+    ctx.ellipse(0, 0, R2, R2 * .42, 0, 0, 7);
     ctx.stroke();
     ctx.restore();
   }
@@ -2036,6 +2056,7 @@ function draw() {
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => drawShot(s) });
   for (const h of stoneHits) list.push({ y: h.y, d: () => drawStoneHit(h) });
+  for (const h of bluntHits) list.push({ y: h.y, d: () => drawBluntHit(h) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2430,6 +2451,14 @@ function drawStoneHit(h) {
   const frame = Math.min(3, Math.max(0, Math.floor(h.t / .05)));
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, frame * 48, 0, 48, 48, h.x - 6, h.y - 6, 12, 12);
+  ctx.restore();
+}
+function drawBluntHit(h) {
+  const img = IMG.ui_hit_blunt;
+  if (!img || !img.complete) return;
+  const frame = Math.min(2, Math.max(0, Math.floor(h.t / .05)));
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * 48, 0, 48, 48, h.x - 7, h.y - 7, 14, 14);
   ctx.restore();
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
