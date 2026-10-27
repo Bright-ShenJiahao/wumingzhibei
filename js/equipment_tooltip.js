@@ -107,7 +107,7 @@
     tip.addEventListener('click',e=>{if(mode==='modal'&&e.target===tip)close();});
     tip.addEventListener('pointerenter',()=>{if(mode==='hover')clearTimeout(hideTimer);});
     tip.addEventListener('pointerleave',()=>{if(mode==='hover')later();});
-    document.addEventListener('pointermove',e=>{if(inBridge(e.clientX,e.clientY))clearTimeout(hideTimer);},true);
+    let wasIn=false;document.addEventListener('pointermove',e=>{const inside=inBridge(e.clientX,e.clientY);if(inside)clearTimeout(hideTimer);else if(wasIn&&mode==='hover')later();wasIn=inside;},true);   // 离开浮窗与武器之间的区域时重新计时关闭
     tip.addEventListener('toggle',()=>place(),true);
     tip.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
     root.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
