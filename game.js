@@ -159,11 +159,11 @@ WEAP.halberd = Object.assign({}, WEAP.staff, {
 // 黄巾兵
 const TYPES = {
   grunt:   { name: '喽啰', hp: 3, spd: 38, wind: .45, reach: 22, dmg: 1, scale: .86 },
-  blade:   { name: '刀手', hp: 5, spd: 30, wind: .7, reach: 27, dmg: 2, heavy: true, scale: .92 },
+  blade:   { name: '刀手', hp: 5, spd: 30, wind: .7, reach: 27, dmg: 1.5, heavy: true, scale: .92 },
   slinger: { name: '投石手', hp: 2, spd: 40, wind: .6, ranged: 'stone', range: [64, 104], cd: 2.4, scale: .88 },
   archer:  { name: '弓箭手', hp: 2, spd: 34, wind: .85, ranged: 'fire', range: [120, 190], cd: 3.2, scale: .92 },
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
-  priest:  { name: '黄巾方士', hp: 5, spd: 44, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
+  priest:  { name: '黄巾方士', hp: 4, spd: 40, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
   'yellow-heavy': { name: '黄巾大刀兵', hp: 7, spd: 25, wind: .9, reach: 31, dmg: 2, heavy: true, sprite: 'yellow_heavy', scale: 1.02 },
   'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .5, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
@@ -188,7 +188,7 @@ const WAVES = [
     extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0, 5], sleepy: 2 },
   // 区域 5：老卒首次登场
   { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
-    core: ['elite', 'priest'], budget: 9, sleepy: 3, sleepers: [0, 1], pool: ['grunt', 'blade', 'slinger', 'archer'],
+    core: ['elite', 'priest'], budget: 7, sleepy: 3, sleepers: [0, 1], pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
   { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
 ];
