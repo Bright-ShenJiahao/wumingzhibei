@@ -26,6 +26,11 @@
   const counter=(value,limit=1e9)=>{const n=Number(value);return Number.isInteger(n)&&n>=0?Math.min(limit,n):0;};
   function normalizeWallet(v){return {earned:counter(v?.earned),spent:counter(v?.spent)};}
   function normalizeFruit(v){if(!v||typeof v!=='object'||Array.isArray(v))return {got:6,used:0};return {got:counter(v.got),used:counter(v.used)};}
+  function normalizeOutfit(v){
+    const part=n=>{const x=Number(n);return Number.isInteger(x)&&x>=0&&x<=7?x:0;};
+    const at=Number(v?._at);
+    return {hair:part(v?.hair),shirt:part(v?.shirt),pants:part(v?.pants),_at:Number.isInteger(at)&&at>=0?at:0};
+  }
   function state(){
     const name=player();if(cache&&cacheName===name)return cache;
     cacheName=name;baseline=null;const all=debug?memory:read();freshLocal=!Object.prototype.hasOwnProperty.call(all,name);cache=!freshLocal&&all[name]&&typeof all[name]==='object'?all[name]:{items:[],equipped:{},played:false};
@@ -36,6 +41,7 @@
     cache.equipped ||= {};
     cache.wallet=normalizeWallet(cache.wallet);
     cache.fruit=normalizeFruit(cache.fruit);
+    cache.outfit=normalizeOutfit(cache.outfit);
     for(const slot of ['long','short','ranged'])if(!cache.items.some(i=>i.uid===cache.equipped[slot]&&D.slots[i.type]===slot))cache.equipped[slot]=null;
     const legacy=window.TITLE&&TITLE.legacyLoadout?TITLE.legacyLoadout():null;
     // 旧版v1会自动赠送大刀，不把这份误赠记录再次迁入；已存在的v2实例不批量删除。
@@ -83,7 +89,7 @@
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('.tBagCount');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.CAPACITY;countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
     const equippedIds=new Set(Object.values(p.equipped).filter(Boolean));
-    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
+    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{if(node.hasAttribute('data-outfit-slot'))return;const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
     for(const uid of [...selection])if(!p.items.some(i=>i.uid===uid)||equippedIds.has(uid))selection.delete(uid);
     bag.replaceChildren();
     const items=p.items.filter(i=>!equippedIds.has(i.uid)).map((item,index)=>({item,index})).sort((a,b)=>Number(!!b.item.locked)-Number(!!a.item.locked)||a.index-b.index).map(x=>x.item);
@@ -131,6 +137,7 @@
     // 保留首份云同步前本机备份；同步失败不会移除本机装备。
     if(!debug)try{const backupKey=KEY+'-backup:'+cacheName;if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,JSON.stringify(before));}catch(e){}
     Object.assign(cache,merged);if(!save({remote:true})){cache=before;baseline=copy(before);return false;}
+    if(window.OUTFIT)OUTFIT.apply(cache.outfit);
     freshLocal=false;
     if(window.TITLE)TITLE.applyCloudProgress(merged.campaign);
     lastChanged=sig(exportProfile())!==sig(local);

@@ -910,9 +910,11 @@
     const target = dom.chapter.querySelector('#tPrepTarget');
     if (target) { target.innerHTML = `${window.SHOP ? SHOP.entryMarkup() : ''}<button type="button" id="tMastery">⚔ 武器熟练度</button>`; if (window.SHOP) SHOP.bind(target); target.querySelector('#tMastery').onclick = () => window.MASTERY && MASTERY.open(); }
 
-    const slotMarkup=slot=>{const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
+    const slotMarkup=slot=>{if(slot.id==='fashion'){const display=window.OUTFIT?OUTFIT.label():'默认';return `<button type="button" class="tPrepSlot outfitSlot" data-outfit-slot role="button" aria-label="时装：${display}"><b>时装</b><span class="outfitSwatch">衣</span><span class="outfitName">${display}</span></button>`;}const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
     dom.chapter.querySelector('#tPrepSlotsRight').innerHTML=EQUIPMENT_SLOTS.slice(3,6).map(slotMarkup).join('');
+    const outfitSlot=dom.chapter.querySelector('[data-outfit-slot]');
+    if(outfitSlot)outfitSlot.onclick=e=>{e.preventDefault();e.stopPropagation();if(window.OUTFIT)OUTFIT.open();};
 
     const equipped = new Set(Object.values(p.equipped).filter(Boolean));
     const items = p.owned.filter(id => ITEMS[id] && !equipped.has(id));

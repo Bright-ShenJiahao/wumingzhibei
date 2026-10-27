@@ -17,6 +17,12 @@ function validate(p){
   if(clean.fruit!=null&&(typeof clean.fruit!=='object'||Array.isArray(clean.fruit)))throw new Error('彩色果数据不合法');
   clean.wallet={earned:int(clean.wallet?.earned),spent:int(clean.wallet?.spent)};
   clean.fruit={got:clean.fruit?int(clean.fruit.got,0):6,used:int(clean.fruit?.used)};
+  if(clean.outfit!=null){
+    const o=clean.outfit;
+    if(typeof o!=='object'||Array.isArray(o)||!['hair','shirt','pants'].every(k=>Number.isInteger(o[k])&&o[k]>=0&&o[k]<=7))throw new Error('时装配色不合法');
+    const at=Number(o._at), stamp=Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0;
+    clean.outfit={hair:o.hair,shirt:o.shirt,pants:o.pants,_at:stamp};
+  }
   // 校场进度属于 campaign；统一按章节白名单和0～6层校验，云合并取最大值。
   clean.campaign = globalThis.CLOUD_MERGE.merge({campaign:clean.campaign}).campaign;
   return clean;

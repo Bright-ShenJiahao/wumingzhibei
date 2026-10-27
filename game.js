@@ -98,6 +98,7 @@ for (const [name, frames] of Object.entries(ASSETS.chars)) {
     CH[name][f] = fr;
   }
 }
+if (window.OUTFIT) OUTFIT.init(CH);
 const PX = 0.4;   // 1 个精灵像素 = 0.4 世界单位
 const PROP_POOL = ['hay', 'hay', 'cart'];   // 水井已移除（只保留草垛、推车）   // 道具尺寸直接写在 art/props/meta.json（已按 1.6 倍放大）
 
