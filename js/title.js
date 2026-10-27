@@ -856,6 +856,9 @@
     if (previewRaf) cancelAnimationFrame(previewRaf);
     previewRaf = 0;
     document.body.classList.remove('wzb-intro');
+    document.body.classList.add('wzb-title');
+    if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.leave(); if (window.ROGUE) ROGUE.reset(); }
+    if (typeof reset === 'function') reset();
     S.mode = 'title'; S.chapterReturn = false;
     setDomVisible(true);
   }
