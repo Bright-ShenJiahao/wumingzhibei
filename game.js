@@ -225,6 +225,7 @@ function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam
 
 function reset() {
   chapter2Run = null;
+  M.top = 168;
   if (window.XIAOCHANG) XIAOCHANG.leave();
   if (window.WALLET) WALLET.startRun();
   M.W = 3600;
@@ -576,6 +577,7 @@ function prepareChapter2Run(showOpening) {
   if (window.TITLE && TITLE.skip) TITLE.skip();
   if (window.ROOM && ROOM.skip) ROOM.skip();
   reset();
+  M.top = 190;   // 第二章前景栅栏更低：人物脚底不能走进栅栏和营帐
   M.W = 3600;
   props = [];
   addChapter2Props();
@@ -1814,6 +1816,7 @@ function zFrame(z) {
     return 'idle';
   }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
+  if (result && (z.st === 'land' || z.st === 'getup')) return 'down';   // 结算卷轴出现后不再画起身帧
   if (z.st === 'land') return !z.dead && z.t > .25 && CH[z.sprite || z.type]?.getup ? 'getup' : 'land';
   if (z.dead) return 'down';
   if (z.st === 'sleep') return 'down';
@@ -2179,24 +2182,27 @@ function drawResult(HW, HH) {
   // 击倒 / 用时
   ctx.font = Math.round(sh * .058) + 'px ' + F;
   ctx.fillStyle = '#4a3a2a';
-  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .40);
-  ctx.fillStyle = '#6b4d22';
-  ctx.font = Math.round(sh * .045) + 'px ' + F;
-  ctx.fillText('本局获得金币 ' + (result.coins || 0), px0 + pw * .50, sy + sh * .445);
+  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .385);
+  ctx.fillStyle = '#a97618';
+  ctx.font = Math.round(sh * .050) + 'px ' + F;
+  ctx.fillText('💰 本局获得金币 ' + (result.coins || 0), px0 + pw * .50, sy + sh * .455);
 
-  // 台词
+  // 台词：按卷轴内宽换行，标点不能单独落到下一行
   const line = result.line || '';
   if (line) {
-    const lfs = Math.max(11, Math.round(sh * .052));
+    const lfs = Math.max(11, Math.round(sh * .046));
     ctx.font = lfs + 'px ' + BRUSH;
     ctx.fillStyle = '#3a2410';
-    const maxW = pw * .70, cx = px0 + pw * .50;
-    let row = '', rows = [];
+    const maxW = pw * .78, cx = px0 + pw * .50, noStart = '，。！？、；：”’）》」』…';
+    const rows = []; let row = '';
     for (const ch of line) {
-      if (ctx.measureText(row + ch).width > maxW) { rows.push(row); row = ch; } else row += ch;
+      if (row && ctx.measureText(row + ch).width > maxW) {
+        if (noStart.includes(ch)) { row += ch; rows.push(row); row = ''; }
+        else { rows.push(row); row = ch; }
+      } else row += ch;
     }
     if (row) rows.push(row);
-    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.47 + i * .070)));
+    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.525 + i * .060)));
   }
   ctx.globalAlpha = 1;
 
@@ -2235,7 +2241,9 @@ function drawResult(HW, HH) {
   // 按当前结算按钮中的最长标签计算统一字号
   let ufs = Math.round(bh * .46);
   ctx.font = ufs + 'px ' + BRUSH;
-  const actionLabels = result.win ? ['分享', '返回首页', '再来一局', '第二章'] : ['分享', '返回首页', '再来一局'];
+  const actionLabels = result.win
+    ? (chapter2Run ? ['分享', '返回首页', '再来一局', '返回整备'] : ['分享', '返回首页', '再来一局', '第二章'])
+    : ['分享', '返回首页', '再来一局'];
   const longest = Math.max(...actionLabels.map(t => ctx.measureText(t).width));
   if (longest > bw * .78) ufs = Math.max(8, Math.floor(ufs * bw * .78 / longest));
   const plank = (i, label, act, red, off) => {
@@ -2260,8 +2268,8 @@ function drawResult(HW, HH) {
   plank(1, '返回首页', 'home', false);
   plank(2, '再来一局', 'restart', true);
   if (result.win) {
-    const chapter2Locked = !window.CHAPTER2 || !CHAPTER2.canEnter();
-    plank(3, '第二章', 'next', false, chapter2Locked);
+    const chapter2Locked = !chapter2Run && (!window.CHAPTER2 || !CHAPTER2.canEnter());
+    plank(3, chapter2Run ? '返回整备' : '第二章', chapter2Run ? 'prep' : 'next', false, chapter2Locked);
   }
 
   // 复活按钮
@@ -2364,6 +2372,7 @@ document.addEventListener('pointerdown', e => {
           if (window.CHAPTER2 && !CHAPTER2.canEnter()) toast('第二章「黄巾决战」尚未开放');
           else toast('下一关还在做，敬请期待');
         }
+        else if (act === 'prep') { if (window.TITLE) TITLE.openPreparation({ chapter: 2, view: 'campaign' }); }
         else reset();
       }, 140);
       return;

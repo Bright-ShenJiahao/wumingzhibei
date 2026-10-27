@@ -31,16 +31,23 @@
     if (S.index >= LINES.length) { finish(); return; }
     S.chars = 0; S.charClock = 0;
   }
+  function skip() {
+    if (!S.active) return;
+    finish();
+  }
 
   function onPointer(e) {
     if (!S.active) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-    advance();
+    const target = e.target;
+    if (target && target.closest && target.closest('#bR')) skip();
+    else advance();
   }
   function onKey(e) {
     if (!S.active) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     if (e.repeat) return;
+    if (e.code === 'KeyK') { skip(); return; }
     if (e.code === 'KeyJ' || e.code === 'Space' || e.code === 'Enter') advance();
   }
   document.addEventListener('pointerdown', onPointer, true);
@@ -129,16 +136,21 @@
     const lines = wrapText(ctx, shown, Math.max(80, panelW - (left - px) - rightPad)).slice(0, maxLines);
     lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * (small ? 23 : 31)));
 
-    // 攻击键快进提示：放在对白框下方右对齐，不能画在右下角，否则会和攻击/翻滚按钮叠在一起。
-    const hintW = small ? 142 : 176, hintH = small ? 36 : 42;
-    const hx = px + panelW - hintW, hy = py + panelH + (small ? 8 : 12);
-    ctx.fillStyle = 'rgba(26,19,17,.84)'; rounded(ctx, hx, hy, hintW, hintH, hintH / 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(226,194,130,.42)'; ctx.lineWidth = 1; rounded(ctx, hx, hy, hintW, hintH, hintH / 2); ctx.stroke();
-    ctx.fillStyle = '#f4ead7'; ctx.beginPath(); ctx.arc(hx + (small ? 20 : 24), hy + hintH / 2, small ? 12 : 14, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#352a20'; ctx.font = `800 ${small ? 14 : 16}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('A', hx + (small ? 20 : 24), hy + hintH / 2 + .5);
-    ctx.textAlign = 'left'; ctx.fillStyle = '#f4ead7'; ctx.font = `700 ${small ? 13 : 15}px "PingFang SC","Microsoft YaHei",sans-serif`;
-    ctx.fillText('点攻击 快进', hx + (small ? 39 : 47), hy + hintH / 2 + .5);
+    // 右下角两块并排的小圆牌：J/攻击快进，K/翻滚整段跳过。
+    const labels = small ? ['攻击 快进', '翻滚 跳过'] : ['J 快进', 'K 跳过'];
+    const badgeW = small ? 70 : 88, badgeH = small ? 34 : 38, gap = small ? 7 : 9;
+    const hx = px + panelW - badgeW * 2 - gap, hy = py + panelH + (small ? 8 : 12);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    labels.forEach((label, i) => {
+      const x = hx + i * (badgeW + gap);
+      ctx.fillStyle = 'rgba(26,19,17,.88)';
+      rounded(ctx, x, hy, badgeW, badgeH, badgeH / 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(226,194,130,.48)'; ctx.lineWidth = 1;
+      rounded(ctx, x, hy, badgeW, badgeH, badgeH / 2); ctx.stroke();
+      ctx.fillStyle = '#f4ead7'; ctx.font = `700 ${small ? 11 : 12}px "PingFang SC","Microsoft YaHei",sans-serif`;
+      ctx.fillText(label, x + badgeW / 2, hy + badgeH / 2 + .5);
+    });
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 

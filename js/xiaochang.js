@@ -65,6 +65,7 @@ window.XIAOCHANG = (() => {
     if (window.TITLE) TITLE.skip();
     if (window.ROOM) ROOM.skip();
     reset();
+    M.top = chapter === 2 ? 190 : 168;   // 第二章校场同样避开更低的栅栏
     active = true;
     run = { chapter, floor, wish, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
     magicFx = []; ghostLinks = [];
@@ -325,7 +326,7 @@ window.XIAOCHANG = (() => {
     article.appendChild(nav);panel.appendChild(article);document.body.appendChild(panel);document.body.classList.add('wzb-xresult');
   }
   function leave() {
-    active=false;run=null;magicFx=[];ghostLinks=[];
+    active=false;run=null;magicFx=[];ghostLinks=[];M.top=168;
     if(panel){panel.remove();panel=null;}document.body.classList.remove('wzb-xresult');
   }
   function skipToSix() {
