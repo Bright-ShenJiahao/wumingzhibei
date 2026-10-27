@@ -697,7 +697,8 @@ function startChapter2Battle(number) {
   hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
   if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
   setRetreatLimit(hero.x);
-  lockR = Infinity; clearAt = 0;
+  // 每战锁一块场地：往右最多约 1.2 屏（战三的投石车在最右边），不能一路跑出战场
+  lockR = Math.min(M.W, hero.x + 650); clearAt = 0;
   addChapter2Props(number);
   if (number === 6) {
     chapter2Run.mode = 'preview';
