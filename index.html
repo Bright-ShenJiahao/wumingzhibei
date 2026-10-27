@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=9599669617" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=9599669617)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=ea060563aa" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ea060563aa)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -1600,7 +1600,7 @@ const Boss = (() => {
   window.BOSS_BLOCK = { isBoss, isBlocking, recordRanged, tryStun, update, draw, effect };
 })();
 
-// 第二章「黄巾决战」关卡规划。已从章节选择开放；第五战祭台地图已接入，张角 Boss 待完成。
+// 第二章「黄巾决战」关卡规划。已从章节选择开放；第六战祭台地图已接入，张角 Boss 待完成。
 (() => {
   const MAP = 'battlefield';
   const BOSS_MAP = 'altar';
@@ -1608,44 +1608,24 @@ const Boss = (() => {
   const debugMode = /[?&]debug(?:=|&|$)/.test(location.search);
   let selectedRoute = null;
   const battles = Object.freeze([
-    Object.freeze({
-      number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼',
-      units: ['yellow-heavy', 'yellow-priest', 'yellow-slinger', 'archer'], enemyCount: 10,
-      // 先让玩家读懂正面大刀兵，再逐步展开两翼与远程支援；左右投石手错开发射。
-      waves: [
-        Object.freeze({ id: 'center-guard', trigger: 'battle-start', enemies: [
-          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'front-center' }),
-          Object.freeze({ unit: 'archer', count: 1, formation: 'rear-center' }),
-        ] }),
-        Object.freeze({ id: 'flanking-reserve', trigger: 'first-center-enemy-defeated', enemies: [
-          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-left' }),
-          Object.freeze({ unit: 'yellow-heavy', count: 2, formation: 'rear-right' }),
-        ] }),
-        Object.freeze({ id: 'ranged-support', trigger: 'flanking-reserve-entered', delay: 1.2, enemies: [
-          Object.freeze({ unit: 'yellow-priest', count: 1, formation: 'rear-center' }),
-          Object.freeze({ unit: 'yellow-slinger', count: 1, formation: 'rear-left', attackDelay: 0 }),
-          Object.freeze({ unit: 'yellow-slinger', count: 1, formation: 'rear-right', attackDelay: 0.8 }),
-        ] }),
-      ],
-      map: MAP, status: 'locked',
-    }),
-    Object.freeze({ number: 2, title: '黄巾后阵', encounter: '四名盾兵、四名枪兵、三台固定投石车', units: ['yellow-shield', 'yellow-spear', 'yellow-catapult'], enemyCount: 11, map: MAP, status: 'locked' }),
-    Object.freeze({ number: 3, title: '正面突击：追击张梁', units: ['yellow-heavy', 'yellow-spear', 'zhang-liang'], map: MAP, route: 'zhang-liang', status: 'locked' }),
-    Object.freeze({ number: 4, title: '迂回包抄：追击张宝', units: ['yellow-shield', 'yellow-spear', 'zhang-bao'], map: MAP, route: 'zhang-bao', status: 'locked' }),
-    Object.freeze({ number: 5, title: '祭台决战', map: BOSS_MAP, status: 'locked' }),
+    Object.freeze({ number: 1, title: '曹军入阵', encounter: '黄巾正规军后翼', units: ['yellow-heavy', 'archer', 'slinger', 'priest'], map: MAP, status: 'locked' }),
+    Object.freeze({ number: 2, title: '盾阵', encounter: '盾兵与枪兵结阵', units: ['yellow-shield', 'yellow-spear', 'archer'], map: MAP, status: 'locked' }),
+    Object.freeze({ number: 3, title: '投石车阵', encounter: '五台固定投石车', units: ['yellow-shield', 'archer', 'yellow-catapult'], map: MAP, status: 'locked' }),
+    Object.freeze({ number: 4, title: '追击张梁', encounter: '正面突击路线', units: ['yellow-heavy', 'yellow-spear', 'zhang-liang'], map: MAP, route: 'zhang-liang', status: 'locked' }),
+    Object.freeze({ number: 5, title: '追击张宝', encounter: '迂回包抄路线', units: ['yellow-shield', 'priest', 'zhang-bao'], map: MAP, route: 'zhang-bao', status: 'locked' }),
+    Object.freeze({ number: 6, title: '祭台决战', encounter: '张角战预览', map: BOSS_MAP, status: 'locked' }),
   ]);
   const routes = Object.freeze([
-    Object.freeze({ id: 'zhang-liang', label: '正面突击：追击张梁', battle: 3 }),
-    Object.freeze({ id: 'zhang-bao', label: '迂回包抄：追击张宝', battle: 4 }),
+    Object.freeze({ id: 'zhang-liang', label: '正面突击：追击张梁', battle: 4 }),
+    Object.freeze({ id: 'zhang-bao', label: '迂回包抄：追击张宝', battle: 5 }),
   ]);
-  // 第二章专属兵种资料。整章仍锁定；战斗素材已接入独立的第二章战斗流程。
   const units = Object.freeze([
     Object.freeze({ id: 'yellow-heavy', name: '黄巾大刀兵', sprite: 'yellow_heavy', kind: 'heavy-melee', role: '慢速大范围劈砍；明显蓄力后攻击，适合正面突击路线。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 1 }),
     Object.freeze({ id: 'yellow-shield', name: '黄巾盾兵', sprite: 'yellow_shield', kind: 'shield-frontline', role: '持大盾掩护后排；正面格挡远程攻击，侧后方可突破。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 2 }),
     Object.freeze({ id: 'yellow-spear', name: '黄巾枪兵', sprite: 'yellow_spear', kind: 'long-melee', role: '预备后直线突刺，攻击距离较长；横向走位躲开后反击。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
     Object.freeze({ id: 'yellow-catapult', name: '投石车', sprite: 'yellow_catapult', kind: 'siege', role: '固定远程攻城器械；慢速向左投掷燃烧石块，落点预警后形成大范围火场。', actions: ['idle', 'load', 'fire', 'recoil', 'break', 'wreck'], firstBattle: 2 }),
-    Object.freeze({ id: 'zhang-liang', name: '人公将军·张梁', sprite: 'zhang_liang', kind: 'boss', role: '正面突击路线首领；重型大刀近战。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 3 }),
-    Object.freeze({ id: 'zhang-bao', name: '地公将军·张宝', sprite: 'zhang_bao', kind: 'boss', role: '迂回包抄路线首领；快速近战并压迫玩家走位。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 4 }),
+    Object.freeze({ id: 'zhang-liang', name: '人公将军·张梁', sprite: 'zhang_liang', kind: 'boss', role: '正面突击路线首领；重型大刀近战。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 4 }),
+    Object.freeze({ id: 'zhang-bao', name: '地公将军·张宝', sprite: 'zhang_bao', kind: 'boss', role: '迂回包抄路线首领；快速近战并压迫玩家走位。', actions: ['idle', 'walk1', 'walk2', 'wind', 'strike', 'hurt', 'fly1', 'fly2', 'down', 'land'], firstBattle: 5 }),
     Object.freeze({ id: 'yellow-priest', name: '黄巾方士', sprite: 'priest', kind: 'support', role: '沿用第一章方士；在后排为黄巾兵提供支援。', firstBattle: 1 }),
     Object.freeze({ id: 'yellow-slinger', name: '黄巾投石手', sprite: 'slinger', kind: 'ranged', role: '沿用第一章投石手；左右错开发射，避免同时压中玩家。', firstBattle: 1 }),
   ]);
@@ -1654,9 +1634,10 @@ const Boss = (() => {
     if (!unlocked) return false;
     if (number === 1) return true;
     if (number === 2) return completed.has(1);
-    if (number === 3) return completed.has(2) && selectedRoute === 'zhang-liang';
-    if (number === 4) return completed.has(2) && selectedRoute === 'zhang-bao';
-    if (number === 5) return selectedRoute === 'zhang-liang' ? completed.has(3) : selectedRoute === 'zhang-bao' && completed.has(4);
+    if (number === 3) return completed.has(2);
+    if (number === 4) return completed.has(3) && selectedRoute === 'zhang-liang';
+    if (number === 5) return completed.has(3) && selectedRoute === 'zhang-bao';
+    if (number === 6) return selectedRoute === 'zhang-liang' ? completed.has(4) : selectedRoute === 'zhang-bao' && completed.has(5);
     return false;
   };
 
@@ -1666,17 +1647,16 @@ const Boss = (() => {
     unlocked,
     battles,
     units,
-    routeChoiceAfter: 2,
+    routeChoiceAfter: 3,
     routes,
     canEnter: () => unlocked || debugMode,
     canEnterBattle,
-    canChooseRoute: () => unlocked && completed.has(2) && selectedRoute === null,
+    canChooseRoute: () => unlocked && completed.has(3) && selectedRoute === null,
     completeBattle: number => {
       if (!canEnterBattle(number)) return false;
       completed.add(number);
       return true;
     },
-    // 未来开放时同一轮只能选一条追击路线；第三战、第四战互斥。
     chooseRoute: id => {
       if (!unlocked || !canChooseRoute() || !routes.some(route => route.id === id)) return false;
       selectedRoute = id;
@@ -2095,7 +2075,7 @@ const Boss = (() => {
 //   ?debug=boss   直接进管亥一阶段（骑马）
 //   ?debug=boss2  直接进管亥二阶段（步战）
 //   ?debug=chapter2  直接测试第二章战斗流程（玩家章节入口保持锁定）
-//   ?debug=chapter2altar  直接预览第五战祭台地图（张角 Boss 尚未接入）
+//   ?debug=chapter2altar  直接预览第六战祭台地图（张角 Boss 尚未接入）
 // 桌面也可以按 F2 收起/展开面板，F3 跳 Boss 一阶段，F4 跳二阶段。
 (() => {
   const m = /[?&]debug(?:=([a-z0-9]+))?/.exec(location.search);
@@ -2201,9 +2181,9 @@ const Boss = (() => {
 
     const c2 = addGroup('chapter2', '第二章');
     btn(c2, '测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
-    btn(c2, '第五战地图', 'alt', () => {
+    btn(c2, '第六战祭台', 'alt', () => {
       if (typeof startChapter2Debug === 'function') startChapter2Debug();
-      if (typeof startChapter2Battle === 'function') startChapter2Battle(5);
+      if (typeof startChapter2Battle === 'function') startChapter2Battle(6);
     });
 
     const xc = addGroup('xiaochang', '校场');
@@ -2276,12 +2256,13 @@ const Boss = (() => {
     if (auto === 'boss' || auto === 'boss2') setTimeout(() => jumpBoss(auto === 'boss2'), 900);
     if (auto === 'chapter2' || auto === 'chapter2altar') setTimeout(() => {
       if (typeof startChapter2Debug === 'function') startChapter2Debug();
-      if (auto === 'chapter2altar' && typeof startChapter2Battle === 'function') startChapter2Battle(5);
+      if (auto === 'chapter2altar' && typeof startChapter2Battle === 'function') startChapter2Battle(6);
     }, 900);
     console.log('%c[开发者模式] 已开启', 'color:#8ef07a;font-weight:bold', 'F2 面板 / F3 Boss一阶段 / F4 Boss二阶段');
   }
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot); else boot();
 })();
+
 
 // 桌面悬浮详情和手机点击详情共用同一份内容；只展示装备后的静态属性。
 (() => {
@@ -2691,7 +2672,7 @@ const Boss = (() => {
     const pool=['staff','hammer','stone'];
     if(TITLE.ownsWeapon('halberd')||TITLE.hasCleared(1))pool.push('halberd');
     // 按当前战斗章节限制，而不是按是否拥有；回第一章刷装也不会掉大刀或汉弓。
-    if(chapter2Run){pool.push('blade');if(TITLE.ownsWeapon('bow'))pool.push('bow');}
+    if(chapter2Run){if(TITLE.ownsWeapon('blade'))pool.push('blade');if(TITLE.ownsWeapon('bow'))pool.push('bow');}
     for(let i=0;i<count;i++){const type=z.T.boss&&!TITLE.hasCleared(1)&&i===0?'halberd':D.pick(pool),item=D.generate(type,source,person,undefined,chapter2Run?undefined:D.mainWeights[source]);drops.push({k:'weapon',weapon:type,item,x:z.x+(i-(count-1)/2)*18,y:z.y,z:10,vy:130,t:0,life:Infinity,got:0});}
     if(!boss)return;say('将领已败！靠近拾取武器，失败也会保留。',3);
   }
@@ -6876,6 +6857,43 @@ function addChapter2Props() {
   }
 }
 
+// 第二章每战波次：每项是一个 spawn 函数，保持现有 spawn / 单位名。
+const CHAPTER2_WAVES = {
+  1: [
+    () => { spawn('yellow-heavy', hero.x + 190, M.top + 28); spawn('yellow-heavy', hero.x + 215, M.bot - 23); spawn('archer', hero.x + 330, (M.top + M.bot) / 2); },
+    () => { spawn('yellow-heavy', hero.x + 230, M.top + 20); spawn('yellow-heavy', hero.x + 230, M.bot - 20); spawn('slinger', hero.x + 300, M.top + 20); spawn('slinger', hero.x + 320, M.bot - 20); },
+    () => { spawn('yellow-heavy', hero.x + 190, (M.top + M.bot) / 2 - 20); spawn('yellow-heavy', hero.x + 190, (M.top + M.bot) / 2 + 20); spawn('priest', hero.x + 340, (M.top + M.bot) / 2 - 16); spawn('priest', hero.x + 340, (M.top + M.bot) / 2 + 16); },
+  ],
+  2: [
+    () => { spawn('yellow-shield', hero.x + 190, (M.top + M.bot) / 2 - 20); spawn('yellow-shield', hero.x + 190, (M.top + M.bot) / 2 + 20); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 + 20); },
+    () => { spawn('yellow-shield', hero.x + 190, M.top + 28); spawn('yellow-shield', hero.x + 190, M.bot - 28); spawn('yellow-spear', hero.x + 250, (M.top + M.bot) / 2 - 18); spawn('yellow-spear', hero.x + 250, (M.top + M.bot) / 2 + 18); },
+    () => { spawn('yellow-shield', hero.x + 190, (M.top + M.bot) / 2); spawn('yellow-heavy', hero.x + 210, M.top + 24); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 + 20); },
+  ],
+  3: [
+    () => { spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 - 20); spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 + 20); spawn('archer', hero.x + 290, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 290, (M.top + M.bot) / 2 + 20); },
+    () => {
+      for (let i = 0; i < 5; i++) {
+        spawn('yellow-catapult', hero.x + 565 + i * 10, M.top + 10 + (M.bot - M.top - 20) * i / 4);
+        const z = zs[zs.length - 1]; z.f = -1; z.static = true; z.cd = [2.4, 3.5, 4.6, 5.8, 7.0][i]; z.catapultIndex = i;
+      }
+      spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 - 20);
+      spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 + 20);
+    },
+  ],
+  4: [
+    () => { spawn('yellow-heavy', hero.x + 190, (M.top + M.bot) / 2 - 24); spawn('yellow-heavy', hero.x + 205, (M.top + M.bot) / 2); spawn('yellow-heavy', hero.x + 190, (M.top + M.bot) / 2 + 24); spawn('yellow-spear', hero.x + 270, (M.top + M.bot) / 2); },
+    () => { for (let i = 0; i < 3; i++) spawn('yellow-spear', hero.x + 200 + i * 28, (M.top + M.bot) / 2); spawn('yellow-heavy', hero.x + 235, M.top + 22); spawn('yellow-heavy', hero.x + 235, M.bot - 22); },
+    () => { spawn('zhang_liang', hero.x + 280, (M.top + M.bot) / 2); const boss = zs[zs.length - 1]; boss.f = -1; boss.cd = 1.4; boss.bossLabel = TYPES.zhang_liang.name; spawn('yellow-heavy', hero.x + 210, M.top + 24); spawn('yellow-spear', hero.x + 220, M.bot - 20); },
+  ],
+  5: [
+    () => { for (const y of [M.top + 18, (M.top + M.bot) / 2, M.bot - 18]) spawn('yellow-shield', hero.x + 190, y); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 310, (M.top + M.bot) / 2 + 20); },
+    () => { spawn('yellow-shield', hero.x + 190, M.top + 24); spawn('yellow-shield', hero.x + 190, M.bot - 24); for (let i = 0; i < 3; i++) spawn('priest', hero.x + 330, M.top + 22 + i * ((M.bot - M.top - 44) / 2)); },
+    () => { spawn('zhang_bao', hero.x + 280, (M.top + M.bot) / 2); const boss = zs[zs.length - 1]; boss.f = -1; boss.cd = 1.4; boss.bossLabel = TYPES.zhang_bao.name; spawn('yellow-shield', hero.x + 200, (M.top + M.bot) / 2 - 22); spawn('priest', hero.x + 320, (M.top + M.bot) / 2 + 22); },
+  ],
+  6: [],
+};
+const CHAPTER2_TITLES = ['', '曹军入阵', '盾阵', '投石车阵', '追击张梁', '追击张宝', '祭台决战'];
+
 function prepareChapter2Run(showOpening) {
   if (window.TITLE && TITLE.skip) TITLE.skip();
   if (window.ROOM && ROOM.skip) ROOM.skip();
@@ -6901,82 +6919,65 @@ function startChapter2Debug() { loadChapter2(false); }
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number) {
   if (window.GEAR) GEAR.collectDrops();
-  M.W = number === 5 ? 1080 : 3600;
+  M.W = number === 6 ? 1080 : 3600;
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
-  chapter2Run.nextAt = 0; chapter2Run.spawned = true;
+  chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
   hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
-  if (number === 5) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
+  if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
   setRetreatLimit(hero.x);
   lockR = Infinity; clearAt = 0;
-  if (number === 1) {
-    spawn('yellow-heavy', hero.x + 190, M.top + 28);
-    spawn('yellow-heavy', hero.x + 215, M.bot - 23);
-    spawn('archer', hero.x + 300, (M.top + M.bot) / 2);   // 第一战开场加一名弓箭手（沿用第一章火箭弓手）
-    say('第一战：黄巾正规军后翼', 3);
-  } else if (number === 2) {
-    const lanes = [M.top + 18, (M.top + M.bot) / 2, M.bot - 18, M.top + 47];
-    for (let i = 0; i < 4; i++) spawn('yellow-shield', hero.x + 180 + (i % 2) * 24, lanes[i]);
-    for (let i = 0; i < 4; i++) spawn('yellow-spear', hero.x + 225 + (i % 2) * 22, lanes[i]);
-    const catY = [M.top + 8, (M.top + M.bot) / 2, M.bot - 8];
-    for (let i = 0; i < 3; i++) {
-      spawn('yellow-catapult', hero.x + 570 + i * 12, catY[i]);
-      const z = zs[zs.length - 1]; z.f = -1; z.static = true;
-      z.cd = [2.4, 5.1, 7.7][i]; z.catapultIndex = i;
-    }
-    say('第二战：盾兵护住枪阵，右侧有三台投石车！', 4);
-  } else if (number === 5) {
-    // 张角 Boss 尚未接入：第五战先作为祭台地图预览，不刷敌人、不自动结算。
+  if (number === 6) {
     chapter2Run.mode = 'preview';
-    say('第五战：祭台决战（张角战待接入）', 4);
+    say('第六战：祭台决战（张角战待接入）', 4);
   } else {
-    const name = number === 3 ? 'zhang_liang' : 'zhang_bao';
-    const y = (M.top + M.bot) / 2;
-    spawn(number === 3 ? 'yellow-heavy' : 'yellow-shield', hero.x + 205, M.top + 22);
-    spawn('yellow-spear', hero.x + 225, M.bot - 20);
-    spawn(name, hero.x + 280, y);
-    const boss = zs[zs.length - 1]; boss.f = -1; boss.cd = 1.4; boss.bossLabel = TYPES[name].name;
-    say(number === 3 ? '第三战：正面追击张梁！' : '第四战：迂回包抄张宝！', 3.5);
+    const waves = CHAPTER2_WAVES[number] || [];
+    if (waves[0]) waves[0]();
+    say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5);
   }
   cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));
 }
 function chapter2Waves() {
   if (!chapter2Run) return;
-  if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) { startChapter2Battle(2); return; }
-  if (chapter2Run.mode === 'victory' && gameT >= chapter2Run.nextAt) { chapter2Run.mode = 'complete'; won = true; say('追击成功！张角棺椁的去向仍未查明。', 3); return; }
+  if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
+    startChapter2Battle(chapter2Run.nextBattle || chapter2Run.battle + 1); return;
+  }
   if (chapter2Run.mode === 'clearing' && gameT >= chapter2Run.nextAt) {
-    const battle = chapter2Run.battle;
-    if (battle === 1 && chapter2Run.wave === 0) {
-      chapter2Run.wave = 1;
-      for (const y of [M.top + 16, M.top + 42, M.bot - 42, M.bot - 16]) spawn('yellow-heavy', hero.x + 250 + rnd(-12, 12), y);
-      chapter2Run.mode = 'fight'; say('两翼的黄巾大刀兵包抄上来了！', 2.6); return;
+    const battle = chapter2Run.battle, waves = CHAPTER2_WAVES[battle] || [];
+    if (chapter2Run.wave < waves.length - 1) {
+      chapter2Run.wave++; chapter2Run.mode = 'fight';
+      waves[chapter2Run.wave]();
+      return;
     }
-    if (battle === 1 && chapter2Run.wave === 1) {
-      chapter2Run.wave = 2;
-      spawn('priest', hero.x + 335, (M.top + M.bot) / 2);
-      spawn('slinger', hero.x + 300, M.top + 20);
-      spawn('slinger', hero.x + 315, M.bot - 20);
-      chapter2Run.mode = 'fight'; say('方士和投石手在后方支援！', 2.8); return;
+    if (window.CHAPTER2 && CHAPTER2.completeBattle) CHAPTER2.completeBattle(battle);
+    // 战一到战五：清场后先抽一次锦囊；锦囊关闭后下一帧继续转场/选路。
+    if (battle >= 1 && battle <= 5 && window.ROGUE && !chapter2Run['card' + battle]) {
+      chapter2Run['card' + battle] = true; ROGUE.offer(); return;
     }
-    // 第一、二战清场后各抽一次锦囊；锦囊面板会冻结战斗，关掉后下一帧再继续转场/选路，避免数字键同时选锦囊和路线。
-    if ((battle === 1 || battle === 2) && window.ROGUE && !chapter2Run['card' + battle]) { chapter2Run['card' + battle] = true; ROGUE.offer(); return; }
-    if (battle === 1) {
-      // 第二章首次清完第一战后掉落；拾取才解锁，未拾取时重玩仍会掉落。
+    if (battle === 3) {
+      chapter2Run.mode = 'choice';
+      say('张梁、张宝分兵突围。选择追击路线。', 999); return;
+    }
+    if (battle === 4) {
+      if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);
+      chapter2Run.nextBattle = 6;
+    } else if (battle === 5) {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) spawnWeaponDrop('bow', hero.x + 24, hero.y);
-      chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;
+      chapter2Run.nextBattle = 6;
+    } else {
+      chapter2Run.nextBattle = battle + 1;
     }
-    if (battle === 2) { chapter2Run.mode = 'choice'; say('张梁、张宝分兵突围。选择追击路线。', 999); return; }
-    chapter2Run.mode = 'victory'; chapter2Run.nextAt = gameT + .5; return;
+    chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;
   }
   if (chapter2Run.mode !== 'fight') return;
-  const alive = zs.some(z => !z.dead);
-  if (!alive) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
+  if (!zs.some(z => !z.dead)) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
 }
 function chooseChapter2Route(route) {
   if (!chapter2Run || chapter2Run.mode !== 'choice') return;
   chapter2Run.route = route;
+  if (window.CHAPTER2 && CHAPTER2.chooseRoute) CHAPTER2.chooseRoute(route);
   say(route === 'zhang-liang' ? '曹操：正面突击，追击张梁！' : '曹操：迂回包抄，截住张宝！', 2.4);
-  startChapter2Battle(route === 'zhang-liang' ? 3 : 4);
+  startChapter2Battle(route === 'zhang-liang' ? 4 : 5);
 }
 
 // ---------- 主角 ----------
@@ -7151,9 +7152,9 @@ function spawnDrop(x, y, forceK) {
   drops.push({ k: pick.k, heal: pick.heal, x, y, y0: y, z: 10, vy: rnd(120, 190), t: 0, life: 8, got: 0 });
 }
 function spawnWeaponDrop(id, x, y) {
-  if (id !== 'bow' || drops.some(d => d.weapon === id && !d.got)) return;
+  if (!['bow', 'blade'].includes(id) || drops.some(d => d.weapon === id && !d.got)) return;
   drops.push({ k: 'weapon', weapon: id, x, y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
-  say('发现汉弓！靠近拾取，永久存入武器仓库。', 4);
+  say(`发现${id === 'blade' ? '大刀' : '汉弓'}！靠近拾取，永久存入武器仓库。`, 4);
 }
 function updateDrops(dt) {
   const h = hero;
@@ -8333,7 +8334,7 @@ function draw() {
   if (window.XIAOCHANG && XIAOCHANG.active()) {
     XIAOCHANG.drawBackground();
   } else if (chapter2Run) {
-    const bossMap = chapter2Run.battle === 5;
+    const bossMap = chapter2Run.battle === 6;
     if (bossMap) {
       const im = IMG.chapter2_altar, keyed = im && im.keyedCanvas;
       if (keyed) {
