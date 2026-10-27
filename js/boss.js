@@ -58,6 +58,7 @@ const Boss = (() => {
     }
     // 掷戟后的空手窗口：只吃一半伤害（完全不能攻击，是玩家该抓的破绽）
     if (z.spear) dmg *= .5;   // 家伙不在手上（掷出去了）就一直只吃一半伤害
+    if (z.daze > 0) dmg *= 1.5;   // 被石子晕住的首领同样吃 1.5 倍伤害
     z.hp -= dmg; z.flash = .1; freeze = .04; shake = .08;
     hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (z.phase === 2) {
@@ -81,8 +82,8 @@ const Boss = (() => {
       say('管亥：「这……这小子是什么人……」', 3.5); vo('defeat'); sfx('enemyDown', z.x); shake = .3;
     }
     if (ranged) {
-      if (window.BOSS_BLOCK) BOSS_BLOCK.recordRanged(z, dir);
       if (window.BOSS_BLOCK) BOSS_BLOCK.tryStun(z, traits);
+      if (window.BOSS_BLOCK) BOSS_BLOCK.recordRanged(z, dir);
     }
   }
 

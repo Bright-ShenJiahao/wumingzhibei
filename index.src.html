@@ -24,7 +24,7 @@ button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border
 /* 透明按钮，贴近右下角 */
 #bA{right:calc(14px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:72px;height:72px;background:rgba(210,60,48,.28);border-color:rgba(255,160,150,.7)}
 #bA:active{background:rgba(210,60,48,.5)}
-#bA::after{content:"";position:absolute;inset:-6px;border-radius:50%;pointer-events:none;opacity:0;background:conic-gradient(from -90deg,#ffe08a 0deg var(--charge-angle,0deg),rgba(255,224,138,.12) var(--charge-angle,0deg) 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+#bA::after{content:"";position:absolute;inset:-6px;border-radius:50%;pointer-events:none;opacity:0;background:conic-gradient(from -90deg,var(--charge-color,#ffe08a) 0deg var(--charge-angle,0deg),rgba(255,224,138,.12) var(--charge-angle,0deg) 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
 #bA.charging::after{opacity:1;filter:drop-shadow(0 0 4px rgba(255,210,100,.8))}
 #bA.charged::after{animation:charge-pulse .65s ease-in-out infinite alternate}
 @keyframes charge-pulse{to{filter:drop-shadow(0 0 9px #8de5ff)}}

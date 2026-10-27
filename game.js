@@ -244,7 +244,7 @@ function reset() {
   weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
   ui();
   if (window.ROGUE) ROGUE.reset();
-  atkHeldSince = 0; charging = false; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
+  atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
@@ -274,10 +274,31 @@ const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 // 完美闪避 / 蓄力重击
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
 let ghosts = [];                              // 残影
-const CHARGE_MS = 400, CHARGE_MAX_MS = 2000;
+const CHARGE_MS = 400;
+let chargeTier = 0, chargeTierFlash = 0;
+function chargeMaxMs() {
+  const base = WEAP[weapon] && WEAP[weapon].class === 'ranged' ? 1200 : 1600;
+  return base * (window.GEAR ? GEAR.chargeScale() : 1);
+}
+function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1); }
+function chargeTierFor(held) {
+  const max = chargeMaxMs();
+  if (held >= max) return 3;
+  if (held >= max / 2) return 2;
+  if (held >= chargeGateMs()) return 1;
+  return 0;
+}
+function updateChargeTier() {
+  if (!charging || !atkHeldSince) { chargeTier = 0; return; }
+  const next = chargeTierFor(performance.now() - atkHeldSince);
+  if (next > chargeTier) {
+    chargeTier = next; chargeTierFlash = .18;
+    if (window.SFX) SFX.play('blip', 0, 1 + chargeTier * .16);
+  } else if (next < chargeTier) chargeTier = next;
+}
 let atkHeldSince = 0, charging = false, chargeFx = [], chargeHitFx = [];   // 攻击按住待判定 / 蓄力状态
 let deathLandedAt = null, enemiesCelebrating = false;
-function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / (CHARGE_MAX_MS * (window.GEAR ? GEAR.chargeScale() : 1)))) : 0; }
+function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / chargeMaxMs())) : 0; }
 addEventListener('keydown', e => {
   if (window.XIAOCHANG && XIAOCHANG.blocks()) return;
   if (e.target && ['INPUT','SELECT','BUTTON'].includes(e.target.tagName) && window.XIAOCHANG && XIAOCHANG.active()) return;
@@ -728,17 +749,19 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
-  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK) {
-    BOSS_BLOCK.recordRanged(z, dir);
-    BOSS_BLOCK.tryStun(z, traits);
-  }
   if (traits.shockwave) z.defDownT = Math.max(z.defDownT || 0, .5);
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
   const dazeTime = traits.dazeTime != null ? traits.dazeTime : (z.T.heavy ? 1 : 1.5) * R_('daze');
-  if (!z.T.boss && !z.T.chapterBoss && dazeChance && !z.daze && Math.random() < dazeChance) { z.daze = dazeTime; z.st = 'move'; z.tok = false; }
+  // 只有 traits 明确给出 dazeChance 的伤害（目前是石子）才能晕首领
+  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && Math.random() < dazeChance) {
+    z.daze = dazeTime;
+    if (z.T.chapterBoss) z.stun = Math.max(z.stun || 0, dazeTime);
+    z.st = 'move'; z.tok = false;
+  }
+  if (ranged && z.T.chapterBoss && window.BOSS_BLOCK) BOSS_BLOCK.recordRanged(z, dir);
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连击会显得一顿一顿的）
   const W0 = WEAP[weapon] || {};
@@ -812,8 +835,8 @@ function heroUpdate(dt) {
   h.ix = ix; h.iy = iy;   // 记下方向输入：跑动中扔石子会偏
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
-  if (atkHeldSince && !charging && performance.now() - atkHeldSince >= CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) && !h.air && h.st !== 'down' && h.st !== 'hurt') {
-    charging = true; sfx('charge', h.x); h.comboWin = 0; h.q = 0;
+  if (atkHeldSince && !charging && performance.now() - atkHeldSince >= chargeGateMs() && !h.air && h.st !== 'down' && h.st !== 'hurt') {
+    charging = true; chargeTier = 0; chargeTierFlash = 0; sfx('charge', h.x); h.comboWin = 0; h.q = 0;
   }
   if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
@@ -1118,25 +1141,27 @@ let blessFx = []; // 方士施法成功的黄圈
 function atkPress() {
   if (over) { if (result && gameT >= result.born) reset(); return; }
   if (atkHeldSince) return;
-  atkHeldSince = performance.now(); charging = false;
+  atkHeldSince = performance.now(); charging = false; chargeTier = 0; chargeTierFlash = 0;
 }
 function atkRelease() {
   if (!atkHeldSince) return;
   const held = performance.now() - atkHeldSince;
   atkHeldSince = 0;
   const canAct = hero.st !== 'down' && hero.st !== 'hurt' && !hero.air && !over;
-  if (held >= CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1)) {
+  const tier = chargeTierFor(held);
+  if (held >= chargeGateMs()) {
     charging = false;
-    if (canAct) chargedAttack(Math.min(1, held / (CHARGE_MAX_MS * (window.GEAR ? GEAR.chargeScale() : 1))));
+    if (canAct) chargedAttack(Math.min(1, held / chargeMaxMs()), tier);
+    chargeTier = 0; chargeTierFlash = 0;
     return;
   }
-  charging = false;
+  charging = false; chargeTier = 0; chargeTierFlash = 0;
   if (canAct) {
     if (hero.st === 'atk') hero.q = 1;
     else pressAtk = true;
   }
 }
-function cancelCharge() { charging = false; atkHeldSince = 0; }
+function cancelCharge() { charging = false; atkHeldSince = 0; chargeTier = 0; chargeTierFlash = 0; }
 
 // 蓄力重击：三种武器各不相同；命中只在释放时结算一次，动画仅作表现。
 function addChargeHitFx(kind, x, y, f = 1) {
@@ -1163,11 +1188,11 @@ function drawChargeHitFx() {
   }
 }
 
-function chargedAttack(power) {
+function chargedAttack(power, tier = 1) {
   const h = hero, W = WEAP[weapon];
   h.q = 0; h.comboWin = 0;
   h.atk = { c: W.combo.length - 1, fi: 0, t: 0, lg: 0, visualOnly: true, gearToken: window.GEAR ? GEAR.attackToken(true) : null }; set(h, 'atk');
-  chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power });
+  chargeFx.push({ x: h.x, y: h.y, t: 0, T: .45, w: weapon, f: h.f, power, tier });
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
   const R = (weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : (W.chargeReach || 46)) * (window.GEAR ? GEAR.range() : 1);
@@ -1177,11 +1202,15 @@ function chargedAttack(power) {
     shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd, vy: 0, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, kind: 'arrow' });
     return;
   }
-  if (weapon === 'stone') {                        // 石子蓄力：三颗扇形，每颗1.1×force，60%晕0.6秒
-    for (const ang of [-.22, 0, .22]) {
-      const C = Object.assign({}, W.combo[0], { dmg: 1.1 * force, spd: 240, life: .8, dazeChance: .6, dazeTime: .6, daze: 1 });
-      const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
-      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true });
+  if (weapon === 'stone') {                        // 石子蓄力：按档位 3/4/5 颗，0.12 夹角
+    const data = tier === 3 ? { n: 5, dmg: 1.6, chance: 1, time: 1 }
+      : tier === 2 ? { n: 4, dmg: 1.2, chance: .7, time: .8 }
+      : { n: 3, dmg: .8, chance: .4, time: .6 };
+    const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
+    for (let i = 0; i < data.n; i++) {
+      const ang = (i - (data.n - 1) / 2) * .12;
+      const C = Object.assign({}, W.combo[0], { dmg: data.dmg, spd: 310, life: .8, dazeChance: data.chance, dazeTime: data.time, daze: 1 });
+      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, chargeTier: tier });
     }
     return;
   }
@@ -1561,7 +1590,7 @@ function updateShots(dt) {
       const traits = window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter };
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
-      if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = .5; traits.dazeTime = .6; }
+      if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = s.C.dazeChance * .5; traits.dazeTime = s.C.dazeTime; }
       const result = hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
       if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
@@ -1746,6 +1775,7 @@ function countComboHit() {
 function update(dt) {
   if (window.PAUSE && PAUSE.paused()) { PAUSE.update(dt); return; }
   if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) { CHAPTER2_INTRO.update(dt); return; }
+  if (chargeTierFlash > 0) chargeTierFlash = Math.max(0, chargeTierFlash - dt);
   if (slowT > 0) { slowT -= dt; dt *= .35; }      // 完美闪避的慢动作
   if (critT > 0) critT -= dt;
   if (pdCd > 0) pdCd -= dt;
@@ -1937,6 +1967,9 @@ function draw() {
   ctx.globalAlpha = 1;
   // 蓄力：主角身上渐亮的光
   const chargeBtn = document.getElementById('bA'), chargeP = chargeRatio();
+  updateChargeTier();
+  const chargeColor = chargeTier === 3 ? '#ff9a3d' : chargeTier === 2 ? '#ffd84a' : '#ffffff';
+  chargeBtn.style.setProperty('--charge-color', chargeColor);
   chargeBtn.classList.toggle('charging', !!atkHeldSince && charging);
   chargeBtn.classList.toggle('charged', !!atkHeldSince && charging && chargeP >= 1);
   chargeBtn.style.setProperty('--charge-angle', (360 * chargeP) + 'deg');
@@ -2487,12 +2520,13 @@ function drawProp(p) {
 }
 function drawChargeAura(h) {
   const p = chargeRatio(), t = performance.now() / 1000, pulse = .5 + .5 * Math.sin(t * (7 + p * 5));
+  const col = chargeTier === 3 ? '#ff9a3d' : chargeTier === 2 ? '#ffd84a' : '#ffffff';
   const height = 34 + 34 * p, width = 18 + 10 * p;
   const K = .55;                      // 只比主角大一点点
   ctx.save(); ctx.translate(h.x, h.y - (h.z || 0)); ctx.scale(K, K);
   // 低蓄力时火焰贴身，接近满蓄逐渐向上拔高并向两侧扩张。
   ctx.globalAlpha = .10 + .16 * p + .05 * pulse;
-  ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 5 + 8 * p;
+  ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 5 + 8 * p;
   ctx.beginPath(); ctx.ellipse(0, -22, width * (.72 + pulse * .08), 26 + 8 * p, 0, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 2 + 4 * p;
   // 先铺宽阔的火焰主体，再叠尖舌；避免效果看成几根细长光柱。
@@ -2504,7 +2538,7 @@ function drawChargeAura(h) {
   ];
   const sx = width / 28, sy = height / 68;
   for (const [scale, alpha] of [[1, .18 + .20 * p], [.76, .16 + .22 * p]]) {
-    ctx.globalAlpha = alpha * (.88 + pulse * .12); ctx.fillStyle = '#fff';
+    ctx.globalAlpha = alpha * (.88 + pulse * .12); ctx.fillStyle = col;
     ctx.beginPath();
     body.forEach(([x, y], i) => {
       const xx = x * sx * scale + Math.sin(t * 8 + i * .7) * (1 + p * 1.3);
@@ -2526,7 +2560,7 @@ function drawChargeAura(h) {
       const base = side * (4 + layer * 1.5);
       const tip = side * (width * (.42 + spreadN * 1.25) + sway);
       ctx.globalAlpha = (layer ? .46 : .60) * (.45 + .55 * p) + .06 * pulse;
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(base - side * spread, -1);
       ctx.lineTo(base - side * (spread * .74), -height * .20);
@@ -2546,16 +2580,21 @@ function drawChargeAura(h) {
     const side = i % 2 ? 1 : -1, x = side * (8 + phase * (width + 7)) + Math.sin(t * 9 + i * 2) * 2;
     const y = -4 - phase * (height * (.72 + (i % 3) * .08));
     const size = 1 + (i % 3) * .45;
-    ctx.globalAlpha = (.22 + p * .48) * (1 - phase * .55); ctx.fillStyle = '#fff';
+    ctx.globalAlpha = (.22 + p * .48) * (1 - phase * .55); ctx.fillStyle = col;
     ctx.fillRect(Math.round(x), Math.round(y), size, size * (1.3 + pulse * .6));
   }
-  ctx.globalAlpha = .20 + .35 * p + .18 * pulse; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1 + p * 1.4;
+  ctx.globalAlpha = .20 + .35 * p + .18 * pulse; ctx.strokeStyle = col; ctx.lineWidth = 1 + p * 1.4;
   ctx.beginPath(); ctx.ellipse(0, -1, 13 + p * 9 + pulse * 2, 3 + p * 2, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.globalAlpha = .12 + .22 * p; ctx.fillStyle = '#fff';
+  ctx.globalAlpha = .12 + .22 * p; ctx.fillStyle = col;
   for (let i = 0; i < 7; i++) {
     const side = i % 2 ? 1 : -1, x = side * (12 + (i % 4) * 4 + Math.sin(t * 8 + i) * 2);
     const y = -3 - (i % 3) * 2, r = 1.5 + (i % 3) * .6;
     ctx.beginPath(); ctx.ellipse(x, y, r * 1.6, r * .7, side * .12, 0, Math.PI * 2); ctx.fill();
+  }
+  if (chargeTierFlash > 0) {
+    ctx.globalAlpha = (chargeTierFlash / .18) * .85;
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(0, -24, 30 + 5 * (1 - chargeTierFlash / .18), 38, 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }

@@ -272,14 +272,14 @@
     toggleMute,
     setPauseDucked(value) { pauseDucked = !!value; applyMute(); },
     // name：音效名；pan：-1（左）到 1（右）
-    play(name, pan = 0) {
+    play(name, pan = 0, pitch = 1) {
       if (muted || !S[name]) return;
       if (!init()) return;
       const now = ac.currentTime;
       if (lastAt[name] && now - lastAt[name] < .025) return;   // 同一帧重复触发只播一次
       lastAt[name] = now;
       const o = bus(pan, (VOL[name] || .5) * R(.88, 1.05), WET[name] || .18);
-      S[name](o, now + .005, R(.94, 1.06));
+      S[name](o, now + .005, R(.94, 1.06) * pitch);
     },
   };
 })();

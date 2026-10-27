@@ -39,9 +39,10 @@
   }
   function tryStun(z, traits) {
     if (!isBoss(z) || z.dead || !traits || !traits.dazeChance) return false;
-    if (Math.random() >= .5) return false;
-    z.daze = Math.max(z.daze || 0, .6);
-    z.stun = Math.max(z.stun || 0, .6);
+    if (Math.random() >= traits.dazeChance) return false;
+    const time = traits.dazeTime || .6;
+    z.daze = Math.max(z.daze || 0, time);
+    z.stun = Math.max(z.stun || 0, time);
     return true;
   }
   // moveFn(z, tx, ty, speed, dt)：沿用各首领自己的移动函数。
