@@ -15,7 +15,7 @@ G = lambda *p: os.path.join(R, 'art', 'gemini', *p)
 JOBS = [
     ('UI_卷轴.png', 'ui', ['scroll']),
     ('UI_按钮.png', 'ui', ['btn', 'btn_red']),
-    ('UI_印章.png', 'ui', ['seal_square', 'seal_round', 'seal_rect']),
+    ('UI_印章.png', 'ui', ['seal_square', 'seal_round']),
     ('食物_包子鸡腿.png', 'food', ['bun', 'leg']),
     ('食物_烤乳猪.png', 'food', ['pig']),
 ]

@@ -11,7 +11,6 @@ CELL_W, CELL_H = 160, 120
 # Manual frame bounds for the irregularly spaced rows in the supplied sheet.
 SHEETS = {
     'charge_hit_staff': [(82, 35, 196, 225), (275, 30, 504, 230), (515, 15, 770, 245), (886, 40, 1005, 230)],
-    'charge_hit_hammer': [(65, 315, 208, 455), (245, 350, 515, 460), (510, 310, 790, 465)],
     'charge_hit_stone': [(94, 535, 188, 635), (325, 520, 440, 640), (576, 515, 730, 640)],
 }
 
