@@ -2,28 +2,28 @@
 (() => {
   const rows = [
     ['sharp','锋锐',10,[5,10,15],'攻击伤害'],['swift','迅捷',8,[4,7,10],'攻击速度'],
-    ['reach','延展',8,[6,10,15],'攻击距离／射程'],['critical','精准',6,[3,5,8],'暴击率','pp'],
+    ['reach','远击',8,[6,10,15],'攻击距离／射程'],['critical','精准',6,[3,5,8],'暴击率','pp'],
     ['severity','重创',6,[10,20,30],'暴击伤害','pp'],['guard','护身',8,[3,5,8],'减伤'],
-    ['health','强健',10,[5,10,15],'最大生命'],['move','疾行',10,[4,7,10],'移动速度'],
-    ['dodge','闪身',3,[3,5,10],'普攻闪避','pp'],['focus','专注',4,[4,7,10],'冷却／蓄力缩减'],
-    ['charge','强力',8,[8,14,20],'蓄力伤害'],['hunt','追猎',8,[8,14,20],'对首领增伤'],
-    ['troops','当关',10,[5,9,13],'对小兵／精英增伤'],['exploit','乘隙',6,[6,10,15],'对异常敌人增伤'],
-    ['victory','乘胜',6,[5,8,12],'击杀后增伤4秒'],['chain','连刃',6,[2,3,4],'同目标每层增伤，最多3层'],
-    ['push','猛击',8,[8,12,18],'概率额外击退'],['leech','吸取',3,[8,12,18],'概率回复0.25生命；冷却2秒'],
-    ['survive','余生',4,[15,25,35],'击杀概率回复0.5生命；冷却1秒'],
+    ['health','固本',10,[5,10,15],'最大生命'],['move','轻灵',10,[4,7,10],'移动速度'],
+    ['dodge','游身',3,[3,5,10],'普攻闪避','pp'],['focus','凝神',4,[4,7,10],'冷却／蓄力缩减'],
+    ['charge','蓄势',8,[8,14,20],'蓄力伤害'],['hunt','斩将',8,[8,14,20],'对首领增伤'],
+    ['troops','破阵',10,[5,9,13],'对小兵／精英增伤'],['exploit','寻隙',6,[6,10,15],'对异常敌人增伤'],
+    ['victory','乘胜',6,[5,8,12],'击杀后增伤4秒'],['chain','连环',6,[2,3,4],'同目标每层增伤，最多3层'],
+    ['push','撼山',8,[8,12,18],'概率额外击退'],['leech','饮血',3,[8,12,18],'概率回复0.25生命；冷却2秒'],
+    ['survive','续命',4,[15,25,35],'击杀概率回复0.5生命；冷却1秒'],
     ['interrupt','震慑',3,[6,10,15],'概率打断可打断施法；冷却3秒'],
-    ['slow','迟缓',6,[10,15,20],'20%概率减移速2秒'],['numb','麻痹',6,[8,12,16],'20%概率减攻速2秒'],
-    ['blind','遮目',3,[10,15,20],'20%概率致盲2秒；普攻未命中率'],
+    ['slow','缠丝',6,[10,15,20],'20%概率减移速2秒'],['numb','截脉',6,[8,12,16],'20%概率减攻速2秒'],
+    ['blind','迷踪',3,[10,15,20],'20%概率致盲2秒；普攻未命中率'],
     ['poison','淬毒',4,[4,6,8],'20%概率中毒；每秒伤害，3秒／2层'],
-    ['bleed','流血',4,[6,9,12],'15%概率流血；每秒伤害，2秒／1层'],
-    ['burn','点燃',4,[2,3,4],'20%概率点燃；每秒伤害，3秒／3层'],
-    ['ice','冻结',3,[10,15,20],'概率积寒；3层冻结，首领6层'],
-    ['pierce','贯穿',4,[15,25,35],'概率额外穿透1人，后续50%伤害','%', 'ranged'],
-    ['split','分裂',4,[10,15,20],'概率范围分裂25%伤害，最多3人','%', 'melee'],
-    ['scatter','散射',3,[12,20,28],'概率随机侧射1支，35%伤害','%', 'ranged'],
-    ['repeat','连射',3,[10,15,20],'概率追加射击，50%伤害','%', 'ranged'],
-    ['double','双击',3,[10,15,20],'概率追加近战，50%伤害','%', 'melee'],
-    ['return','弹回',3,[10,15,20],'概率弹回，返回35%伤害','%', 'ranged'],
+    ['bleed','血刃',4,[6,9,12],'15%概率流血；每秒伤害，2秒／1层'],
+    ['burn','烈火',4,[2,3,4],'20%概率点燃；每秒伤害，3秒／3层'],
+    ['ice','寒霜',3,[10,15,20],'概率积寒；3层冻结，首领6层'],
+    ['pierce','透甲',4,[15,25,35],'概率额外穿透1人，后续50%伤害','%', 'ranged'],
+    ['split','横扫',4,[10,15,20],'概率范围分裂25%伤害，最多3人','%', 'melee'],
+    ['scatter','散星',3,[12,20,28],'概率随机侧射1支，35%伤害','%', 'ranged'],
+    ['repeat','连珠',3,[10,15,20],'概率追加射击，50%伤害','%', 'ranged'],
+    ['double','叠浪',3,[10,15,20],'概率追加近战，50%伤害','%', 'melee'],
+    ['return','回旋',3,[10,15,20],'概率弹回，返回35%伤害','%', 'ranged'],
   ];
   const positive = Object.fromEntries(rows.map(([id,name,weight,values,desc,unit='%',type]) => [id,{id,name,weight,values,desc,unit,type}]));
   const negative = Object.fromEntries([
@@ -43,11 +43,12 @@
     ['soul','噬魂',0,'击杀敌人后3秒内攻击+10%'],
   ].map(([id,name,weight,desc])=>[id,{id,name,weight,desc}]));
   const qualities = [
-    {name:'普通',color:'#d4cdbf',count:0}, {name:'优良',color:'#6eacf0',count:1},
-    {name:'精致',color:'#81bd78',count:1,a:true}, {name:'极品',color:'#ed8172',count:2},
-    {name:'传说',color:'#c190e5',count:2,a:true}, {name:'天工',color:'#edc465',count:2,a:true},
+    {name:'普通',color:'#d4cdbf',count:0,base:1.00}, {name:'优良',color:'#6eacf0',count:1,base:1.03},
+    {name:'精致',color:'#81bd78',count:1,a:true,base:1.06}, {name:'极品',color:'#ed8172',count:2,base:1.10},
+    {name:'传说',color:'#c190e5',count:2,a:true,base:1.15}, {name:'天工',color:'#edc465',count:2,a:true,base:1.20},
   ];
   const names = {staff:'棍子',halberd:'长戟',hammer:'锤子',blade:'大刀',stone:'石子',bow:'汉弓'};
+  const elegant = {staff:'长棍',halberd:'长戟',hammer:'铁锤',blade:'大刀',stone:'飞石',bow:'汉弓'};
   const slots = {staff:'long',halberd:'long',hammer:'short',blade:'short',stone:'ranged',bow:'ranged'};
   const templates = ['{人}曾用的','{人}嫌不顺手的','{人}一直没舍得扔的','{人}借走忘还的','{人}找了三天的','{人}醉后送人的','{人}偷偷卖掉的','{人}赢来的','{人}抵出去的','据说{人}用过的','疑似{人}遗失的','刻着{人}名字的','仿照{人}那把做的','和{人}那把很像的','{人}撤退时落下的','{人}亲兵从泥里拔出的','跟着{人}淋过大雨的','{人}出征前换下的'];
   const personal = {
@@ -83,7 +84,7 @@
     return {uid:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),type,q,affixes,negative:neg?{id:neg.id,value:1+Math.floor(Math.random()*neg.max)}:null,special:specialId,inscription:inscription(person),locked:false};
   }
   const applicable=(a,type)=>!positive[a.id]?.type || (positive[a.id].type==='ranged')===(slots[type]==='ranged');
-  function label(item) {return qualities[item.q].name+'·'+(item.affixes[0]?positive[item.affixes[0].id].name:'')+names[item.type];}
+  function label(item) {return qualities[item.q].name+'·'+(item.affixes[0]?positive[item.affixes[0].id].name:'')+(elegant[item.type]||names[item.type]);}
   function lines(item) {
     const out=item.affixes.map(a=>{const d=positive[a.id];return `${d.name} ${['初级','中级','高级'][a.tier]}：${d.desc} ${a.value}${d.unit==='pp'?'个百分点':'%'}${applicable(a,item.type)?'':'（当前武器不生效）'}`;});
     if(item.negative){const n=item.negative,d=negative[n.id];out.push(`${d.name}：${d.desc}${n.id==='fragile'?'+':'－'}${n.value}${d.unit==='pp'?'个百分点':'%'}`);}
@@ -98,5 +99,5 @@
     const n=k=>v[k]||0,cap=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
     return {damage:Math.max(.1,1+n('sharp')+n('blunt')),speed:cap(1+n('swift')+n('heavy'),.2,1.4),range:cap(1+n('reach')+n('short'),.2,1.35),crit:cap(.01+n('critical')+n('inaccurate'),0,.35),critDamage:cap(1.5+n('severity')+n('weakcrit'),1,2.5),health:10*(1+cap(n('health')+n('frail'),-.8,1)),guard:cap(n('guard')+n('fragile'),-1,.3),move:cap(1+n('move')+n('clumsy'),.2,1.3),dodge:cap(n('dodge'),0,.2),focus:cap(n('focus'),0,.3)};
   }
-  window.AFFIX_DATA={positive,negative,special,qualities,names,slots,mainWeights,generate,label,lines,stats,applicable,pick};
+  window.AFFIX_DATA={positive,negative,special,qualities,names,elegant,slots,mainWeights,generate,label,lines,stats,applicable,pick};
 })();

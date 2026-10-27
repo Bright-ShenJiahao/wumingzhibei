@@ -113,7 +113,7 @@ const WEAP = {
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
-  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
+  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, aspd: 1.08, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
@@ -148,6 +148,7 @@ const WEAP = {
 // 长戟使用白衣专用帧。
 WEAP.halberd = Object.assign({}, WEAP.staff, {
   name: '长戟',
+  aspd: 1,   // 长戟不继承棍子的 +8% 攻速
   reach: 46,
   combo: [
     { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.1, kb: 56, daze: .3 },
@@ -818,7 +819,7 @@ function heroUpdate(dt) {
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
     const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
-    if (a.t >= C.d[a.fi] * R_('aspd') * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
+    if (a.t >= C.d[a.fi] * R_('aspd') / (W2.aspd || 1) * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
       a.t = 0; a.fi++;
       if (a.fi === C.f.length - 1 && !a.visualOnly) strike();
       if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
@@ -886,7 +887,7 @@ function updateDrops(dt) {
     if (d.life <= 0) { d.got = 1; continue; }   // 放久了消失
     if (Math.abs(d.x - h.x) < 15 && Math.abs(d.y - h.y) < 16 && d.z < 22) {
       if (d.item) {
-        if (window.ARMORY && ARMORY.add(d.item)) { d.got=1; sfx('food',d.x); floaters.push({x:d.x,y:d.y-10,t:0,txt:AFFIX_DATA.label(d.item),color:AFFIX_DATA.qualities[d.item.q].color}); }
+        if (window.ARMORY && ARMORY.add(d.item)) { d.got=1; sfx('food',d.x); floaters.push({x:d.x,y:d.y-10,t:0,txt:AFFIX_DATA.names[d.item.type],color:AFFIX_DATA.qualities[d.item.q].color}); }
         continue;
       }
       if (d.weapon) {

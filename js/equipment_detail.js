@@ -40,13 +40,15 @@
   function metrics(item){
     const w=WEAP[item.type],st=AFFIX_DATA.stats(item),combos=w.combo;
     const total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
-    const damages=combos.map(c=>c.dmg*st.damage);
+    const qBase=AFFIX_DATA.qualities[item.q].base||1,aspd=w.aspd||1;
+    const damages=combos.map(c=>c.dmg*st.damage*qBase);
     const ranges=combos.map(c=>(w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range);
-    return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus};
+    return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total*aspd,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus,quality:qBase};
   }
   function render(container,item,{compare=null,compact=false,peer=null}={}){
     if(!item||typeof WEAP==='undefined'||!WEAP[item.type])return;style();container.replaceChildren();container.classList.add('weapon-detail');
     const D=AFFIX_DATA,w=WEAP[item.type],st=D.stats(item),combos=w.combo,total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
+    const qBase=D.qualities[item.q].base||1,qPct=Math.round((qBase-1)*100);
     const heading=node('div',null,'wd-title');if(item.inscription)heading.append(node('span',item.inscription+'·','wd-origin'));
     const title=node('span',D.label(item));title.style.color=D.qualities[item.q].color;heading.append(title);container.append(heading);if(!compact)container.append(node('div',({long:'长武器',short:'短武器',ranged:'远程武器'})[w.class]+' · 仅当前手持时生效','wd-category'));
     const affixes=node('section',null,'wd-affixes');affixes.append(node('h4','词条'));
@@ -62,8 +64,9 @@
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
-    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
-    row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
+    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
+    if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
+    row('平均攻速',fmt(values.speed)+'次/秒'+(values.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
     const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges[ranges.length-1]:'各段 '+ranges.join('／');
     row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
@@ -79,7 +82,7 @@
     if(features.length)container.append(node('div',features.join('；')+'。','wd-copy'));
     container.append(node('h4','蓄力攻击'));
     const start=.4*(1-st.focus),full=2*(1-st.focus),charge=item.affixes.find(a=>a.id==='charge')?.value||0;
-    const chargedDamage=(w.proj?1:item.type==='staff'?1.6:2.4)*(st.damage+charge/100);
+    const chargedDamage=(w.proj?1:item.type==='staff'?1.6:2.4)*(st.damage+charge/100)*qBase;
     let chargeText=w.proj?`松开发射3枚扇形${item.type==='bow'?'箭矢':'石子'}，满蓄每枚伤害${fmt(chargedDamage)}。`:item.type==='staff'?`松开使出前方扇形重扫，可击飞；满蓄伤害${fmt(chargedDamage)}。`:item.type==='hammer'?`松开使出前方重砸，可打断并有概率眩晕；满蓄伤害${fmt(chargedDamage)}。`:`松开使出前方蓄力重击；满蓄伤害${fmt(chargedDamage)}。`;
     container.append(node('div',`长按攻击${fmt(start)}秒开始蓄力，${fmt(full)}秒蓄满。`+chargeText+'蓄力越久伤害越高，受击会中断。','wd-copy'));
     const detail=node('details'),summary=node('summary','展开基础数值与计算说明'),base=node('dl');detail.append(summary);

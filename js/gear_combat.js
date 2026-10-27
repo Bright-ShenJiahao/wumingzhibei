@@ -5,7 +5,7 @@
   const rogue=(k,d=0)=>window.ROGUE&&ROGUE.S[k]!=null?ROGUE.S[k]:d;
   function snapshot(type){const item=ARMORY.active(type),v={};if(item)for(const a of item.affixes)if(D.applicable(a,type))v[a.id]=a.value/100;
     if(item?.negative)v[item.negative.id]=-item.negative.value/100;
-    return {uid:item?.uid||type,type,v,special:item?.special||null,special2:item?.special2||null};}
+    return {uid:item?.uid||type,type,q:item?.q||0,v,special:item?.special||null,special2:item?.special2||null};}
   function sync(){const next=ARMORY.active(weapon),uid=next?.uid||weapon;if(uid!==currentUid){current=snapshot(weapon);currentUid=uid;spirit=0;chain=0;chainTarget=null;pending=[];if(hero){const max=maxHp();hero.hp=Math.min(hero.hp,max);}}return current;}
   const stat=(s,k)=>s.v[k]||0;
   function reduction(s){return clamp(stat(s,'focus'),0,.3);}
@@ -33,7 +33,8 @@
     if(traits.finisher)add+=rogue(traits.ranged?'finRanged':'finMelee',1)-1;
     if(traits.quake)add+=rogue('hammerBonus',1)-1;
     if(token.charged)add+=stat(s,'charge')+rogue('chargedDmg',1)-1;
-    return Math.max(.1,1+add);
+    const qualityBase=D.qualities[s.q]?.base||1;
+    return Math.max(.1,1+add)*qualityBase;
   }
   function extra(z,damage,token,crit=true){if(!z||z.dead)return;const s=token.s;z.lastGear=s;const value=damage*(crit&&token.crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit'),1,2.5):1);hit(z,value,0,0,false,0,0,false,false,{secondary:true,scaled:true,gearSecondary:true});}
   function hitPrimary(z,damage,kb,dir,knock,daze,stun,interrupt,ranged,traits){

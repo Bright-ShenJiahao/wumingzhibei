@@ -54,7 +54,7 @@ body.wzb-pro #help{display:none}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=2a2795fb2e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2a2795fb2e)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=85e33c936b" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=85e33c936b)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -79,28 +79,28 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 (() => {
   const rows = [
     ['sharp','锋锐',10,[5,10,15],'攻击伤害'],['swift','迅捷',8,[4,7,10],'攻击速度'],
-    ['reach','延展',8,[6,10,15],'攻击距离／射程'],['critical','精准',6,[3,5,8],'暴击率','pp'],
+    ['reach','远击',8,[6,10,15],'攻击距离／射程'],['critical','精准',6,[3,5,8],'暴击率','pp'],
     ['severity','重创',6,[10,20,30],'暴击伤害','pp'],['guard','护身',8,[3,5,8],'减伤'],
-    ['health','强健',10,[5,10,15],'最大生命'],['move','疾行',10,[4,7,10],'移动速度'],
-    ['dodge','闪身',3,[3,5,10],'普攻闪避','pp'],['focus','专注',4,[4,7,10],'冷却／蓄力缩减'],
-    ['charge','强力',8,[8,14,20],'蓄力伤害'],['hunt','追猎',8,[8,14,20],'对首领增伤'],
-    ['troops','当关',10,[5,9,13],'对小兵／精英增伤'],['exploit','乘隙',6,[6,10,15],'对异常敌人增伤'],
-    ['victory','乘胜',6,[5,8,12],'击杀后增伤4秒'],['chain','连刃',6,[2,3,4],'同目标每层增伤，最多3层'],
-    ['push','猛击',8,[8,12,18],'概率额外击退'],['leech','吸取',3,[8,12,18],'概率回复0.25生命；冷却2秒'],
-    ['survive','余生',4,[15,25,35],'击杀概率回复0.5生命；冷却1秒'],
+    ['health','固本',10,[5,10,15],'最大生命'],['move','轻灵',10,[4,7,10],'移动速度'],
+    ['dodge','游身',3,[3,5,10],'普攻闪避','pp'],['focus','凝神',4,[4,7,10],'冷却／蓄力缩减'],
+    ['charge','蓄势',8,[8,14,20],'蓄力伤害'],['hunt','斩将',8,[8,14,20],'对首领增伤'],
+    ['troops','破阵',10,[5,9,13],'对小兵／精英增伤'],['exploit','寻隙',6,[6,10,15],'对异常敌人增伤'],
+    ['victory','乘胜',6,[5,8,12],'击杀后增伤4秒'],['chain','连环',6,[2,3,4],'同目标每层增伤，最多3层'],
+    ['push','撼山',8,[8,12,18],'概率额外击退'],['leech','饮血',3,[8,12,18],'概率回复0.25生命；冷却2秒'],
+    ['survive','续命',4,[15,25,35],'击杀概率回复0.5生命；冷却1秒'],
     ['interrupt','震慑',3,[6,10,15],'概率打断可打断施法；冷却3秒'],
-    ['slow','迟缓',6,[10,15,20],'20%概率减移速2秒'],['numb','麻痹',6,[8,12,16],'20%概率减攻速2秒'],
-    ['blind','遮目',3,[10,15,20],'20%概率致盲2秒；普攻未命中率'],
+    ['slow','缠丝',6,[10,15,20],'20%概率减移速2秒'],['numb','截脉',6,[8,12,16],'20%概率减攻速2秒'],
+    ['blind','迷踪',3,[10,15,20],'20%概率致盲2秒；普攻未命中率'],
     ['poison','淬毒',4,[4,6,8],'20%概率中毒；每秒伤害，3秒／2层'],
-    ['bleed','流血',4,[6,9,12],'15%概率流血；每秒伤害，2秒／1层'],
-    ['burn','点燃',4,[2,3,4],'20%概率点燃；每秒伤害，3秒／3层'],
-    ['ice','冻结',3,[10,15,20],'概率积寒；3层冻结，首领6层'],
-    ['pierce','贯穿',4,[15,25,35],'概率额外穿透1人，后续50%伤害','%', 'ranged'],
-    ['split','分裂',4,[10,15,20],'概率范围分裂25%伤害，最多3人','%', 'melee'],
-    ['scatter','散射',3,[12,20,28],'概率随机侧射1支，35%伤害','%', 'ranged'],
-    ['repeat','连射',3,[10,15,20],'概率追加射击，50%伤害','%', 'ranged'],
-    ['double','双击',3,[10,15,20],'概率追加近战，50%伤害','%', 'melee'],
-    ['return','弹回',3,[10,15,20],'概率弹回，返回35%伤害','%', 'ranged'],
+    ['bleed','血刃',4,[6,9,12],'15%概率流血；每秒伤害，2秒／1层'],
+    ['burn','烈火',4,[2,3,4],'20%概率点燃；每秒伤害，3秒／3层'],
+    ['ice','寒霜',3,[10,15,20],'概率积寒；3层冻结，首领6层'],
+    ['pierce','透甲',4,[15,25,35],'概率额外穿透1人，后续50%伤害','%', 'ranged'],
+    ['split','横扫',4,[10,15,20],'概率范围分裂25%伤害，最多3人','%', 'melee'],
+    ['scatter','散星',3,[12,20,28],'概率随机侧射1支，35%伤害','%', 'ranged'],
+    ['repeat','连珠',3,[10,15,20],'概率追加射击，50%伤害','%', 'ranged'],
+    ['double','叠浪',3,[10,15,20],'概率追加近战，50%伤害','%', 'melee'],
+    ['return','回旋',3,[10,15,20],'概率弹回，返回35%伤害','%', 'ranged'],
   ];
   const positive = Object.fromEntries(rows.map(([id,name,weight,values,desc,unit='%',type]) => [id,{id,name,weight,values,desc,unit,type}]));
   const negative = Object.fromEntries([
@@ -120,11 +120,12 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     ['soul','噬魂',0,'击杀敌人后3秒内攻击+10%'],
   ].map(([id,name,weight,desc])=>[id,{id,name,weight,desc}]));
   const qualities = [
-    {name:'普通',color:'#d4cdbf',count:0}, {name:'优良',color:'#6eacf0',count:1},
-    {name:'精致',color:'#81bd78',count:1,a:true}, {name:'极品',color:'#ed8172',count:2},
-    {name:'传说',color:'#c190e5',count:2,a:true}, {name:'天工',color:'#edc465',count:2,a:true},
+    {name:'普通',color:'#d4cdbf',count:0,base:1.00}, {name:'优良',color:'#6eacf0',count:1,base:1.03},
+    {name:'精致',color:'#81bd78',count:1,a:true,base:1.06}, {name:'极品',color:'#ed8172',count:2,base:1.10},
+    {name:'传说',color:'#c190e5',count:2,a:true,base:1.15}, {name:'天工',color:'#edc465',count:2,a:true,base:1.20},
   ];
   const names = {staff:'棍子',halberd:'长戟',hammer:'锤子',blade:'大刀',stone:'石子',bow:'汉弓'};
+  const elegant = {staff:'长棍',halberd:'长戟',hammer:'铁锤',blade:'大刀',stone:'飞石',bow:'汉弓'};
   const slots = {staff:'long',halberd:'long',hammer:'short',blade:'short',stone:'ranged',bow:'ranged'};
   const templates = ['{人}曾用的','{人}嫌不顺手的','{人}一直没舍得扔的','{人}借走忘还的','{人}找了三天的','{人}醉后送人的','{人}偷偷卖掉的','{人}赢来的','{人}抵出去的','据说{人}用过的','疑似{人}遗失的','刻着{人}名字的','仿照{人}那把做的','和{人}那把很像的','{人}撤退时落下的','{人}亲兵从泥里拔出的','跟着{人}淋过大雨的','{人}出征前换下的'];
   const personal = {
@@ -160,7 +161,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     return {uid:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),type,q,affixes,negative:neg?{id:neg.id,value:1+Math.floor(Math.random()*neg.max)}:null,special:specialId,inscription:inscription(person),locked:false};
   }
   const applicable=(a,type)=>!positive[a.id]?.type || (positive[a.id].type==='ranged')===(slots[type]==='ranged');
-  function label(item) {return qualities[item.q].name+'·'+(item.affixes[0]?positive[item.affixes[0].id].name:'')+names[item.type];}
+  function label(item) {return qualities[item.q].name+'·'+(item.affixes[0]?positive[item.affixes[0].id].name:'')+(elegant[item.type]||names[item.type]);}
   function lines(item) {
     const out=item.affixes.map(a=>{const d=positive[a.id];return `${d.name} ${['初级','中级','高级'][a.tier]}：${d.desc} ${a.value}${d.unit==='pp'?'个百分点':'%'}${applicable(a,item.type)?'':'（当前武器不生效）'}`;});
     if(item.negative){const n=item.negative,d=negative[n.id];out.push(`${d.name}：${d.desc}${n.id==='fragile'?'+':'－'}${n.value}${d.unit==='pp'?'个百分点':'%'}`);}
@@ -175,7 +176,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     const n=k=>v[k]||0,cap=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
     return {damage:Math.max(.1,1+n('sharp')+n('blunt')),speed:cap(1+n('swift')+n('heavy'),.2,1.4),range:cap(1+n('reach')+n('short'),.2,1.35),crit:cap(.01+n('critical')+n('inaccurate'),0,.35),critDamage:cap(1.5+n('severity')+n('weakcrit'),1,2.5),health:10*(1+cap(n('health')+n('frail'),-.8,1)),guard:cap(n('guard')+n('fragile'),-1,.3),move:cap(1+n('move')+n('clumsy'),.2,1.3),dodge:cap(n('dodge'),0,.2),focus:cap(n('focus'),0,.3)};
   }
-  window.AFFIX_DATA={positive,negative,special,qualities,names,slots,mainWeights,generate,label,lines,stats,applicable,pick};
+  window.AFFIX_DATA={positive,negative,special,qualities,names,elegant,slots,mainWeights,generate,label,lines,stats,applicable,pick};
 })();
 
 // 每个玩家独立的武器实例仓库；调试存档仅在内存中。
@@ -269,7 +270,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('.tBagCount');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.CAPACITY;countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
     const equippedIds=new Set(Object.values(p.equipped).filter(Boolean));
-    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{if(node.hasAttribute('data-outfit-slot'))return;const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.label(item);label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
+    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{if(node.hasAttribute('data-outfit-slot'))return;const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.names[item.type];label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
     for(const uid of [...selection])if(!p.items.some(i=>i.uid===uid)||equippedIds.has(uid))selection.delete(uid);
     bag.replaceChildren();
     const items=p.items.filter(i=>!equippedIds.has(i.uid)).map((item,index)=>({item,index})).sort((a,b)=>Number(!!b.item.locked)-Number(!!a.item.locked)||a.index-b.index).map(x=>x.item);
@@ -2239,13 +2240,15 @@ function hit(z, dmg, dir, ranged) {
   function metrics(item){
     const w=WEAP[item.type],st=AFFIX_DATA.stats(item),combos=w.combo;
     const total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
-    const damages=combos.map(c=>c.dmg*st.damage);
+    const qBase=AFFIX_DATA.qualities[item.q].base||1,aspd=w.aspd||1;
+    const damages=combos.map(c=>c.dmg*st.damage*qBase);
     const ranges=combos.map(c=>(w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range);
-    return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus};
+    return {damage:damages.reduce((a,b)=>a+b,0)/damages.length,speed:combos.length*st.speed/total*aspd,range:ranges.reduce((a,b)=>a+b,0)/ranges.length,crit:st.crit,critDamage:st.critDamage,health:st.health,guard:st.guard,move:st.move,dodge:st.dodge,focus:st.focus,quality:qBase};
   }
   function render(container,item,{compare=null,compact=false,peer=null}={}){
     if(!item||typeof WEAP==='undefined'||!WEAP[item.type])return;style();container.replaceChildren();container.classList.add('weapon-detail');
     const D=AFFIX_DATA,w=WEAP[item.type],st=D.stats(item),combos=w.combo,total=combos.reduce((n,c)=>n+c.d.reduce((a,b)=>a+b,0),0);
+    const qBase=D.qualities[item.q].base||1,qPct=Math.round((qBase-1)*100);
     const heading=node('div',null,'wd-title');if(item.inscription)heading.append(node('span',item.inscription+'·','wd-origin'));
     const title=node('span',D.label(item));title.style.color=D.qualities[item.q].color;heading.append(title);container.append(heading);if(!compact)container.append(node('div',({long:'长武器',short:'短武器',ranged:'远程武器'})[w.class]+' · 仅当前手持时生效','wd-category'));
     const affixes=node('section',null,'wd-affixes');affixes.append(node('h4','词条'));
@@ -2261,8 +2264,9 @@ function hit(z, dmg, dir, ranged) {
     const diffMark=(dd,key)=>{if(!other)return;const diff=values[key]-other[key];if(Math.abs(diff)<=1e-9)return;const delta=node('span',diff>0?' ▲':' ▼',diff>0?'wd-up':'wd-down');delta.title=diff>0?'高于已装备':'低于已装备';delta.setAttribute('aria-label',delta.title);dd.append(delta);};
     const row=(label,value,target=list,key='')=>{const dd=node('dd',value);if(key){dd.dataset.stat=key;diffMark(dd,key);}target.append(node('dt',label),dd);};
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
-    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage)).join('／'),list,'damage');
-    row('平均攻速',fmt(combos.length*st.speed/total)+'次/秒'+(st.speed>=1.4?' · 已达上限':''),list,'speed');
+    row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
+    if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
+    row('平均攻速',fmt(values.speed)+'次/秒'+(values.speed>=1.4?' · 已达上限':''),list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
     const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges[ranges.length-1]:'各段 '+ranges.join('／');
     row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
@@ -2278,7 +2282,7 @@ function hit(z, dmg, dir, ranged) {
     if(features.length)container.append(node('div',features.join('；')+'。','wd-copy'));
     container.append(node('h4','蓄力攻击'));
     const start=.4*(1-st.focus),full=2*(1-st.focus),charge=item.affixes.find(a=>a.id==='charge')?.value||0;
-    const chargedDamage=(w.proj?1:item.type==='staff'?1.6:2.4)*(st.damage+charge/100);
+    const chargedDamage=(w.proj?1:item.type==='staff'?1.6:2.4)*(st.damage+charge/100)*qBase;
     let chargeText=w.proj?`松开发射3枚扇形${item.type==='bow'?'箭矢':'石子'}，满蓄每枚伤害${fmt(chargedDamage)}。`:item.type==='staff'?`松开使出前方扇形重扫，可击飞；满蓄伤害${fmt(chargedDamage)}。`:item.type==='hammer'?`松开使出前方重砸，可打断并有概率眩晕；满蓄伤害${fmt(chargedDamage)}。`:`松开使出前方蓄力重击；满蓄伤害${fmt(chargedDamage)}。`;
     container.append(node('div',`长按攻击${fmt(start)}秒开始蓄力，${fmt(full)}秒蓄满。`+chargeText+'蓄力越久伤害越高，受击会中断。','wd-copy'));
     const detail=node('details'),summary=node('summary','展开基础数值与计算说明'),base=node('dl');detail.append(summary);
@@ -2467,7 +2471,7 @@ function hit(z, dmg, dir, ranged) {
   const rogue=(k,d=0)=>window.ROGUE&&ROGUE.S[k]!=null?ROGUE.S[k]:d;
   function snapshot(type){const item=ARMORY.active(type),v={};if(item)for(const a of item.affixes)if(D.applicable(a,type))v[a.id]=a.value/100;
     if(item?.negative)v[item.negative.id]=-item.negative.value/100;
-    return {uid:item?.uid||type,type,v,special:item?.special||null,special2:item?.special2||null};}
+    return {uid:item?.uid||type,type,q:item?.q||0,v,special:item?.special||null,special2:item?.special2||null};}
   function sync(){const next=ARMORY.active(weapon),uid=next?.uid||weapon;if(uid!==currentUid){current=snapshot(weapon);currentUid=uid;spirit=0;chain=0;chainTarget=null;pending=[];if(hero){const max=maxHp();hero.hp=Math.min(hero.hp,max);}}return current;}
   const stat=(s,k)=>s.v[k]||0;
   function reduction(s){return clamp(stat(s,'focus'),0,.3);}
@@ -2495,7 +2499,8 @@ function hit(z, dmg, dir, ranged) {
     if(traits.finisher)add+=rogue(traits.ranged?'finRanged':'finMelee',1)-1;
     if(traits.quake)add+=rogue('hammerBonus',1)-1;
     if(token.charged)add+=stat(s,'charge')+rogue('chargedDmg',1)-1;
-    return Math.max(.1,1+add);
+    const qualityBase=D.qualities[s.q]?.base||1;
+    return Math.max(.1,1+add)*qualityBase;
   }
   function extra(z,damage,token,crit=true){if(!z||z.dead)return;const s=token.s;z.lastGear=s;const value=damage*(crit&&token.crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit'),1,2.5):1);hit(z,value,0,0,false,0,0,false,false,{secondary:true,scaled:true,gearSecondary:true});}
   function hitPrimary(z,damage,kb,dir,knock,daze,stun,interrupt,ranged,traits){
@@ -6250,7 +6255,7 @@ const WEAP = {
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
-  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, combo: [
+  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, aspd: 1.08, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .3 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .45 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
@@ -6285,6 +6290,7 @@ const WEAP = {
 // 长戟使用白衣专用帧。
 WEAP.halberd = Object.assign({}, WEAP.staff, {
   name: '长戟',
+  aspd: 1,   // 长戟不继承棍子的 +8% 攻速
   reach: 46,
   combo: [
     { f: ['halberd_1a', 'halberd_1b'], d: [.13, .19], dmg: 1.1, kb: 56, daze: .3 },
@@ -6955,7 +6961,7 @@ function heroUpdate(dt) {
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
     const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
-    if (a.t >= C.d[a.fi] * R_('aspd') * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
+    if (a.t >= C.d[a.fi] * R_('aspd') / (W2.aspd || 1) * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
       a.t = 0; a.fi++;
       if (a.fi === C.f.length - 1 && !a.visualOnly) strike();
       if (a.fi >= C.f.length) { h.combo = a.c; h.atk = null; h.comboWin = .45; if (h.q) { h.q = 0; startAtk(); } else set(h, 'idle'); return; }
@@ -7023,7 +7029,7 @@ function updateDrops(dt) {
     if (d.life <= 0) { d.got = 1; continue; }   // 放久了消失
     if (Math.abs(d.x - h.x) < 15 && Math.abs(d.y - h.y) < 16 && d.z < 22) {
       if (d.item) {
-        if (window.ARMORY && ARMORY.add(d.item)) { d.got=1; sfx('food',d.x); floaters.push({x:d.x,y:d.y-10,t:0,txt:AFFIX_DATA.label(d.item),color:AFFIX_DATA.qualities[d.item.q].color}); }
+        if (window.ARMORY && ARMORY.add(d.item)) { d.got=1; sfx('food',d.x); floaters.push({x:d.x,y:d.y-10,t:0,txt:AFFIX_DATA.names[d.item.type],color:AFFIX_DATA.qualities[d.item.q].color}); }
         continue;
       }
       if (d.weapon) {
