@@ -43,9 +43,9 @@
     ['soul','噬魂',0,'击杀敌人后3秒内攻击+10%'],
   ].map(([id,name,weight,desc])=>[id,{id,name,weight,desc}]));
   const qualities = [
-    {name:'普通',color:'#d4cdbf',count:0,base:1.00}, {name:'优良',color:'#6eacf0',count:1,base:1.03},
-    {name:'精致',color:'#81bd78',count:1,a:true,base:1.06}, {name:'极品',color:'#ed8172',count:2,base:1.10},
-    {name:'传说',color:'#c190e5',count:2,a:true,base:1.15}, {name:'天工',color:'#edc465',count:2,a:true,base:1.20},
+    {name:'普通',color:'#d4cdbf',count:0,base:1.00,reach:0,crit:0,critDmg:0}, {name:'优良',color:'#6eacf0',count:1,base:1.03,reach:.01,crit:.005,critDmg:.03},
+    {name:'精致',color:'#81bd78',count:1,a:true,base:1.05,reach:.02,crit:.01,critDmg:.05}, {name:'极品',color:'#ed8172',count:2,base:1.07,reach:.03,crit:.015,critDmg:.07},
+    {name:'传说',color:'#c190e5',count:2,a:true,base:1.10,reach:.04,crit:.02,critDmg:.10}, {name:'天工',color:'#edc465',count:2,a:true,base:1.15,reach:.05,crit:.03,critDmg:.15},
   ];
   const names = {staff:'棍子',halberd:'长戟',hammer:'锤子',blade:'大刀',stone:'石子',bow:'汉弓'};
   const elegant = {staff:'长棍',halberd:'长戟',hammer:'铁锤',blade:'大刀',stone:'飞石',bow:'汉弓'};
@@ -96,8 +96,9 @@
   function stats(item){
     const v={};for(const a of item.affixes)if(applicable(a,item.type))v[a.id]=a.value/100;
     if(item.negative)v[item.negative.id]=-item.negative.value/100;
+    const q=qualities[item.q]||qualities[0];
     const n=k=>v[k]||0,cap=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
-    return {damage:Math.max(.1,1+n('sharp')+n('blunt')),speed:cap(1+n('swift')+n('heavy'),.2,1.4),range:cap(1+n('reach')+n('short'),.2,1.35),crit:cap(.01+n('critical')+n('inaccurate'),0,.35),critDamage:cap(1.5+n('severity')+n('weakcrit'),1,2.5),health:10*(1+cap(n('health')+n('frail'),-.8,1)),guard:cap(n('guard')+n('fragile'),-1,.3),move:cap(1+n('move')+n('clumsy'),.2,1.3),dodge:cap(n('dodge'),0,.2),focus:cap(n('focus'),0,.3)};
+    return {damage:Math.max(.1,1+n('sharp')+n('blunt')),speed:cap(1+n('swift')+n('heavy'),.2,1.4),range:cap(1+n('reach')+n('short')+(q.reach||0),.2,1.35),crit:cap(.01+n('critical')+n('inaccurate')+(q.crit||0),0,.35),critDamage:cap(1.5+n('severity')+n('weakcrit')+(q.critDmg||0),1,2.5),health:10*(1+cap(n('health')+n('frail'),-.8,1)),guard:cap(n('guard')+n('fragile'),-1,.3),move:cap(1+n('move')+n('clumsy'),.2,1.3),dodge:cap(n('dodge'),0,.2),focus:cap(n('focus'),0,.3)};
   }
   window.AFFIX_DATA={positive,negative,special,qualities,names,elegant,slots,mainWeights,generate,label,lines,stats,applicable,pick};
 })();

@@ -1,4 +1,4 @@
-// 金币、彩色果与货郎铺。数据存进武器存档，按累计值合并，避免多设备刷钱。
+// 金币、彩色果与商店。数据存进武器存档，按累计值合并，避免多设备刷钱。
 (() => {
   const MAX = 1e9;
   const clamp = n => Math.max(0, Math.min(MAX, Math.floor(Number(n) || 0)));
@@ -83,10 +83,14 @@
   };
 
   const OPEN_LINES = ['客官，看看？', '彩色果可是西域来的稀罕物！', '钱不够？去校场多练练。'];
+  const EXPENSIVE_LINES = ['客官好眼力！这可是镇店之宝，配您正合适！', '哎哟贵客！小店今天沾了您的光！', '客官出手阔绰，将来必成大将军！'];
+  const CHEAP_LINES = ['就买这点？行吧，蚊子腿也是肉。', '客官真会过日子，佩服佩服。', '小本买卖，谢客官赏口饭吃。'];
+  const NONE_LINES = ['看了半天一文不花，客官是来避雨的？', '光看不买，我这店是给您开的茶馆？', '下回带够钱再来，我等着。'];
   const SHOP_ITEMS = [
     { id: 'fruit', name: '彩色果', desc: '换一个部位的颜色需要 2 个', price: 50, kind: 'stack', amounts: [1, 5, 10], buy: n => WALLET.addFruits(n) },
   ];
   let root = null, overlay = null, line = '', owned = {};
+  let sessionSpent = 0, sessionBought = false, closing = false, closeTimer = null;
   const fmt = n => Number(n || 0).toLocaleString('zh-CN');
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -98,14 +102,15 @@
       .tWallet{display:inline-block;margin-right:8px;color:#e8c97c;font:700 13px "PingFang SC",sans-serif;vertical-align:middle;white-space:nowrap}
       #tShop{padding:4px 12px;border:1px solid #9c7843;border-radius:6px;background:linear-gradient(#62482d,#34261b);color:#f1d58f;font:700 14px sans-serif;cursor:pointer;text-shadow:none;margin-right:8px}
       #tShop:active{transform:translateY(1px);filter:brightness(1.15)}
-      #shopOverlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(10,7,6,.72)}
+      #shopOverlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(10,7,6,.72);transition:opacity .22s ease}
+      #shopOverlay.shopClosing{opacity:0}
       #shopPanel{width:min(780px,94vw);max-height:88dvh;display:flex;flex-direction:column;box-sizing:border-box;border:2px solid #b58b4c;border-radius:10px;background:linear-gradient(145deg,#3b2a1d,#1d1713);box-shadow:inset 0 0 0 2px #2b2017,0 18px 60px #000c;color:#ecd6ab;overflow:hidden}
       .shopHead{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid #765b38;background:linear-gradient(#5b4028,#2e2218)}
       .shopHead h2{margin:0;color:#f3d27c;font:700 20px MaShanZheng,"STKaiti",serif;letter-spacing:1px}.shopClose{width:34px;height:34px;border:1px solid #927044;border-radius:50%;background:#34251a;color:#f3d27c;font:700 18px sans-serif;cursor:pointer}
       .shopBody{display:grid;grid-template-columns:32% minmax(0,1fr);gap:12px;min-height:0;overflow:hidden;padding:12px}
       .shopLeft{min-width:0;display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #6f5537;border-radius:7px;background:linear-gradient(160deg,#493324,#251d17);overflow:auto}
       .shopPortrait{height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #745a3c;border-radius:6px;background:radial-gradient(ellipse at 50% 65%,#71502c66,transparent 70%),#211914;overflow:hidden}
-      .shopPortrait img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated}.shopPortrait.empty::after{content:"货郎";color:#9c7d50;font:16px MaShanZheng,serif}
+      .shopPortrait img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated}.shopPortrait.empty::after{content:"老板";color:#9c7d50;font:16px MaShanZheng,serif}
       .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
@@ -125,7 +130,7 @@
 
   function entryMarkup() {
     injectStyle();
-    return `<span class="tWallet" data-shop-wallet>💰 ${fmt(WALLET.coins())}</span><button type="button" id="tShop">🏮 货郎铺</button>`;
+    return `<span class="tWallet" data-shop-wallet>💰 ${fmt(WALLET.coins())}</span><button type="button" id="tShop">🏮 商店</button>`;
   }
   function bind(target) {
     const button = target && target.querySelector('#tShop');
@@ -137,7 +142,7 @@
   }
   function portraitHTML() {
     const src = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.shopkeeper;
-    return src ? `<img src="${src}" alt="货郎">` : '';
+    return src ? `<img src="${src}" alt="老板">` : '';
   }
   function render() {
     if (!overlay) return;
@@ -146,7 +151,7 @@
     if (left) left.innerHTML = `💰 余额 <b>${fmt(balance)}</b><br>🍎 彩色果 <b>${fmt(fruits)}</b>`;
     const lineNode = overlay.querySelector('.shopLine'); if (lineNode) lineNode.textContent = line;    const grid = overlay.querySelector('.shopGrid'); if (!grid) return;
     grid.innerHTML = '';
-    if (!SHOP_ITEMS.length) { grid.innerHTML = '<p class="shopEmpty">货郎今天没进货。</p>'; return; }
+    if (!SHOP_ITEMS.length) { grid.innerHTML = '<p class="shopEmpty">老板今天没进货。</p>'; return; }
     for (const item of SHOP_ITEMS) {
       const card = document.createElement('div'); card.className = 'shopCard';
       const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : '<span aria-hidden="true">🎁</span>';
@@ -173,7 +178,8 @@
     if (!WALLET.spendCoins(total)) { line = '钱不够？去校场多练练。'; render(); return false; }
     if (item.kind !== 'stack') { owned[item.id] = true; if (item.buy) item.buy(1); }
     else if (item.buy) item.buy(n);
-    line = '多谢惠顾！'; render(); refreshEntry();
+    sessionSpent += total; sessionBought = true;
+    line = pick(total >= 250 ? EXPENSIVE_LINES : CHEAP_LINES); render(); refreshEntry();
     const walletNode = overlay && overlay.querySelector('.shopWallet');
     if (walletNode) { walletNode.classList.remove('bump'); void walletNode.offsetWidth; walletNode.classList.add('bump'); }
     return true;
@@ -181,18 +187,35 @@
   function open() {
     if (overlay) return;
     injectStyle();
+    clearTimeout(closeTimer); closeTimer = null; closing = false;
+    sessionSpent = 0; sessionBought = false;
     line = pick(OPEN_LINES);
     overlay = document.createElement('div'); overlay.id = 'shopOverlay';
-    overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="货郎铺">
-      <header class="shopHead"><h2>🏮 货郎铺</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
+    overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="商店">
+      <header class="shopHead"><h2>🏮 商店</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
       <div class="shopBody"><aside class="shopLeft"><div class="shopPortrait${portraitHTML()?'':' empty'}">${portraitHTML()}</div><p class="shopLine"></p><div class="shopWallet"></div></aside><div class="shopRight"><div class="shopGrid"></div></div></div>
     </section>`;
     overlay.addEventListener('pointerdown', e => { if (e.target === overlay) close(); });
-    overlay.querySelector('.shopClose').onclick = close;
+    overlay.querySelector('.shopClose').onclick = () => close();
     document.body.appendChild(overlay);
     render(); refreshEntry();
   }
-  function close() { if (overlay) { overlay.remove(); overlay = null; refreshEntry(); } }
+  function removeShop() {
+    clearTimeout(closeTimer); closeTimer = null;
+    if (overlay) { overlay.remove(); overlay = null; }
+    closing = false; refreshEntry();
+  }
+  function close() {
+    if (!overlay) return;
+    if (closing) { removeShop(); return; }
+    if (!sessionBought) { line = pick(NONE_LINES); render(); }
+    closing = true;
+    closeTimer = setTimeout(() => {
+      if (!overlay) return;
+      overlay.classList.add('shopClosing');
+      closeTimer = setTimeout(removeShop, 230);
+    }, 1500);
+  }
   function refresh() { if (overlay) render(); refreshEntry(); }
 
   window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry };

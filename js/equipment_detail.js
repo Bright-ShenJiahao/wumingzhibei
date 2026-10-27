@@ -1,6 +1,14 @@
 // 桌面悬浮详情和手机点击详情共用同一份内容；只展示装备后的静态属性。
 (() => {
   const fmt=n=>Number(n.toFixed(2)).toString();
+  const MOVES = {
+    staff: ['终段攻击·戳：必定眩晕。', '蓄力攻击·横扫：身前大范围横扫，50%眩晕。'],
+    halberd: ['终段攻击·撕开：引爆裂伤造成额外伤害。', '蓄力攻击·回马突：向前冲刺穿刺，沿途叠裂伤。', '每次命中叠1层裂伤，最多5层，持续流血。'],
+    hammer: ['终段攻击·回旋锤：前后都打，击倒敌人。', '蓄力攻击·重砸：向前重砸。'],
+    blade: ['终段攻击·举刀重劈：大范围劈砍，击倒敌人。', '蓄力攻击·重斩：向前重斩。'],
+    stone: ['终段攻击·全力投：必定眩晕，附带左右散射。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗。'],
+    bow: ['终段攻击·穿透箭：贯穿一排敌人。', '蓄力攻击·重箭：射出一支重箭。'],
+  };
   function node(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;}
   function style(){if(document.getElementById('weaponDetailStyle'))return;const e=node('style');e.id='weaponDetailStyle';e.textContent=`
     .weapon-detail{white-space:normal!important;font-size:13px;line-height:1.5;color:#e8d6af;overflow-wrap:anywhere}
@@ -66,14 +74,22 @@
     const conditional=(label,value,key,base)=>{if(Math.abs(values[key]-base)>1e-9||(peerValues&&Math.abs(peerValues[key]-base)>1e-9))row(label,value,list,key);};
     row('攻击伤害',combos.map(c=>fmt(c.dmg*st.damage*qBase)).join('／'),list,'damage');
     if(qPct>0)row('品阶加成','+'+qPct+'%',list,'quality');
-    row('平均攻速',fmt(values.speed)+'次/秒'+(values.speed>=1.4?' · 已达上限':''),list,'speed');
+    row('平均攻速',fmt(values.speed)+'次/秒',list,'speed');
     const ranges=combos.map(c=>Math.round((w.proj?c.spd*(c.life||(c.pierce?1.1:.8)):w.reach*(c.thrust?1.35:1))*st.range));
     const rangeText=ranges.every(n=>n===ranges[0])?String(ranges[0]):ranges.slice(0,-1).every(n=>n===ranges[0])?'普通'+ranges[0]+'／终段'+ranges[ranges.length-1]:'各段 '+ranges.join('／');
-    row(w.proj?'射程':'攻击距离',rangeText+(st.range>=1.35?' · 已达上限':''),list,'range');
+    row(w.proj?'射程':'攻击距离',rangeText,list,'range');
     const crit=node('dd',null);crit.dataset.stat='crit';crit.append(node('span',fmt(st.crit*100)+'%'));diffMark(crit,'crit');crit.append(node('span',' · '));crit.append(node('span',fmt(st.critDamage*100)+'%'));diffMark(crit,'critDamage');list.append(node('dt','暴击'),crit);
     conditional('最大生命',fmt(st.health),'health',10);conditional('减伤',fmt(st.guard*100)+'%','guard',0);conditional('移动速度',fmt(st.move*100)+'%（相对基础）','move',1);
     conditional('普攻闪避',fmt(st.dodge*100)+'%','dodge',0);conditional('冷却缩减',fmt(st.focus*100)+'%','focus',0);
-    container.append(list);if(!compact)container.append(node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
+    container.append(list);
+    const moves = MOVES[item.type];
+    if (moves) {
+      const details = node('details', null, 'wd-moves');
+      details.append(node('summary', '招式'));
+      moves.forEach((text, i) => details.append(node('div', text, item.type === 'halberd' && i === moves.length - 1 ? 'wd-muted' : '')));
+      container.append(details);
+    }
+    if(!compact)container.append(node('div','伤害按连招顺序列出；平均攻速按连续命中、完整连招动作计算。','wd-muted'));
     container.append(affixes);
     if(compact)return;
     container.append(node('h4','攻击方式'));

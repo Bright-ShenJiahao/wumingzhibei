@@ -19,7 +19,7 @@
   const ready=(key,seconds)=>{if((cool[key]||-99)>gameT)return false;cool[key]=gameT+seconds;return true;};
   const chance=p=>Math.random()<p;
   function heal(amount){healLog=healLog.filter(e=>gameT-e.t<3);const used=healLog.reduce((n,e)=>n+e.n,0);amount=Math.min(amount,Math.max(0,.5-used));if(amount>0){hero.hp=Math.min(maxHp(),hero.hp+amount);healLog.push({t:gameT,n:amount});floaters.push({x:hero.x,y:hero.y-28,t:0,txt:'+'+Number(amount.toFixed(2)),color:'#9bc981'});}}
-  function attackToken(charged=false){const s=JSON.parse(JSON.stringify(sync()));return {s,charged,crit:critT>0||chance(clamp(.01+stat(s,'critical')+stat(s,'inaccurate')+rogue('crit'),0,.35)),thunderChecked:false,spiritCounted:false,dualChecked:false,leechChecked:false,chainHits:new Set()};}
+  function attackToken(charged=false){const s=JSON.parse(JSON.stringify(sync()));return {s,charged,crit:critT>0||chance(clamp(.01+stat(s,'critical')+stat(s,'inaccurate')+rogue('crit')+(D.qualities[s.q]?.crit||0),0,.35)),thunderChecked:false,spiritCounted:false,dualChecked:false,leechChecked:false,chainHits:new Set()};}
   function abnormal(z){return (z.gearDot&&Object.values(z.gearDot).some(a=>a.length))||z.poisonT>0||z.moveSlowT>0||z.attackSlowT>0||z.daze>0||z.gearSlow>gameT||z.gearNumb>gameT||z.gearBlind>gameT||z.gearFrozen>gameT||z.gearColdUntil>gameT;}
   function primaryBonus(s,z,traits,token){
     let add=stat(s,'sharp')+stat(s,'blunt')+rogue(traits.ranged?'rangedDmg':'meleeDmg',1)-1+(window.MASTERY?MASTERY.bonus(s.type).dmg:0);
@@ -36,13 +36,13 @@
     const qualityBase=D.qualities[s.q]?.base||1;
     return Math.max(.1,1+add)*qualityBase;
   }
-  function extra(z,damage,token,crit=true){if(!z||z.dead)return;const s=token.s;z.lastGear=s;const value=damage*(crit&&token.crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit'),1,2.5):1);hit(z,value,0,0,false,0,0,false,false,{secondary:true,scaled:true,gearSecondary:true});}
+  function extra(z,damage,token,crit=true){if(!z||z.dead)return;const s=token.s;z.lastGear=s;const value=damage*(crit&&token.crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,2.5):1);hit(z,value,0,0,false,0,0,false,false,{secondary:true,scaled:true,gearSecondary:true});}
   function hitPrimary(z,damage,kb,dir,knock,daze,stun,interrupt,ranged,traits){
     if(!z||z.dead||(z.air&&!traits.dot))return;
     if(traits.dot||traits.scaled||traits.secondary){const previous=[hero.lastHit,hero.lastHitC];const result=rawHit(z,damage,kb,dir,knock,daze,stun,interrupt,ranged,traits);if(traits.secondary){hero.lastHit=previous[0];hero.lastHitC=previous[1];}return result;}
     const token=traits.gearToken||hero?.atk?.gearToken||attackToken(!!traits.charged),s=token.s;
     const base=damage*primaryBonus(s,z,{...traits,ranged},token);let dmg=base;
-    if(token.crit){dmg*=clamp(1.5+stat(s,'severity')+stat(s,'weakcrit'),1,2.5);floaters.push({x:z.x,y:z.y-34,t:0,txt:'暴击！',big:true});}
+    if(token.crit){dmg*=clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,2.5);floaters.push({x:z.x,y:z.y-34,t:0,txt:'暴击！',big:true});}
     kb*=Math.max(0,1+stat(s,'soft'));if(chance(stat(s,'push'))&&!z.T.boss&&!z.T.chapterBoss)kb+=40;
     const hp=z.hp;const result=rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,{...traits,scaled:true});
     if(z.hp>=hp)return result;
@@ -77,7 +77,7 @@
     for(const [id,key]of [['slow','gearSlow'],['numb','gearNumb'],['blind','gearBlind']])if(stat(s,id)&&chance(.2)){const previous=z[key]>gameT?z[key+'Value']||0:0;z[key]=gameT+2;z[key+'Value']=Math.max(previous,stat(s,id));}
     if(stat(s,'ice')&&gameT>=(z.gearIceImmune||0)&&chance(stat(s,'ice'))){if(gameT>(z.gearColdUntil||0))z.gearCold=0;z.gearCold=(z.gearCold||0)+1;z.gearColdUntil=gameT+3;const boss=z.T.boss||z.T.chapterBoss;if(z.gearCold>=(boss?6:3)){z.gearCold=0;z.gearColdUntil=0;z.gearFrozen=gameT+(boss?.3:.8);z.gearIceImmune=z.gearFrozen+3;}}
   }
-  function range(s=sync()){return clamp(1+stat(s,'reach')+stat(s,'short'),.2,1.35);}
+  function range(s=sync()){return clamp(1+stat(s,'reach')+stat(s,'short')+(D.qualities[s.q]?.reach||0),.2,1.35);}
   function projectile(s){
     if(s.secondary)return;
     const token=s.gearToken||attackToken(!!s.charged);s.gearToken=token;
@@ -92,7 +92,7 @@
   }
   function projectileTraits(s){return {secondary:!!s.secondary,scaled:!!s.secondary,gearToken:s.gearToken,finisher:!s.secondary&&s.c===WEAP[s.gearToken?.s.type||weapon].combo.length-1,charged:s.charged};}
   function projectileDamage(s,z){if(!s.secondary)return s.C.dmg;
-    const token=s.gearToken;if(!token)return s.C.dmg;return s.C.dmg*primaryBonus(token.s,z,{ranged:true},token)*(token.crit?clamp(1.5+stat(token.s,'severity')+stat(token.s,'weakcrit'),1,2.5):1);
+    const token=s.gearToken;if(!token)return s.C.dmg;return s.C.dmg*primaryBonus(token.s,z,{ranged:true},token)*(token.crit?clamp(1.5+stat(token.s,'severity')+stat(token.s,'weakcrit')+(D.qualities[token.s.q]?.critDmg||0),1,2.5):1);
   }
   function enemyTime(z,dt){if(z.dead)return dt;if(z.gearFrozen>gameT)return 0;return dt;}
   function enemyAttack(z){return (window.XIAOCHANG ? XIAOCHANG.actionScale(z) : 1)*(1-Math.max(z.gearNumb>gameT?(z.gearNumbValue||0):0,z.attackSlowT>0?.1:0));}

@@ -1175,6 +1175,7 @@ function addHalberdBleed(z, base, stacks = 1) {
   if (!z || z.dead) return 0;
   const alive = halberdStacks(z);
   z.halberdBleed = Math.min(5, (alive || 0) + stacks);
+  if (alive === 4 && z.halberdBleed === 5) bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .18, big: true });
   z.halberdBleedUntil = gameT + 3;
   z.halberdBleedBase = base;
   if (!alive || !z.halberdBleedNext || z.halberdBleedNext <= gameT) z.halberdBleedNext = gameT + 1;
@@ -2606,7 +2607,7 @@ function drawBleedFx(f) {
   if (!img || !img.complete) return;
   const fw = kind === 'rip' ? 64 : kind === 'splash' ? 48 : 32;
   const frame = Math.min(2, Math.max(0, Math.floor(f.t / (kind === 'rip' ? .067 : .05))));
-  const size = kind === 'rip' ? 30 : kind === 'splash' ? 14 : 12;   // 滴血 8 像素看不见，放到 12
+  const size = kind === 'rip' ? 30 : kind === 'splash' ? (f.big ? 24 : 14) : 12;
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, frame * fw, 0, fw, fw, f.x - size / 2, f.y - size / 2, size, size);
   ctx.restore();
