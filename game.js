@@ -135,14 +135,14 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .51, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.02, kb: 70, spd: 310, life: .8, pierce: true },   // 全力投（穿透）：射程约 248
+    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .56, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .56, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.12, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
-    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .72, kb: 38, spd: 330, life: 1.05 },
-    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .72, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: 1.35, kb: 75, spd: 390, life: 1.15, pierce: true },
+    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .79, kb: 38, spd: 330, life: 1.05 },
+    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .79, kb: 38, spd: 340, life: 1.08 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: 1.49, kb: 75, spd: 390, life: 1.15, pierce: true },
   ] },
 };
 // 长戟使用白衣专用帧。
@@ -215,6 +215,7 @@ function rollFill(pool, budget) {
 const M = { viewH: 300, W: 3600, top: 168, bot: 290, gates: [330, 900, 1450, 2000, 2500, 3000], token: 2 };
 const RETREAT_SCREENS = 1.2;   // 非 Boss 战最多后退 1.2 个屏幕，防止无限风筝
 let hero, zs, shots, eshots, fires, props, propFx, cam, gateI, lockR, kills, msg, msgT, freeze, shake, weapon = 'hammer', over, won;
+let stoneHits = [];
 let chapter2Run = null;
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
@@ -247,7 +248,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; pwaves = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -729,7 +730,9 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (traits.quake) { z.moveSlowT = Math.max(z.moveSlowT || 0, .5); z.attackSlowT = Math.max(z.attackSlowT || 0, .5); }
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
-  if (daze && !z.daze && Math.random() < daze * heavyDazeScale) { z.daze = (z.T.heavy ? 1 : 1.5) * R_('daze'); z.st = 'move'; z.tok = false; }
+  const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
+  const dazeTime = traits.dazeTime != null ? traits.dazeTime : (z.T.heavy ? 1 : 1.5) * R_('daze');
+  if (!z.T.boss && !z.T.chapterBoss && dazeChance && !z.daze && Math.random() < dazeChance) { z.daze = dazeTime; z.st = 'move'; z.tok = false; }
   if (z.stun) { z.st = 'move'; z.tok = false; }
   // 命中定格：轻击短、重击长。棍子每下 1 点伤害只停 0.038 秒（原来一律 0.05，连击会显得一顿一顿的）
   const W0 = WEAP[weapon] || {};
@@ -1157,13 +1160,17 @@ function chargedAttack(power) {
   sfx('finisher', h.x); shake = Math.max(shake, .12 + .18 * power);
   const force = .35 + .65 * power;
   const R = (weapon === 'staff' ? 64 : weapon === 'hammer' ? 46 : (W.chargeReach || 46)) * (window.GEAR ? GEAR.range() : 1);
-  const chargeBonus = 1;
-  if (W.class === 'ranged') {                    // 三颗扇形
+  if (weapon === 'bow') {                         // 汉弓蓄力：一支普通箭，1.5×force
+    const C = Object.assign({}, W.combo[0], { dmg: 1.5 * force });
+    const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
+    shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd, vy: 0, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, kind: 'arrow' });
+    return;
+  }
+  if (weapon === 'stone') {                        // 石子蓄力：三颗扇形，每颗1.1×force，60%晕0.6秒
     for (const ang of [-.22, 0, .22]) {
-      const C = Object.assign({}, W.combo[0], { dmg: 1.0 * force * chargeBonus, spd: 240, life: .8 });
+      const C = Object.assign({}, W.combo[0], { dmg: 1.1 * force, spd: 240, life: .8, dazeChance: .6, dazeTime: .6, daze: 1 });
       const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
-      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-13, 13) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true });
-
+      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true });
     }
     return;
   }
@@ -1200,8 +1207,15 @@ function strike() {
     const finisher = c === W.combo.length - 1;
     const mainC = C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
-    const sOff = running ? rnd(-13, 13) : 0;                  // 跑动中弹道偏 ±13，站定不偏
-    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined });
+    const sOff = running ? rnd(-6, 6) : 0;                   // 跑动中弹道偏 ±6，站定不偏
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
+    if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
+      const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;
+      for (const ang of [-.20944, .20944]) {
+        const C2 = { ...C, dmg: C.dmg * .3, noPierce: true, daze: 0, dazeChance: 0, dazeTime: 0 };
+        shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life || .8, C: C2, c, hitSet: [], gearToken: sideToken, secondary: true });
+      }
+    }
     return;
   }
   let landed = false, hitEnemy = false;
@@ -1527,13 +1541,19 @@ function updateShots(dt) {
     for (const z of projectileTargets) if (!z.dead && !s.hitSet.includes(z) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       const baseDmg = window.GEAR ? GEAR.projectileDamage(s,z) : s.C.dmg;
       const pdmg = s.hitSet.length > 0 ? baseDmg * (s.C.pierce ? (s.C.pierceOff || .4) : .5) : baseDmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
-      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, 0, .15, false, true, window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter });   // 最后 true = 远程，管亥可能拨开
-      if (s.charged) addChargeHitFx('stone', s.x, s.y - 5);
+      const traits = window.GEAR ? GEAR.projectileTraits(s) : { secondary: !!s.secondary, scatter: !!s.scatter };
+      if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
+      if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
+      hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
+      if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
+      else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
-      if (z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
+      if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
     }
   }
   shots = shots.filter(s => s.life > 0);
+  for (const h of stoneHits) h.t += dt;
+  stoneHits = stoneHits.filter(h => h.t < h.T);
   for (const s of eshots) {
     if (s.k === 'stone' || s.k === 'arrow') {
       s.x += s.vx * dt; s.life -= dt;
@@ -2014,10 +2034,8 @@ function draw() {
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
   for (const z of zs) list.push({ y: z.y, d: () => { if (window.XIAOCHANG) XIAOCHANG.drawAffix(z); drawZ(z); } });
   list.push({ y: hero.y, d: drawHero });
-  for (const s of shots) list.push({ y: s.y + .1, d: () => {
-    if (s.kind === 'arrow') { const ar = IMG['ui_arrow']; ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1)); if (ar && ar.complete) { ctx.imageSmoothingEnabled = false; ctx.drawImage(ar, -ar.width * PX / 2, -ar.height * PX / 2, ar.width * PX, ar.height * PX); } ctx.restore(); }   // 箭图与人物同像素密度（1像素=PX），长度约为主角身高0.7
-    else stone(s.x, s.y - s.z);
-  } });
+  for (const s of shots) list.push({ y: s.y + .1, d: () => drawShot(s) });
+  for (const h of stoneHits) list.push({ y: h.y, d: () => drawStoneHit(h) });
   for (const s of eshots) {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
@@ -2388,6 +2406,32 @@ document.addEventListener('pointerdown', e => {
     }
   }
 }, true);
+function drawShot(s) {
+  if (s.kind === 'arrow') {
+    const ar = IMG.ui_arrow;
+    ctx.save(); ctx.translate(s.x, s.y - s.z); ctx.rotate(Math.atan2(s.vy || 0, s.vx || 1));
+    if (ar && ar.complete) { ctx.imageSmoothingEnabled = false; ctx.drawImage(ar, -ar.width * PX / 2, -ar.height * PX / 2, ar.width * PX, ar.height * PX); }
+    ctx.restore();
+    return;
+  }
+  const img = s.charged ? IMG.ui_stone_shot_charge : s.final ? IMG.ui_stone_shot_final : IMG.ui_stone_shot;
+  if (!img || !img.complete) { stone(s.x, s.y - s.z); return; }
+  const w = s.charged ? 14 : s.final ? 16 : 6;
+  const h = w * img.height / img.width;
+  ctx.save(); ctx.translate(s.x, s.y - s.z);
+  if (s.vx < 0) ctx.scale(-1, 1);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+function drawStoneHit(h) {
+  const img = IMG.ui_stone_hit;
+  if (!img || !img.complete) return;
+  const frame = Math.min(3, Math.max(0, Math.floor(h.t / .05)));
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * 48, 0, 48, 48, h.x - 6, h.y - 6, 12, 12);
+  ctx.restore();
+}
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画

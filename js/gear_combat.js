@@ -83,7 +83,7 @@
     const token=s.gearToken||attackToken(!!s.charged);s.gearToken=token;
     const snap=token.s;s.life*=range(snap);s.gearLife=s.life;s.originX=s.x;s.originY=s.y;s.originalVx=s.vx;s.originalVy=s.vy||0;
     s.gearPierce=chance(stat(snap,'pierce'));s.gearReturn=chance(stat(snap,'return'));
-    const extraShot=(coefficient,angle=0)=>({...s,C:{...s.C,dmg:s.C.dmg*coefficient,kb:s.C.kb*.5,pierce:false},secondary:true,gearReturn:false,gearPierce:false,hitSet:[],vx:s.originalVx*Math.cos(angle),vy:Math.abs(s.originalVx)*Math.sin(angle)*.5,gearToken:token,gearCoefficient:coefficient});
+    const extraShot=(coefficient,angle=0)=>({...s,C:{...s.C,dmg:s.C.dmg*coefficient,kb:s.C.kb*.5,pierce:false,daze:0,dazeChance:0,dazeTime:0},secondary:true,gearReturn:false,gearPierce:false,hitSet:[],vx:s.originalVx*Math.cos(angle),vy:Math.abs(s.originalVx)*Math.sin(angle)*.5,gearToken:token,gearCoefficient:coefficient});
     const scatter=clamp(stat(snap,'scatter')+(rogue('scatter')?.2:0),0,.4);
     if(!token.projectileExtrasChecked){token.projectileExtrasChecked=true;
       if(chance(scatter))shots.push(extraShot(.35,Math.random()<.5?-Math.PI/6:Math.PI/6));
