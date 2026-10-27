@@ -194,6 +194,12 @@ const WAVES = [
 ];
 // 威胁值：随机填充时按点数抽兵
 const THREAT = { priest: 3, grunt: 1, blade: 2, slinger: 2, archer: 2, elite: 4 };
+// 第二章沿用换新图前的数值；第一章的削弱不能影响第二章（含第二章校场）。
+const CH2_LEGACY_STATS = { blade: { dmg: 2 }, priest: { hp: 5, spd: 44 } };
+function inChapter2Context() {
+  if (chapter2Run) return true;
+  return !!(window.XIAOCHANG && XIAOCHANG.active() && XIAOCHANG.state()?.chapter === 2);
+}
 function rollFill(pool, budget) {
   const out = [];
   let left = budget;
@@ -437,7 +443,9 @@ function summonArchers(bz) {
 }
 
 function spawn(type, x, y, sleeping = false) {
-  const T = TYPES[type];
+  const base = TYPES[type];
+  const legacy = inChapter2Context() && CH2_LEGACY_STATS[type];
+  const T = legacy ? { ...base, ...legacy } : base;
   // 出生点避开道具：卡在水井/推车里的怪既打不到也打不了你
   for (let tries = 0; sleeping ? false : tries < 14; tries++) {
     const bad = props.some(p => !p.broken && Math.abs(p.x - x) < (p.w || 10) / 2 + 11 && Math.abs(p.y - y) < (p.h || 10) / 2 + 13);
