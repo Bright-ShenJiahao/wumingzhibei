@@ -505,8 +505,8 @@ function drawVillager(v) {
   const frame = v.state === 'bow' ? 'bow' : (v.state === 'run' || v.state === 'leave') ? (Math.floor(v.t * 8) % 2 ? 'run1' : 'run2') : 'idle';
   drawChar(v.ch, frame, v.x, v.y, v.f < 0, 1, v.flash > 0, v.sc);
 }
-function waves() {
-  if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.update(); return; }
+function waves(dt = 0) {
+  if (window.XIAOCHANG && XIAOCHANG.active()) { XIAOCHANG.update(dt); return; }
   if (chapter2Run) { chapter2Waves(); return; }
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
@@ -1248,7 +1248,7 @@ function strike() {
 function dmgHero(n, from, kind = 'basic') {
   const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
-  if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n);
+  if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n, from);
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
   const raw = n;   // 保存减半前伤害，保持原有击倒判定。
@@ -1260,6 +1260,7 @@ function dmgHero(n, from, kind = 'basic') {
   comboCount = 0; comboExpireAt = 0;   // 主角实际受击，连击立即结束
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2;
+  if (window.XIAOCHANG) XIAOCHANG.onHitHero(from);
   if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
@@ -1711,7 +1712,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(); zs.forEach(z => zUpdate(z, dt)); }
+    if (!over) { waves(dt); zs.forEach(z => zUpdate(z, dt)); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -1781,6 +1782,9 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
   ctx.globalAlpha = alpha;
   const im = white && fr.white ? fr.white : (dark && fr.dark ? fr.dark : fr.img);
+  if (dark && !fr.dark) {
+    try { if ('filter' in ctx) ctx.filter = 'brightness(.78) saturate(.82)'; } catch (e) {}
+  }
   ctx.drawImage(im, -fr.ax * sp, -fr.ay * sp, fr.w * sp, fr.h * sp);
   ctx.restore();
 }
@@ -2006,6 +2010,7 @@ function draw() {
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
+  if (window.XIAOCHANG) XIAOCHANG.drawMagicFx();
   drawPWaves();
   drawPropFx();   // 道具碎屑画在人物上面，打击感更清楚
   drawFloaters();
@@ -2512,7 +2517,7 @@ function drawZ(z) {
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);
-    drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1);
+    drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (z.dead) return;
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);

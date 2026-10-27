@@ -8,7 +8,7 @@
       for(const chapter of ['1','2'])if(p.campaign?.[chapter])result.campaign[chapter]=true;
       for(const chapter of ['1','2']) {
         const floor=Number(p.campaign?.xiaochang?.[chapter]);
-        if(Number.isInteger(floor)&&floor>=1&&floor<=5){result.campaign.xiaochang ||= {};result.campaign.xiaochang[chapter]=Math.max(result.campaign.xiaochang[chapter]||0,floor);}
+        if(Number.isInteger(floor)&&floor>=1&&floor<=6){result.campaign.xiaochang ||= {};result.campaign.xiaochang[chapter]=Math.max(result.campaign.xiaochang[chapter]||0,floor);}
       }
       // 熔炼保底计数：以最后一次熔炼的那份为准
       if(p.pity&&typeof p.pity==='object'&&(Number(p._pityAt)||0)>pityAt){pityAt=Number(p._pityAt)||0;result.pity={};for(const q of ['0','1','2','3']){const n=Math.floor(Number(p.pity[q])||0);if(n>0)result.pity[q]=Math.min(30,n);}result._pityAt=pityAt;}

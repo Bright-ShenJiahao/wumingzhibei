@@ -1,11 +1,11 @@
 // 战斗中的装备快照、统一属性结算、触发冷却与敌人异常。
 (() => {
   const D=AFFIX_DATA,clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-  let current=null,currentUid='',cool={},pending=[],spirit=0,lastSpirit=-99,chainTarget=null,chain=0,chainAt=-99,victoryUntil=-1,revived=false,healLog=[],fx=[];
+  let current=null,currentUid='',cool={},pending=[],spirit=0,lastSpirit=-99,chainTarget=null,chain=0,chainAt=-99,victoryUntil=-1,soulUntil=-1,revived=false,healLog=[],fx=[];
   const rogue=(k,d=0)=>window.ROGUE&&ROGUE.S[k]!=null?ROGUE.S[k]:d;
   function snapshot(type){const item=ARMORY.active(type),v={};if(item)for(const a of item.affixes)if(D.applicable(a,type))v[a.id]=a.value/100;
     if(item?.negative)v[item.negative.id]=-item.negative.value/100;
-    return {uid:item?.uid||type,type,v,special:item?.special||null};}
+    return {uid:item?.uid||type,type,v,special:item?.special||null,special2:item?.special2||null};}
   function sync(){const next=ARMORY.active(weapon),uid=next?.uid||weapon;if(uid!==currentUid){current=snapshot(weapon);currentUid=uid;spirit=0;chain=0;chainTarget=null;pending=[];if(hero){const max=maxHp();hero.hp=Math.min(hero.hp,max);}}return current;}
   const stat=(s,k)=>s.v[k]||0;
   function reduction(s){return clamp(stat(s,'focus'),0,.3);}
@@ -29,6 +29,7 @@
     if(chainTarget===z&&gameT-chainAt<2)add+=chain*stat(s,'chain');
     if(s.special==='spirit')add+=spirit*.01;if(s.special==='berserk')add+=.2*lowHp();
     if(s.special==='execute'&&z.hp/z.T.hp<.3)add+=.2;
+    if((s.special==='soul'||s.special2==='soul')&&soulUntil>gameT)add+=.1;
     if(traits.finisher)add+=rogue(traits.ranged?'finRanged':'finMelee',1)-1;
     if(traits.quake)add+=rogue('hammerBonus',1)-1;
     if(token.charged)add+=stat(s,'charge')+rogue('chargedDmg',1)-1;
@@ -121,7 +122,7 @@
   function collectDrops(){for(const d of drops)if(d.item&&!d.got&&ARMORY.add(d.item))d.got=1;}
   function tick(dt){sync();if(gameT-lastSpirit>5)spirit=0;
     const due=pending.filter(p=>p.t<=gameT);pending=pending.filter(p=>p.t>gameT);for(const p of due)if(p.uid===current.uid&&!over&&!hero.air&&hero.st!=='hurt')p.run();
-    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
+    for(const z of zs){if(z.dead){dropEnemy(z);if(!z.gearKillRewarded){z.gearKillRewarded=true;const s=z.lastGear;if(s&&s.uid===current.uid){if(stat(s,'victory'))victoryUntil=gameT+4;if(s.special==='soul'||s.special2==='soul')soulUntil=gameT+3;if(chance(stat(s,'survive'))&&ready('survive',1))hero.hp=Math.min(maxHp(),hero.hp+.5);}}continue;}
       if(z.gearDot)for(const entries of Object.values(z.gearDot))for(let i=entries.length-1;i>=0;i--){const e=entries[i];if(e.next<=gameT&&e.next<=e.until){e.next+=1;hit(z,e.damage,0,0,false,0,0,false,false,{secondary:true,scaled:true,dot:true});}if(e.until<=gameT)entries.splice(i,1);}
       if(z.dead)dropEnemy(z);
     }
@@ -130,7 +131,7 @@
   function draw(){for(const e of fx){ctx.save();ctx.globalAlpha=e.life/.28;ctx.strokeStyle='#d9e6f5';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.x-10,e.y-150);ctx.lineTo(e.x+5,e.y-85);ctx.lineTo(e.x-4,e.y-65);ctx.lineTo(e.x,e.y);ctx.stroke();ctx.strokeStyle='#a7a0d6';ctx.beginPath();ctx.ellipse(e.x,e.y,45,22,0,0,Math.PI*2);ctx.stroke();ctx.restore();}}
   window.GEAR={snapshot,sync,attackToken,hit:hitPrimary,range,maxHp,speed,tick,draw,incoming,tryRevive,skillCd,refreshSkill,enemyTime,enemyMove,enemyAttack,projectile,projectileTraits,projectileDamage,collectDrops,
     chargeScale:()=>1-reduction(sync()),
-    reset(){current=null;currentUid='';cool={};pending=[];spirit=0;lastSpirit=-99;chain=0;chainTarget=null;victoryUntil=-1;revived=false;healLog=[];fx=[];sync();},
-    switch(){currentUid='';sync();victoryUntil=-1;chain=0;chainTarget=null;},
+    reset(){current=null;currentUid='';cool={};pending=[];spirit=0;lastSpirit=-99;chain=0;chainTarget=null;victoryUntil=-1;soulUntil=-1;revived=false;healLog=[];fx=[];sync();},
+    switch(){currentUid='';sync();victoryUntil=-1;soulUntil=-1;chain=0;chainTarget=null;},
   };
 })();

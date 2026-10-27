@@ -40,6 +40,7 @@
     ['berserk','狂战士',10,'低于50%生命渐增伤，20%生命时最高+20%'],
     ['tenacity','坚韧',10,'低于50%生命渐减伤，20%生命时最高15%'],
     ['execute','斩杀',10,'对生命低于30%的敌人增伤20%'],
+    ['soul','噬魂',0,'击杀敌人后3秒内攻击+10%'],
   ].map(([id,name,weight,desc])=>[id,{id,name,weight,desc}]));
   const qualities = [
     {name:'普通',color:'#d4cdbf',count:0}, {name:'优良',color:'#6eacf0',count:1},
@@ -87,6 +88,7 @@
     const out=item.affixes.map(a=>{const d=positive[a.id];return `${d.name} ${['初级','中级','高级'][a.tier]}：${d.desc} ${a.value}${d.unit==='pp'?'个百分点':'%'}${applicable(a,item.type)?'':'（当前武器不生效）'}`;});
     if(item.negative){const n=item.negative,d=negative[n.id];out.push(`${d.name}：${d.desc}${n.id==='fragile'?'+':'－'}${n.value}${d.unit==='pp'?'个百分点':'%'}`);}
     if(item.special)out.push('特殊·'+special[item.special].name+'：'+special[item.special].desc);
+    if(item.special2)out.push('特殊·'+special[item.special2].name+'：'+special[item.special2].desc);
     if(item.inscription)out.push('「'+item.inscription+'」');
     return out;
   }

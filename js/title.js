@@ -1183,7 +1183,7 @@
       if(DEBUG || !hasCleared(S.name,chapter)) return false;
       const key=playerKey(S.name),all=readCampaign(); if(!key)return false;
       all[key] ||= {}; all[key].xiaochang ||= {};
-      all[key].xiaochang[chapter]=Math.max(Number(all[key].xiaochang[chapter])||0,Math.min(5,floor));
+      all[key].xiaochang[chapter]=Math.max(Number(all[key].xiaochang[chapter])||0,Math.min(6,floor));
       try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(all));}catch(_){return false;}
       if(window.CLOUD_SAVE)CLOUD_SAVE.queue(S.name); return true;
     },

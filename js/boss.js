@@ -326,7 +326,7 @@ function hit(z, dmg, dir, ranged) {
     const a = z.st === 'gone' ? Math.max(0, 1 - z.t * 1.2) : 1;
     // 冲锋前马身后的抖动、狂暴时泛红
     const jitter = z.st === 'charge_prep' ? Math.sin(z.t * 60) * .8 : 0;
-    drawChar(z.type, frame(z), z.x + jitter, z.y - (z.z || 0), z.f < 0, a, z.flash > 0);
+    drawChar(z.type, frame(z), z.x + jitter, z.y - (z.z || 0), z.f < 0, a, z.flash > 0, 1, !!z.dark);
     if (z.phase === 2 && !z.dead && z.hp <= HP * .25 && Math.floor(performance.now() / 150) % 2) drawChar(z.type, frame(z), z.x, z.y, z.f < 0, .25, true);
     // 飞出去的长戟 / 掉在地上的长戟
     if (z.spear) {
@@ -425,7 +425,8 @@ function hit(z, dmg, dir, ranged) {
     ctx.fillRect(x, y, w * z.hp / HP, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    const label='黄巾流寇·管亥'+(window.XIAOCHANG && XIAOCHANG.active() && z.xAffix ? ' · '+(z.xAffix==='rage'?'狂暴':'铁甲') : '');
+    const affix = window.XIAOCHANG && XIAOCHANG.affixText ? XIAOCHANG.affixText(z) : '';
+    const label='黄巾流寇·管亥'+(window.XIAOCHANG && XIAOCHANG.active() && affix ? ' · '+affix : '');
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }
   // 天气的视觉：屏幕空间的雨丝/雪粒 + 一层色调

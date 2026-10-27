@@ -2,13 +2,14 @@
 window.XIAOCHANG = (() => {
   let active = false;
   let run = null, panel = null;
+  let magicFx = [], ghostLinks = [];
   const selection = { chapter: 1, floor: 1, wish: '' };
   const CONFIG = {
     1: {
       name: '黄巾劫村', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
       melee: ['grunt', 'blade'], ranged: ['slinger', 'archer'],
       weapons: ['staff', 'hammer', 'stone', 'halberd'],
-      hp: [1.2, 1.45, 1.75, 2.1, 2.5], damage: [1, 1.12, 1.25, 1.4, 1.55],
+      hp: [1.2, 1.45, 1.75, 2.1, 2.5, 3.5], damage: [1, 1.12, 1.25, 1.4, 1.55, 1.9],
       waves: [
         { budget: 4, pool: ['grunt', 'blade'] },
         { budget: 5, pool: ['grunt', 'blade'], ranged: true },
@@ -18,18 +19,23 @@ window.XIAOCHANG = (() => {
         { boss: true },
       ],
       drops: {
-        boss: [[65,35,0,0,0],[35,45,20,0,0],[15,40,30,15,0],[10,40,25,15,10],[5,35,27,18,15]],
-        elite: [[85,15,0,0,0],[60,32,8,0,0],[40,40,15,5,0],[35,40,17,6,2],[28,40,20,8,4]],
-        grunt: [[95,5,0,0,0],[80,17,3,0,0],[68,24,7,1,0],[65,25,8,1.5,.5],[60,27,9,3,1]],
+        boss: [[65,35,0,0,0],[35,45,20,0,0],[15,40,30,15,0],[10,40,25,15,10],[5,35,27,18,15],[0,25,25,20,30]],
+        elite: [[85,15,0,0,0],[60,32,8,0,0],[40,40,15,5,0],[35,40,17,6,2],[28,40,20,8,4],[20,35,25,12,8]],
+        grunt: [[95,5,0,0,0],[80,17,3,0,0],[68,24,7,1,0],[65,25,8,1.5,.5],[60,27,9,3,1],[45,30,15,6,4]],
       },
     },
   };
   const debug = () => /[?&]debug(?:=|&|$)/.test(location.search);
   const config = () => CONFIG[run ? run.chapter : selection.chapter];
   const ranged = type => type === 'slinger' || type === 'archer';
+  const MAGIC_POOL = ['rage', 'armor', 'leech', 'blink', 'split'];
+  const AFFIX_NAMES = { rage: '狂暴', armor: '铁甲', leech: '嗜血', blink: '鬼影', split: '分裂' };
+  const affixNames = z => (z.xAffixes && z.xAffixes.length ? z.xAffixes : (z.xAffix ? [z.xAffix] : [])).map(id => AFFIX_NAMES[id]).filter(Boolean);
+  const affixText = z => affixNames(z).join(' · ');
+  const magic = () => !!(active && run && run.floor >= 6);
   const pick = values => values[Math.floor(Math.random() * values.length)];
   const highest = chapter => window.TITLE && TITLE.xiaochangProgress ? TITLE.xiaochangProgress(chapter) : 0;
-  const maxFloor = chapter => debug() ? 5 : Math.min(5, highest(chapter) + 1);
+  const maxFloor = chapter => debug() ? 6 : Math.min(6, highest(chapter) + 1);
   const FENCE_RATIO = 264 / 434;
 
   function refillXiaochangProps() {
@@ -61,6 +67,7 @@ window.XIAOCHANG = (() => {
     reset();
     active = true;
     run = { chapter, floor, wish, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
+    magicFx = []; ghostLinks = [];
     M.W = 720;
     props = [];
     hero.x = 360; hero.y = (M.top + M.bot) / 2;
@@ -78,7 +85,9 @@ window.XIAOCHANG = (() => {
 
   function setHeading() {
     const title = document.querySelector('#top b');
-    if (title && run) title.textContent = `校场演武 · 第${run.floor}层 · 第${run.wave}/6波`;
+    if (title && run) title.textContent = run.floor >= 6
+      ? `校场演武 · 魔化演武 · 第${run.wave}/6波`
+      : `校场演武 · 第${run.floor}层 · 第${run.wave}/6波`;
   }
   function offerWave() {
     run.wave++; run.status = 'cards';
@@ -112,8 +121,25 @@ window.XIAOCHANG = (() => {
     z.xiaochang = true;
     z.x=Math.max(12,Math.min(708,z.x));
     if(Math.abs(z.x-hero.x)<90)z.x=hero.x<360?700:20;
+    if (run.floor >= 6) {
+      const boss = !!(z.T.boss || z.T.chapterBoss);
+      const pool = boss ? ['rage', 'armor', 'leech'] : MAGIC_POOL;
+      z.xAffixes = [];
+      const count = boss ? 2 : 1;
+      while (z.xAffixes.length < count) {
+        const id = pick(pool.filter(x => !z.xAffixes.includes(x)));
+        if (!id) break;
+        z.xAffixes.push(id);
+      }
+      z.xAffix = z.xAffixes[0];
+      z.dark = true;
+      z.ghost = z.ghost || 0;
+      z.blinkT = 6;
+      return;
+    }
     if (run.floor >= 3 && z.T.elite) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
     if (run.floor >= 4 && (z.T.boss || z.T.chapterBoss)) z.xAffix = Math.random() < .5 ? 'rage' : 'armor';
+    if (z.xAffix) z.xAffixes = [z.xAffix];
   }
   function spawnSide(type, index = 0) {
     // 出生点与玩家至少相距90，极端贴边时全部改从另一侧进入。
@@ -135,8 +161,60 @@ window.XIAOCHANG = (() => {
     waveTypes().forEach((type, i) => spawnSide(type, i));
     run.status = 'fight';
   }
-  function update() {
+  function nearestLiving(z) {
+    let best = null, dist = Infinity;
+    for (const o of zs) {
+      if (o === z || o.dead) continue;
+      const d = Math.abs(o.x - z.x) + Math.abs(o.y - z.y);
+      if (d < dist) { dist = d; best = o; }
+    }
+    return best;
+  }
+  function magicDeath(z) {
+    if (!magic() || z.magicDeathDone) return;
+    z.magicDeathDone = true;
+    const target = nearestLiving(z);
+    if (target) ghostLinks.push({ x0: z.x, y0: z.y - 20, target, t: 0, T: .5 });
+    if (z.xAffixes && z.xAffixes.includes('split') && !z.noSplit && !z.T.boss && !z.T.chapterBoss) {
+      spawn('grunt', z.x, z.y);
+      const child = zs[zs.length - 1];
+      if (child) {
+        child.xiaochang = true; child.dark = true; child.noSplit = true; child.ghost = 0; child.blinkT = 6;
+        child.hp = Math.max(1, Math.ceil((child.T.hp || 3) * .5));
+        const pool = ['rage', 'armor', 'leech', 'blink'];
+        child.xAffixes = [pick(pool)];
+        child.xAffix = child.xAffixes[0];
+        child.x = Math.max(12, Math.min(708, child.x));
+      }
+    }
+    magicFx.push({ x: z.x, y: z.y - 12, t: 0, T: .55, size: 1.3 });
+  }
+  function magicUpdate(dt) {
+    if (!magic()) return;
+    for (const z of zs) {
+      if (z.dead || !z.xAffixes || !z.xAffixes.includes('blink') || z.T.boss || z.T.chapterBoss) continue;
+      z.blinkT = (z.blinkT == null ? 6 : z.blinkT) - dt;
+      if (z.blinkT > 0) continue;
+      const ox = z.x, oy = z.y;
+      z.x = Math.max(12, Math.min(708, hero.x - hero.f * 30));
+      z.y = hero.y;
+      z.blinkT = 6;
+      magicFx.push({ x: ox, y: oy - 14, t: 0, T: .5, size: 1 }, { x: z.x, y: z.y - 14, t: 0, T: .5, size: 1 });
+    }
+    for (const link of ghostLinks) link.t += dt;
+    for (const link of ghostLinks) {
+      if (link.t >= link.T) {
+        if (link.target && !link.target.dead) link.target.ghost = Math.min(3, (link.target.ghost || 0) + 1);
+        link.done = true;
+      }
+    }
+    ghostLinks = ghostLinks.filter(link => !link.done);
+    for (const q of magicFx) q.t += dt;
+    magicFx = magicFx.filter(q => q.t < q.T);
+  }
+  function update(dt = 0) {
     if (!active || !run || run.status === 'result' || over) return;
+    magicUpdate(dt);
     if (run.status === 'cards') { if (!ROGUE.blocks()) spawnWave(); return; }
     if (run.status === 'fight' && !zs.some(z => !z.dead)) { run.status = 'rest'; run.nextAt = gameT + 1.5; }
     if (run.status === 'rest' && gameT >= run.nextAt) {
@@ -146,13 +224,24 @@ window.XIAOCHANG = (() => {
   function dropEnemy(z) {
     if (!run || z.gearDropped) return;
     z.gearDropped = true;
+    magicDeath(z);
     const source = (z.T.boss || z.T.chapterBoss) ? 'boss' : z.T.elite ? 'elite' : 'grunt';
-    if (source !== 'boss' && Math.random() >= (source === 'elite' ? .5 : .01)) return;
-    const roll = Math.random(), count = source === 'boss' ? (roll < .5 ? 1 : roll < .8 ? 2 : 3) : 1;
+    const magicFloor = run.floor >= 6;
+    const dropChance = source === 'boss' || source === 'elite' ? 1 : (magicFloor ? .05 : .01);
+    if (source !== 'boss' && Math.random() >= dropChance) return;
+    const roll = Math.random();
+    const count = source === 'boss'
+      ? (magicFloor ? 2 + Math.floor(Math.random() * 3) : (roll < .5 ? 1 : roll < .8 ? 2 : 3))
+      : 1;
     const c = config();
     for (let i = 0; i < count; i++) {
       const type = run.wish && Math.random() < .5 ? run.wish : pick(c.weapons);
       const item = AFFIX_DATA.generate(type, source, source === 'boss' ? c.boss.person : '', undefined, c.drops[source][run.floor - 1]);
+      if (magicFloor && Math.random() < .1) {
+        if (!item.special) item.special = 'soul';
+        else item.special2 = 'soul';
+        if (item.q === 4) item.q = 5;
+      }
       drops.push({k:'weapon', weapon:type, item, x:Math.max(16,Math.min(704,z.x+(i-(count-1)/2)*18)), y:z.y, z:10, vy:130, t:0, life:Infinity, got:0});
     }
   }
@@ -197,7 +286,7 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或丢弃，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">第${i+1}层</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
     function update(){
@@ -222,13 +311,13 @@ window.XIAOCHANG = (() => {
     const space=document.createElement('p');space.textContent=`仓库格数 ${ARMORY.count()}/50 · ${ARMORY.count()>=50?'已满，请返回整备熔炼或丢弃':'已拾取装备全部保留'}`;article.appendChild(space);
     const nav=document.createElement('nav');
     const button=(text,action,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.style.backgroundImage=`url("${ASSETS.ui.btn}")`;b.onclick=action;nav.appendChild(b);};
-    if(run.win&&run.floor<5&&(run.debug||highest(run.chapter)>=run.floor))button('下一层',()=>start({...selection,floor:run.floor+1}),ARMORY.count()>=50);
+    if(run.win&&run.floor<6&&(run.debug||highest(run.chapter)>=run.floor))button('下一层',()=>start({...selection,floor:run.floor+1}),ARMORY.count()>=50);
     button('再战本层',()=>start({...selection,floor:run.floor}),ARMORY.count()>=50);
     button('返回整备',()=>{const chapter=run.chapter;leave();ROGUE.reset();TITLE.openPreparation({chapter,view:'xiaochang'});});
     article.appendChild(nav);panel.appendChild(article);document.body.appendChild(panel);document.body.classList.add('wzb-xresult');
   }
   function leave() {
-    active=false;run=null;
+    active=false;run=null;magicFx=[];ghostLinks=[];
     if(panel){panel.remove();panel=null;}document.body.classList.remove('wzb-xresult');
   }
   function skipToSix() {
@@ -253,12 +342,51 @@ window.XIAOCHANG = (() => {
   }
 
   function drawAffix(z) {
-    if (!active || !z.xAffix || z.dead) return;
-    const color=z.xAffix==='rage'?'#bd594d':'#9b9b94', y=z.y-(z.T.boss?69:43);
-    ctx.save();ctx.globalAlpha=.20+.06*Math.sin(gameT*4);ctx.fillStyle=color;
-    ctx.beginPath();ctx.ellipse(z.x,z.y-18,z.T.boss?27:16,z.T.boss?36:25,0,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=1;ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.lineWidth=2.5;ctx.strokeStyle='#38291f';ctx.fillStyle=z.xAffix==='rage'?'#f3a18d':'#dad6ca';
-    const text=z.xAffix==='rage'?'狂暴':'铁甲';ctx.strokeText(text,z.x,y);ctx.fillText(text,z.x,y);ctx.restore();
+    if (!active || !z || z.dead) return;
+    if (magic()) {
+      const glow = .08 + .045 * (z.ghost || 0), pulse = .7 + .3 * Math.sin(gameT * 5 + (z.slot || 0));
+      ctx.save(); ctx.globalAlpha = glow;
+      ctx.fillStyle = '#240b38';
+      ctx.beginPath(); ctx.ellipse(z.x, z.y - 1, (z.T.boss ? 30 : 17) * pulse, (z.T.boss ? 9 : 5) * pulse, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = .10 + .04 * (z.ghost || 0);
+      for (let i = 0; i < 3; i++) {
+        const yy = z.y - 6 - ((gameT * 18 + i * 13 + (z.slot || 0) * 7) % 34);
+        const xx = z.x + Math.sin(gameT * 2.2 + i * 2 + (z.slot || 0)) * (8 + i * 2);
+        ctx.fillStyle = i % 2 ? '#6d3a92' : '#2a103f';
+        ctx.beginPath(); ctx.arc(xx, yy, 3 + i, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    const names = affixNames(z);
+    if (!names.length) return;
+    const y = z.y - (z.T.boss ? 69 : 43);
+    const color = z.xAffixes && z.xAffixes.includes('armor') ? '#9b9b94' : '#bd594d';
+    ctx.save(); ctx.globalAlpha = .20 + .06 * Math.sin(gameT * 4); ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(z.x, z.y - 18, z.T.boss ? 27 : 16, z.T.boss ? 36 : 25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#38291f';
+    ctx.fillStyle = z.xAffixes && z.xAffixes.includes('rage') ? '#f3a18d' : '#dad6ca';
+    const text = names.join(' · ');
+    ctx.strokeText(text, z.x, y); ctx.fillText(text, z.x, y); ctx.restore();
+  }
+  function drawMagicFx() {
+    if (!active || !magic()) return;
+    ctx.save();
+    for (const q of magicFx) {
+      const k = Math.min(1, q.t / q.T), a = (1 - k) * .6;
+      ctx.globalAlpha = a; ctx.fillStyle = '#1b0729';
+      for (let i = 0; i < 4; i++) {
+        const ang = i * 1.57 + q.t * 2, r = (8 + k * 18) * q.size;
+        ctx.beginPath(); ctx.arc(q.x + Math.cos(ang) * r, q.y - k * 28 + Math.sin(ang) * r * .35, 5 + k * 7, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    for (const link of ghostLinks) {
+      const k = Math.min(1, link.t / link.T), x = link.x0 + (link.target.x - link.x0) * k, y = link.y0 + (link.target.y - 18 - link.y0) * k;
+      ctx.globalAlpha = .7 * (1 - k * .2); ctx.fillStyle = '#2a0b3f';
+      ctx.beginPath(); ctx.arc(x, y, 4 + Math.sin(k * Math.PI) * 4, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = .35; ctx.fillStyle = '#9a5dc4';
+      ctx.beginPath(); ctx.arc(x + 2, y - 2, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawBackground() {
@@ -275,15 +403,17 @@ window.XIAOCHANG = (() => {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(im, (720 - w) / 2, 166 - h * FENCE_RATIO, w, h);
     ctx.imageSmoothingEnabled = false;
+    if (magic()) { ctx.fillStyle = 'rgba(40,10,60,.25)'; ctx.fillRect(0, 0, 720, 300); }
   }
 
-  return { CONFIG, active: () => active, state: () => run, tokenCap: () => active && run ? (run.floor >= 4 ? 3 : 2) : M.token, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers,
-    renderPreparation, drawAffix, skipToSix, clampActors, drawBackground, refillXiaochangProps,
+  return { CONFIG, active: () => active, state: () => run, tokenCap: () => active && run ? (run.floor >= 4 ? 3 : 2) : M.token, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers, affixText,
+    renderPreparation, drawAffix, drawMagicFx, skipToSix, clampActors, drawBackground, refillXiaochangProps,
     cardAllowed: card => { if(!active)return true;const long=!!ARMORY.equipped('long'),short=!!ARMORY.equipped('short'),ranged=!!ARMORY.equipped('ranged');return card.school==='长武器'?long:card.school==='短武器'?short:card.school==='远程'?ranged:card.school==='近战'?(long||short):true; },
-    enemyDamage: (z,n) => active && run ? n/config().hp[run.floor-1]*(z.xAffix==='armor'?.75:1) : n,
-    heroDamage: n => active && run ? n*config().damage[run.floor-1] : n,
-    actionScale: z => active && z.xAffix==='rage' ? 1.2 : 1,
-    moveScale: z => active && z.xAffix==='rage' && !z.T.boss ? 1.2 : 1,
+    enemyDamage: (z,n) => active && run ? n/config().hp[run.floor-1]*(z.xAffixes && z.xAffixes.includes('armor') ? .75 : 1) : n,
+    heroDamage: (n,z) => active && run ? n*config().damage[run.floor-1]*(1+.1*(z?.ghost||0)) : n,
+    onHitHero: z => { if (!magic() || !z || z.dead || !z.xAffixes || !z.xAffixes.includes('leech')) return; z.hp = Math.min(z.T.hp, z.hp + z.T.hp * .05); },
+    actionScale: z => active && z.xAffixes && z.xAffixes.includes('rage') ? 1.2 : 1,
+    moveScale: z => active ? (z.xAffixes && z.xAffixes.includes('rage') && !z.T.boss ? 1.2 : 1) * (1 + .1 * (z.ghost || 0)) : 1,
   };
 })();
 function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }

@@ -41,7 +41,10 @@ body.wzb-rogue #bSkill,body.wzb-rogue #bCatapult{display:none!important}
 @media (max-width:600px){#wp{gap:3px}#wp button[data-w]{width:42px;height:44px}#wp button[data-w] img{width:36px;height:36px}#bWeapon{width:38px;height:38px}#bMute{min-width:36px;height:38px}}
 @media (pointer:coarse){
   #wp{gap:6px} #wp button[data-w]{width:52px;height:52px;min-width:52px;padding:6px}
-  #bWeapon{position:fixed;right:calc(122px + env(safe-area-inset-right));bottom:calc(80px + env(safe-area-inset-bottom));width:54px;height:54px;z-index:7;font-size:14px;background:radial-gradient(circle at 30% 25%,#79613bcc,#352719e8);box-shadow:0 2px 5px #21160d88}
+  #bWeapon{position:fixed;right:calc(23px + env(safe-area-inset-right));bottom:calc(100px + env(safe-area-inset-bottom));width:54px;height:54px;z-index:7;font-size:14px;background:radial-gradient(circle at 30% 25%,#79613bcc,#352719e8);box-shadow:0 2px 5px #21160d88}
+  #bSkill{right:calc(2px + env(safe-area-inset-right));bottom:calc(164px + env(safe-area-inset-bottom))}
+  #bCatapult{right:calc(2px + env(safe-area-inset-right));bottom:calc(216px + env(safe-area-inset-bottom))}
+  body.wzb-catapult:not(.wzb-summon) #bCatapult{bottom:calc(164px + env(safe-area-inset-bottom))}
   #bWeapon:active{transform:translateY(1px);background:#8a653b}
   #wp button.weapon-pending{outline:2px dashed #e4c779;outline-offset:1px}
   #bA,#bR,#bSkill,#bCatapult,#bWeapon{touch-action:none;-webkit-user-select:none}
