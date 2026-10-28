@@ -151,7 +151,7 @@
     if (!overlay) return;
     const balance = WALLET.coins(), fruits = WALLET.fruits();
     const left = overlay.querySelector('.shopWallet');
-    if (left) left.innerHTML = `💰 余额 <b>${fmt(balance)}</b><br>🍎 彩色果 <b>${fmt(fruits)}</b>`;
+    if (left) left.innerHTML = `💰 余额 <b>${fmt(balance)}</b>`;
     const lineNode = overlay.querySelector('.shopLine'); if (lineNode) lineNode.textContent = line;
     const face = overlay.querySelector('.shopPortrait img'), src = moodSrc(mood); if (face && src && face.getAttribute('src') !== src) face.src = src;    const grid = overlay.querySelector('.shopGrid'); if (!grid) return;
     grid.innerHTML = '';
