@@ -29,7 +29,7 @@
   ]);
   const completed = new Set();
   const canEnterBattle = number => {
-    if (!unlocked) return false;
+    if (!unlocked && !debugMode) return false;   // 调试模式也记通关，方便测结算
     if (number === 1) return true;
     if (number === 2) return completed.has(1);
     if (number === 3) return completed.has(2);
@@ -49,14 +49,14 @@
     routes,
     canEnter: () => unlocked || debugMode,
     canEnterBattle,
-    canChooseRoute: () => unlocked && completed.has(3) && selectedRoute === null,
+    canChooseRoute: () => (unlocked || debugMode) && completed.has(3) && selectedRoute === null,
     completeBattle: number => {
       if (!canEnterBattle(number)) return false;
       completed.add(number);
       return true;
     },
     chooseRoute: id => {
-      if (!unlocked || !canChooseRoute() || !routes.some(route => route.id === id)) return false;
+      if (!(unlocked || debugMode) || !window.CHAPTER2.canChooseRoute() || !routes.some(route => route.id === id)) return false;
       selectedRoute = id;
       return true;
     },

@@ -2553,7 +2553,7 @@ function draw() {
   // HUD
   // iPhone 横屏时刘海/灵动岛在左或右：画布上的 HUD 整体让开安全区
   const SA = safeArea();
-  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r);
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r); if (window.ZJ) ZJ.hud(W / DPR - SA.l - SA.r);
   ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); const HW = W / DPR - SA.l - SA.r, HH = H / DPR;
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
@@ -2692,10 +2692,10 @@ function drawResult(HW, HH) {
   ctx.globalAlpha = fade;
 
   // 左侧像素人物：通关 = 管亥跪地，倒下 = 主角倒地
-  const frName = result.win ? { n: 'guanhai', f: 'kneel' } : { n: 'hero', f: 'down' };
+  const frName = result.win ? (chapter2Run ? { n: 'zhang_jiao', f: 'defeat' } : { n: 'guanhai', f: 'kneel' }) : { n: 'hero', f: 'down' };   // 第二章通关画倒地的张角
   const fr = CH[frName.n] && CH[frName.n][frName.f];
   if (fr && fr.img.complete) {
-    const k = Math.max(1, Math.min(Math.round(sh * .20 / fr.h), Math.max(1, Math.floor(pw * .34 / fr.w))));
+    const k = frName.n === 'zhang_jiao' ? Math.min(1, sh * .2 / fr.h) : Math.max(1, Math.min(Math.round(sh * .20 / fr.h), Math.max(1, Math.floor(pw * .34 / fr.w))));   // 张角原图细，按比例缩小
     const dx = px0 + pw * .07, dy = sy + sh * .66;
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = fade * .95;
     ctx.drawImage(fr.img, Math.round(dx - fr.ax * k), Math.round(dy - fr.ay * k), fr.w * k, fr.h * k);
@@ -3203,7 +3203,7 @@ function drawZ(z) {
     const recoil = 0;
     drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
-    if (z.dead) return;
+    if (z.dead || z.type === 'zhang_jiao') return;   // 张角用屏幕上方大血条
     drawHalberdBleedDots(z, z.y - 58);
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);

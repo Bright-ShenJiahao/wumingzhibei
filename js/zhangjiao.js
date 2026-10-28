@@ -204,7 +204,7 @@
       }
       return;
     }
-    if (S.phase === 'dead' && S.t > 2 && !S.fin) { S.fin = true; chapter2Run.mode = 'complete'; say('张角已死，黄巾大势已去。（结算待接入）', 6); }
+    if (S.phase === 'dead' && S.t > 2 && !S.fin) { S.fin = true; chapter2Run.mode = 'complete'; won = true; }   // 进结算卷轴
   }
 
   // ---- 决斗中的张角：传送、单雷、半血狂暴 ----
@@ -398,5 +398,21 @@
     if (S.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.55, S.flash * 2.2)})`; ctx.fillRect(cam.x, 0, viewW() + 4, 600); }
   }
 
-  window.ZJ = { start, update, draw, duel, state: () => S };
+  // 屏幕上方大血条（和管亥同款位置）；法台阶段显示灰色「护体」
+  function hud(HW) {
+    if (!S || !chapter2Run || chapter2Run.battle !== 6 || S.phase === 'open' || S.phase === 'dead') return;
+    const z = S.boss, guard = S.phase !== 'p3' || (z && z.array), hpR = z ? Math.max(0, z.hp / z.T.hp) : 1;
+    const wp = document.getElementById('wp'), wr = wp && wp.getBoundingClientRect();
+    const right = wr && wr.width ? wr.left - 10 : HW;
+    const w = Math.max(140, Math.min(420, HW * .6, 2 * (right - HW / 2))), x = (HW - w) / 2, y = 44;
+    ctx.fillStyle = 'rgba(20,14,30,.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 16);
+    ctx.fillStyle = guard ? '#8a8578' : hpR <= .25 ? '#ff3b1f' : z && z.rage ? '#c0392b' : '#d8a21c';
+    ctx.fillRect(x, y, w * hpR, 10);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
+    ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+    const label = '天公将军·张角' + (guard ? '（法台护体）' : '');
+    ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
+  }
+
+  window.ZJ = { start, update, draw, duel, hud, state: () => S };
 })();
