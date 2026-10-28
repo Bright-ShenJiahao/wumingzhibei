@@ -14,11 +14,11 @@
     if(restore?.isConnected){suppressFocusUntil=now()+300;restore.focus({preventScroll:true});}
   }
   function hide(){if(mode==='hover')close();}
-  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,200);}
+  function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,60);}   // 鼠标移开后很快关闭（只留一点点时间让鼠标移进浮窗）
   function inBridge(x,y){
     // 只算武器卡、浮窗本身，和两者之间那条窄通道；不再用两者的外接大矩形（浮窗很大时，鼠标移开也还在矩形里，浮窗关不掉）
     if(mode!=='hover'||!active||!tip||tip.hidden)return false;
-    const a=active.getBoundingClientRect(),t=(dialog||tip).getBoundingClientRect(),pad=10;
+    const a=active.getBoundingClientRect(),t=(dialog||tip).getBoundingClientRect(),pad=4;
     const inside=(r)=>x>=r.left-pad&&x<=r.right+pad&&y>=r.top-pad&&y<=r.bottom+pad;
     if(inside(a)||inside(t))return true;
     const gapL=Math.min(a.right,t.right),gapR=Math.max(a.left,t.left);
