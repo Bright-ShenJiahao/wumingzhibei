@@ -1186,6 +1186,7 @@
       return saveLoadout(S.name, p);
     },
     openPreparation: target => openChapterSelect(target),
+    previewStart: name => { if (!S.name) { S.name = name; writeName(name); } openChapterSelect(1); },   // 试玩网址：跳过标题直接进整军备战
     xiaochangProgress: chapter => Number(readCampaign()[playerKey(S.name)]?.xiaochang?.[chapter]) || 0,
     markXiaochang: (chapter,floor) => {
       if(DEBUG || !hasCleared(S.name,chapter)) return false;

@@ -197,6 +197,21 @@
     last = performance.now();
     requestAnimationFrame(tick);
     if (auto === 'xiaochang') setTimeout(() => { if (window.XIAOCHANG) XIAOCHANG.start(); }, 900);
+    // 试玩网址（raw.githack 读 preview 分支）：直接进整军备战，六种武器熟练度满、每种一把传说并装上
+    if (/githack|jsdelivr/.test(location.hostname) || auto === 'preview') setTimeout(() => {
+      if (!window.TITLE || !TITLE.previewStart) return;
+      TITLE.previewStart('试玩');
+      if (window.MASTERY && window.ARMORY && window.AFFIX_DATA) {
+        const top = MASTERY.NEED[MASTERY.NEED.length - 1], m = {}; MASTERY.TYPES.forEach(t => { m[t] = top; }); ARMORY.setMastery(m);
+        const items = ARMORY.state().items;
+        for (const t of MASTERY.TYPES) {
+          let it = items.find(i => i.type === t && i.q >= 4);
+          if (!it) { it = AFFIX_DATA.generate(t, 'boss', '', 4); ARMORY.add(it); }
+          ARMORY.equip(it.uid);
+        }
+        if (TITLE.refreshPreparation) TITLE.refreshPreparation();
+      }
+    }, 900);
     if (auto === 'boss' || auto === 'boss2') setTimeout(() => jumpBoss(auto === 'boss2'), 900);
     if (auto === 'chapter2' || auto === 'chapter2altar') setTimeout(() => {
       if (typeof startChapter2Debug === 'function') startChapter2Debug(auto === 'chapter2altar' ? 6 : 1);
