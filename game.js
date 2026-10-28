@@ -1284,9 +1284,9 @@ function resolveBowSky(f) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
-    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 50% 伤害、不被硬直（用户定）
+    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 80% 伤害、不被硬直（用户定）
     const cover = chapter2Run && zs.some(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45 && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50);
-    if (cover) { hit(z, d.dmg * .5, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
+    if (cover) { hit(z, d.dmg * .8, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
     if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
   }
