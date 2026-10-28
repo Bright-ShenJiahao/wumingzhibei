@@ -1,6 +1,7 @@
 {
 "img:00fbb228898518a11c0e5549926e9a0a4098b666": "props/flag_y.png.webp",
 "img:0444559cb1434f699b221e2684d58a496e136246": "ui/rogue_card.webp",
+"img:04695d7e43a99c75420617fc8647a01acf21599b": "ui/enemy_wave.webp",
 "img:056697d934ccc8016a3e7100b939d8829fd7f53d": "bg/chapter2_altar.webp",
 "img:10e789f0b0ac1497c87e8a494c0f4c9e26b1f3e5": "ui/stone_shot_charge.webp",
 "img:169f75233cc3d65d7c89b3f9984c8a9e2f9e1587": "ui/charge_hit_stone.webp",
@@ -55,6 +56,7 @@
 "img:c7f95c39dca64b8bbdf72e339789e52d08c7af2f": "bg/village_mid.webp",
 "img:ca42416ba3638a9ef460661fd17d9f13fc31b547": "props/flag_ren.png.webp",
 "img:d2615b91786c12d535d256dba628928c8361f440": "ui/scroll.webp",
+"img:d57e01525d889f302852e52541c6f57b35c5890e": "ui/enemy_slash.webp",
 "img:dca05d80895f7cb89643379ac41f83c19ed6bbb4": "ui/btn.webp",
 "img:dd7b8a9ba81244c6a4d0be61ecc243e2949269a8": "title/home.webp",
 "img:e65754383b9e46567345f48e93b5c994014a7d5a": "ui/bleed_drip.webp",

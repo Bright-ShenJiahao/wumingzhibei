@@ -253,7 +253,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
-  zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  enemySkillFx = []; zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -435,7 +435,8 @@ function setRetreatLimit(anchorX) { arenaL = Math.max(0, anchorX - viewW() * RET
 function priestCast(z) {
   sfx('stamp', z.x); shake = Math.max(shake, .08);
   blessFx.push({ x: z.x, y: z.y, t: 0, T: .45 });
-  for (const o of zs) {
+  const priority=chapter2Run&&zs.filter(o=>!o.dead&&o.type==='yellow-heavy'&&o.hp<o.T.hp&&Math.abs(o.x-z.x)<=170&&Math.abs(o.y-z.y)<=80).sort((a,b)=>a.hp/a.T.hp-b.hp/b.T.hp)[0];
+  for (const o of priority?[priority]:zs) {
     if (o === z || o.dead || o.T.boss) continue;
     if (Math.abs(o.x - z.x) > 170 || Math.abs(o.y - z.y) > 80) continue;   // 回血范围加大（原 120×60）
     if (o.hp < o.T.hp) {
@@ -692,7 +693,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? 1080 : 8000;   // 战一到战五在同一片营地里一路往右走
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
-  zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
+  enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
   hero.inv = Math.max(hero.inv || 0, .8);
   if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
@@ -714,6 +715,13 @@ function startChapter2Battle(number, walkIn = false) {
 function fitChapter2Wave() {
   if (!(lockR < Infinity)) return;
   for (const z of zs) if (!z.dead && z.x > lockR - 16) z.x = lockR - 16 - (z.static ? (z.catapultIndex || 0) * 6 : rnd(0, 18));
+  if(chapter2Run.battle===3&&chapter2Run.wave===1&&!props.some(p=>p.siegeWall)){
+    const carts=zs.filter(z=>!z.dead&&z.type==='yellow-catapult');
+    if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo;
+      for(let col=0;col<3;col++)for(let row=0;row<3;row++)props.push({g:'jumo',x:right-col*45,y:M.top+(M.bot-M.top)*row/2,w:meta[1],h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});
+      zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;});
+    }
+  }
 }
 function chapter2Waves() {
   if (!chapter2Run) return;
@@ -770,10 +778,22 @@ function walkToChapter2Battle(next) {
 
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
-  return window.GEAR ? GEAR.hit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits) : rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits);
+  const armor=z&&ch2Armored(z),old=armor?{st:z.st,t:z.t}:null;
+  const outcome=window.GEAR ? GEAR.hit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits) : rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits);
+  if(armor&&!z.dead){z.st=old.st;z.t=old.t;z.air=false;z.z=0;z.vz=0;z.vx=0;z.stun=0;z.daze=0;}
+  return outcome;
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || (z.air && !traits.dot)) return;
+  if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
+    const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
+    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<.8){
+      const start=propFx.length, firstFloater=floaters.length;if(window.BOSS_BLOCK)BOSS_BLOCK.effect(z);
+      for(let i=firstFloater;i<floaters.length;i++)floaters[i].color='#aa4c2c';
+      for(let i=start;i<propFx.length;i++){propFx[i].c='#aa4c2c';propFx[i].w*=.7;propFx[i].h*=.7;}
+      return 'blocked';
+    }
+  }
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
@@ -1093,7 +1113,7 @@ function drawFloaters() {
     ctx.globalAlpha = Math.max(0, 1 - f.t / 1.1);
     ctx.font = 'bold ' + (emph ? 17 : 13) + 'px "PingFang SC","Noto Sans CJK SC",sans-serif';
     ctx.textAlign = 'center';
-    if (f.red) {
+    if(f.color){ctx.fillStyle=f.color;} else if (f.red) {
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(45,8,8,.9)'; ctx.lineJoin = 'round';
       ctx.strokeText(f.txt, f.x, f.y - f.t * 26);
       ctx.fillStyle = '#ff5a4d';
@@ -1309,12 +1329,14 @@ function updateHalberdDash(h, dt) {
     const dx = (z.x - h.x) * h.f, bw = z.T.w || 0;
     if (dx < -14 - bw || dx > 18 + bw || Math.abs(z.y - h.y) > d.dy) continue;
     d.hitSet.add(z);
+    if(chapter2Run&&z.type==='yellow-shield')d.left=0;
     hit(z, d.dmg, d.kb, h.f, false, 0, .35, WEAP.halberd.interrupt, false, { finisher: true, halberdCharge: true });
     if (!z.dead) {
       addHalberdBleed(z, window.GEAR && GEAR.attackScale ? GEAR.attackScale(z) : 1, d.stacks);
       bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
     }
     if (d.hitSet.size === 1) { sfx('hit_staff', z.x); sfx('finisher', h.x); }
+    if(chapter2Run&&z.type==='yellow-shield')break;
   }
   if (d.left <= 0 || h.st === 'hurt' || h.st === 'down') h.halberdDash = null;
 }
@@ -1374,7 +1396,7 @@ function chargedAttack(power, tier = 1) {
       if (z.dead || z.air) continue;
       const dx = (z.x - h.x) * h.f, dy = z.y - h.y, bw = z.T.w || 0;
       if (dx < -12 || dx > range + bw || Math.abs(dy) > Math.max(24, dx * .7 + 14)) continue;
-      hit(z, dmg, W.combo[W.combo.length - 1].kb, h.f, true, 0, .35, W.interrupt, false, { noBossKnock: true, knockSiege: true, hammerSlam: true });
+      hit(z, dmg, W.combo[W.combo.length - 1].kb, h.f, true, 0, .35, W.interrupt, false, { charged: true, noBossKnock: true, knockSiege: true, hammerSlam: true });
     }
     return;
   }
@@ -1388,7 +1410,7 @@ function chargedAttack(power, tier = 1) {
       if (z.dead || z.air) continue;
       const dx = (z.x - h.x) * h.f, dy = z.y - h.y, bw = z.T.w || 0;
       if (dx < -12 || dx > 45 + bw || Math.abs(dy) > 45) continue;
-      hit(z, dmg, data.knock ? 80 : 55, h.f, data.knock, 0, .15, W.interrupt, false, { critChance: data.chance, critCap: 2, guaranteedCrit: critT > 0, noBossKnock: data.knock });
+      hit(z, dmg, data.knock ? 80 : 55, h.f, data.knock, 0, .15, W.interrupt, false, { charged: true, critChance: data.chance, critCap: 2, guaranteedCrit: critT > 0, noBossKnock: data.knock });
     }
     return;
   }
@@ -1400,7 +1422,7 @@ function chargedAttack(power, tier = 1) {
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
     if (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) {
       const dmg = 1.6 * force;
-      hit(z, dmg, 140 * force, h.f, true, .5, .35, false, false, { dazeChance: .5 });
+      hit(z, dmg, 140 * force, h.f, true, .5, .35, false, false, { charged: true, dazeChance: .5 });
       addChargeHitFx('staff', z.x, z.y - 15, h.f);
     }
   }
@@ -1558,6 +1580,94 @@ function dmgHero(n, from, kind = 'basic') {
 }
 
 // ---------- 黄巾兵 AI ----------
+// 第二章小兵：技能状态独立于普攻，蓄力/冲刺不借用首领逻辑。
+let enemySkillFx = [];
+function ch2Armored(z) {
+  return !!(chapter2Run && z.enemySkill && (z.type === 'yellow-heavy' || (z.type === 'yellow-spear' && z.enemySkill.phase === 'dash')));
+}
+function ch2NearestShield(z) {
+  return zs.filter(o=>o!==z&&!o.dead&&o.st!=='gone'&&o.type==='yellow-shield').sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
+}
+function ch2Formation(z) {
+  if(!chapter2Run)return null;
+  const shield=ch2NearestShield(z);
+  if(shield&&(z.T.ranged||z.T.priest||z.type==='yellow-spear')){
+    const dx=shield.x-hero.x,dy=shield.y-hero.y,len=Math.hypot(dx,dy)||1,d=z.type==='yellow-spear'?20:25;
+    return {x:shield.x+dx/len*d,y:Math.max(M.top,Math.min(M.bot,shield.y+dy/len*d))};
+  }
+  if(z.type==='yellow-shield'){
+    const rear=zs.filter(o=>!o.dead&&(o.T.ranged||o.T.priest||o.type==='yellow-spear')).sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
+    if(rear){const dx=rear.x-hero.x,dy=rear.y-hero.y,len=Math.hypot(dx,dy)||1,d=Math.max(0,len-25);return {x:hero.x+dx/len*d,y:hero.y+dy/len*d};}
+  }
+  if(z.type==='yellow-heavy'){
+    const peers=zs.filter(o=>!o.dead&&o.type==='yellow-heavy');
+    if(peers.length>=2)return {x:hero.x+(peers.indexOf(z)%2?40:-40),y:hero.y};
+  }
+  return null;
+}
+function ch2BeginSkill(z) {
+  z.enemySkill={phase:'wind',t:0,f:Math.sign(hero.x-z.x)||z.f,hit:false};
+  z.f=z.enemySkill.f;z.moving=false;z.vx=0;set(z,'wind');
+  z.skillCd=z.type==='yellow-heavy'?6:z.type==='yellow-shield'?7:5;sfx('bladeAlert',z.x);
+}
+function ch2Skill(z,dt) {
+  if(!chapter2Run)return false;
+  z.skillCd=Math.max(0,(z.skillCd||0)-dt);
+  let skill=z.enemySkill;
+  if(skill&&(z.dead||z.air||(!ch2Armored(z)&&(z.stun>0||z.daze>0)))){z.enemySkill=null;return false;}
+  if(!skill){
+    if(!['yellow-heavy','yellow-shield','yellow-spear'].includes(z.type)||z.skillCd>0||!['idle','move'].includes(z.st)||z.stun>0||z.daze>0)return false;
+    const dx=hero.x-z.x,dy=hero.y-z.y,front=dx*z.f;
+    const formation=ch2Formation(z);
+    if(z.type==='yellow-heavy'&&formation&&Math.abs(z.x-formation.x)>18)return false;
+    const can=z.type==='yellow-heavy'?front>=0&&front<=70&&Math.abs(dy)<35:z.type==='yellow-shield'?front>=0&&front<=40&&Math.abs(dy)<20:front>=60&&front<=110&&Math.abs(dy)<=20;
+    if(!can)return false;
+    ch2BeginSkill(z);skill=z.enemySkill;
+  }
+  skill.t+=dt;z.f=skill.f;z.moving=false;
+  if(ch2Armored(z)){z.stun=0;z.daze=0;z.vx=0;}
+  const wind=z.type==='yellow-heavy'?1:z.type==='yellow-shield'?.4:.6;
+  if(skill.phase==='wind'){
+    if(skill.t<wind)return true;
+    set(z,'strike');skill.phase='dash';skill.t=0;
+    if(z.type==='yellow-heavy'){
+      enemySkillFx.push({x:z.x+z.f*20,y:z.y-15,f:z.f,t:0,T:.3});
+      const dx=(hero.x-z.x)*z.f,dy=hero.y-z.y;
+      if(dx>=0&&Math.hypot(dx,dy)<=45&&Math.abs(dy)<=dx+8)dmgHero(2.5,z,'skill');
+      eshots.push({k:'enemyWave',x:z.x+z.f*12,y:z.y,vx:z.f*150,left:50,t:0,life:1,source:z});sfx('enemySwing',z.x);
+      skill.phase='recover';return true;
+    }
+    skill.left=z.type==='yellow-shield'?30:50;
+    if(z.type==='yellow-spear')for(const other of zs){
+      if(other!==z&&!other.dead&&!other.air&&other.type==='yellow-spear'&&!other.enemySkill&&(other.skillCd||0)<=0&&!(other.stun>0)&&!(other.daze>0)&&Math.hypot(other.x-z.x,other.y-z.y)<=100)ch2BeginSkill(other);
+    }
+  }
+  if(skill.phase==='dash'){
+    const step=Math.min(skill.left,180*dt);moveEnt(z,z.f*step,0);skill.left-=step;
+    if(!skill.hit&&Math.abs(hero.x-z.x)<(z.type==='yellow-spear'?37:18)&&Math.abs(hero.y-z.y)<16&&(hero.x-z.x)*z.f>=-10){
+      const before=hero.hp;dmgHero(z.type==='yellow-shield'?1:2,z,'skill');skill.hit=true;
+      if(z.type==='yellow-shield'&&hero.hp<before)moveEnt(hero,z.f*40,0);
+    }
+    if(skill.left<=0){skill.phase='recover';skill.t=0;}
+  }
+  if(skill.phase==='recover'&&skill.t>=.35){z.enemySkill=null;z.tok=false;set(z,'move');}
+  return true;
+}
+const enemyTintCache=new Map();
+function drawEnemySheet(key,x,y,f,width,time,duration){
+  const img=IMG['ui_'+key];if(!img||!img.complete||!img.naturalWidth)return;
+  let canvas=enemyTintCache.get(key);
+  if(!canvas){canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;const g=canvas.getContext('2d');g.drawImage(img,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#a34426';g.fillRect(0,0,canvas.width,canvas.height);enemyTintCache.set(key,canvas);}
+  const fw=canvas.width/3,fh=canvas.height,frame=Math.min(2,Math.floor(time/duration*3)),height=width*fh/fw;
+  ctx.save();ctx.translate(x,y);ctx.scale(f,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,frame*fw,0,fw,fh,-width/2,-height/2,width,height);ctx.restore();
+}
+function ch2Telegraph(z){
+  if(!chapter2Run||!z.enemySkill||z.enemySkill.phase!=='wind'||z.dead)return;
+  ctx.save();ctx.fillStyle='#b64c2b';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('!',z.x,z.y-42);
+  if(z.type==='yellow-spear'){ctx.fillStyle='rgba(130,42,29,.3)';ctx.fillRect(z.f>0?z.x:z.x-90,z.y-5,90,10);}
+  ctx.restore();
+}
+
 function zUpdate(z, dt) {
   if (window.GEAR && !z.dead) { dt = GEAR.enemyTime(z, dt); if (!dt) return; }
   if (z.T.boss) return Boss.update(z, dt);
@@ -1620,6 +1730,7 @@ function zUpdate(z, dt) {
   if (z.air) { airStep(z, dt); return; }
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
+  if(ch2Skill(z,dt))return;
   if (z.st === 'sleep') {
     if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); z.hidden = false; sfx('wake', z.x); }
     return;
@@ -1655,6 +1766,7 @@ function zUpdate(z, dt) {
       }
       if (ally && bd > 46) { tx = ally.x - Math.sign(pdx) * 20; ty = ally.y; moving = true; }
     }
+    const cover=ch2Formation(z);if(cover){tx=cover.x;ty=cover.y;moving=Math.hypot(tx-z.x,ty-z.y)>4;}
     z.moving = moving;
     if (moving) {
       const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my) || 1;
@@ -1700,7 +1812,12 @@ function zUpdate(z, dt) {
     if (z.t > T.wind) {
       set(z, 'strike'); sfx(T.ranged === 'stone' ? 'sling' : T.ranged === 'fire' ? 'bow' : 'enemySwing', z.x);
       if (T.ranged === 'stone') eshots.push({ source:z, k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
-      else if (T.ranged === 'fire') { const tx = hero.x, ty = hero.y; eshots.push({ k: 'fire', x0: z.x + z.f * 16, y0: z.y, tx, ty, t: 0, T: .9 }); }
+      else if (T.ranged === 'fire') {
+        const dx=hero.x-z.x,dy=hero.y-z.y;
+        for(const angle of chapter2Run&&z.type==='archer'?[-Math.PI/15,0,Math.PI/15]:[0]){
+          eshots.push({k:'fire',enemyVolley:!!chapter2Run,x0:z.x+z.f*16,y0:z.y,tx:z.x+dx*Math.cos(angle)-dy*Math.sin(angle),ty:z.y+dx*Math.sin(angle)+dy*Math.cos(angle),t:0,T:.9});
+        }
+      }
       else if (Math.abs(dx) < T.reach && Math.abs(hero.y - z.y) < 14 && Math.sign(dx) === z.f) dmgHero(T.dmg, z);   // 上下判定 9→14，和主角攻击范围对齐
     }
     return;
@@ -1714,7 +1831,7 @@ function zUpdate(z, dt) {
     tx = hero.x + side * want; ty = hero.y + (z.slot % 2 ? 10 : -10);
     tx = Math.max(cam.x + 30, Math.min(tx, (lockR < Infinity ? lockR : cam.x + viewW()) - 30));
     const ad = Math.abs(dx);
-    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < T.range[1] * 1.2 && Math.abs(dy) < (T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = T.cd; return; }
+    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < T.range[1] * 1.2 && Math.abs(dy) < (T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = chapter2Run&&z.type==='archer'?4.5:T.cd; return; }
   } else {          // 近战：最多 M.token 个同时贴身，其余在旁边游走
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < (window.XIAOCHANG && XIAOCHANG.tokenCap ? XIAOCHANG.tokenCap() : M.token) && Math.abs(dx) < 130) z.tok = true;
@@ -1723,8 +1840,9 @@ function zUpdate(z, dt) {
     if (T.elite && !z.qi && (z.qiCd || 0) <= 0 && Math.abs(dx) < 130 && Math.abs(dy) < 26) {
       set(z, 'wind'); z.qi = 0; z.qiCd = 6.5; sfx('bladeAlert', z.x); return;
     }
-    if (z.tok && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
+    if (z.tok && !(chapter2Run && z.type==='yellow-heavy' && ch2Formation(z) && Math.abs(z.x-ch2Formation(z).x)>18) && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
   }
+  const formation=ch2Formation(z);if(formation){tx=formation.x;ty=formation.y;}
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);
   z.moving = l > 4;
   if (z.moving) {
@@ -1800,6 +1918,7 @@ function updateChapter2Boss(z, dt) {
 
 // ---------- 投射物、火 ----------
 function updateShots(dt) {
+  for(const fx of enemySkillFx)fx.t+=dt;enemySkillFx=enemySkillFx.filter(fx=>fx.t<fx.T);
   for (const s of shots) {
     if (window.GEAR && !s.gearInitialized) { s.gearInitialized=true; GEAR.projectile(s); }
     s.x += s.vx * dt; s.y += (s.vy || 0) * dt; s.life -= dt;
@@ -1839,6 +1958,7 @@ function updateShots(dt) {
   for (const h of stoneHits) h.t += dt;
   stoneHits = stoneHits.filter(h => h.t < h.T);
   for (const s of eshots) {
+    if(s.k==='enemyWave'){const step=Math.min(s.left,Math.abs(s.vx)*dt);s.x+=Math.sign(s.vx)*step;s.left-=step;s.t+=dt;if(hero.inv<=0&&Math.abs(hero.x-s.x)<12&&Math.abs(hero.y-s.y)<12){dmgHero(1.5,s.source,'skill');s.left=0;}s.life=s.left>0?1:0;continue;}
     if (s.k === 'stone' || s.k === 'arrow') {
       s.x += s.vx * dt; s.life -= dt;
       if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
@@ -2344,11 +2464,13 @@ function draw() {
   for (const f of hammerFx) list.push({ y: f.y, d: () => drawHammerFx(f) });
   for (const f of bladeFx) list.push({ y: f.y, d: () => drawBladeFx(f) });
   for (const f of bowFx) list.push({ y: f.y, d: () => drawBowFx(f) });
+  for(const fx of enemySkillFx)list.push({y:fx.y+15,d:()=>drawEnemySheet('enemy_slash',fx.x,fx.y,fx.f,40,fx.t,fx.T)});
   for (const s of eshots) {
+    if(s.k==='enemyWave'){list.push({y:s.y,d:()=>drawEnemySheet('enemy_wave',s.x,s.y-15,Math.sign(s.vx),20,s.t%.3,.3)});continue;}
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
       const p = Math.min(1, s.t / s.T), x = s.x0 + (s.tx - s.x0) * p, gy = s.y0 + (s.ty - s.y0) * p, z = 24 + Math.sin(p * Math.PI) * 60;
-      list.push({ y: gy, d: () => { if (s.ball) { shadow(x, gy, 4); ctx.save(); ctx.translate(x, gy - z); ctx.fillStyle = 'rgba(255,120,30,.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a24'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(-1, -1, 1.4, 0, 7); ctx.fill(); ctx.restore(); return; } shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = '#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = '#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
+      list.push({ y: gy, d: () => { if (s.ball) { shadow(x, gy, 4); ctx.save(); ctx.translate(x, gy - z); ctx.fillStyle = 'rgba(255,120,30,.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a24'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(-1, -1, 1.4, 0, 7); ctx.fill(); ctx.restore(); return; } shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = s.enemyVolley?'#a54a28':'#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = s.enemyVolley?'#7d3023':'#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -2992,6 +3114,7 @@ function drawHero() {
   drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
 }
 function drawZ(z) {
+  ch2Telegraph(z);
   if (z.T.boss) { Boss.draw(z); drawHalberdBleedDots(z, z.y - 68); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
