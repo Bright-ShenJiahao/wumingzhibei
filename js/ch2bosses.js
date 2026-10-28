@@ -9,6 +9,9 @@
   const set = (z, k, fr, extra = {}) => { z.cb = { k, t: 0, ...extra }; z.cbFrame = fr; z.st = 'move'; };
   const done = (z, cd) => { z.cb = null; z.cbFrame = null; z.cd = cd; z.st = 'move'; z.t = 0; };
   const tip = (z, txt) => floaters.push({ x: z.x, y: z.y - 62, t: 0, txt });
+  const vo = n => { if (window.SFX && SFX.voice) SFX.voice(n); };
+  const LINES = { zhang_liang: { intro: ['张梁：「人公将军张梁在此！谁敢上前！」', 'zl_intro'], die: ['张梁：「大哥……我……顶不住了……」', 'zl_die'] },
+    zhang_bao: { intro: ['张宝：「地公将军在此……你来送死吗？」', 'zb_intro'], die: ['张宝：「大哥……黄天……救我……」', 'zb_die'] } };
   const armor = z => { z.stun = 0; z.daze = 0; };   // 霸体：挨打不中断
 
   // ---------------- 张梁 ----------------
@@ -16,7 +19,7 @@
     const C = z.cb, fast = z.rage ? .8 : 1;
     if (!z.rage && z.hp < z.T.hp * .5) {   // 半血怒吼：震开主角、召大刀兵、提速
       z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.25 }; set(z, 'roar', 'roar'); face(z);
-      say('张梁：「都给我上！」', 2.4); shake = .4; sfx('finisher', z.x);
+      say('张梁：「都给我上！杀！」', 2.4); vo('zl_roar'); shake = .4; sfx('finisher', z.x);
       return true;
     }
     if (C) {
@@ -68,7 +71,7 @@
     z.spinCd = (z.spinCd ?? 3) - dt; z.chargeCd = (z.chargeCd ?? 2) - dt;
     const dx = Math.abs(hero.x - z.x), dy = Math.abs(hero.y - z.y);
     if (z.stun > 0) return false;
-    if (z.chargeCd <= 0 && dx > 110 && dy < 14) { z.chargeCd = z.rage ? 4.5 : 6.5; face(z); set(z, 'charge', 'wind', { step: 0 }); tip(z, '冲！'); return true; }
+    if (z.chargeCd <= 0 && dx > 110 && dy < 14) { z.chargeCd = z.rage ? 4.5 : 6.5; face(z); set(z, 'charge', 'wind', { step: 0 }); tip(z, '冲！'); if (!z.saidCharge || Math.random() < .35) { z.saidCharge = true; say('张梁：「给我——滚开！」', 1.8); vo('zl_charge'); } return true; }
     if (z.spinCd <= 0 && dx < 50 && dy < 16) { z.spinCd = z.rage ? 5 : 7; face(z); set(z, 'spin', 'wind', { step: 0 }); tip(z, '转！'); return true; }
     if (z.cd <= 0 && dx <= z.T.reach && dy <= 10) { face(z); set(z, 'combo', 'wind', { step: 0 }); sfx('bladeAlert', z.x); return true; }
     return false;
@@ -79,7 +82,7 @@
     const C = z.cb, fast = z.rage ? .8 : 1;
     if (!z.rage && z.hp < z.T.hp * .5) {   // 半血：黄沙迷阵 + 召 4 个方士
       z.rage = true; set(z, 'sand', 'chant'); face(z);
-      say('张宝：「黄沙迷阵——众弟子，助我！」', 2.6); shake = .3;
+      say('张宝：「黄沙迷阵——众弟子，助我！」', 2.6); vo('zb_sand'); shake = .3;
       return true;
     }
     if (C) {
@@ -122,7 +125,7 @@
     z.breathCd = (z.breathCd ?? 2) - dt; z.rainCd = (z.rainCd ?? 4) - dt;
     if (z.stun > 0) return false;
     const ahead = (hero.x - z.x) * Math.sign(hero.x - z.x), dy = Math.abs(hero.y - z.y);
-    if (z.rainCd <= 0) { z.rainCd = z.rage ? 6 : 8.5; face(z); set(z, 'rain', 'fireball'); say('张宝：「火来！」', 1.4); return true; }
+    if (z.rainCd <= 0) { z.rainCd = z.rage ? 6 : 8.5; face(z); set(z, 'rain', 'fireball'); say('张宝：「天火，降！」', 1.4); if (!z.saidFire || Math.random() < .35) { z.saidFire = true; vo('zb_fire'); } return true; }
     if (z.breathCd <= 0 && ahead > 36 && ahead < 105 && dy < 18) { z.breathCd = z.rage ? 4 : 5.5; face(z); set(z, 'breath', 'breath', { step: 0 }); return true; }
     if (z.cd <= 0 && ahead <= z.T.reach && dy <= 10) { face(z); set(z, 'slash', 'wind'); return true; }
     return false;
@@ -132,7 +135,9 @@
   const sand = { t: 0 };
 
   function update(z, dt) {
-    if (z.dead) { z.cb = null; z.cbFrame = null; return false; }
+    const L = LINES[z.type];
+    if (z.dead) { if (L && !z.saidDie) { z.saidDie = true; say(L.die[0], 3.5); vo(L.die[1]); hz.length = 0; sand.t = 0; } z.cb = null; z.cbFrame = null; return false; }
+    if (L && !z.saidIntro) { z.saidIntro = true; say(L.intro[0], 3); vo(L.intro[1]); }
     tickHz(dt);
     if (z.type === 'zhang_liang') return liang(z, dt);
     if (z.type === 'zhang_bao') return bao(z, dt);

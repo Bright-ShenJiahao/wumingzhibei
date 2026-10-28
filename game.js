@@ -1911,12 +1911,12 @@ function chapter2BossSummon(z) {
   if (z.type === 'zhang_liang') {
     spawn('yellow-heavy', bx, mid - 28);
     spawn('yellow-heavy', bx, mid + 28);
-    say('张梁：「给我上！」', 2.4);
+    // 台词由 CH2B 的怒吼统一说
     floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '给我上！', big: true, gold: true });
   } else if (z.type === 'zhang_bao') {
     spawn('priest', bx, mid - 28);
     spawn('priest', bx, mid + 28);
-    say('张宝：「众弟子，助我！」', 2.4);
+    // 台词由 CH2B 的黄沙迷阵统一说
     floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '众弟子，助我！', big: true, gold: true });
   }
 }
