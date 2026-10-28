@@ -747,7 +747,7 @@ function chapter2Waves() {
     }
     if (battle === 3) {
       chapter2Run.mode = 'choice';
-      say('张梁、张宝分兵突围。选择追击路线。', 999); return;
+      say('曹操：「张梁、张宝分兵突围……追！」 | 选择追击路线', 999); if (window.SFX && SFX.voice) SFX.voice('caocao_route'); return;
     }
     if (battle === 4) {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);
@@ -1874,16 +1874,21 @@ function chapter2BossSummon(z) {
   if (z.type === 'zhang_liang') {
     spawn('yellow-heavy', bx, mid - 28);
     spawn('yellow-heavy', bx, mid + 28);
-    say('张梁：「给我上！」', 2.4);
+    say('张梁：「给我上！」', 2.4); if (window.SFX && SFX.voice) SFX.voice('zhangliang_summon');
     floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '给我上！', big: true, gold: true });
   } else if (z.type === 'zhang_bao') {
     spawn('priest', bx, mid - 28);
     spawn('priest', bx, mid + 28);
-    say('张宝：「众弟子，助我！」', 2.4);
+    say('张宝：「众弟子，助我！」', 2.4); if (window.SFX && SFX.voice) SFX.voice('zhangbao_summon');
     floaters.push({ x: z.x, y: z.y - 52, t: 0, txt: '众弟子，助我！', big: true, gold: true });
   }
 }
 function updateChapter2Boss(z, dt) {
+  if (z.dead && !z.voDead) {   // 战败台词（配音）
+    z.voDead = true; const liang = z.type === 'zhang_liang';
+    say(liang ? '张梁：「大哥……我先走一步了……」' : '张宝：「天命……竟不在我黄天……」', 3);
+    if (window.SFX && SFX.voice) SFX.voice(liang ? 'zhangliang_defeat' : 'zhangbao_defeat');
+  }
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
   z.daze = Math.max(0, (z.daze || 0) - dt);
   if (z.air) { airStep(z, dt); return; }
