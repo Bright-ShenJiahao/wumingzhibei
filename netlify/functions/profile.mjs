@@ -38,7 +38,17 @@ async function current(store,prefix){
   const entry=await store.getWithMetadata(prefix+'current',{type:'json'});
   return {entry,profile:entry?entry.data:await loadLegacy(store,prefix)};
 }
+// 试玩网址（raw.githack 读 preview 分支）只能"只读"拉取存档：允许它跨域 GET，POST 仍被下面的来源检查拒绝（用户定：方案 A）
+const PREVIEW_ORIGIN='https://raw.githack.com';
 export default async function handler(req){
+  const fromPreview=req.headers.get('origin')===PREVIEW_ORIGIN;
+  if(req.method==='OPTIONS'&&fromPreview)return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':PREVIEW_ORIGIN,'Access-Control-Allow-Methods':'GET','Access-Control-Allow-Headers':'X-Save-Pin','Access-Control-Max-Age':'86400'}});
+  if(fromPreview&&req.method!=='GET')return reply({ok:false,error:'试玩网址只能读取存档'},403);
+  const res=await inner(req);
+  if(fromPreview)res.headers.set('Access-Control-Allow-Origin',PREVIEW_ORIGIN);
+  return res;
+}
+async function inner(req){
   if(!['GET','POST'].includes(req.method))return reply({ok:false,error:'Method not allowed'},405);
   const url=new URL(req.url);let body;
   if(req.method==='POST'){

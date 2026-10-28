@@ -200,7 +200,14 @@
     // 试玩网址（raw.githack 读 preview 分支）：直接进整军备战，六种武器熟练度满、每种一把传说并装上
     if (/githack|jsdelivr/.test(location.hostname) || auto === 'preview') setTimeout(() => {
       if (!window.TITLE || !TITLE.previewStart) return;
-      TITLE.previewStart('试玩');
+      // 方案 A：从正式网站只读拉取真实存档（默认 PO仔；网址可带 &name=名字&pin=口令），试玩里的改动不写回
+      const qs = new URLSearchParams(location.search), who = qs.get('name') || 'PO仔', pin = qs.get('pin') || '';
+      TITLE.previewStart(who);
+      fetch('https://wumingzhibei.netlify.app/api/profile?name=' + encodeURIComponent(who), { headers: pin ? { 'X-Save-Pin': pin } : {}, cache: 'no-store' })
+        .then(r => r.json()).then(d => {
+          if (d && d.ok && d.profile && window.ARMORY && ARMORY.mergeCloud(d.profile)) { if (TITLE.refreshPreparation) TITLE.refreshPreparation(); if (typeof say === 'function') say(`已读取「${who}」的正式存档（只读）`, 3); }
+          else if (typeof say === 'function') say(d && d.error ? '读取存档失败：' + d.error : '读取存档失败', 4);
+        }).catch(() => { if (typeof say === 'function') say('读取正式存档失败（网络）', 4); });
       if (window.MASTERY && window.ARMORY && window.AFFIX_DATA) {
         const top = MASTERY.NEED[MASTERY.NEED.length - 1], m = {}; MASTERY.TYPES.forEach(t => { m[t] = top; }); ARMORY.setMastery(m);
         const items = ARMORY.state().items;
