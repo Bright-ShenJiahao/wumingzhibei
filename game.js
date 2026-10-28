@@ -92,7 +92,7 @@ const WEAP = {
   blade: { name: '大刀', class: 'short', reach: 30, dy: 17, move: .35, freeze: .065, snd: 'staff', chargeReach: 38, combo: [
     { f: ['blade_1a', 'blade_1b'], d: [.14, .20], dmg: 1.1, kb: 42 },                              // 斜劈
     { f: ['blade_2a', 'blade_2b'], d: [.15, .22], dmg: 1.2, kb: 48, multi: true },                 // 横砍
-    { f: ['blade_4a', 'blade_4b', 'blade_4c'], d: [.16, .10, .28], dmg: 2.2, kb: 100, multi: true, knock: true },   // 举刀重劈收尾（短武器统一三段；回身斩帧保留备用）
+    { f: ['blade_4a', 'blade_4b'], d: [.16, .34], dmg: 2.2, kb: 100, multi: true, knock: true },   // 举刀重劈收尾：劈下就停，去掉插地那一帧（用户定）
   ] },
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
