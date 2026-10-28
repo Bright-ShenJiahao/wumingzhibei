@@ -203,7 +203,7 @@
       const z = S.boss;
       if (z && z.dead && S.phase !== 'dead') {
         S.phase = 'dead'; S.t = 0; S.hz = []; zs.forEach(e => { if (e.zjAdd) e.hp = 0; });
-        say('张角：“苍天……当真……已死……”', 4); vo('zj_die'); shake = .5;
+        say('张角：“苍天……亡我……”', 4); vo('zj_die'); shake = .5;
         if (window.CHAPTER2 && CHAPTER2.completeBattle) CHAPTER2.completeBattle(6);
       }
       return;
