@@ -214,7 +214,7 @@
       }
       return;
     }
-    if (S.phase === 'dead' && S.t > 2.2 && !S.caoSaid) { S.caoSaid = true; say(chapter2Run && chapter2Run.route === 'zhang-bao' ? '曹操：「张梁已被我斩于阵前！黄巾贼首尽灭——此战，你当居首功！」' : '曹操：「张宝已被我斩于阵前！黄巾贼首尽灭——此战，你当居首功！」', 5); if (window.SFX && SFX.voice) SFX.voice('caocao_win'); }
+    if (S.phase === 'dead' && S.t > 2.2 && !S.caoSaid) { S.caoSaid = true; { const t = (chapter2Run && chapter2Run.route === 'zhang-bao' ? '张梁' : '张宝') + '已被我斩于阵前！黄巾贼首尽灭——此战，你当居首功！'; if (window.CH2OPEN) CH2OPEN.bark(t, 3.2); else say('曹操：' + t, 5); } if (window.SFX && SFX.voice) SFX.voice('caocao_win'); }
     if (S.phase === 'dead' && S.t > 5.5 && !S.fin) { S.fin = true; chapter2Run.mode = 'complete'; won = true; }   // 进结算卷轴
   }
 
