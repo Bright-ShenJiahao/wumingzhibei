@@ -175,6 +175,11 @@
       if (z.cb.k === 'charge' && z.cb.step === 0) { ctx.fillStyle = 'rgba(150,60,30,.28)'; ctx.fillRect(Math.min(z.x, z.x + z.f * 150), z.y - 4, 150, 8); }
       if (z.cb.k === 'spin' && z.cb.step === 0) { ctx.strokeStyle = 'rgba(160,70,35,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(z.x, z.y, 48, 18, 0, 0, 7); ctx.stroke(); }
     }
+    // 盾兵举盾范围：暗橙半透明圈（敌方特效色）
+    for (const sh of zs) if (sh.type === 'yellow-shield' && !sh.dead && sh.shieldUpUntil > gameT) {
+      const u = (sh.shieldUpUntil - gameT) / .8; ctx.fillStyle = `rgba(150,70,35,${.22 * u})`; ctx.strokeStyle = `rgba(170,80,40,${.7 * u})`; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(sh.x, sh.y, 45, 22, 0, 0, 7); ctx.fill(); ctx.stroke();
+    }
     // 火球：落点暗橙预警圈 + 从天上掉下来的火球
     for (const h of hz) {
       if (h.k !== 'ball') continue;

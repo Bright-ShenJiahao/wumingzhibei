@@ -654,12 +654,15 @@ const CHAPTER2_WAVES = {
   3: [
     () => { spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 - 20); spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 + 20); spawn('archer', hero.x + 290, (M.top + M.bot) / 2 - 20); spawn('archer', hero.x + 290, (M.top + M.bot) / 2 + 20); },
     () => {
+      // 投石车阵刷在主角往右一屏：先把锁屏右边界往右推一屏，玩家要往前推进才碰到拒马墙
+      const vw = viewW(), R = Math.min(M.W, hero.x + vw * 1.6);
+      lockR = R; say('投石车阵就在前方！往右推进 →', 2.5);
       for (let i = 0; i < 5; i++) {
-        spawn('yellow-catapult', hero.x + 565 + i * 10, M.top + 10 + (M.bot - M.top - 20) * i / 4);
-        const z = zs[zs.length - 1]; z.f = -1; z.static = true; z.cd = [2.4, 3.5, 4.6, 5.8, 7.0][i]; z.catapultIndex = i;
+        spawn('yellow-catapult', R - 40 + i * 6, M.top + 10 + (M.bot - M.top - 20) * i / 4);
+        const z = zs[zs.length - 1]; z.f = -1; z.static = true; z.cd = [2.4, 3.5, 4.6, 5.8, 7.0][i] + 1.5; z.catapultIndex = i;
       }
-      spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 - 20);
-      spawn('yellow-shield', hero.x + 180, (M.top + M.bot) / 2 + 20);
+      spawn('yellow-shield', R - 260, (M.top + M.bot) / 2 - 20);
+      spawn('yellow-shield', R - 260, (M.top + M.bot) / 2 + 20);
     },
   ],
   4: [
@@ -733,7 +736,7 @@ function fitChapter2Wave() {
     if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo_v;
       // 三道竖排拒马墙，每道留一个约 24 宽的缺口，缺口位置错开（下 / 上 / 中）
       const span=M.bot-M.top,gap=24,seg=(span-gap)/2;
-      [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;if(Math.abs(x-hero.x)<34)return;   // 主角已经站在这里：这道墙不刷，免得刷在身上
+      [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;
         // gi=0 缺口在上，1 在中，2 在下；剩下的两段各成一个道具
         const segs=gi===0?[[M.top+gap+seg*2,seg],[M.top+gap+seg,seg]]:gi===2?[[M.top+seg*2,seg],[M.top+seg,seg]]:[[M.bot,seg],[M.top+seg,seg]];
         for(const [y,d] of segs)props.push({g:'jumo_v',x,y,d,vert:true,w:18,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
@@ -960,7 +963,7 @@ function heroUpdate(dt) {
     return;
   }
   if (over) return;   // 死亡后彻底停止玩家操作
-  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (charging ? .65 : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
+  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (charging ? (weapon === 'bow' ? .55 : .65) : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
   else if (h.st !== 'idle') set(h, 'idle');
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }
@@ -1281,11 +1284,14 @@ function resolveBowSky(f) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
-    if (z.type === 'yellow-shield' && chapter2Run) {   // 盾兵举盾顶住箭雨：只吃 40% 伤害、不硬直（用户嫌穿云箭太强）
-      hit(z, d.dmg * .4, 0, 0, false, 0, 0, false, false, { skyArrow: true }); floaters.push({ x: z.x, y: z.y - 40, t: 0, txt: '举盾！' }); continue;
-    }
+    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 50% 伤害、不被硬直（用户定）
+    const cover = chapter2Run && zs.some(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45 && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50);
+    if (cover) { hit(z, d.dmg * .5, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
     if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
+  }
+  if (chapter2Run) for (const s of zs) if (s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50) {
+    floaters.push({ x: s.x, y: s.y - 40, t: 0, txt: '举盾！' }); s.shieldUpUntil = gameT + .8;
   }
   sfx('finisher', f.x);
 }
