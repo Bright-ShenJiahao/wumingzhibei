@@ -125,7 +125,7 @@ const Boss = (() => {
       if (moveTo(z, Rr - 70, (M.top + M.bot) / 2, 150, dt) || z.t > 3) { set(z, 'introRear'); sfx('bladeAlert', z.x); }
       return;
     }
-    if (S === 'introRear') { if (z.t > 1.1) { say('管亥：「哪来的野小子，敢坏老子好事！」', 3); window.SFX && SFX.voice('guanhai_intro'); set(z, 'idle'); z.cd = .8; } return; }
+    if (S === 'introRear') { if (z.t > 1.1) { say('管亥：「北海城都差点被老子踏平——一个小村子，还敢挡路？」', 4.8); window.SFX && SFX.voice('guanhai_intro'); set(z, 'idle'); z.cd = .8; } return; }
     if (S === 'idle') {
       z.f = Math.sign(dx) || z.f;
       // 慢慢靠近主角但保持一点距离
