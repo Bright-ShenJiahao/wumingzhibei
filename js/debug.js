@@ -85,6 +85,17 @@
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
     const revive = btn(heroGroup, '复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
+    // 测试用：六种武器熟练度拉满，并每种各给一把传说武器（会写进当前玩家的存档）
+    btn(heroGroup, '满熟练+传说武器', '', () => {
+      if (!window.MASTERY || !window.ARMORY || !window.AFFIX_DATA) return;
+      const top = MASTERY.NEED[MASTERY.NEED.length - 1], m = {};
+      MASTERY.TYPES.forEach(t => { m[t] = top; });
+      ARMORY.setMastery(m);
+      let n = 0;
+      for (const t of MASTERY.TYPES) { const item = AFFIX_DATA.generate(t, 'boss', '', 4); if (ARMORY.add(item)) n++; }
+      if (window.TITLE && TITLE.grantWeapon) for (const t of MASTERY.TYPES) TITLE.grantWeapon(t, false);
+      if (typeof say === 'function') say(`熟练度已满；获得传说武器 ${n} 把（仓库可装备）`, 3);
+    });
     revive.classList.add('dbgWide');
     const trial = document.createElement('div'); trial.className = 'dbgTrial';
     const tlabel = document.createElement('span'); tlabel.textContent = '试用：'; trial.appendChild(tlabel);
