@@ -6,28 +6,28 @@
   const tick = dt => { if (n < MAX) n = Math.min(MAX, n + dt / REGEN); };
   const onHit = () => { if (n < MAX) n = Math.min(MAX, n + PER_HIT); };
   function use() { if (n >= 1) { n -= 1; return true; } return false; }
-  // 脚下一排 5 支竖着的小箭（箭头朝上）：有箭是完整的箭，用掉变成淡淡的虚影，正在回的那支从下往上慢慢"长"出来
-  function arrow(x, y, a, fill) {
-    const h = 9, top = y - h;
-    ctx.globalAlpha = a;
-    ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - .5, top + 2, 2, h - 2);                    // 杆描边
-    ctx.fillStyle = '#c8a46a'; ctx.fillRect(x, top + 2.5, 1, (h - 2.5));                   // 箭杆
-    ctx.fillStyle = '#2a1a10'; ctx.beginPath(); ctx.moveTo(x + .5, top - 1.5); ctx.lineTo(x - 2, top + 3); ctx.lineTo(x + 3, top + 3); ctx.closePath(); ctx.fill();   // 箭头
-    ctx.fillStyle = '#d9d4c4'; ctx.beginPath(); ctx.moveTo(x + .5, top); ctx.lineTo(x - 1, top + 2.5); ctx.lineTo(x + 2, top + 2.5); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#b8452a'; ctx.fillRect(x - 1.5, y - 2.5, 1.5, 2.5); ctx.fillRect(x + 1, y - 2.5, 1.5, 2.5);   // 红色尾羽
-    ctx.globalAlpha = 1;
+  // 显示：屏幕右下角「翻滚」键左边的小箭袋（深色底金边），5 支竖箭；用掉变暗影，回复中的从下往上亮起来
+  const ARROW = '<svg viewBox="0 0 10 30" width="9" height="27"><path d="M5 1 L8.5 8 L6 8 L6 23 L5 23 L4 23 L4 8 L1.5 8 Z" fill="#2a1a10"/><path d="M5 2.5 L7.3 7.2 L2.7 7.2 Z" fill="#e8e2cf"/><rect x="4.4" y="7.2" width="1.2" height="16" fill="#c8a46a"/><path d="M4.2 21 L1.6 28 L4.2 26.5 Z M5.8 21 L8.4 28 L5.8 26.5 Z" fill="#b8452a" stroke="#2a1a10" stroke-width=".5"/></svg>';
+  let box = null, cells = [], last = '';
+  function ensureBox() {
+    if (box) return box;
+    const css = document.createElement('style');
+    css.textContent = '#bAmmo{position:fixed;z-index:3;right:calc(160px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));display:none;gap:3px;padding:5px 7px 4px;border-radius:8px;background:rgba(30,22,18,.82);border:1.5px solid #e5c98a;box-shadow:0 2px 6px rgba(0,0,0,.45);pointer-events:none}'
+      + '#bAmmo .c{position:relative;width:9px;height:27px}#bAmmo .c .off{position:absolute;inset:0;opacity:.22;filter:grayscale(1)}#bAmmo .c .on{position:absolute;left:0;right:0;bottom:0;overflow:hidden;height:0}#bAmmo .c .on svg{position:absolute;bottom:0;left:0}';
+    document.head.appendChild(css);
+    box = document.createElement('div'); box.id = 'bAmmo';
+    for (let i = 0; i < MAX; i++) { const c = document.createElement('div'); c.className = 'c'; c.innerHTML = '<div class="off">' + ARROW + '</div><div class="on">' + ARROW + '</div>'; box.appendChild(c); cells.push(c.querySelector('.on')); }
+    document.body.appendChild(box); return box;
   }
   function draw() {
-    if (typeof weapon === 'undefined' || weapon !== 'bow' || !hero || hero.dead) return;
-    const x0 = hero.x - 12, y = hero.y + 12;
-    for (let i = 0; i < MAX; i++) {
-      const fill = Math.max(0, Math.min(1, n - i)), x = x0 + i * 6;
-      if (fill >= 1) arrow(x, y, 1);
-      else {
-        arrow(x, y, .22);   // 空槽：淡影
-        if (fill > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x - 3, y - 11 * fill, 7, 11 * fill + 1); ctx.clip(); arrow(x, y, .85); ctx.restore(); }   // 回复中：从下往上长出来
-      }
-    }
+    const show = typeof weapon !== 'undefined' && weapon === 'bow' && !(window.TITLE && TITLE.active && TITLE.active());
+    const b = ensureBox();
+    if (!show) { if (b.style.display !== 'none') b.style.display = 'none'; return; }
+    if (b.style.display !== 'flex') b.style.display = 'flex';
+    const key = n.toFixed(2); if (key === last) return; last = key;
+    cells.forEach((c, i) => { const f = Math.max(0, Math.min(1, n - i)); c.style.height = (f * 27) + 'px'; c.style.opacity = f >= 1 ? 1 : .75; });
   }
+  // 标题/整备页时游戏画面不绘制，单独定时检查一下把箭袋藏起来
+  setInterval(() => { if (box && window.TITLE && TITLE.active && TITLE.active()) box.style.display = 'none'; }, 300);
   window.BOWAMMO = { reset, tick, onHit, use, draw, count: () => Math.floor(n) };
 })();

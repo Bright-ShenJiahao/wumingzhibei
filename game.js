@@ -808,6 +808,15 @@ function walkToChapter2Battle(next) {
 
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
+  // 盾兵举盾（第二章）：穿云箭、投石车这类从天上砸下的攻击，盾兵周围 45 内的黄巾兵：50% 完全挡住，否则只吃 40% 且不硬直（用户定）
+  if (chapter2Run && z && !z.dead && (traits.skyArrow || traits.siegeShot)) {
+    const sh = zs.find(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45);
+    if (sh) {
+      if (!(sh.shieldUpUntil > gameT)) { sh.shieldUpUntil = gameT + .8; floaters.push({ x: sh.x, y: sh.y - 40, t: 0, txt: '举盾！' }); }
+      if (Math.random() < .5) { floaters.push({ x: z.x, y: z.y - 30, t: 0, txt: '挡住' }); return 'blocked'; }
+      dmg *= .4; stun = 0; daze = 0; kb = 0; knock = false;
+    }
+  }
   if (ranged && !traits.skyArrow && !traits.secondary && window.BOWAMMO && z && !z.dead && (traits.gearToken?.s.type || weapon) === 'bow') BOWAMMO.onHit();   // 普通箭射中回蓄力箭
   const armor=z&&ch2Armored(z),old=armor?{st:z.st,t:z.t}:null;
   const outcome=window.GEAR ? GEAR.hit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits) : rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits);
@@ -1289,14 +1298,8 @@ function resolveBowSky(f) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
-    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 40% 伤害、不被硬直（用户定）
-    const cover = chapter2Run && zs.some(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45 && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50);
-    if (cover) { hit(z, d.dmg * .4, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
     if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
-  }
-  if (chapter2Run) for (const s of zs) if (s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50) {
-    floaters.push({ x: s.x, y: s.y - 40, t: 0, txt: '举盾！' }); s.shieldUpUntil = gameT + .8;
   }
   sfx('finisher', f.x);
 }
@@ -2131,7 +2134,7 @@ function updateCatapults(dt) {
       sfx('land', s.tx);
       for (const z of zs) {
         if (z.dead || z.air) continue;
-        if (Math.abs(z.x - s.tx) < 34 && Math.abs(z.y - s.ty) < 22) hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true });
+        if (Math.abs(z.x - s.tx) < 34 && Math.abs(z.y - s.ty) < 22) hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
       }
       allyFires.push({ x: s.tx, y: s.ty, t: 4, r: 32, tick: 0 });
       for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-16, 16), y: s.ty + rnd(-8, 4), vx: rnd(-60, 60), vy: rnd(-110, -30), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.3, .6), max: .6, c: '#ff9a2e' });
