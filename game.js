@@ -132,7 +132,7 @@ const TYPES = {
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: 1.12 },
-  'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, w: 14, sprite: 'yellow_golem', scale: 1 },
+  'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, noLaunch: true, w: 14, sprite: 'yellow_golem', scale: 1 },
   zhang_jiao: { name: '天公将军·张角', hp: 115, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
   zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.12 },
 };
@@ -868,7 +868,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
   }
-  if (knock && !(z.T.boss || z.T.chapterBoss) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+  if (knock && !(z.T.boss || z.T.chapterBoss || z.T.noLaunch) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 
 }
 function summonArchersVolley() {
@@ -2317,7 +2317,7 @@ function zFrame(z) {
   if (z.st === 'addvolley') return z.t < .34 ? 'strike' : 'idle';
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
-  if (z.type === 'zhang_jiao') return 'float';   // 张角飘着走，不走路
+  if (z.type === 'zhang_jiao') return z.st === 'rest' ? 'idle' : 'float';   // 张角飘着走，不走路
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
 }
 function draw() {
