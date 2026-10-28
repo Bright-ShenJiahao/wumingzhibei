@@ -705,7 +705,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
-  enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
+  enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
   hero.inv = Math.max(hero.inv || 0, .8);
   if (number === 6) { hero.x = Math.max(40, (M.W - viewW()) / 2 + 40); hero.y = (M.top + M.bot) / 2 + 20; }
@@ -1933,6 +1933,7 @@ function updateChapter2Boss(z, dt) {
   }
   if (z.dead) return;
   if (z.type === 'zhang_jiao' && window.ZJ && ZJ.duel(z, dt)) return;
+  if (window.CH2B && CH2B.update(z, dt)) return;   // 张梁 / 张宝技能
   if (!z.summonedHalf && z.hp < z.T.hp * .5) chapter2BossSummon(z);
   if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => {
     const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
@@ -2300,6 +2301,7 @@ function zFrame(z) {
     return 'idle';
   }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
+  if (z.cbFrame && !z.dead) return z.cbFrame;   // 第二章首领技能帧
   if (z.zjDizzy > 0) return 'dizzy';
   if (z.type === 'zhang_jiao' && z.stun > 0) return 'hurt';
   if (z.type === 'zhang_jiao' && z.throwT > 0) return 'throw';
@@ -2517,6 +2519,7 @@ function draw() {
   Boss.drawGround();
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
+  if (window.CH2B && chapter2Run) CH2B.draw();
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
