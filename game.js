@@ -1750,7 +1750,8 @@ function zUpdate(z, dt) {
     if (z.chantCd <= 0) {
       // 所有方士：有友军受伤先回血（念咒2秒），否则丢火球（念咒1秒）
       const hurtAlly = zs.some(o => o !== z && !o.dead && !o.T.boss && o.hp < o.T.hp * .7);
-      z.castKind = hurtAlly ? 'heal' : 'fire'; set(z, 'chant'); return;
+      const canFire = inChapter2Context();   // 第一章方士只回血，第二章起才丢火球
+      if (hurtAlly || canFire) { z.castKind = hurtAlly ? 'heal' : 'fire'; set(z, 'chant'); return; }
     }
     const pdx = hero.x - z.x, pad = Math.abs(pdx);
     if (pdx) z.f = Math.sign(pdx);
@@ -2370,6 +2371,18 @@ function draw() {
   for (const o of zs) {
     if (o.dead || o.st !== 'chant') continue;
     const pulse = .5 + .5 * Math.sin(performance.now() / 160);
+    if (o.castKind === 'fire') {   // 火球咒：手前聚一团暗红火光，脚下小红圈，和回血的大黄圈分开（敌方特效保持低调）
+      ctx.save();
+      const p = Math.min(1, o.t / 1), fx = o.x + (o.f || 1) * 10, fy = o.y - 22;
+      ctx.strokeStyle = 'rgba(200,70,40,' + (.3 + .2 * pulse) + ')'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(o.x, o.y, 18, 7, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = 'rgba(220,90,40,' + (.35 + .25 * p) + ')';
+      ctx.beginPath(); ctx.arc(fx, fy, 2 + 4 * p + pulse, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,180,90,' + (.4 * p) + ')';
+      ctx.beginPath(); ctx.arc(fx, fy, 1 + 2 * p, 0, 7); ctx.fill();
+      for (let k = 0; k < 3; k++) { const a = performance.now() / 200 + k * 2.1; ctx.fillStyle = 'rgba(200,80,40,.6)'; ctx.fillRect(Math.round(fx + Math.cos(a) * (9 - 5 * p)), Math.round(fy + Math.sin(a) * (6 - 3 * p)), 2, 2); }
+      ctx.restore(); continue;
+    }
     ctx.save();
     ctx.strokeStyle = 'rgba(255,216,74,' + (.35 + .2 * pulse) + ')'; ctx.lineWidth = 2;
     ctx.fillStyle = 'rgba(255,216,74,' + (.06 + .05 * pulse) + ')';

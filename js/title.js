@@ -530,7 +530,7 @@
     dom.chapter.innerHTML = `<div id="tChapterShell">
       <section id="tChapterPick" aria-label="选择关卡"><h2>选择关卡</h2><p id="tChapterNote"></p>
         <button id="tTrainingCard" class="tTrainingCard" type="button"><img src="${(window.ASSETS && ASSETS.props && ASSETS.props.flag_y && ASSETS.props.flag_y[0]) || 'art/props/flag_y.png'}" alt=""><span class="tTrainingCopy"><strong>校场演武</strong><small>试炼刷武器 · 更易出好装备</small></span><span id="tTrainingProgress" class="tTrainingProgress" hidden></span></button>
-        <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　黄巾劫村</strong><small>重返村庄，迎战黄巾流寇</small></button>
+        <button class="tChapterCard selected" data-chapter="1" type="button"><strong>第一章　乱世初鸣</strong><small>苍天已死，黄天当立——可乡亲们只想活下去。</small></button>
         <button class="tChapterCard" data-chapter="2" type="button"><strong>第二章　黄巾决战</strong><small id="tChapter2State">黄巾后阵 · 追击张梁或张宝</small></button>
         <p id="tChapterNotice"></p>
         <button class="tChapterButton" id="tChapterPickBack" type="button">返回</button>
@@ -887,7 +887,7 @@
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
-    const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　黄巾劫村';
+    const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　乱世初鸣';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
     if (c2) {

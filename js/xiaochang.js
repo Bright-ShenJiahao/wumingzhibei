@@ -6,7 +6,7 @@ window.XIAOCHANG = (() => {
   const selection = { chapter: 1, floor: 1, wish: '' };
   const CONFIG = {
     1: {
-      name: '黄巾劫村', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
+      name: '乱世初鸣', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
       melee: ['grunt', 'blade'], ranged: ['slinger', 'archer'],
       weapons: ['staff', 'hammer', 'stone', 'halberd'],
       hp: [1.2, 1.45, 1.75, 2.1, 2.5, 3.5], damage: [1, 1.12, 1.25, 1.4, 1.55, 1.9],
