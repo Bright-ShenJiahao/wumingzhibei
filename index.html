@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=ebd2bc4828" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ebd2bc4828)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=2fc9b39aac" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2fc9b39aac)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='64a75c0b4768',busy=false;
+var BUILD='a3c0a31df3c4',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -5924,7 +5924,7 @@ const Boss = (() => {
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
     const trainingCard=dom.chapter.querySelector('#tTrainingCard');
-    if(trainingCard){const unlocked=hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';{const tag=dom.chapter.querySelector('#tTrainingProgress');tag.textContent=best?'第'+best+'层':'';tag.hidden=!best;}trainingCard.classList.toggle('selected',prepView==='xiaochang');}
+    if(trainingCard){const unlocked=DEBUG||hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';{const tag=dom.chapter.querySelector('#tTrainingProgress');tag.textContent=best?'第'+best+'层':'';tag.hidden=!best;}trainingCard.classList.toggle('selected',prepView==='xiaochang');}
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');

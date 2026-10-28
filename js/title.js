@@ -904,7 +904,7 @@
     const c1 = dom.chapter.querySelector('[data-chapter="1"]');
     if (c1) c1.classList.toggle('selected', selectedChapter === 1);
     const trainingCard=dom.chapter.querySelector('#tTrainingCard');
-    if(trainingCard){const unlocked=hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';{const tag=dom.chapter.querySelector('#tTrainingProgress');tag.textContent=best?'第'+best+'层':'';tag.hidden=!best;}trainingCard.classList.toggle('selected',prepView==='xiaochang');}
+    if(trainingCard){const unlocked=DEBUG||hasCleared(S.name,1),best=window.TITLE&&TITLE.xiaochangProgress?TITLE.xiaochangProgress(1):0;trainingCard.disabled=!unlocked;trainingCard.querySelector('.tTrainingCopy small').textContent=unlocked?'试炼刷武器 · 更易出好装备':'通关第一章后开放';{const tag=dom.chapter.querySelector('#tTrainingProgress');tag.textContent=best?'第'+best+'层':'';tag.hidden=!best;}trainingCard.classList.toggle('selected',prepView==='xiaochang');}
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
