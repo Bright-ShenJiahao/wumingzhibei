@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=62ae3dcd1e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=62ae3dcd1e)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=f7d0e1c093" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=f7d0e1c093)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='8d0b20cb7bdb',busy=false;
+var BUILD='ff4c418c7797',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -7982,13 +7982,13 @@ function ch2NearestShield(z) {
 function ch2Formation(z) {
   if(!chapter2Run)return null;
   const shield=ch2NearestShield(z);
+  // 盾墙：盾兵自己照常往主角压上去（慢慢逼近），身后的枪兵、远程、方士跟着盾兵走。
+  // （原来盾兵会退到后排兵前面守着，后排又跟着盾兵，两边互相等，结果整队停在远处不动）
   if(shield&&(z.T.ranged||z.T.priest||z.type==='yellow-spear')){
+    const sd=Math.hypot(shield.x-hero.x,shield.y-hero.y);
+    if(z.T.ranged&&sd<z.T.range[0])return null;            // 盾兵已经贴近主角：远程改回自己找射击距离
     const dx=shield.x-hero.x,dy=shield.y-hero.y,len=Math.hypot(dx,dy)||1,d=z.type==='yellow-spear'?20:25;
     return {x:shield.x+dx/len*d,y:Math.max(M.top,Math.min(M.bot,shield.y+dy/len*d))};
-  }
-  if(z.type==='yellow-shield'){
-    const rear=zs.filter(o=>!o.dead&&(o.T.ranged||o.T.priest||o.type==='yellow-spear')).sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
-    if(rear){const dx=rear.x-hero.x,dy=rear.y-hero.y,len=Math.hypot(dx,dy)||1,d=Math.max(0,len-25);return {x:hero.x+dx/len*d,y:hero.y+dy/len*d};}
   }
   if(z.type==='yellow-heavy'){
     const peers=zs.filter(o=>!o.dead&&o.type==='yellow-heavy');

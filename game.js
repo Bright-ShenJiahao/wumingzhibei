@@ -1603,13 +1603,13 @@ function ch2NearestShield(z) {
 function ch2Formation(z) {
   if(!chapter2Run)return null;
   const shield=ch2NearestShield(z);
+  // 盾墙：盾兵自己照常往主角压上去（慢慢逼近），身后的枪兵、远程、方士跟着盾兵走。
+  // （原来盾兵会退到后排兵前面守着，后排又跟着盾兵，两边互相等，结果整队停在远处不动）
   if(shield&&(z.T.ranged||z.T.priest||z.type==='yellow-spear')){
+    const sd=Math.hypot(shield.x-hero.x,shield.y-hero.y);
+    if(z.T.ranged&&sd<z.T.range[0])return null;            // 盾兵已经贴近主角：远程改回自己找射击距离
     const dx=shield.x-hero.x,dy=shield.y-hero.y,len=Math.hypot(dx,dy)||1,d=z.type==='yellow-spear'?20:25;
     return {x:shield.x+dx/len*d,y:Math.max(M.top,Math.min(M.bot,shield.y+dy/len*d))};
-  }
-  if(z.type==='yellow-shield'){
-    const rear=zs.filter(o=>!o.dead&&(o.T.ranged||o.T.priest||o.type==='yellow-spear')).sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
-    if(rear){const dx=rear.x-hero.x,dy=rear.y-hero.y,len=Math.hypot(dx,dy)||1,d=Math.max(0,len-25);return {x:hero.x+dx/len*d,y:hero.y+dy/len*d};}
   }
   if(z.type==='yellow-heavy'){
     const peers=zs.filter(o=>!o.dead&&o.type==='yellow-heavy');
