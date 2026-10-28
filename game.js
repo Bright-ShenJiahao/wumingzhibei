@@ -750,6 +750,7 @@ function chapter2Waves() {
     for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
     startChapter2Battle(chapter2Run.nextBattle || chapter2Run.battle + 1); return;
   }
+  if (chapter2Run.mode === 'bowgift') { if (gameT >= chapter2Run.nextAt) { chapter2Run.mode = 'choice'; msgT = 0; } return; }   // 曹操赏完弓再弹选路
   if (chapter2Run.mode === 'clearing' && gameT >= chapter2Run.nextAt) {
     const battle = chapter2Run.battle, waves = CHAPTER2_WAVES[battle] || [];
     if (chapter2Run.wave < waves.length - 1) {
@@ -763,6 +764,8 @@ function chapter2Waves() {
       chapter2Run['card' + battle] = true; ROGUE.offer(); return;
     }
     if (battle === 3) {
+      // 曹操赏汉弓（还没有的话），后半程就能用上
+      if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) { spawnWeaponDrop('bow', hero.x + 24, hero.y); if (window.CH2OPEN) CH2OPEN.bark('投石车阵已破，好身手！这张汉弓赏你——后面用得上！', 2.6); chapter2Run.mode = 'bowgift'; chapter2Run.nextAt = gameT + 2.9; return; }
       chapter2Run.mode = 'choice';
       msgT = 0; return;
     }
@@ -770,7 +773,7 @@ function chapter2Waves() {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);
       chapter2Run.nextBattle = 6;
     } else if (battle === 5) {
-      if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) spawnWeaponDrop('bow', hero.x + 24, hero.y);
+      if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);   // 两条路都掉大刀；汉弓改由战三后曹操赏
       chapter2Run.nextBattle = 6;
     } else {
       walkToChapter2Battle(battle + 1); return;
