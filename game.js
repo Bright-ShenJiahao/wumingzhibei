@@ -263,7 +263,7 @@ function reset() {
     props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: k === 'flag' ? 6 : pw * .75 * psc, h: ph * psc });
   }
   tutorialQueue = [
-    { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
+    { text: matchMedia('(pointer:coarse)').matches ? '操作：左摇杆移动 | 攻击键出招，按住蓄力；翻滚键闪避' : '操作：WASD/方向键移动 | J 出招（按住蓄力），K 翻滚闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
   ];   // 提示对所有人显示（简单模式只降低玩家受伤，不影响提示）
@@ -2215,6 +2215,15 @@ function tileLayer(img, s, par, y) {
 }
 function shadow(x, y, r) { ctx.fillStyle = 'rgba(40,30,30,.3)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * .3, 0, 0, 7); ctx.fill(); }
 // 像素角色在屏幕坐标里按整数倍放大绘制，保证像素清晰
+let _saEl = null, _saT = 0, _sa = { l: 0, r: 0 };
+function safeArea() {   // 读 CSS 的 env(safe-area-inset-*)，每秒更新一次（转屏后会变）
+  const now = performance.now(); if (now - _saT < 1000) return _sa; _saT = now;
+  try {
+    if (!_saEl) { _saEl = document.createElement('div'); _saEl.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)'; document.body.append(_saEl); }
+    const cs = getComputedStyle(_saEl); _sa = { l: parseFloat(cs.paddingLeft) || 0, r: parseFloat(cs.paddingRight) || 0 };
+  } catch (e) {}
+  return _sa;
+}
 function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
   const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
   const sp = Math.max(.5, SC * PX) * sc;
@@ -2480,8 +2489,10 @@ function draw() {
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
   if (window.ROGUE && ROGUE.draw()) return;   // 锦囊面板打开时作为模态层，不绘制 HUD
   // HUD
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
+  // iPhone 横屏时刘海/灵动岛在左或右：画布上的 HUD 整体让开安全区
+  const SA = safeArea();
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r);
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); const HW = W / DPR - SA.l - SA.r, HH = H / DPR;
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(maxHeroHp(), hero.hp)) / maxHeroHp(), 12);

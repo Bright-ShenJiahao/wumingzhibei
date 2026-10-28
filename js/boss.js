@@ -405,7 +405,10 @@ const Boss = (() => {
   // 屏幕上方的大血条
   function hud(HW) {
     const z = zs.find(o => o.T === T); if (!z || z.dead || z.st === 'gone') return;   // 倒下以后不再挂血条
-    const w = Math.min(420, HW * .6), x = (HW - w) / 2, y = 22;
+    // 手机上右上角有武器栏、正中上方有计时牌：血条放在计时牌下面，宽度不伸进武器栏
+    const wp = document.getElementById('wp'), wr = wp && wp.getBoundingClientRect();
+    const right = wr && wr.width ? wr.left - 10 : HW;
+    const w = Math.max(140, Math.min(420, HW * .6, 2 * (right - HW / 2))), x = (HW - w) / 2, y = 44;
     ctx.fillStyle = 'rgba(20,14,30,.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 16);
     ctx.fillStyle = z.phase === 1 ? '#c0392b' : z.hp <= HP * .25 ? '#ff3b1f' : '#d35400';
     ctx.fillRect(x, y, w * z.hp / HP, 10);

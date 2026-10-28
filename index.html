@@ -50,11 +50,20 @@ body.wzb-rogue #bSkill,body.wzb-rogue #bCatapult{display:none!important}
   #bA,#bR,#bSkill,#bCatapult,#bWeapon{touch-action:none;-webkit-user-select:none}
 }
 body.wzb-pro #help{display:none}
-#rot{display:none;position:fixed;inset:0;z-index:9;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
+#rot{display:none;position:fixed;inset:0;z-index:2147483000;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
 @media (pointer:coarse){#help{display:none}}
 @media (pointer:coarse) and (orientation:portrait){#rot{display:flex}}
+@media (pointer:coarse){
+#cloudRetry,#cloudPin{min-width:34px!important;min-height:32px!important}
+#tHelp{min-width:34px!important;min-height:34px!important}
+.shopBuy{min-height:34px!important;padding:0 10px!important}.shopPrice{white-space:nowrap}
+.outfitChip{min-width:40px!important;min-height:34px!important;font-size:11px!important;white-space:nowrap}
+.outfitConfirm,.outfitCancel{min-height:36px!important;padding:0 14px!important}
+#masteryPanel .mx{min-height:34px!important;padding:2px 14px!important}
+.x-back{min-height:34px!important}
+}
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=20b37cbba8" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=20b37cbba8)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=acb5da3d09" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=acb5da3d09)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -68,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='534e582cca79',busy=false;
+var BUILD='e52d3462b725',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -1473,7 +1482,10 @@ const Boss = (() => {
   // 屏幕上方的大血条
   function hud(HW) {
     const z = zs.find(o => o.T === T); if (!z || z.dead || z.st === 'gone') return;   // 倒下以后不再挂血条
-    const w = Math.min(420, HW * .6), x = (HW - w) / 2, y = 22;
+    // 手机上右上角有武器栏、正中上方有计时牌：血条放在计时牌下面，宽度不伸进武器栏
+    const wp = document.getElementById('wp'), wr = wp && wp.getBoundingClientRect();
+    const right = wr && wr.width ? wr.left - 10 : HW;
+    const w = Math.max(140, Math.min(420, HW * .6, 2 * (right - HW / 2))), x = (HW - w) / 2, y = 44;
     ctx.fillStyle = 'rgba(20,14,30,.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 16);
     ctx.fillStyle = z.phase === 1 ? '#c0392b' : z.hp <= HP * .25 ? '#ff3b1f' : '#d35400';
     ctx.fillRect(x, y, w * z.hp / HP, 10);
@@ -6529,7 +6541,7 @@ function reset() {
     props.push({ g: k, x, y: rnd(M.top + 24, M.bot - 8), solid: true, broken: false, hp: (k === 'hay' || k === 'cart') ? 3 : 0, hitT: 0, sc: psc, w: k === 'flag' ? 6 : pw * .75 * psc, h: ph * psc });
   }
   tutorialQueue = [
-    { text: '操作：WASD/方向键或左摇杆移动 | J/攻击键出招，K/翻滚键闪避', time: 4 },
+    { text: matchMedia('(pointer:coarse)').matches ? '操作：左摇杆移动 | 攻击键出招，按住蓄力；翻滚键闪避' : '操作：WASD/方向键移动 | J 出招（按住蓄力），K 翻滚闪避', time: 4 },
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
   ];   // 提示对所有人显示（简单模式只降低玩家受伤，不影响提示）
@@ -8481,6 +8493,15 @@ function tileLayer(img, s, par, y) {
 }
 function shadow(x, y, r) { ctx.fillStyle = 'rgba(40,30,30,.3)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * .3, 0, 0, 7); ctx.fill(); }
 // 像素角色在屏幕坐标里按整数倍放大绘制，保证像素清晰
+let _saEl = null, _saT = 0, _sa = { l: 0, r: 0 };
+function safeArea() {   // 读 CSS 的 env(safe-area-inset-*)，每秒更新一次（转屏后会变）
+  const now = performance.now(); if (now - _saT < 1000) return _sa; _saT = now;
+  try {
+    if (!_saEl) { _saEl = document.createElement('div'); _saEl.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)'; document.body.append(_saEl); }
+    const cs = getComputedStyle(_saEl); _sa = { l: parseFloat(cs.paddingLeft) || 0, r: parseFloat(cs.paddingRight) || 0 };
+  } catch (e) {}
+  return _sa;
+}
 function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
   const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
   const sp = Math.max(.5, SC * PX) * sc;
@@ -8746,8 +8767,10 @@ function draw() {
   if (window.Boss && Boss.wxDraw) Boss.wxDraw(cv.width / DPR, cv.height / DPR);   // Boss 战天气
   if (window.ROGUE && ROGUE.draw()) return;   // 锦囊面板打开时作为模态层，不绘制 HUD
   // HUD
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Boss.hud(W / DPR);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); const HW = W / DPR, HH = H / DPR;
+  // iPhone 横屏时刘海/灵动岛在左或右：画布上的 HUD 整体让开安全区
+  const SA = safeArea();
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r);
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); const HW = W / DPR - SA.l - SA.r, HH = H / DPR;
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
   ctx.fillStyle = '#d23c30'; ctx.fillRect(17, 67, bw * Math.max(0, Math.min(maxHeroHp(), hero.hp)) / maxHeroHp(), 12);
