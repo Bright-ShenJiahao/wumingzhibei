@@ -88,7 +88,7 @@
     const x = ALTAR_STAGE.x, y = M.top + 14;
     spawn('zhang_jiao', x, y);
     const z = zs[zs.length - 1]; S.boss = z;
-    z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 5; z.zjThunder = 5;
+    z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8;
     z.st = 'land'; z.t = 0;
     sfx('land', x);
     if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x, y: y - 50, t: 0, txt: '破阵！', big: true }); }
@@ -158,6 +158,9 @@
 
   // ---- 决斗中的张角：传送、单雷、半血狂暴 ----
   function duel(z, dt) {
+    if (!z.dead) z.z = z.zjDizzy > 0 ? 0 : 5 + Math.sin(performance.now() / 260) * 2;   // 飘浮
+    if (z.st === 'rec' && !z.zjRecThunder && Math.random() < .5) { z.zjRecThunder = true; thunderAt(hero.x, hero.y, .8); }
+    if (z.st !== 'rec') z.zjRecThunder = false;
     if (z.zjDizzy > 0) { z.zjDizzy -= dt; z.t += dt; return true; }
     if (z.st === 'tele') {
       z.t += dt;
@@ -166,13 +169,14 @@
       return true;
     }
     if (z.st === 'move' || z.st === 'idle') {
-      z.zjTele -= dt; z.zjThunder -= dt;
+      z.zjTele -= dt; z.zjThunder -= dt; z.zjFire -= dt;
+      if (z.zjFire <= 0) { z.zjFire = z.rage ? 6 : 10; cast({ k: 'fire' }); say('张角：“地火，焚！”', 1.5); }
       if (!z.rage && z.hp < z.T.hp * .5) {
         z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.3, wind: z.T.wind * .8 };
         say('张角：“天雷，降！”', 2.5); for (let i = 0; i < 3; i++) thunderAt(hero.x + (i - 1) * 40, hero.y + rnd2(-8, 8), 1.1 + i * .25);
       }
-      if (z.zjThunder <= 0) { z.zjThunder = z.rage ? 4 : 6.5; thunderAt(hero.x, hero.y, 1); z.st = 'rec'; z.t = 0; return true; }
-      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 7; z.st = 'tele'; z.t = 0; z.teleDone = false; return true; }
+      if (z.zjThunder <= 0) { z.zjThunder = z.rage ? 2.6 : 4.2; thunderAt(hero.x, hero.y, .9); if (z.rage) thunderAt(hero.x + (Math.random() < .5 ? -45 : 45), hero.y, 1.2); z.st = 'rec'; z.t = 0; return true; }
+      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 5; z.st = 'tele'; z.t = 0; z.teleDone = false; return true; }
     }
     return false;
   }

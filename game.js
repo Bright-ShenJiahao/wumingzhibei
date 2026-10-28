@@ -133,7 +133,7 @@ const TYPES = {
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: 1.12 },
   'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, w: 14, sprite: 'yellow_golem', scale: 1 },
-  zhang_jiao: { name: '天公将军·张角', hp: 70, spd: 30, wind: .6, reach: 32, dmg: 2, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
+  zhang_jiao: { name: '天公将军·张角', hp: 115, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
   zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.12 },
 };
 const WAVES = [
@@ -2315,6 +2315,7 @@ function zFrame(z) {
   if (z.st === 'addvolley') return z.t < .34 ? 'strike' : 'idle';
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
+  if (z.type === 'zhang_jiao') return 'float';   // 张角飘着走，不走路
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
 }
 function draw() {
