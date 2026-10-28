@@ -624,11 +624,12 @@ function addAltarProps() {
   }
 }
 // 张角预览（战斗逻辑未接入前）：法台上浮空施法 / 降雷交替；地上站一个待机的，方便和主角比大小
-const ZJ_SCALE = 1.35;   // 下台决斗的张角：和法台上看起来一样大（法台那几帧原图本来就画得大）
+const ZJ_HI = 1.9;   // 张角像素图比普通角色细 1.9 倍（用户嫌像素太糙），所以绘制缩放要除掉
+const ZJ_SCALE = 1.35 / ZJ_HI;   // 下台决斗的张角：和法台上看起来一样大（法台那几帧原图本来就画得大）
 const ALTAR_STAGE = { x: 353, y: 91 };   // 法台顶上平台（背景图上量的）
 function drawZhangJiaoPreview() {
   const t = performance.now() / 1000, cyc = t % 3.2, fr = cyc < 2 ? 'float' : 'thunder';
-  drawChar('zhang_jiao', fr, ALTAR_STAGE.x, ALTAR_STAGE.y - 4 + Math.sin(t * 2.2) * 2.5, hero.x < ALTAR_STAGE.x, 1, false, 1.12);
+  drawChar('zhang_jiao', fr, ALTAR_STAGE.x, ALTAR_STAGE.y - 4 + Math.sin(t * 2.2) * 2.5, hero.x < ALTAR_STAGE.x, 1, false, 1.12 / ZJ_HI);
   const gx = ALTAR_C.x + 175, gy = ALTAR_C.y + 30, walk = ['idle', 'wind', 'strike', 'idle'][Math.floor(t / .8) % 4];
   drawChar('zhang_jiao', walk, gx, gy, hero.x < gx, 1, false, ZJ_SCALE);
 }
@@ -680,6 +681,7 @@ function prepareChapter2Run(showOpening, battle = 1) {
   chapter2Run = { battle: 1, wave: 0, mode: showOpening ? 'intro' : 'fight', nextAt: 0, route: null };
   const topTitle = document.querySelector('#top b');
   if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
+  tutorialQueue = [];   // 操作 / 武器 / 蓄力提示只在第一章出现
   hero.x = 60; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.hp = maxHeroHp();
   if (showOpening && window.CHAPTER2_INTRO) CHAPTER2_INTRO.start(() => startChapter2Battle(1));
   else startChapter2Battle(battle);
