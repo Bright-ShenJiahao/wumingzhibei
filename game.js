@@ -733,7 +733,7 @@ function fitChapter2Wave() {
     if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo_v;
       // 三道竖排拒马墙，每道留一个约 24 宽的缺口，缺口位置错开（下 / 上 / 中）
       const span=M.bot-M.top,gap=24,seg=(span-gap)/2;
-      [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;
+      [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;if(Math.abs(x-hero.x)<34)return;   // 主角已经站在这里：这道墙不刷，免得刷在身上
         // gi=0 缺口在上，1 在中，2 在下；剩下的两段各成一个道具
         const segs=gi===0?[[M.top+gap+seg*2,seg],[M.top+gap+seg,seg]]:gi===2?[[M.top+seg*2,seg],[M.top+seg,seg]]:[[M.bot,seg],[M.top+seg,seg]];
         for(const [y,d] of segs)props.push({g:'jumo_v',x,y,d,vert:true,w:18,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
@@ -1183,7 +1183,7 @@ function hitProp(p, dir) {
       if (meta) { p.w = meta[1]; p.h = meta[2]; }
     } else if (jumo) {
       const meta = ASSETS.props[p.g + '_broken'];   // 'jumo_broken' / 'jumo_v_broken' / 'jumo_vs_broken'
-      p.g = p.g + '_broken'; p.solid = false; p.hp = 0;
+      p.g = p.g + '_broken'; p.solid = false; p.hp = 0; p.broken = true;   // 打碎就消失（碎屑已经飞出去了）
       if (meta && !p.vert) { p.w = meta[1]; p.h = meta[2]; }
     } else {
       p.broken = true; p.solid = false;
@@ -1281,6 +1281,9 @@ function resolveBowSky(f) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
+    if (z.type === 'yellow-shield' && chapter2Run) {   // 盾兵举盾顶住箭雨：只吃 40% 伤害、不硬直（用户嫌穿云箭太强）
+      hit(z, d.dmg * .4, 0, 0, false, 0, 0, false, false, { skyArrow: true }); floaters.push({ x: z.x, y: z.y - 40, t: 0, txt: '举盾！' }); continue;
+    }
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
     if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
   }
