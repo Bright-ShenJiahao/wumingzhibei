@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=70880e7769" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=70880e7769)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=af848d1d63" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=af848d1d63)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='36717d470efb',busy=false;
+var BUILD='9ab74d7ef154',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -3169,7 +3169,7 @@ const Boss = (() => {
     st.textContent = `
       .outfitSlot{display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
       #tPrepSlots .outfitSlot{display:flex!important;grid-template-columns:none!important;grid-template-rows:none!important;flex-direction:row!important;justify-content:flex-start!important}
-      .outfitSlot .outfitSwatch{width:50px;height:34px;border:1px solid #8a683f;border-radius:5px;background:linear-gradient(135deg,#3a3029,#1d1814);display:flex;align-items:center;justify-content:center;font-size:9px;color:#d9c18f}
+      .outfitSlot.outfitSlot{position:relative;align-items:center!important;gap:9px;padding:6px 10px!important;border:2px solid #d9a548!important;border-radius:8px!important;background:linear-gradient(135deg,#2d3a6b,#1a1f3d)!important;box-shadow:inset 0 0 0 2px #121530,0 3px 8px #120a08aa!important;color:#ffe2a0;overflow:hidden}.outfitSlot .outfitIco{flex:none;font-size:22px;line-height:1}.outfitSlot .outfitCopy{min-width:0;flex:1;text-shadow:0 1px 2px #05061a}.outfitSlot .outfitCopy strong{display:block;font-size:clamp(13px,1.5vw,17px);white-space:nowrap}.outfitSlot .outfitCopy small{display:block;margin-top:3px;color:#c9c3e6;font-size:clamp(8px,.95vw,11px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.outfitSlot .outfitName.outfitName{display:inline;color:#f1d28d;font-size:inherit}@media(max-height:430px){.outfitSlot .outfitIco{font-size:16px}.outfitSlot .outfitCopy small{font-size:8px;margin-top:1px}}.outfitSlot .outfitSwatch{width:50px;height:34px;border:1px solid #8a683f;border-radius:5px;background:linear-gradient(135deg,#3a3029,#1d1814);display:flex;align-items:center;justify-content:center;font-size:9px;color:#d9c18f}
       .outfitSlot .outfitName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f0d39a;font-size:14px}
       #outfitOverlay{position:fixed;inset:0;z-index:10030;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(8,6,5,.76);box-sizing:border-box}
       #outfitPanel{width:min(820px,94vw);max-height:88dvh;display:flex;flex-direction:column;border:2px solid #b58b4c;border-radius:10px;background:linear-gradient(145deg,#3b2a1d,#1d1713);box-shadow:0 18px 60px #000c;color:#ecd6ab;overflow:hidden}
@@ -5506,7 +5506,7 @@ const Boss = (() => {
     const target = dom.chapter.querySelector('#tPrepTarget');
     if (target) { target.innerHTML = `${window.SHOP ? SHOP.entryMarkup() : ''}<button type="button" id="tMastery">⚔ 武器熟练度</button>`; if (window.SHOP) SHOP.bind(target); target.querySelector('#tMastery').onclick = () => window.MASTERY && MASTERY.open(); }
 
-    const slotMarkup=slot=>{if(slot.id==='fashion'){const display=window.OUTFIT?OUTFIT.label():'默认';return `<button type="button" class="tPrepSlot outfitSlot" data-outfit-slot role="button" aria-label="时装：${display}"><b>时装</b><span class="outfitSwatch">衣</span><span class="outfitName">${display}</span></button>`;}const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
+    const slotMarkup=slot=>{if(slot.id==='fashion'){const display=window.OUTFIT?OUTFIT.label():'默认';return `<button type="button" class="tPrepSlot outfitSlot" data-outfit-slot role="button" aria-label="时装：${display}"><span class="outfitIco" aria-hidden="true">🎨</span><span class="outfitCopy"><strong>时装</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
     dom.chapter.querySelector('#tPrepSlotsRight').innerHTML=EQUIPMENT_SLOTS.slice(3,6).map(slotMarkup).join('');
     const outfitSlot=dom.chapter.querySelector('[data-outfit-slot]');
