@@ -132,8 +132,8 @@ assets['dialogPortraits'] = {
 }
 assets['ui']['w_blade'] = uri(P('art', 'ui', 'w_blade.webp'))
 assets['ui']['w_halberd'] = uri(P('art', 'ui', 'w_halberd.webp'))
-if os.path.exists(P('art', 'ui', 'shopkeeper.png')):
-    assets['ui']['shopkeeper'] = uri(P('art', 'ui', 'shopkeeper.png'))
+for _k in ('shopkeeper', 'shopkeeper_happy', 'shopkeeper_annoyed'):   # 商店老板三种表情
+    if os.path.exists(P('art', 'ui', _k + '.webp')): assets['ui'][_k] = uri(P('art', 'ui', _k + '.webp'))
 assets['music'] = {'southernDrum': file_uri(P('art', 'audio', 'southern_drum.wav'))}
 _fm = json.load(open(P('art', 'food', 'meta.json'), encoding='utf-8'))
 assets['food'] = {k: [uri(P('art', 'food', k + '.png'))] + v for k, v in _fm.items()}

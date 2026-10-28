@@ -109,8 +109,8 @@
       .shopHead h2{margin:0;color:#f3d27c;font:700 20px MaShanZheng,"STKaiti",serif;letter-spacing:1px}.shopClose{width:34px;height:34px;border:1px solid #927044;border-radius:50%;background:#34251a;color:#f3d27c;font:700 18px sans-serif;cursor:pointer}
       .shopBody{display:grid;grid-template-columns:32% minmax(0,1fr);gap:12px;min-height:0;overflow:hidden;padding:12px}
       .shopLeft{min-width:0;display:flex;flex-direction:column;gap:9px;padding:10px;border:1px solid #6f5537;border-radius:7px;background:linear-gradient(160deg,#493324,#251d17);overflow:auto}
-      .shopPortrait{height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #745a3c;border-radius:6px;background:radial-gradient(ellipse at 50% 65%,#71502c66,transparent 70%),#211914;overflow:hidden}
-      .shopPortrait img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated}.shopPortrait.empty::after{content:"老板";color:#9c7d50;font:16px MaShanZheng,serif}
+      .shopPortrait{height:170px;display:flex;align-items:flex-end;justify-content:center;border:1px solid #745a3c;border-radius:6px;background:radial-gradient(ellipse at 50% 65%,#71502c66,transparent 70%),#211914;overflow:hidden}
+      .shopPortrait img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:auto}.shopPortrait.empty::after{content:"老板";color:#9c7d50;font:16px MaShanZheng,serif}
       .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
@@ -140,8 +140,11 @@
   function refreshEntry() {
     document.querySelectorAll('[data-shop-wallet]').forEach(n => { n.textContent = '💰 ' + fmt(WALLET.coins()); });
   }
+  // 老板表情：normal 平时 / happy 买了贵的 / annoyed 嫌弃（没钱、没买）
+  let mood = 'normal';
+  const moodSrc = m => typeof ASSETS !== 'undefined' && ASSETS.ui && (ASSETS.ui[m === 'normal' ? 'shopkeeper' : 'shopkeeper_' + m] || ASSETS.ui.shopkeeper);
   function portraitHTML() {
-    const src = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.shopkeeper;
+    const src = moodSrc(mood);
     return src ? `<img src="${src}" alt="老板">` : '';
   }
   function render() {
@@ -149,7 +152,8 @@
     const balance = WALLET.coins(), fruits = WALLET.fruits();
     const left = overlay.querySelector('.shopWallet');
     if (left) left.innerHTML = `💰 余额 <b>${fmt(balance)}</b><br>🍎 彩色果 <b>${fmt(fruits)}</b>`;
-    const lineNode = overlay.querySelector('.shopLine'); if (lineNode) lineNode.textContent = line;    const grid = overlay.querySelector('.shopGrid'); if (!grid) return;
+    const lineNode = overlay.querySelector('.shopLine'); if (lineNode) lineNode.textContent = line;
+    const face = overlay.querySelector('.shopPortrait img'), src = moodSrc(mood); if (face && src && face.getAttribute('src') !== src) face.src = src;    const grid = overlay.querySelector('.shopGrid'); if (!grid) return;
     grid.innerHTML = '';
     if (!SHOP_ITEMS.length) { grid.innerHTML = '<p class="shopEmpty">老板今天没进货。</p>'; return; }
     for (const item of SHOP_ITEMS) {
@@ -175,11 +179,11 @@
   function buy(item, amount) {
     const n = item.kind === 'stack' ? amount : 1;
     const total = item.price * n;
-    if (!WALLET.spendCoins(total)) { line = '钱不够？去校场多练练。'; render(); return false; }
+    if (!WALLET.spendCoins(total)) { line = '钱不够？去校场多练练。'; mood = 'annoyed'; render(); return false; }
     if (item.kind !== 'stack') { owned[item.id] = true; if (item.buy) item.buy(1); }
     else if (item.buy) item.buy(n);
     sessionSpent += total; sessionBought = true;
-    line = pick(total >= 250 ? EXPENSIVE_LINES : CHEAP_LINES); render(); refreshEntry();
+    line = pick(total >= 250 ? EXPENSIVE_LINES : CHEAP_LINES); mood = total >= 250 ? 'happy' : 'normal'; render(); refreshEntry();
     const walletNode = overlay && overlay.querySelector('.shopWallet');
     if (walletNode) { walletNode.classList.remove('bump'); void walletNode.offsetWidth; walletNode.classList.add('bump'); }
     return true;
@@ -189,7 +193,7 @@
     injectStyle();
     clearTimeout(closeTimer); closeTimer = null; closing = false;
     sessionSpent = 0; sessionBought = false;
-    line = pick(OPEN_LINES);
+    line = pick(OPEN_LINES); mood = 'normal';
     overlay = document.createElement('div'); overlay.id = 'shopOverlay';
     overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="商店">
       <header class="shopHead"><h2>🏮 商店</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
@@ -208,7 +212,7 @@
   function close() {
     if (!overlay) return;
     if (closing) { removeShop(); return; }
-    if (!sessionBought) { line = pick(NONE_LINES); render(); }
+    if (!sessionBought) { line = pick(NONE_LINES); mood = 'annoyed'; render(); }
     closing = true;
     closeTimer = setTimeout(() => {
       if (!overlay) return;
