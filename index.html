@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=8e0deff1e9" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=8e0deff1e9)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=14439f64ba" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=14439f64ba)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='4c51b5f2145c',busy=false;
+var BUILD='c63df2126331',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -8273,8 +8273,8 @@ function hitProp(p, dir) {
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }
-      } else if (p.chapter2) { if (Math.random() < .6) spawnDrop(p.x, p.y); }   // 第二章道具 60% 掉回血食物（用户嫌 35% 太少）
-      else if (Math.random() < .65) spawnDrop(p.x, p.y);                       // 第一章草垛/推车/石碾 65%
+      } else if (p.chapter2) { if (Math.random() < .7) spawnDrop(p.x, p.y); }   // 第二章道具 70% 掉回血食物（用户定）
+      else if (Math.random() < .7) spawnDrop(p.x, p.y);                        // 第一章草垛/推车/石碾 70%（用户定）
     }
   }
 }
@@ -9924,33 +9924,42 @@ function drawResult(HW, HH) {
   ctx.textAlign = 'left'; ctx.globalAlpha = 1;
 }
 function drawChapter2Choice(HW, HH) {
+  // 选路面板：和开场对白同一套样式（深色底、金色双边框、金框头像、PingFang 粗体）
   uiBtns = [];
-  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(15,10,10,.72)'; ctx.fillRect(0, 0, HW, HH);
-  const pw = Math.min(600, HW * .88), ph = Math.min(230, HH * .72), x = (HW - pw) / 2, y = (HH - ph) / 2;
-  ctx.fillStyle = 'rgba(50,32,22,.97)'; ctx.strokeStyle = '#c49a54'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x, y, pw, ph, 12); else ctx.rect(x, y, pw, ph); ctx.fill(); ctx.stroke();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f3d37b'; ctx.font = 'bold 22px sans-serif';
-  ctx.fillText('张梁、张宝分兵突围', HW / 2, y + 30);
-  // 曹操头像 + 台词（和开场对白同款）
-  const av = 60, ax = x + 24, ay = y + 52, im = IMG.dialog_caocao;
-  ctx.fillStyle = '#b78b4d'; ctx.fillRect(ax - 2, ay - 2, av + 4, av + 4); ctx.fillStyle = '#241912'; ctx.fillRect(ax, ay, av, av);
-  if (im && im.complete && im.naturalWidth) { const sc = Math.max(av / im.width, av / im.height); ctx.save(); ctx.beginPath(); ctx.rect(ax, ay, av, av); ctx.clip(); ctx.drawImage(im, ax + (av - im.width * sc) / 2, ay + (av - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.restore(); }
-  ctx.textAlign = 'left'; const tl = ax + av + 14, tw = x + pw - 24 - tl;
-  ctx.fillStyle = '#f1cf75'; ctx.font = 'bold 15px sans-serif'; ctx.fillText('曹操', tl, ay + 10);
-  ctx.fillStyle = '#f7f0df'; ctx.font = 'bold 15px sans-serif';
-  { let line = '', ly = ay + 34; for (const ch of '棺椁去向不明！我们兵分两路——你追哪一个？（按 1 / 2 也可选择）') { if (line && ctx.measureText(line + ch).width > tw) { ctx.fillText(line, tl, ly); line = ch; ly += 20; } else line += ch; } if (line) ctx.fillText(line, tl, ly); }
-  ctx.textAlign = 'center';
-  const gap = 16, bw = (pw - 48 - gap) / 2, bh = 62, by = y + ph - bh - 24;
+  const F = '"PingFang SC","Microsoft YaHei",sans-serif', small = HH < 520 || HW < 760;
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(15,10,10,.55)'; ctx.fillRect(0, 0, HW, HH);
+  const pw = Math.min(640, HW - 24), ph = small ? 200 : 236, x = (HW - pw) / 2, y = (HH - ph) / 2;
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 8;
+  ctx.fillStyle = 'rgba(30,22,18,.93)'; rr(x, y, pw, ph, 8); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.lineWidth = 2; ctx.strokeStyle = '#e5c98a'; rr(x + 1, y + 1, pw - 2, ph - 2, 7); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,238,194,.38)'; rr(x + 6, y + 6, pw - 12, ph - 12, 5); ctx.stroke();
+  // 头像
+  const av = small ? 72 : 96, ax = x + 14, ay = y + 14, im = IMG.dialog_caocao;
+  ctx.fillStyle = '#b78b4d'; rr(ax - 3, ay - 3, av + 6, av + 6, 6); ctx.fill();
+  ctx.fillStyle = '#241912'; rr(ax, ay, av, av, 4); ctx.fill();
+  if (im && im.complete && im.naturalWidth) { const sc = Math.max(av / im.width, av / im.height); ctx.save(); rr(ax, ay, av, av, 4); ctx.clip(); ctx.drawImage(im, ax + (av - im.width * sc) / 2, ay + (av - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.restore(); }
+  // 名字 + 台词
+  const tl = ax + av + (small ? 16 : 22), tw = x + pw - 20 - tl;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `700 ${small ? 16 : 20}px ${F}`; ctx.fillStyle = '#f1cf75'; const ny = ay + (small ? 18 : 22); ctx.fillText('曹操', tl, ny);
+  ctx.fillStyle = 'rgba(211,165,83,.8)'; ctx.fillRect(tl, ny + 6, ctx.measureText('曹操').width + 14, 1.5);
+  ctx.font = `700 ${small ? 15 : 18}px ${F}`; ctx.fillStyle = '#f7f0df';
+  { let line = '', ly = ny + (small ? 30 : 38); for (const ch of '张梁、张宝分兵突围，棺椁去向不明！我们兵分两路——你追哪一个？') { if (line && ctx.measureText(line + ch).width > tw) { ctx.fillText(line, tl, ly); line = ch; ly += small ? 20 : 25; } else line += ch; } if (line) ctx.fillText(line, tl, ly); }
+  // 两个选项：同款深底金边小牌
+  const gap = 14, bw = (pw - 28 - gap) / 2, bh = small ? 50 : 58, by = y + ph - bh - 14;
   const options = [
-    { x: x + 24, label: '1  正面突击：追击张梁', act: 'zhang-liang' },
-    { x: x + 24 + bw + gap, label: '2  迂回包抄：追击张宝', act: 'zhang-bao' },
+    { x: x + 14, key: '1', label: '正面突击 · 追击张梁', act: 'zhang-liang' },
+    { x: x + 14 + bw + gap, key: '2', label: '迂回包抄 · 截住张宝', act: 'zhang-bao' },
   ];
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const o of options) {
-    ctx.beginPath();
-    ctx.fillStyle = '#8a542c'; ctx.strokeStyle = '#d2ad69'; ctx.lineWidth = 1.5;
-    if (ctx.roundRect) ctx.roundRect(o.x, by, bw, bh, 8); else ctx.rect(o.x, by, bw, bh); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#fff0cc'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(o.label, o.x + bw / 2, by + bh / 2);
+    ctx.fillStyle = 'rgba(58,40,28,.96)'; rr(o.x, by, bw, bh, 6); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#e5c98a'; rr(o.x + .75, by + .75, bw - 1.5, bh - 1.5, 6); ctx.stroke();
+    ctx.fillStyle = '#b78b4d'; ctx.beginPath(); ctx.arc(o.x + 22, by + bh / 2, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = '#241912'; ctx.font = `700 13px ${F}`; ctx.fillText(o.key, o.x + 22, by + bh / 2 + 1);
+    ctx.fillStyle = '#f7f0df'; ctx.font = `700 ${small ? 14 : 16}px ${F}`; ctx.fillText(o.label, o.x + bw / 2 + 10, by + bh / 2 + 1);
     uiBtns.push({ x: o.x, y: by, w: bw, h: bh, act: o.act });
   }
   ctx.restore();
