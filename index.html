@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=45185663b0" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=45185663b0)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4261d94a60" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4261d94a60)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='e797bb550cf5',busy=false;
+var BUILD='b51edf43e401',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -6427,9 +6427,24 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
       const ls = lit().filter(p => p.lit).sort((p, q) => Math.hypot(p.x - hero.x, p.y - hero.y) - Math.hypot(q.x - hero.x, q.y - hero.y));
       const tx = ls[0] ? ls[0].x : hero.x, ty = ls[0] ? ls[0].y : hero.y;
       const y = Math.max(M.top + 8, Math.min(M.bot - 6, ty));
-      for (let i = -3; i <= 3; i++) {
-        const x = tx + i * 22; if (x < arenaL + 12 || x > lockR - 12) continue;
-        S.hz.push({ k: 'fire', x, y, t: -(1 + Math.abs(i) * .1), r: 14, fr: (i + 3) % 4 });
+      const add = (x, yy, d) => { if (x < arenaL + 10 || x > lockR - 10 || yy < M.top || yy > M.bot) return; S.hz.push({ k: 'fire', x, y: yy, t: -d, r: 16, fr: Math.floor(Math.random() * 4) }); };
+      // 一整排横火：从目标灯向两边烧开
+      for (let x = arenaL + 14; x <= lockR - 14; x += 26) add(x, y, 1 + Math.abs(x - tx) / 420);
+      // 张角到这盏灯的连线：从施法者一路烧过来
+      const ox = e.ox ?? ALTAR_STAGE.x, oy = Math.max(M.top + 4, e.oy ?? M.top + 4), L = Math.hypot(tx - ox, y - oy), n = Math.floor(L / 24);
+      for (let i = 1; i < n; i++) add(ox + (tx - ox) * i / n, oy + (y - oy) * i / n, .9 + i * .06);
+    }
+  }
+  // 黄巾力士：跺地震波（暗橙预警圈，1.5 秒后炸开）
+  function golems(dt) {
+    for (const z of zs) {
+      if (z.type !== 'yellow-golem' || z.dead || z.air) continue;
+      z.slamCd = (z.slamCd ?? 2.5) - dt;
+      const d = Math.hypot(hero.x - z.x, (hero.y - z.y) * 2);
+      if (z.slamCd <= 0 && d < 90 && (z.st === 'move' || z.st === 'idle') && !(z.stun > 0)) {
+        z.slamCd = 6; z.f = Math.sign(hero.x - z.x) || z.f; z.st = 'wind'; z.t = -.5;   // 比普通出手多蓄 0.5 秒
+        S.hz.push({ k: 'slam', x: z.x + z.f * 24, y: z.y, t: -1.5, r: 42, src: z });
+        floaters.push({ x: z.x, y: z.y - 60, t: 0, txt: '喝！' });
       }
     }
   }
@@ -6450,8 +6465,13 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
         if (Math.abs(hero.x - h.x) < 9 && Math.abs(hero.y - 14 - h.y) < 14) { dmgHero(1, { x: h.x, y: h.y }); h.dead = true; sfx('crack', h.x); S.hz.push({ k: 'puff', x: h.x, y: h.y, t: 0 }); }
         if (h.t > 5) h.dead = true;
       } else if (h.k === 'fire') {
-        if (h.t > 0 && h.t < .6 && Math.abs(hero.x - h.x) < h.r && Math.abs(hero.y - h.y) < 10) dmgHero(1.5, { x: h.x, y: h.y });
+        if (h.t > 0 && h.t < .6 && Math.abs(hero.x - h.x) < h.r && Math.abs(hero.y - h.y) < 11) dmgHero(1.5, { x: h.x, y: h.y });
         if (h.t > .7) h.dead = true;
+      } else if (h.k === 'slam') {
+        if (h.src && (h.src.dead || h.src.stun > 0) && h.t < 0) { h.dead = true; continue; }   // 被打断就不炸
+        if (h.t >= 0 && !h.done) { h.done = true; shake = Math.max(shake, .35); sfx('land', h.x);
+          if (Math.abs(hero.x - h.x) < h.r && Math.abs(hero.y - h.y) < h.r * .45) dmgHero(3, { x: h.x, y: h.y }); }
+        if (h.t > .45) h.dead = true;
       } else if (h.k === 'puff') { if (h.t > .4) h.dead = true; }
     }
     S.hz = S.hz.filter(h => !h.dead);
@@ -6479,8 +6499,9 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
   function update(dt) {
     if (!S || !chapter2Run || chapter2Run.battle !== 6) return;
     S.t += dt; S.flash = Math.max(0, S.flash - dt); S.castT = Math.max(0, S.castT - dt);
-    updateHz(dt);
-    if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; } }
+    golems(dt); updateHz(dt);
+    if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; }
+      if (S.shatterT > .5 && S.perfect) for (let i = props.length - 1; i >= 0; i--) if (props[i].lamp) { S.hz.push({ k: 'puff', x: props[i].x, y: props[i].y - 12, t: 0 }); props.splice(i, 1); } }
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
@@ -6552,22 +6573,31 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
       S.hz.push({ k: 'puff', x: z.x + z.push.dir * 14, y: z.y - 18, t: 0 }); floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '退！' });
     }
     if (z.zjDizzy > 0) { z.zjDizzy -= dt; z.t += dt; return true; }
+    // 挨打瞬移：1.5 秒内挨 3 下就闪到主角另一头，落地立刻放法术
+    if (z.zjLastHp == null) z.zjLastHp = z.hp;
+    if (z.hp < z.zjLastHp) { z.zjHits = (z.zjHits || []).filter(t => gameT - t < 1.5); z.zjHits.push(gameT); }
+    z.zjLastHp = z.hp; z.zjEscCd = (z.zjEscCd || 0) - dt;
+    if (z.st !== 'tele' && z.zjEscCd <= 0 && (z.zjHits || []).length >= 3) {
+      z.zjHits = []; z.zjEscCd = z.rage ? 2.5 : 4; z.stun = 0; z.daze = 0; z.st = 'tele'; z.t = 0; z.teleDone = false; z.escape = true;
+      S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 }); return true;
+    }
     if (z.st === 'tele') {
       z.t += dt;
-      if (z.t > .3 && !z.teleDone) { z.teleDone = true; z.x = Math.max(arenaL + 24, Math.min(lockR - 24, hero.x - hero.f * 38)); z.y = Math.max(M.top + 6, Math.min(M.bot - 4, hero.y)); z.f = Math.sign(hero.x - z.x) || z.f; S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 }); }
-      if (z.t > .6) { z.st = 'move'; z.t = 0; z.cd = .3; z.teleDone = false; }
+      if (z.t > .3 && !z.teleDone) { z.teleDone = true; const mid = (arenaL + lockR) / 2; z.x = Math.max(arenaL + 24, Math.min(lockR - 24, z.escape ? hero.x + (hero.x < mid ? 1 : -1) * 150 : hero.x - hero.f * 38)); z.y = Math.max(M.top + 6, Math.min(M.bot - 4, hero.y)); z.f = Math.sign(hero.x - z.x) || z.f; S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 }); }
+      if (z.t > .6) { z.st = 'move'; z.t = 0; z.cd = .3; z.teleDone = false;
+        if (z.escape) { z.escape = false; if (Math.random() < .5) { thunderAt(hero.x, hero.y, .9); thunderAt(hero.x + rnd2(-40, 40), hero.y + rnd2(-10, 10), 1.2); } else cast({ k: 'fu', x: z.x, y: z.y - 26 }); } }
       return true;
     }
     if (z.st === 'move' || z.st === 'idle') {
       z.zjTele -= dt; z.zjThunder -= dt; z.zjFire -= dt; z.zjFu -= dt;
       if (z.zjFu <= 0 && Math.abs(hero.x - z.x) > 60) { z.zjFu = z.rage ? 3.2 : 5; cast({ k: 'fu', x: z.x + z.f * 10, y: z.y - 26 }); if (z.rage) cast({ k: 'fu', x: z.x, y: z.y - 40 }); z.st = 'rec'; z.t = 0; return true; }
-      if (z.zjFire <= 0) { z.zjFire = z.rage ? 6 : 10; cast({ k: 'fire' }); say('张角：“地火，焚！”', 1.5); }
+      if (z.zjFire <= 0) { z.zjFire = z.rage ? 6 : 10; cast({ k: 'fire', ox: z.x, oy: z.y }); say('张角：“地火，焚！”', 1.5); }
       if (!z.rage && z.hp < z.T.hp * .5) {
         z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.3, wind: z.T.wind * .8 };
         say('张角：“天雷，降！”', 2.5); for (let i = 0; i < 3; i++) thunderAt(hero.x + (i - 1) * 40, hero.y + rnd2(-8, 8), 1.1 + i * .25);
       }
       if (z.zjThunder <= 0) { z.zjThunder = z.rage ? 2.6 : 4.2; thunderAt(hero.x, hero.y, .9); if (z.rage) thunderAt(hero.x + (Math.random() < .5 ? -45 : 45), hero.y, 1.2); z.st = 'rec'; z.t = 0; return true; }
-      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 5; z.st = 'tele'; z.t = 0; z.teleDone = false; return true; }
+      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 4; z.st = 'tele'; z.t = 0; z.teleDone = false; return true; }
     }
     return false;
   }
@@ -6595,8 +6625,12 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
         const u = 1 + h.t, r = h.r;
         pic('ring', h.x, h.y, (r * 2 / 179) * (1.3 - u * .3), .45 + .5 * u);
       } else if (h.k === 'fire') {
-        if (h.t < 0) { ctx.fillStyle = 'rgba(160,50,25,.35)'; ctx.beginPath(); ctx.ellipse(h.x, h.y, 10, 4, 0, 0, 7); ctx.fill(); }
-        else pic('fire' + (1 + (h.fr + Math.floor(h.t * 10)) % 4), h.x, h.y + 4, .32, 1 - h.t / .8, true);
+        if (h.t < 0) { ctx.fillStyle = 'rgba(160,50,25,.35)'; ctx.beginPath(); ctx.ellipse(h.x, h.y, 13, 5, 0, 0, 7); ctx.fill(); }
+        else pic('fire' + (1 + (h.fr + Math.floor(h.t * 10)) % 4), h.x, h.y + 4, .5, 1 - h.t / .8, true);
+      } else if (h.k === 'slam') {
+        if (h.t < 0) { const u = 1 + h.t / 1.5; ctx.strokeStyle = `rgba(170,76,44,${.4 + .5 * u})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * .42, 0, 0, 7); ctx.stroke();
+          ctx.fillStyle = 'rgba(150,60,30,.22)'; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * u, h.r * .42 * u, 0, 0, 7); ctx.fill(); }
+        else { const u = h.t / .45; ctx.strokeStyle = `rgba(140,90,50,${1 - u})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (.6 + u * .6), h.r * .42 * (.6 + u * .6), 0, 0, 7); ctx.stroke(); }
       } else if (h.k === 'thunder' && h.t >= 0) pic('scorch', h.x, h.y, .3, Math.max(0, 1 - h.t / .9));
     }
     // 棺盖
