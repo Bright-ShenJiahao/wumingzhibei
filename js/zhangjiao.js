@@ -17,6 +17,7 @@
     ctx.globalAlpha = a; ctx.drawImage(im, Math.round(x - w / 2), Math.round(anchorBottom ? y - h : y - h / 2), Math.round(w), Math.round(h)); ctx.globalAlpha = 1;
   }
 
+  const vo = n => { if (window.SFX && SFX.voice) SFX.voice(n); };   // 关键台词才有语音，其余只跳字
   function start() {
     S = { phase: 'open', t: 0, round: -1, rt: 0, queue: [], hz: [], perfect: false, shatterT: -1, lid: null, flash: 0, prevLeft: 0, batchDone: [],
       zjX: 141, zjY: 112, face: 1, summonRound: 0, spawned: [], dueT: 0, boss: null, castT: 0, pose: 'situp', cheerDone: false };
@@ -44,6 +45,7 @@
   }
   function cast(e) {
     S.castT = .5;
+    if (e.k === 'thunder' && S.needLeigong) { S.needLeigong = false; vo('zj_leigong'); say('张角：“左零右火，雷公助我！”', 2.2); tutorialQueue.push({ text: '躲开天雷，打灭金圈里发光的灯！（每盏三下）', time: 4.5 }); }
     if (e.k === 'thunder') thunderAt(hero.x + rnd2(-6, 6), hero.y + rnd2(-4, 4), 1.05);
     else if (e.k === 'fu') S.hz.push({ k: 'fu', x: e.x ?? ALTAR_STAGE.x, y: e.y ?? ALTAR_STAGE.y + 10, t: 0, vx: 0, vy: 0, fr: Math.floor(Math.random() * 3) });
     else if (e.k === 'fire') {   // 地火预判：砸在主角正在打的那盏灯周围（没有亮灯就砸主角所在行）
@@ -138,7 +140,7 @@
     const z = zs[zs.length - 1]; S.boss = z;
     z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8; z.zjFu = 4;
     z.st = 'move'; z.t = 0; z.jump = { t: 0, h0: y - ALTAR_STAGE.y, first: true };   // 从法台飞身跳下
-    say('张角：“尔等蝼蚁，也敢逆天！”', 3);
+    say('张角：“既如此，本天师亲自送你上路！”', 3); vo('zj_jump');
   }
   function update(dt) {
     if (!S || !chapter2Run || chapter2Run.battle !== 6) return;
@@ -147,6 +149,7 @@
     // 打灭灯：没轮到的灯被打灭 = 乱了阵序，立刻多降两道雷，破阵也不再掉血
     if (S.phase !== 'open') for (const p of lamps()) if (p.g !== 'fudeng' && !p.zjSeen) {
       p.zjSeen = true;
+      if (p.lit && S.phase === 'p1' && !S.saidLamp) { S.saidLamp = true; say('张角：“竖子，敢毁我法灯！”', 2); }
       if (!p.lit && S.phase === 'p1') { const first = !S.outOfOrder; S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say(first ? '阵序乱了！要打金圈里发光的灯！' : '阵序乱了！天雷降！', first ? 3.5 : 1.8); }
     }
     if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; }
@@ -154,20 +157,21 @@
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
-      say('八盏灯全灭，八卦阵破！', 3);
+      say('张角：“八卦……破了？！”', 3);
       S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
-      if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; }
+      if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：“黄天信众，随我讨逆！”', time: 2.5 }); }
     }
     const t = S.t;
     if (S.phase === 'open') {
       hero.inv = Math.max(hero.inv, .3);
       if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', 141); S.hz.push({ k: 'thunder', x: 141, y: 120, t: 0, r: 0, done: true }); }
       if (t > 1.3 && !S.lid) { S.lid = { x: 141, y: 98, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
+      if (S.lid && !S.saidRise && t > 1.8) { S.saidRise = true; say('张角：“吾……未死！”', 1.6); }
       if (S.lid) { const l = S.lid; l.t += dt; l.vy += 380 * dt; l.x += l.vx * dt; l.y += l.vy * dt; l.rot += dt * 7; if (l.y > 150) { l.y = 150; l.vx = l.vy = 0; } }
       if (t < 2.2) S.pose = 'situp';
       else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = 141 + (ALTAR_STAGE.x - 141) * u; S.zjY = 108 + (ALTAR_STAGE.y - 4 - 108) * u - Math.sin(u * Math.PI) * 30; }
-      else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; say('张角：“苍天已死，黄天当立！”', 3.2); shake = .3; S.flash = .3; }
-      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); say('躲开天雷，打灭金圈里发光的灯！（每盏三下）', 4.5); }
+      else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; vo('zj_rise'); say('张角：“苍天已死，黄天当立！”', 3.2); shake = .3; S.flash = .3; }
+      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); S.needLeigong = true; }
       return;
     }
     if (S.phase === 'p1') {
@@ -177,7 +181,7 @@
       if (S.rt >= ROUND_T) {
         const set = batch(S.round);
         S.batchDone[S.round] = set.every(p => p.g !== 'fudeng');
-        if (S.round >= 3) { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.hz = S.hz.filter(h => h.k === 'thunder' && !h.done); say('张角：“黄巾力士，何在！”', 2.5); S.pose = 'summon'; S.sumT = 1.2; }
+        if (S.round >= 3) { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.hz = S.hz.filter(h => h.k === 'thunder' && !h.done); say('张角：“黄天信众，随我讨逆！”', 2.5); S.pose = 'summon'; S.sumT = 1.2; }
         else { S.round++; S.rt = 0; addRound(); }
       }
       S.pose = S.castT > 0 ? 'thunder' : 'float';
@@ -190,7 +194,7 @@
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
       if (!alive && S.t > 2) {
-        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say('张角：“再来！”', 2); }
+        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say('张角：“黄巾力士，何在！”', 2.5); vo('zj_golem'); }
         else descend();
       }
       return;
@@ -199,7 +203,7 @@
       const z = S.boss;
       if (z && z.dead && S.phase !== 'dead') {
         S.phase = 'dead'; S.t = 0; S.hz = []; zs.forEach(e => { if (e.zjAdd) e.hp = 0; });
-        say('张角：“……苍天……”', 4); shake = .5;
+        say('张角：“苍天……当真……已死……”', 4); vo('zj_die'); shake = .5;
         if (window.CHAPTER2 && CHAPTER2.completeBattle) CHAPTER2.completeBattle(6);
       }
       return;
@@ -234,7 +238,7 @@
       z.rage = true; z.combo = null; z.push = null; z.T = { ...z.T, spd: z.T.spd * 1.2 };
       z.gx = z.x; z.gy = z.y; z.x = ALTAR_STAGE.x; z.y = ALTAR_STAGE.y - 4; z.z = 0; z.stun = 0;
       z.array = { t: 0, wave: -1 }; S.hz.push({ k: 'puff', x: z.gx, y: z.gy - 20, t: 0 });
-      say('张角：“天雷八卦，降！”', 2.5); shake = .3; S.flash = .3;
+      say('张角：“天雷八卦，降！”', 2.5); vo('zj_bagua'); shake = .3; S.flash = .3;
     }
     if (z.array) {
       const A = z.array; A.t += dt; z.stun = 0; z.castT = .2; z.z = 0;
@@ -246,7 +250,7 @@
         const onSafe = A.safe.some(p => Math.abs(hero.x - p.x) < 22 && Math.abs(hero.y - p.y) < 12);
         if (!onSafe) thunderAt(hero.x, hero.y, 1.1);   // 不站卦位的也躲不掉
       }
-      if (A.t > .8 + 1.3 * 3 + .3) { z.array = null; A.safe = null; z.x = clampX(ALTAR_STAGE.x); z.y = M.top + 14; z.jump = { t: 0, h0: z.y - ALTAR_STAGE.y }; }
+      if (A.t > .8 + 1.3 * 3 + .3) { z.array = null; A.safe = null; say('张角：“黄天……不会亡！”', 2); z.x = clampX(ALTAR_STAGE.x); z.y = M.top + 14; z.jump = { t: 0, h0: z.y - ALTAR_STAGE.y }; }
       return true;
     }
     if (z.stun > .15) z.stun = .15;   // 受击只顿一下
@@ -300,6 +304,7 @@
       z.lastCombo = name; z.combo = { name, t: 0, step: 0 };
       if (name === 'dihuo') say('张角：“地火，焚！”', 1.5);
       if (name === 'leifu') say('张角：“符来！”', 1.2);
+      if (name === 'shanlei') say('张角：“哪里走！”', 1.2);
     }
     return true;
   }
@@ -308,6 +313,7 @@
     const fast = z.rage ? .75 : 1;
     if (C.rest) {   // 喘息破绽：站着不动、不逃
       z.st = 'rest'; z.z = 0;
+      if (!C.cough) { C.cough = true; floaters.push({ x: z.x, y: z.y - 58, t: 0, txt: '咳……咳咳……' }); }
       if (C.t > C.rest) { z.combo = null; z.gap = z.rage ? 1.6 : 2.6; z.st = 'move'; }
       return true;
     }
