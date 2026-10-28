@@ -624,7 +624,7 @@ function addChapter2Props(battle = 1) {
     const solid = g === 'jumo' || g === 'sacks' || g === 'crate' || g === 'rack';
     const oldProp = g === 'sacks' || g === 'crate' || g === 'rack';
     props.push({ g, x: battle === 6 ? dx : hero.x + dx, y, solid, broken: false,
-      hp: g === 'jumo' ? 3 : solid ? 3 : 0, hitT: 0, sc: 1,
+      hp: g.startsWith('flag_') ? 2 : 3, hitT: 0, sc: 1,
       w: pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
   }
 }
@@ -1099,13 +1099,17 @@ function drawFloaters() {
   }
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
+// 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
+const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang']);
+const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
 function hitProp(p, dir) {
-  if (p.broken || !['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo'].includes(p.g)) return;
+  if (!canHitProp(p)) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
   const hay = p.g === 'hay', mill = p.g === 'mill', jumo = p.g === 'jumo', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
   const sack = p.g === 'sacks';
-  const cols = hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : sack ? ['#4a3a34', '#6b564a', '#a98c5a'] : p.g === 'crate' || p.g === 'rack' ? ['#2e221d', '#4a3a30', '#6a5444'] : ['#4b2c12', '#7a4d22', '#a3703c'];
+  const flag = p.g.startsWith('flag_');
+  const cols = flag ? ['#e8c24a', '#c99a2a', '#6b4a24'] : p.g === 'brazier' ? ['#ff8a2a', '#ffd04a', '#3a3030'] : p.g === 'stones' ? ['#6e6a66', '#9a958e', '#4a4440'] : hay ? ['#8a5a18', '#c98a25', '#edc34d'] : mill ? ['#5b5146', '#8a7a66', '#b3a286'] : sack ? ['#4a3a34', '#6b564a', '#a98c5a'] : p.g === 'crate' || p.g === 'rack' ? ['#2e221d', '#4a3a30', '#6a5444'] : ['#4b2c12', '#7a4d22', '#a3703c'];
   const n = broken ? 22 : 7;
   for (let i = 0; i < n; i++) {
     const life = broken ? rnd(.42, .65) : rnd(.32, .55);
@@ -1122,9 +1126,15 @@ function hitProp(p, dir) {
       if (meta) { p.w = meta[1]; p.h = meta[2]; }
     } else {
       p.broken = true; p.solid = false;
-      // 第二章的草垛/推车/石碾全部掉落回血；第一章仍保持 65%
-      if (p.g === 'rack') {}   // 兵器架只是障碍
-      else if (p.chapter2 || Math.random() < .65) spawnDrop(p.x, p.y);
+      if (flag) {
+        // 打倒旗子：每一战第一次打倒旗子给一次锦囊
+        if (chapter2Run && window.ROGUE && !chapter2Run['flagCard' + chapter2Run.battle]) {
+          chapter2Run['flagCard' + chapter2Run.battle] = true;
+          floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
+          sfx('finisher', p.x); ROGUE.offer();
+        }
+      } else if (p.chapter2) { if (Math.random() < .35) spawnDrop(p.x, p.y); }   // 第二章道具 35% 掉回血食物
+      else if (Math.random() < .65) spawnDrop(p.x, p.y);                       // 第一章草垛/推车/石碾 65%
     }
   }
 }
@@ -1492,7 +1502,7 @@ function strike() {
   }
   // 草垛、推车、石碾也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
-    if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill' && p.g !== 'jumo')) continue;
+    if (!canHitProp(p)) continue;
     const dx = (p.x - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < rch + p.w / 2 : dx > -4 - p.w / 2 && dx < rch + p.w / 2;
     if (inRange && Math.abs(p.y - h.y) < W.dy) {
@@ -1784,7 +1794,7 @@ function updateShots(dt) {
     if (s.life <= 0 && s.gearReturn && !s.returning) { s.returning=true; s.secondary=true; s.gearReturn=false; s.vx=-s.originalVx; s.vy=-s.originalVy; s.life=s.gearLife; s.hitSet=[]; s.C={...s.C,dmg:s.C.dmg*.35,pierce:true,pierceOff:1}; }
     // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
-      if (p.broken || (p.g !== 'hay' && p.g !== 'cart' && p.g !== 'mill' && p.g !== 'jumo')) continue;
+      if (!canHitProp(p)) continue;
       if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
