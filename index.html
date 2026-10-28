@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=51a5789f45" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=51a5789f45)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=596689f9af" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=596689f9af)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='aad8569211fa',busy=false;
+var BUILD='d5c0bc511a37',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -1656,15 +1656,27 @@ const Boss = (() => {
   const tick = dt => { if (n < MAX) n = Math.min(MAX, n + dt / REGEN); };
   const onHit = () => { if (n < MAX) n = Math.min(MAX, n + PER_HIT); };
   function use() { if (n >= 1) { n -= 1; return true; } return false; }
-  // 主角头上一排 5 个小箭头：有箭亮金色，用掉变暗，正在回的那支按进度填
+  // 脚下一排 5 支竖着的小箭（箭头朝上）：有箭是完整的箭，用掉变成淡淡的虚影，正在回的那支从下往上慢慢"长"出来
+  function arrow(x, y, a, fill) {
+    const h = 9, top = y - h;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(x - .5, top + 2, 2, h - 2);                    // 杆描边
+    ctx.fillStyle = '#c8a46a'; ctx.fillRect(x, top + 2.5, 1, (h - 2.5));                   // 箭杆
+    ctx.fillStyle = '#2a1a10'; ctx.beginPath(); ctx.moveTo(x + .5, top - 1.5); ctx.lineTo(x - 2, top + 3); ctx.lineTo(x + 3, top + 3); ctx.closePath(); ctx.fill();   // 箭头
+    ctx.fillStyle = '#d9d4c4'; ctx.beginPath(); ctx.moveTo(x + .5, top); ctx.lineTo(x - 1, top + 2.5); ctx.lineTo(x + 2, top + 2.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b8452a'; ctx.fillRect(x - 1.5, y - 2.5, 1.5, 2.5); ctx.fillRect(x + 1, y - 2.5, 1.5, 2.5);   // 红色尾羽
+    ctx.globalAlpha = 1;
+  }
   function draw() {
     if (typeof weapon === 'undefined' || weapon !== 'bow' || !hero || hero.dead) return;
-    const x0 = hero.x - 12, y = hero.y + 4;   // 画在脚下，不和头顶的连击数字打架
+    const x0 = hero.x - 12, y = hero.y + 12;
     for (let i = 0; i < MAX; i++) {
-      const fill = Math.max(0, Math.min(1, n - i)), x = x0 + i * 5;
-      ctx.fillStyle = '#2a1c0c'; ctx.fillRect(x - .5, y - .5, 4, 7);
-      ctx.fillStyle = '#5a4a32'; ctx.fillRect(x, y, 3, 6);
-      if (fill > 0) { ctx.fillStyle = fill >= 1 ? '#f0c95a' : '#b8954a'; ctx.fillRect(x, y + 6 * (1 - fill), 3, 6 * fill); }
+      const fill = Math.max(0, Math.min(1, n - i)), x = x0 + i * 6;
+      if (fill >= 1) arrow(x, y, 1);
+      else {
+        arrow(x, y, .22);   // 空槽：淡影
+        if (fill > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x - 3, y - 11 * fill, 7, 11 * fill + 1); ctx.clip(); arrow(x, y, .85); ctx.restore(); }   // 回复中：从下往上长出来
+      }
     }
   }
   window.BOWAMMO = { reset, tick, onHit, use, draw, count: () => Math.floor(n) };
