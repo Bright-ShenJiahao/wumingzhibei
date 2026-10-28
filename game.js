@@ -697,19 +697,24 @@ function startChapter2Battle(number, walkIn = false) {
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
   hero.inv = Math.max(hero.inv || 0, .8);
   if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
-  setRetreatLimit(hero.x);
-  // 每战锁一块场地：往右最多约 1.2 屏（战三的投石车在最右边），不能一路跑出战场
-  lockR = Math.min(M.W, hero.x + 650); clearAt = 0;
+  // 每战锁定一个屏幕：以开战时镜头的位置为准，左右都不能离开这一屏
+  const camX = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * (walkIn ? .4 : .28)));
+  arenaL = camX; lockR = Math.min(M.W, camX + viewW()); clearAt = 0;
   addChapter2Props(number);
   if (number === 6) {
     chapter2Run.mode = 'preview';
     say('第六战：祭台决战（张角战待接入）', 4);
   } else {
     const waves = CHAPTER2_WAVES[number] || [];
-    if (waves[0]) waves[0]();
+    if (waves[0]) { waves[0](); fitChapter2Wave(); }
     say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5);
   }
   if (!walkIn) cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));   // 走进下一战时镜头不跳
+}
+// 出怪位置收进当前这一屏（屏幕窄时，后排的弓手、方士、投石车会被挤到屏外）
+function fitChapter2Wave() {
+  if (!(lockR < Infinity)) return;
+  for (const z of zs) if (!z.dead && z.x > lockR - 16) z.x = lockR - 16 - (z.static ? (z.catapultIndex || 0) * 6 : rnd(0, 18));
 }
 function chapter2Waves() {
   if (!chapter2Run) return;
@@ -724,7 +729,7 @@ function chapter2Waves() {
     const battle = chapter2Run.battle, waves = CHAPTER2_WAVES[battle] || [];
     if (chapter2Run.wave < waves.length - 1) {
       chapter2Run.wave++; chapter2Run.mode = 'fight';
-      waves[chapter2Run.wave]();
+      waves[chapter2Run.wave](); fitChapter2Wave();
       return;
     }
     if (window.CHAPTER2 && CHAPTER2.completeBattle) CHAPTER2.completeBattle(battle);
@@ -1164,7 +1169,7 @@ function updateFx(dt) {
     f.t += dt;
     if (f.kind === 'sky' && !f.resolved && f.t >= .5) {
       f.resolved = true; resolveBowSky(f);
-      bowImpacts.push({ kind: 'impact', x: f.x, y: f.y, t: 0, T: .2 });
+      bowImpacts.push({ kind: 'impact', x: f.x, y: f.y, t: 0, T: .2, r: f.data.radius });
     }
   }
   bowFx = bowFx.filter(f => f.kind === 'sky' ? f.t < .6 : f.t < f.T);
@@ -1226,7 +1231,7 @@ function bowRangeMult(d) { return d < 50 ? .7 : d < 100 ? 1 : d < 200 ? 1.15 : 1
 function resolveBowSky(f) {
   const d = f.data;
   for (const z of zs) {
-    if (z.dead || Math.hypot(z.x - f.x, z.y - f.y) > d.radius + (z.T.w || 0)) continue;
+    if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
@@ -1323,9 +1328,9 @@ function chargedAttack(power, tier = 1) {
   const force = .35 + .65 * power;
   const R = 64 * (window.GEAR ? GEAR.range() : 1);
   if (weapon === 'bow') {                         // 穿云箭：先标记落点，再从右上方落下
-    const data = tier === 3 ? { radius: 55, dmg: 2.8, stun: 1 }
-      : tier === 2 ? { radius: 45, dmg: 2.2, stun: .8 }
-      : { radius: 35, dmg: 1.6, stun: .6 };
+    const data = tier === 3 ? { radius: 45, dmg: 2.4, stun: 1 }   // 用户反馈太强、范围太大：伤害和半径都下调
+      : tier === 2 ? { radius: 36, dmg: 1.9, stun: .8 }
+      : { radius: 28, dmg: 1.4, stun: .6 };
     let target = null, best = Infinity;
     for (const z of zs) {
       if (z.dead) continue;
@@ -2816,7 +2821,8 @@ function drawBowFx(f) {
     const img = IMG.ui_bow_impact; if (!img || !img.complete) return;
     const frame = Math.min(2, Math.floor(f.t / (f.T / 3)));
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, frame * 96, 0, 96, 56, f.x - 30, f.y - 17.5, 60, 35);
+    const iw = (f.r || 30) * 2.2, ih = iw * 35 / 60;   // 冲击环大小跟判定范围一致
+    ctx.drawImage(img, frame * 96, 0, 96, 56, f.x - iw / 2, f.y - ih / 2, iw, ih);
     ctx.restore(); return;
   }
   if (f.kind !== 'sky') return;
