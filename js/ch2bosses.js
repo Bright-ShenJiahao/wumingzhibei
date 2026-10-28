@@ -17,7 +17,7 @@
   // ---------------- 张梁 ----------------
   function liang(z, dt) {
     const C = z.cb, fast = z.rage ? .8 : 1;
-    if (!z.rage && z.hp < z.T.hp * .5) {   // 半血怒吼：震开主角、召大刀兵、提速
+    if (!z.rage && !z.fled && z.hp < z.T.hp * .5) {   // 半血怒吼：震开主角、召大刀兵、提速
       z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.25 }; set(z, 'roar', 'roar'); face(z);
       say('张梁：「都给我上！杀！」', 2.4); vo('zl_roar'); shake = .4; sfx('finisher', z.x);
       return true;
@@ -80,7 +80,7 @@
   // ---------------- 张宝 ----------------
   function bao(z, dt) {
     const C = z.cb, fast = z.rage ? .8 : 1;
-    if (!z.rage && z.hp < z.T.hp * .5) {   // 半血：黄沙迷阵 + 召 4 个方士
+    if (!z.rage && !z.fled && z.hp < z.T.hp * .5) {   // 半血：黄沙迷阵 + 召 4 个方士
       z.rage = true; set(z, 'sand', 'chant'); face(z);
       say('张宝：「黄沙迷阵——众弟子，助我！」', 2.6); vo('zb_sand'); shake = .3;
       return true;

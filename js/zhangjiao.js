@@ -127,10 +127,14 @@
   }
 
   // ---- 阶段流程 ----
+  // 选了张梁 → 曹军追张宝，张宝败逃到祭台；反之亦然（调试直进时随机）
+  function fledType() { const r = chapter2Run && chapter2Run.route; return r === 'zhang-liang' ? 'zhang_bao' : r === 'zhang-bao' ? 'zhang_liang' : (Math.random() < .5 ? 'zhang_liang' : 'zhang_bao'); }
   function monsters(round) {
     const gx = ALTAR_STAGE.x, gy = M.top + 6;
-    const list = round === 0 ? ['blade', 'yellow-shield', 'yellow-spear', 'priest'] : ['yellow-golem', 'yellow-heavy', 'yellow-spear', 'archer'];
-    list.forEach((t, i) => { spawn(t, gx + (i - 1.5) * 26, gy + (i % 2) * 8); const z = zs[zs.length - 1]; z.zjAdd = true; z.st = 'move'; });
+    // 第一轮：黄巾力士 + 2 小兵；第二轮：另一路被曹军追败、逃回祭台的将军（半血、不再召兵）+ 1 枪兵
+    const list = round === 0 ? ['yellow-golem', 'blade', 'yellow-spear'] : [fledType(), 'yellow-spear'];
+    list.forEach((t, i) => { spawn(t, gx + (i - .5) * 30, gy + (i % 2) * 8); const z = zs[zs.length - 1]; z.zjAdd = true; z.st = 'move';
+      if (z.T.chapterBoss) { z.fled = true; z.hp = z.T.hp * .5; z.summonedHalf = true; z.saidIntro = true; S.fled = z; } });
     sfx('bladeAlert', gx);
   }
   function descend() {
@@ -138,6 +142,7 @@
     const x = ALTAR_STAGE.x, y = M.top + 14;
     spawn('zhang_jiao', x, y);
     const z = zs[zs.length - 1]; S.boss = z;
+    if (S.angry) { z.hp = z.T.hp * .9; z.angry = true; }   // 多打了一个将军：张角少 10% 血，但出手更快（平衡难度）
     z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8; z.zjFu = 4;
     z.st = 'move'; z.t = 0; z.jump = { t: 0, h0: y - ALTAR_STAGE.y, first: true };   // 从法台飞身跳下
     say('张角：“既如此，本天师亲自送你上路！”', 3); vo('zj_jump');
@@ -159,7 +164,7 @@
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
       say('张角：“八卦……破了？！”', 3);
       S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
-      if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：“黄天信众，随我讨逆！”', time: 2.5 }); }
+      if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：“黄巾力士，何在！”', time: 2.5 }); vo('zj_golem'); }
     }
     const t = S.t;
     if (S.phase === 'open') {
@@ -181,7 +186,7 @@
       if (S.rt >= ROUND_T) {
         const set = batch(S.round);
         S.batchDone[S.round] = set.every(p => p.g !== 'fudeng');
-        if (S.round >= 3) { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.hz = S.hz.filter(h => h.k === 'thunder' && !h.done); say('张角：“黄天信众，随我讨逆！”', 2.5); S.pose = 'summon'; S.sumT = 1.2; }
+        if (S.round >= 3) { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.hz = S.hz.filter(h => h.k === 'thunder' && !h.done); say('张角：“黄巾力士，何在！”', 2.5); vo('zj_golem'); S.pose = 'summon'; S.sumT = 1.2; }
         else { S.round++; S.rt = 0; addRound(); }
       }
       S.pose = S.castT > 0 ? 'thunder' : 'float';
@@ -190,11 +195,12 @@
     if (S.phase === 'p2') {
       if (S.sumT > 0) { S.sumT -= dt; if (S.sumT <= 0) { monsters(S.summonRound); S.pose = 'float'; S.next = 0; } return; }
       S.pose = 'float';
+      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; say(S.fled.type === 'zhang_bao' ? '张角：“三弟！——竖子，我必杀你！”' : '张角：“二弟！——竖子，我必杀你！”', 3); shake = .4; S.flash = .3; }
       const alive = zs.some(z => !z.dead && z.zjAdd);
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
       if (!alive && S.t > 2) {
-        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say('张角：“黄巾力士，何在！”', 2.5); vo('zj_golem'); }
+        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥！曹贼追得紧……我来助你！」' : '张梁：「大哥！曹贼势大……我来助你！」', 3); }
         else descend();
       }
       return;
@@ -208,7 +214,8 @@
       }
       return;
     }
-    if (S.phase === 'dead' && S.t > 2 && !S.fin) { S.fin = true; chapter2Run.mode = 'complete'; won = true; }   // 进结算卷轴
+    if (S.phase === 'dead' && S.t > 2.2 && !S.caoSaid) { S.caoSaid = true; say(chapter2Run && chapter2Run.route === 'zhang-bao' ? '曹操：「张梁已被我斩于阵前！黄巾贼首尽灭——此战，你当居首功！」' : '曹操：「张宝已被我斩于阵前！黄巾贼首尽灭——此战，你当居首功！」', 5); if (window.SFX && SFX.voice) SFX.voice('caocao_win'); }
+    if (S.phase === 'dead' && S.t > 5.5 && !S.fin) { S.fin = true; chapter2Run.mode = 'complete'; won = true; }   // 进结算卷轴
   }
 
   // ---- 决斗中的张角：传送、单雷、半血狂暴 ----
@@ -298,7 +305,7 @@
     const dx = tx - z.x, dy = ty - z.y, d = Math.hypot(dx, dy);
     z.f = Math.sign(hero.x - z.x) || z.f; z.st = 'move'; z.t += dt;
     if (d > 6) { z.moving = true; moveEnt(z, dx / d * z.T.spd * dt, dy / d * z.T.spd * .6 * dt); } else z.moving = false;
-    if (z.shotT <= 0) { z.shotT = z.rage ? 1.1 : 1.6; shot(z); }
+    if (z.shotT <= 0) { z.shotT = (z.rage ? 1.1 : 1.6) * (z.angry ? .85 : 1); shot(z); }
     if (z.gap <= 0) {
       const pool = COMBOS.filter(c => c !== z.lastCombo), name = pool[Math.floor(Math.random() * pool.length)];
       z.lastCombo = name; z.combo = { name, t: 0, step: 0 };
@@ -314,7 +321,7 @@
     if (C.rest) {   // 喘息破绽：站着不动、不逃
       z.st = 'rest'; z.z = 0;
       if (!C.cough) { C.cough = true; floaters.push({ x: z.x, y: z.y - 58, t: 0, txt: '咳……咳咳……' }); }
-      if (C.t > C.rest) { z.combo = null; z.gap = z.rage ? 1.6 : 2.6; z.st = 'move'; }
+      if (C.t > C.rest) { z.combo = null; z.gap = (z.rage ? 1.6 : 2.6) * (z.angry ? .85 : 1); z.st = 'move'; }
       return true;
     }
     const next = () => { C.step++; C.t = 0; };

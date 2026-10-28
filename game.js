@@ -782,7 +782,8 @@ function chooseChapter2Route(route) {
   if (!chapter2Run || chapter2Run.mode !== 'choice') return;
   chapter2Run.route = route;
   if (window.CHAPTER2 && CHAPTER2.chooseRoute) CHAPTER2.chooseRoute(route);
-  say(route === 'zhang-liang' ? '曹操：正面突击，追击张梁！' : '曹操：迂回包抄，截住张宝！', 2.4);
+  say(route === 'zhang-liang' ? '曹操：「我去截张宝——你追张梁！」' : '曹操：「张梁交给我——你去截张宝！」', 2.8);
+  if (window.SFX && SFX.voice) SFX.voice(route === 'zhang-liang' ? 'caocao_liang' : 'caocao_bao');
   walkToChapter2Battle(route === 'zhang-liang' ? 4 : 5);
 }
 function walkToChapter2Battle(next) {
