@@ -13,6 +13,7 @@
     .pause-paper h2{margin:8px 0 18px;color:#583b20;font:700 clamp(25px,5vh,34px) MaShanZheng,"STKaiti",serif;text-shadow:0 1px #f5e2b4}
     .pause-actions{display:grid;gap:9px}
     .pause-action{box-sizing:border-box;width:100%;min-height:48px;padding:8px 14px;border:1px solid #9e7541;border-radius:6px;background-position:center;background-size:100% 100%;color:#f7e5bd;font:700 17px MaShanZheng,"STKaiti",serif;text-shadow:0 1px 2px #2d1b0e;cursor:pointer;touch-action:manipulation}
+.pause-action.kb-sel{outline:2px solid #ffd86e;outline-offset:2px;filter:brightness(1.18)}
     .pause-action:active{transform:translateY(1px);filter:brightness(1.12)}
     .pause-volume{margin:13px 0 0;color:#593c21;font-size:14px}
     .pause-volume button{min-height:44px;margin-left:8px;padding:5px 12px;border:1px solid #8b673b;border-radius:5px;background:#513821;color:#f6e1b5;font-weight:700;touch-action:manipulation}
@@ -98,10 +99,27 @@
     if (yes === 'no') { confirm.hidden = true; menu.hidden = false; }
     if (yes === 'yes') execute(confirm.dataset.action);
   });
+  // 键盘操作：方向键 / WASD 选择，J / 回车 / 空格 确认，Esc 返回或继续
+  let sel = 0;
+  const panel = () => confirm.hidden ? menu : confirm;
+  const options = () => [...panel().querySelectorAll('.pause-action')].filter(b => b.offsetParent !== null);
+  function mark() { const list = options(); sel = Math.max(0, Math.min(list.length - 1, sel)); document.querySelectorAll('#pauseScreen .kb-sel').forEach(b => b.classList.remove('kb-sel')); if (list[sel]) list[sel].classList.add('kb-sel'); }
+  function cols() { const g = panel().querySelector('.pause-actions,.pause-confirm-actions'); if (!g) return 1; if (g.classList.contains('pause-confirm-actions')) return 99; return (getComputedStyle(g).gridTemplateColumns || '').split(' ').filter(Boolean).length || 1; }
   function onKey(e) {
-    if (!allowed() || !['Escape', 'KeyP'].includes(e.code) || e.repeat) return;
-    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); setPaused(!paused);
+    if (!allowed() || e.repeat && !/Arrow|Key[WASD]/.test(e.code)) return;
+    if (!paused) { if (['Escape', 'KeyP'].includes(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); setPaused(true); sel = 0; mark(); } return; }
+    const k = e.code, list = options(), c = cols();
+    let used = true;
+    if (k === 'ArrowDown' || k === 'KeyS') sel = Math.min(list.length - 1, sel + Math.min(c, list.length));
+    else if (k === 'ArrowUp' || k === 'KeyW') sel = Math.max(0, sel - Math.min(c, list.length));
+    else if (k === 'ArrowRight' || k === 'KeyD') sel = Math.min(list.length - 1, sel + 1);
+    else if (k === 'ArrowLeft' || k === 'KeyA') sel = Math.max(0, sel - 1);
+    else if (k === 'Enter' || k === 'Space' || k === 'KeyJ' || k === 'NumpadEnter') { const b = list[sel]; if (b) { const back = confirm.hidden; b.click(); if (paused) { sel = back && !confirm.hidden ? 1 : 0; } } }
+    else if (k === 'Escape' || k === 'KeyP' || k === 'KeyK') { if (!confirm.hidden) { confirm.hidden = true; menu.hidden = false; sel = 0; } else setPaused(false); }
+    else used = false;
+    if (used) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (paused) mark(); }
   }
+  pauseButton.addEventListener('click', () => { if (paused) { sel = 0; mark(); } });
   window.addEventListener('keydown', onKey, true);
   window.addEventListener('blur', () => { if (allowed()) setPaused(true); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && allowed()) setPaused(true); });
