@@ -1,5 +1,7 @@
 [build]
   publish = "."
+  # 只有 main 分支才部署；preview 分支是给用户本地试玩用的（raw.githack 读取），不消耗 Netlify 构建时间
+  ignore = "test \"$BRANCH\" != \"main\""
 
 [build.environment]
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
