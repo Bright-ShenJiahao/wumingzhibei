@@ -4,7 +4,7 @@ const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
-const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', zhang_jiao: 'chapter2' };
+const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };
 function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
 function ensureAssets(group, { silent = false, label = '' } = {}) {
   const list = LAZY[group] || [];
@@ -33,6 +33,7 @@ if (ASSETS.chapter2) {
   if (ASSETS.chapter2.far) lazyLoad('chapter2', 'chapter2_far', ASSETS.chapter2.far);
   if (ASSETS.chapter2.battlefield) lazyLoad('chapter2', 'chapter2_battlefield', ASSETS.chapter2.battlefield);
   if (ASSETS.chapter2.altar) lazyLoad('chapter2', 'chapter2_altar', ASSETS.chapter2.altar);   // 祭台前景（已抠好透明天空）
+  if (ASSETS.chapter2.zj) Object.entries(ASSETS.chapter2.zj).forEach(([k, v]) => lazyLoad('chapter2', 'zj_' + k, v));   // 张角法术特效
   if (ASSETS.chapter2.altarFar) lazyLoad('chapter2', 'chapter2_altar_far', ASSETS.chapter2.altarFar);   // 祭台远景：雷云
 }
 if (ASSETS.xiaochang) lazyLoad('xiaochang', 'xiaochang', ASSETS.xiaochang);
@@ -131,6 +132,8 @@ const TYPES = {
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: 1.12 },
+  'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, w: 14, sprite: 'yellow_golem', scale: 1 },
+  zhang_jiao: { name: '天公将军·张角', hp: 70, spd: 30, wind: .6, reach: 32, dmg: 2, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
   zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.12 },
 };
 const WAVES = [
@@ -622,7 +625,7 @@ function addAltarProps() {
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4 - Math.PI / 2;
-    P('fudeng', Math.round(ALTAR_C.x + Math.cos(a) * 138), Math.round(ALTAR_C.y + Math.sin(a) * 36), { hp: 2, solid: true, w: 10, lamp: true });
+    P('fudeng', Math.round(ALTAR_C.x + Math.cos(a) * 138), Math.round(ALTAR_C.y + Math.sin(a) * 36), { hp: 3, solid: true, w: 10, lamp: true });
   }
 }
 // 张角预览（战斗逻辑未接入前）：法台上浮空施法 / 降雷交替；地上站一个待机的，方便和主角比大小
@@ -711,8 +714,7 @@ function startChapter2Battle(number, walkIn = false) {
   arenaL = camX; lockR = Math.min(M.W, camX + viewW()); clearAt = 0;
   addChapter2Props(number);
   if (number === 6) {
-    chapter2Run.mode = 'preview';
-    say('第六战：祭台决战（张角战待接入）', 4);
+    if (window.ZJ) ZJ.start();
   } else {
     const waves = CHAPTER2_WAVES[number] || [];
     if (waves[0]) { waves[0](); fitChapter2Wave(); }
@@ -1930,6 +1932,7 @@ function updateChapter2Boss(z, dt) {
     return;
   }
   if (z.dead) return;
+  if (z.type === 'zhang_jiao' && window.ZJ && ZJ.duel(z, dt)) return;
   if (!z.summonedHalf && z.hp < z.T.hp * .5) chapter2BossSummon(z);
   if (window.BOSS_BLOCK && BOSS_BLOCK.update(z, dt, (o, tx, ty, sp, d2) => {
     const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
@@ -2187,7 +2190,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
+    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -2297,6 +2300,8 @@ function zFrame(z) {
     return 'idle';
   }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
+  if (z.zjDizzy > 0) return 'dizzy';
+  if (z.st === 'tele') return 'teleport';
   if (result && (z.st === 'land' || z.st === 'getup')) return 'down';   // 结算卷轴出现后不再画起身帧
   if (z.st === 'land') return !z.dead && z.t > .25 && CH[z.sprite || z.type]?.getup ? 'getup' : 'land';
   if (z.dead) return 'down';
@@ -2503,7 +2508,7 @@ function draw() {
   }
   Boss.drawGround();
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
-  if (chapter2Run && chapter2Run.battle === 6 && chapter2Run.mode === 'preview') drawZhangJiaoPreview();
+  if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });

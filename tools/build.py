@@ -6,7 +6,7 @@
   没改过的图片，玩家第二次打开就不用再下载；每次更新只下载改动的文件。
 - index.html 本身只剩代码（约 0.5MB），每次发布玩家重新拿到的也只有这些。
 """
-import base64, hashlib, io, json, os, re
+import base64, hashlib, io, json, os, re, glob
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P = lambda *p: os.path.join(R, *p)
@@ -180,6 +180,7 @@ assets['chapter2'] = {
     'altar': uri(P('art', 'bg', 'chapter2_altar.webp')),
     'altarFar': uri(P('art', 'bg', 'chapter2_altar_far.webp')),
 }
+assets['chapter2']['zj'] = {os.path.basename(f)[3:-5]: uri(f) for f in sorted(glob.glob(P('art', 'ui', 'zj_*.webp')))}
 assets['xiaochang'] = uri(P('art', 'bg', 'xiaochang.webp'))
 assets['chapter2Intro'] = uri(P('art', 'bg', 'chapter2_intro.webp'))
 # js/ 里的模块（按文件名排序）先于 game.js 载入，供 game.js 调用

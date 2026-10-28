@@ -254,3 +254,9 @@
 - 张角精灵 `zhang_jiao`（原图 `张角_基础.png` 10帧 + `张角_专属1.png` 的 lie/situp/float/thunder）。法台上的帧按 1.12 画；下台决斗的张角按 `ZJ_SCALE`=1.35 画（用户定：要和法台上看起来一样大）。棺材三张图已烘焙竖向斜切（k=0.5）去掉透视歪斜。
 - 张角像素图按 190 像素高转（其他角色 72~100），比普通角色细约 1.9 倍，绘制缩放要除以 `ZJ_HI`（1.9）；第二章不显示第一章的操作/武器/蓄力教学提示（`prepareChapter2Run` 清空 `tutorialQueue`）。
 - 已入库素材（战斗逻辑待接）：张角专属 summon/teleport/dizzy/defeat（原图 `张角_专属2.png`）；黄巾力士精灵 `yellow_golem`（原图 `黄巾力士.png`，小兵画风，比小兵高约 1.3 倍）；张角法术特效 `art/ui/zj_*.png`（ring 预警圈 / bolt 闪电 / strike 落雷 / scorch 焦痕 / fu1~3 符纸 / fire1~4 地火 / circle 召唤阵 / smoke1~2 黑烟 / bagua1~3 八卦阵碎裂），用到时要加进 build.py 的 ui 列表并转 webp。
+
+## 张角战（js/zhangjiao.js，ZJ）
+- 流程：开场(闪电劈棺→起身飞上法台) → 阶段一(4轮×10s：雷/追踪符/地火；八灯每轮亮2盏，没灭的下轮多一道雷，灭掉的批次下轮少一道；全灭=八卦阵破，下台时张角眩晕3s并掉10%血) → 阶段二(召唤2轮，第二轮含黄巾力士) → 阶段三(下台决斗：传送、单雷、半血狂暴)。
+- 挂钩：startChapter2Battle(6)→ZJ.start；update()→ZJ.update；draw()→ZJ.draw；updateChapter2Boss 对 zhang_jiao 先调 ZJ.duel。chapter2Run.mode 用 'zj'→'complete'。
+- 特效图 art/ui/zj_*.webp 经 build.py 放入 ASSETS.chapter2.zj（IMG.zj_*）。灯 hp=3。
+- 待做：血条/台词/结算/第二章解锁/语音。
