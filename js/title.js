@@ -543,7 +543,7 @@
           <div id="tPrepSlotsLeft" class="tPrepSlotColumn"></div>
           <div id="tPrepSlotsRight" class="tPrepSlotColumn"></div>
         </div>
-        <div id="tPrepBagTitle"><span class="tBagCount">武器 0/50</span><small>含已装备</small><small class="tBagSort">已锁定的排在最前</small></div>
+        <div id="tPrepBagTitle"><span class="tBagCount">武器 0/50</span></div>
         <div id="tPrepBag"></div>
         <div id="aTools"></div>
        </div>
