@@ -2166,7 +2166,8 @@ function draw() {
       if (field) tileLayer(field, M.viewH / field.height, 1, 0);
       ctx.imageSmoothingEnabled = false;
     }
-    ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top);
+    // 只有祭台需要压暗走动区；新战场图的地面已经调过亮度，再压会出现一条横向分界线
+    if (bossMap) { ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top); }
   } else {
     tileLayer(IMG.far, .577, .3, 0);
     tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
