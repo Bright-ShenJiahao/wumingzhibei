@@ -764,7 +764,7 @@ function chapter2Waves() {
     }
     if (battle === 3) {
       chapter2Run.mode = 'choice';
-      say('张梁、张宝分兵突围。选择追击路线。', 999); return;
+      say('张梁、张宝分兵突围，棺椁去向不明。选择追击路线。', 999); return;
     }
     if (battle === 4) {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);

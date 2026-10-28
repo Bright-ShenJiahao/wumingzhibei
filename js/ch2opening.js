@@ -25,9 +25,9 @@
       ctx.fillStyle = 'rgba(10,6,4,.55)'; ctx.fillRect(0, HH * .3, HW, HH * .26);
       const big = Math.round(Math.min(HW * .07, HH * .1));
       ctx.font = `${big}px "MaShanZheng","KaiTi","STKaiti","Kaiti SC",serif`; ctx.fillStyle = '#f1d58f'; ctx.strokeStyle = '#2a160f'; ctx.lineWidth = 4;
-      ctx.strokeText('中平元年 · 广宗', HW / 2, HH * .43); ctx.fillText('中平元年 · 广宗', HW / 2, HH * .43);
+      ctx.strokeText('中平元年 · 广宗城外', HW / 2, HH * .43); ctx.fillText('中平元年 · 广宗城外', HW / 2, HH * .43);
       ctx.font = `${Math.round(big * .42)}px sans-serif`; ctx.fillStyle = '#e8d8b8';
-      ctx.fillText('黄巾主力屯聚于此，曹军前锋直扑敌营', HW / 2, HH * .51);
+      ctx.fillText('张梁、张宝护送张角棺椁北撤，曹军全速追击', HW / 2, HH * .51);
       ctx.restore();
     }
   }
