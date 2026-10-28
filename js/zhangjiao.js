@@ -63,13 +63,15 @@
     for (const z of zs) {
       if (z.type !== 'yellow-golem' || z.dead || z.air) continue;
       z.slamCd = (z.slamCd ?? 2.5) - dt; z.grabCd = (z.grabCd ?? 1.5) - dt;
-      if (z.stun > .12) z.stun = .12;   // 大块头：普通攻击只顿一下
+      if (z.stun > .12 && !(z.pantT > 0)) z.stun = .12;   // 大块头：普通攻击只顿一下
+      z.hurlT = Math.max(0, (z.hurlT || 0) - dt); z.pantT = Math.max(0, (z.pantT || 0) - dt);
+      if (z.pantT > 0) { z.stun = Math.max(z.stun || 0, .05); z.moving = false; continue; }   // 跺地后喘气：破绽
       const d = Math.hypot(hero.x - z.x, (hero.y - z.y) * 2);
       // 抓投：贴身伸手抓，0.6 秒前摇，抓到就把主角扔出去
       if (z.grab) {
         z.grab.t += dt; z.st = 'wind'; z.t = 0; z.moving = false;
         if (z.grab.t >= .6) {
-          z.grab = null; z.st = 'strike'; z.t = 0; sfx('enemySwing', z.x);
+          z.grab = null; z.st = 'strike'; z.t = 0; z.hurlT = .45; sfx('enemySwing', z.x);
           if (Math.abs(hero.x - z.x) < 30 && Math.abs(hero.y - z.y) < 14 && hero.inv <= 0) {
             hero.f = Math.sign(z.x - hero.x) || 1; dmgHero(2, z);
             if (hero.air) hero.ax = (hero.ax || 0) * 1.7;   // 扔得更远
@@ -110,7 +112,7 @@
         if (h.t > .7) h.dead = true;
       } else if (h.k === 'slam') {
         if (h.src && (h.src.dead || h.src.stun > 0) && h.t < 0) { h.dead = true; continue; }   // 被打断就不炸
-        if (h.t >= 0 && !h.done) { h.done = true; shake = Math.max(shake, .35); sfx('land', h.x);
+        if (h.t >= 0 && !h.done) { h.done = true; shake = Math.max(shake, .35); sfx('land', h.x); if (h.src && !h.src.dead) h.src.pantT = 1.2;
           if (Math.abs(hero.x - h.x) < h.r && Math.abs(hero.y - h.y) < h.r * .45) dmgHero(3, { x: h.x, y: h.y }); }
         if (h.t > .45) h.dead = true;
       } else if (h.k === 'shot') {
@@ -212,14 +214,14 @@
   function shot(z) {   // 普攻：直线丢一张符，伤害低
     const sx = z.x + z.f * 10, sy = z.y - 26, ty = hero.y - 14, d = Math.hypot(hero.x - sx, ty - sy) || 1;
     S.hz.push({ k: 'shot', x: sx, y: sy, vx: (hero.x - sx) / d * 150, vy: (ty - sy) / d * 150, t: 0, fr: Math.floor(Math.random() * 3) });
-    z.castT = .3; sfx('sling', z.x);
+    z.throwT = .3; sfx('sling', z.x);
   }
   function startTele(z, behind) {
     z.tele = { t: 0, done: false, behind }; S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 });
   }
   function guaSpots() { return Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4 - Math.PI / 2; return { x: ALTAR_C.x + Math.cos(a) * 120, y: ALTAR_C.y + Math.sin(a) * 30, k }; }); }
   function duel(z, dt) {
-    z.castT = Math.max(0, (z.castT || 0) - dt);
+    z.castT = Math.max(0, (z.castT || 0) - dt); z.throwT = Math.max(0, (z.throwT || 0) - dt);
     if (z.jump) {   // 跳下法台：弧线落地，落地立刻开打
       const j = z.jump; j.t += dt; const u = Math.min(1, j.t / .7);
       z.z = j.h0 * (1 - u) + Math.sin(u * Math.PI) * 26; z.stun = 0;
@@ -371,7 +373,7 @@
     // 棺盖
     if (S.lid) {
       const m = ASSETS.props.coffin_lid, im = IMG.p_coffin_lid;
-      if (m && im && im.naturalWidth) { ctx.save(); ctx.translate(S.lid.x, S.lid.y); ctx.rotate(S.lid.rot * (S.lid.vx ? 1 : 0)); const w = (m[1] || 40) * .6, h = (m[2] || 20) * .6; ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); }
+      if (m && im && im.naturalWidth) { ctx.save(); ctx.translate(S.lid.x, S.lid.y); ctx.rotate(S.lid.rot * (S.lid.vx ? 1 : 0)); const w = m[1] || 40, h = m[2] || 16; ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); }
     }
     // 张角（开场 / 法台上）
     if (S.phase === 'open' || S.phase === 'p1' || S.phase === 'p2') {

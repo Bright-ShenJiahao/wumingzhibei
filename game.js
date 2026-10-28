@@ -619,7 +619,7 @@ const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };   //
 function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
-  P('coffin', 141, 112, { back: true, dw: 62, dh: 40 });   // 底边落在祭台台面上（之前飘在台面后沿）
+  P('coffin', 141, 112, { back: true });   // 正面棺材（用户补图），按 meta 尺寸画   // 底边落在祭台台面上（之前飘在台面后沿）
   P('flag_huang', 255, 127, { back: true, flip: true });                // 「黄天当立」，和右边的苍天旗一左一右
   P('flag_cang', 478, 124, { back: true });                 // 「苍天已死」血字旗，插在法台右侧                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
@@ -2302,7 +2302,12 @@ function zFrame(z) {
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
   if (z.zjDizzy > 0) return 'dizzy';
   if (z.type === 'zhang_jiao' && z.stun > 0) return 'hurt';
+  if (z.type === 'zhang_jiao' && z.throwT > 0) return 'throw';
+  if (z.type === 'zhang_jiao' && z.push && !z.push.go) return 'push';
   if (z.type === 'zhang_jiao' && z.castT > 0) return 'thunder';
+  if (z.type === 'yellow-golem' && z.grab) return 'grab';
+  if (z.type === 'yellow-golem' && z.hurlT > 0) return 'hurl';
+  if (z.type === 'yellow-golem' && z.pantT > 0 && !z.dead) return 'pant';
   if (z.st === 'tele') return 'teleport';
   if (result && (z.st === 'land' || z.st === 'getup')) return 'down';   // 结算卷轴出现后不再画起身帧
   if (z.st === 'land') return !z.dead && z.t > .25 && CH[z.sprite || z.type]?.getup ? 'getup' : 'land';
@@ -2317,7 +2322,7 @@ function zFrame(z) {
   if (z.st === 'addvolley') return z.t < .34 ? 'strike' : 'idle';
   if (z.st === 'strike') return 'strike';
   if (z.st === 'rec') return z.T.ranged ? 'idle' : 'strike';
-  if (z.type === 'zhang_jiao') return z.st === 'rest' ? 'idle' : 'float';   // 张角飘着走，不走路
+  if (z.type === 'zhang_jiao') return z.st === 'rest' ? 'rest' : 'float';   // 张角飘着走，不走路
   return z.moving ? (Math.floor(z.t * 6) % 2 ? 'walk1' : 'walk2') : 'idle';
 }
 function draw() {
@@ -3195,7 +3200,7 @@ function drawZ(z) {
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);
-    const recoil = z.type === 'zhang_jiao' && z.stun > 0 ? -z.f * 4 : 0;   // 张角受击：往后一仰
+    const recoil = 0;
     drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.dead) return;
