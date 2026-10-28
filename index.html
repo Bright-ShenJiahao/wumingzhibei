@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=8898fd4ffb" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=8898fd4ffb)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=ebd2bc4828" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ebd2bc4828)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='05e5cf6046e6',busy=false;
+var BUILD='64a75c0b4768',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2489,6 +2489,7 @@ const Boss = (() => {
 
     const heroGroup = addGroup('hero', '主角');
     btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
+    btn(heroGroup, '回到整军备战', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(false); else if (window.TITLE && TITLE.openPreparation) TITLE.openPreparation(1); });
     btn(heroGroup, '回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = maxHeroHp(); });
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
@@ -2611,7 +2612,7 @@ const Boss = (() => {
       if (!window.TITLE || !TITLE.previewStart) return;
       // 方案 A：从正式网站只读拉取真实存档（默认 PO仔；网址可带 &name=名字&pin=口令），试玩里的改动不写回
       const qs = new URLSearchParams(location.search), who = qs.get('name') || 'PO仔', pin = qs.get('pin') || '';
-      TITLE.previewStart(who);
+      TITLE.previewStart(who, false);   // 用户定：不自动进整军备战，用面板按钮「回到整军备战」
       fetch('https://wumingzhibei.netlify.app/api/profile?name=' + encodeURIComponent(who), { headers: pin ? { 'X-Save-Pin': pin } : {}, cache: 'no-store' })
         .then(r => r.json()).then(d => {
           if (d && d.ok && d.profile && window.ARMORY && ARMORY.mergeCloud(d.profile)) { if (TITLE.refreshPreparation) TITLE.refreshPreparation(); if (typeof say === 'function') say(`已读取「${who}」的正式存档（只读）`, 3); }
@@ -6205,7 +6206,7 @@ const Boss = (() => {
       return saveLoadout(S.name, p);
     },
     openPreparation: target => openChapterSelect(target),
-    previewStart: name => { if (!S.name) { S.name = name; writeName(name); } openChapterSelect(1); },   // 试玩网址：跳过标题直接进整军备战
+    previewStart: (name, open = true) => { if (!S.name) { S.name = name; writeName(name); } if (open) openChapterSelect(1); },   // 试玩网址：设好玩家名（可选直接进整军备战）
     xiaochangProgress: chapter => Number(readCampaign()[playerKey(S.name)]?.xiaochang?.[chapter]) || 0,
     markXiaochang: (chapter,floor) => {
       if(DEBUG || !hasCleared(S.name,chapter)) return false;

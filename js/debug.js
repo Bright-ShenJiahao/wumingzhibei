@@ -80,6 +80,7 @@
 
     const heroGroup = addGroup('hero', '主角');
     btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
+    btn(heroGroup, '回到整军备战', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(false); else if (window.TITLE && TITLE.openPreparation) TITLE.openPreparation(1); });
     btn(heroGroup, '回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = maxHeroHp(); });
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
@@ -202,7 +203,7 @@
       if (!window.TITLE || !TITLE.previewStart) return;
       // 方案 A：从正式网站只读拉取真实存档（默认 PO仔；网址可带 &name=名字&pin=口令），试玩里的改动不写回
       const qs = new URLSearchParams(location.search), who = qs.get('name') || 'PO仔', pin = qs.get('pin') || '';
-      TITLE.previewStart(who);
+      TITLE.previewStart(who, false);   // 用户定：不自动进整军备战，用面板按钮「回到整军备战」
       fetch('https://wumingzhibei.netlify.app/api/profile?name=' + encodeURIComponent(who), { headers: pin ? { 'X-Save-Pin': pin } : {}, cache: 'no-store' })
         .then(r => r.json()).then(d => {
           if (d && d.ok && d.profile && window.ARMORY && ARMORY.mergeCloud(d.profile)) { if (TITLE.refreshPreparation) TITLE.refreshPreparation(); if (typeof say === 'function') say(`已读取「${who}」的正式存档（只读）`, 3); }
