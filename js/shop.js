@@ -122,7 +122,7 @@
       .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
-      .shopOwn{margin-left:10px;color:#e8d3a6;font-weight:400;font-size:12px}.shopSellList{display:flex;flex-direction:column;gap:8px}.shopSellItem{position:relative;padding:8px 10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17)}.shopSellPrice{position:absolute;right:10px;top:8px;z-index:1;color:#ffd96d;font:700 14px sans-serif}.shopSellFoot{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:10px;padding:8px 0 2px;margin-top:6px;background:#221a14;box-shadow:0 -8px 10px #221a14}.shopSellFoot button{min-height:38px;min-width:96px;border:1px solid #a77e47;border-radius:5px;background:#593d27;color:#f5dfb2;font:700 15px sans-serif;cursor:pointer}.shopSellFoot .shopSellGo{background:linear-gradient(#8a5a1e,#5a3a14);color:#fff1c4}.shopSellItem .wd-muted{display:none}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+      .shopOwn{margin-left:10px;color:#e8d3a6;font-weight:400;font-size:12px}.shopSellList{display:flex;flex-direction:column;gap:6px}.shopSellItem{border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17)}.shopSellItem summary{display:flex;align-items:center;gap:10px;padding:6px 10px;cursor:pointer;list-style:none}.shopSellItem summary::-webkit-details-marker{display:none}.shopSellItem summary::after{content:'▸ 详情';margin-left:8px;color:#a8906b;font-size:11px;white-space:nowrap}.shopSellItem[open] summary::after{content:'▾ 收起'}.shopSellIcon{flex:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:5px;background:linear-gradient(145deg,#453324,#261e18);box-sizing:border-box}.shopSellIcon img{max-width:38px;max-height:38px;image-rendering:pixelated}.shopSellName{flex:1;min-width:0;font:700 14px sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shopSellPrice{flex:none;color:#ffd96d;font:700 14px sans-serif}.shopSellBody{padding:0 10px 8px}.shopSellFoot{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:10px;padding:8px 0 2px;margin-top:6px;background:#221a14;box-shadow:0 -8px 10px #221a14}.shopSellFoot button{min-height:38px;min-width:96px;border:1px solid #a77e47;border-radius:5px;background:#593d27;color:#f5dfb2;font:700 15px sans-serif;cursor:pointer}.shopSellFoot .shopSellGo{background:linear-gradient(#8a5a1e,#5a3a14);color:#fff1c4}.shopSellItem .wd-muted{display:none}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
       .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}
       .shopCardIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid #6d5336;border-radius:5px;background:#1c1511}
       .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
@@ -236,7 +236,7 @@
   const SELL_OPEN = ['让老夫瞧瞧是什么好货……', '收破烂也是门学问，拿来看看。', '先说好，旧货可卖不上价。'];
   const SELL_CHEAP = ['这破玩意儿也就值几个铜板。', '行吧，老夫就当做善事了。', '下回拿点像样的来。'];
   const SELL_GOOD = ['好货！老夫收了！', '哟，这成色不错，客官爽快！', '这把老夫转手能赚一笔……咳，公道价！'];
-  function openSell(items, onSold) {
+  function openSell(items, onSold, iconOf) {
     if (overlay) removeShop();
     injectStyle();
     const total = items.reduce((n, i) => n + priceOf(i), 0);
@@ -249,11 +249,15 @@
     </section>`;
     const list = overlay.querySelector('.shopSellList');
     for (const item of items) {
-      const box = document.createElement('div'); box.className = 'shopSellItem';
-      const tag = document.createElement('div'); tag.className = 'shopSellPrice'; tag.textContent = '+' + priceOf(item) + ' 金币';
-      const body = document.createElement('div');
-      if (window.WEAPON_DETAIL) WEAPON_DETAIL.render(body, item, { compact: true }); else body.textContent = item.name || item.type;
-      box.append(tag, body); list.append(box);
+      // 一行：武器图（和武器栏一样）+ 名字 + 价格；详情默认收起，点开再看
+      const box = document.createElement('details'); box.className = 'shopSellItem';
+      const q = (window.AFFIX_DATA && AFFIX_DATA.qualities[item.q]) || {}, label = window.AFFIX_DATA ? AFFIX_DATA.label(item) : item.type;
+      const sum = document.createElement('summary');
+      sum.innerHTML = `<span class="shopSellIcon" style="--quality:${q.color || '#888'}">${iconOf ? iconOf(item.type) : ''}</span><span class="shopSellName" style="color:${q.color || '#eee'}"></span><span class="shopSellPrice">+${priceOf(item)} 金币</span>`;
+      sum.querySelector('.shopSellName').textContent = label + (item.special ? ' ✦' : '');
+      const body = document.createElement('div'); body.className = 'shopSellBody';
+      box.addEventListener('toggle', () => { if (box.open && !body.childElementCount && window.WEAPON_DETAIL) WEAPON_DETAIL.render(body, item, { compact: true }); });
+      box.append(sum, body); list.append(box);
     }
     const wallet = () => { const w = overlay && overlay.querySelector('.shopWallet'); if (w) w.innerHTML = `💰 余额 <b>${fmt(WALLET.coins())}</b>` + (overlay.dataset.done ? '' : `<br><span class="shopOwn" style="margin:0">卖出后 ${fmt(WALLET.coins() + total)}</span>`); };
     const say2 = () => { const n = overlay && overlay.querySelector('.shopLine'); if (n) n.textContent = line; const f = overlay && overlay.querySelector('.shopPortrait img'), src = moodSrc(mood); if (f && src) f.src = src; };

@@ -132,7 +132,7 @@
     discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能卖出');return;}
       // 卖给商店老板：弹出老板界面，列出要卖的武器详情和价格
       const sell=total=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;return false;}selection.clear();message='已卖出 '+selected.length+' 把武器，得 '+total+' 金币';window.TITLE.refreshPreparation();return true;};
-      if(window.SHOP&&SHOP.openSell)SHOP.openSell(selected,sell);
+      if(window.SHOP&&SHOP.openSell)SHOP.openSell(selected,sell,icon);
       else askConfirm({title:'确认卖出',description:'以下武器将被卖出，无法找回。',items:selected,action:()=>{sell(0);}});};
     updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或卖出':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
   }
