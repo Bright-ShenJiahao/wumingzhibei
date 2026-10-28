@@ -395,7 +395,7 @@ function ui() {
 
 // ---------- 碰撞 ----------
 // 竖放拒马（p.vert）：从 p.y（前端）往场地深处延伸 p.d，越往里越偏右 VERT_K
-const VERT_K = .42;
+const VERT_K = 0;
 const propTop = p => p.y - (p.vert ? p.d : 0);
 const propDY = (p, y) => p.vert ? Math.max(0, p.y - p.d - y, y - p.y) : Math.abs(p.y - y);
 const propXAt = (p, y) => p.vert ? p.x + ((p.y - Math.max(propTop(p), Math.min(p.y, y))) - p.d / 2) * VERT_K : p.x;
@@ -627,10 +627,10 @@ function addChapter2Props(battle = 1) {
   // 旗子插在场地最后排（贴着上边缘，像背景的一部分）；其他道具分散在前 120～420 的范围，留出中间的通道
   const T = M.top, B = M.bot, C = (M.top + M.bot) / 2;
   const layouts = {
-    1: [['jumo', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
-    2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo', 120, C - 30], ['flag_y', 240, T + 4]],
+    1: [['jumo_v', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
+    2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo_vs', 120, C - 30], ['flag_y', 240, T + 4]],
     3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
-    4: [['flag_ren', 200, T + 4], ['jumo', 130, C + 20], ['rack', 330, B - 14]],
+    4: [['flag_ren', 200, T + 4], ['jumo_v', 130, C + 20], ['rack', 330, B - 14]],
     5: [['flag_di', 200, T + 4], ['sacks', 300, T + 22], ['stones', 140, B - 14]],
     6: [['flag_tian', 200, T + 4], ['flag_tian', 540, T + 2], ['flag_tian', 880, T + 4], ['flag_cang', 400, T + 6], ['flag_huang', 680, T + 6]],
   };
@@ -639,12 +639,13 @@ function addChapter2Props(battle = 1) {
     const meta = ASSETS.props[g];
     if (!meta) continue;
     const [, pw, ph] = meta;
-    const solid = g === 'jumo' || g === 'sacks' || g === 'crate' || g === 'rack';
+    const solid = g.startsWith('jumo') || g === 'sacks' || g === 'crate' || g === 'rack';
     const oldProp = g === 'sacks' || g === 'crate' || g === 'rack';
-    const vert = g === 'jumo';   // 拒马竖着摆：顺着场地深度方向拦路
-    props.push({ g, x: battle === 6 ? dx : hero.x + dx, y: vert ? y + 20 : y, solid, broken: false,
-      hp: g.startsWith('flag_') ? 2 : 3, hitT: 0, sc: 1, vert, d: vert ? 40 : 0,
-      w: vert ? 16 : pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
+    const vert = g.startsWith('jumo_v');   // 拒马竖着摆：顺着场地深度方向拦路（jumo_v 长 / jumo_vs 短）
+    const vd = g === 'jumo_v' ? 40 : 28;
+    props.push({ g, x: battle === 6 ? dx : hero.x + dx, y: vert ? y + vd / 2 : y, solid, broken: false,
+      hp: g.startsWith('flag_') ? 2 : 3, hitT: 0, sc: 1, vert, d: vert ? vd : 0,
+      w: vert ? 18 : pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
   }
 }
 
@@ -736,13 +737,13 @@ function fitChapter2Wave() {
   for (const z of zs) if (!z.dead && z.x > lockR - 16) z.x = lockR - 16 - (z.static ? (z.catapultIndex || 0) * 6 : rnd(0, 18));
   if(chapter2Run.battle===3&&chapter2Run.wave===1&&!props.some(p=>p.siegeWall)){
     const carts=zs.filter(z=>!z.dead&&z.type==='yellow-catapult');
-    if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo;
+    if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo_v;
       // 三道竖排拒马墙，每道留一个约 24 宽的缺口，缺口位置错开（下 / 上 / 中）
       const span=M.bot-M.top,gap=24,seg=(span-gap)/2;
       [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;
         // gi=0 缺口在上，1 在中，2 在下；剩下的两段各成一个道具
         const segs=gi===0?[[M.top+gap+seg*2,seg],[M.top+gap+seg,seg]]:gi===2?[[M.top+seg*2,seg],[M.top+seg,seg]]:[[M.bot,seg],[M.top+seg,seg]];
-        for(const [y,d] of segs)props.push({g:'jumo',x,y,d,vert:true,w:16,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
+        for(const [y,d] of segs)props.push({g:'jumo_v',x,y,d,vert:true,w:18,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
       zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;});
     }
   }
@@ -1157,12 +1158,12 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 // 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
-const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang']);
+const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang']);
 const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
 function hitProp(p, dir) {
   if (!canHitProp(p)) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
-  const hay = p.g === 'hay', mill = p.g === 'mill', jumo = p.g === 'jumo', broken = p.hp <= 0;
+  const hay = p.g === 'hay', mill = p.g === 'mill', jumo = p.g === 'jumo' || p.g === 'jumo_v' || p.g === 'jumo_vs', broken = p.hp <= 0;
   sfx(broken ? 'land' : 'hit_staff', p.x);
   const sack = p.g === 'sacks';
   const flag = p.g.startsWith('flag_');
@@ -1178,8 +1179,8 @@ function hitProp(p, dir) {
   }
   if (broken) {
     if (jumo) {
-      const meta = ASSETS.props.jumo_broken;
-      p.g = 'jumo_broken'; p.solid = false; p.hp = 0;
+      const meta = ASSETS.props[p.g + '_broken'];   // 'jumo_broken' / 'jumo_v_broken' / 'jumo_vs_broken'
+      p.g = p.g + '_broken'; p.solid = false; p.hp = 0;
       if (meta && !p.vert) { p.w = meta[1]; p.h = meta[2]; }
     } else {
       p.broken = true; p.solid = false;
@@ -2516,8 +2517,7 @@ function draw() {
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
   for (const p of props) if (!p.back) {
-    if (p.vert && !p.broken) { const n = Math.max(1, Math.round(p.d / 9)); for (let i = 0; i < n; i++) list.push({ y: p.y - p.d * i / n, d: () => drawProp(p, i, n) }); }
-    else list.push({ y: p.y, d: () => drawProp(p) });
+    list.push({ y: p.y, d: () => drawProp(p) });
   }
   if (catapults.length || allyShots.length || allyFires.length) list.push({ y: M.bot - 1, d: () => drawCatapults() });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
@@ -3029,18 +3029,14 @@ function drawHalberdBleedDots(z, top) {
   ctx.restore();
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
-function drawProp(p, seg, nseg) {
+function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
   const [, w0, h0] = ASSETS.props[p.g];
   if (p.vert) {
-    // 竖放拒马：从横向图里截中间一小段（几根交叉木桩），沿场地深度一簇一簇往里排，看上去是一道竖着的拒马墙
-    const n = nseg || 1, i = seg || 0, y0 = p.y - p.d * i / n, x0 = propXAt(p, y0);
-    const img = IMG['p_' + p.g], iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    const u0 = .3, u1 = .62, dw = w0 * (u1 - u0), dh = h0 * .92;
+    // 竖放拒马（jumo_v / jumo_vs 及打坏版）：图本身就是上下排列，前端（图底）贴在 p.y
     const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;
     ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    if (i % 2) { ctx.translate(Math.round(x0 + sh), 0); ctx.scale(-1, 1); ctx.translate(-Math.round(x0 + sh), 0); }   // 隔一簇左右翻转，避免一模一样
-    ctx.drawImage(img, iw * u0, 0, iw * (u1 - u0), ih, Math.round(x0 - dw / 2 + sh), Math.round(y0 + 2 - dh), dw, dh);
+    ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w0 / 2 + sh), Math.round(p.y + 3 - h0), w0, h0);
     ctx.restore(); return;
   }
   const w = w0 * (p.sc || 1), h = h0 * (p.sc || 1);
