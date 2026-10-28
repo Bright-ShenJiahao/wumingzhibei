@@ -394,8 +394,13 @@ function ui() {
 }
 
 // ---------- 碰撞 ----------
+// 竖放拒马（p.vert）：从 p.y（前端）往场地深处延伸 p.d，越往里越偏右 VERT_K
+const VERT_K = .42;
+const propTop = p => p.y - (p.vert ? p.d : 0);
+const propDY = (p, y) => p.vert ? Math.max(0, p.y - p.d - y, y - p.y) : Math.abs(p.y - y);
+const propXAt = (p, y) => p.vert ? p.x + ((p.y - Math.max(propTop(p), Math.min(p.y, y))) - p.d / 2) * VERT_K : p.x;
 function blocked(x, y) {
-  for (const p of props) if (p.solid && Math.abs(x - p.x) < p.w / 2 && y > p.y - 6 && y < p.y + 2) return true;
+  for (const p of props) if (p.solid && Math.abs(x - propXAt(p, y)) < p.w / 2 && y > propTop(p) - 6 && y < p.y + 2) return true;
   return false;
 }
 function moveEnt(e, dx, dy) {
@@ -408,15 +413,16 @@ function moveEnt(e, dx, dy) {
   if (e !== hero) {
     const dir = Math.sign(dx) || e.f || 1;
     const p = props.find(q => q.solid && !q.broken &&
-      Math.abs(q.x - (e.x + dir * 16)) < q.w / 2 + 14 && Math.abs(e.y - q.y) < 20);
+      Math.abs(propXAt(q, e.y) - (e.x + dir * 16)) < q.w / 2 + 14 && propDY(q, e.y) < 20);
     if (p) {
       // 选定绕行方向后至少坚持 0.8 秒，避免每帧上下换方向（看起来在抖）；靠边那侧走不通就直接选另一侧
       if (e.avoidDir == null || gameT > (e.avoidUntil || 0) + 2) {
-        e.avoidDir = (e.y <= p.y ? -1 : 1);
-        if (p.y + e.avoidDir * 22 < M.top + 3 || p.y + e.avoidDir * 22 > M.bot - 2) e.avoidDir *= -1;
+        e.avoidDir = (e.y <= (propTop(p) + p.y) / 2 ? -1 : 1);
+        const gy = e.avoidDir < 0 ? propTop(p) - 22 : p.y + 22;
+        if (gy < M.top + 3 || gy > M.bot - 2) e.avoidDir *= -1;
         e.avoidUntil = gameT + .8;
       }
-      const goalY = p.y + e.avoidDir * 22;                              // 让开 22，能看出是绕过去
+      const goalY = e.avoidDir < 0 ? propTop(p) - 22 : p.y + 22;                              // 让开 22，能看出是绕过去
       const vs = Math.min(3, ((e.T && e.T.spd) || 40) / 60 * 1.7);      // 侧向走速（比它正常速度快一点）
       const ny = e.y + Math.sign(goalY - e.y) * Math.min(vs, Math.abs(goalY - e.y));
       if (ny > M.top + 3 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
@@ -426,8 +432,8 @@ function moveEnt(e, dx, dy) {
     // 绕行中：在走过道具之前不许再往道具那边靠（否则会在边缘上下来回抖）
     const pp = e.passProp;
     if (pp) {
-      if (pp.broken || !pp.solid || Math.abs(e.x - pp.x) > pp.w / 2 + 18) e.passProp = null;
-      else if (e.passY < pp.y) e.y = Math.min(e.y, e.passY); else e.y = Math.max(e.y, e.passY);
+      if (pp.broken || !pp.solid || Math.abs(e.x - propXAt(pp, e.passY)) > pp.w / 2 + 18) e.passProp = null;
+      else if (e.passY < propTop(pp)) e.y = Math.min(e.y, e.passY); else e.y = Math.max(e.y, e.passY);
     }
   } else e.avoidDir = null;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
@@ -635,9 +641,10 @@ function addChapter2Props(battle = 1) {
     const [, pw, ph] = meta;
     const solid = g === 'jumo' || g === 'sacks' || g === 'crate' || g === 'rack';
     const oldProp = g === 'sacks' || g === 'crate' || g === 'rack';
-    props.push({ g, x: battle === 6 ? dx : hero.x + dx, y, solid, broken: false,
-      hp: g.startsWith('flag_') ? 2 : 3, hitT: 0, sc: 1,
-      w: pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
+    const vert = g === 'jumo';   // 拒马竖着摆：顺着场地深度方向拦路
+    props.push({ g, x: battle === 6 ? dx : hero.x + dx, y: vert ? y + 20 : y, solid, broken: false,
+      hp: g.startsWith('flag_') ? 2 : 3, hitT: 0, sc: 1, vert, d: vert ? 40 : 0,
+      w: vert ? 16 : pw * (oldProp ? .75 : 1), h: ph, chapter2: true, back: g.startsWith('flag') });
   }
 }
 
@@ -730,7 +737,12 @@ function fitChapter2Wave() {
   if(chapter2Run.battle===3&&chapter2Run.wave===1&&!props.some(p=>p.siegeWall)){
     const carts=zs.filter(z=>!z.dead&&z.type==='yellow-catapult');
     if(carts.length){const right=Math.min(...carts.map(z=>z.x))-40,meta=ASSETS.props.jumo;
-      for(let col=0;col<3;col++)for(let row=0;row<3;row++)props.push({g:'jumo',x:right-col*45,y:M.top+(M.bot-M.top)*row/2,w:meta[1],h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});
+      // 三道竖排拒马墙，每道留一个约 24 宽的缺口，缺口位置错开（下 / 上 / 中）
+      const span=M.bot-M.top,gap=24,seg=(span-gap)/2;
+      [[0,2],[1,0],[2,1]].forEach(([col,gi])=>{const x=right-col*45;
+        // gi=0 缺口在上，1 在中，2 在下；剩下的两段各成一个道具
+        const segs=gi===0?[[M.top+gap+seg*2,seg],[M.top+gap+seg,seg]]:gi===2?[[M.top+seg*2,seg],[M.top+seg,seg]]:[[M.bot,seg],[M.top+seg,seg]];
+        for(const [y,d] of segs)props.push({g:'jumo',x,y,d,vert:true,w:16,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
       zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;});
     }
   }
@@ -1168,7 +1180,7 @@ function hitProp(p, dir) {
     if (jumo) {
       const meta = ASSETS.props.jumo_broken;
       p.g = 'jumo_broken'; p.solid = false; p.hp = 0;
-      if (meta) { p.w = meta[1]; p.h = meta[2]; }
+      if (meta && !p.vert) { p.w = meta[1]; p.h = meta[2]; }
     } else {
       p.broken = true; p.solid = false;
       if (flag) {
@@ -1550,9 +1562,9 @@ function strike() {
   // 草垛、推车、石碾也能打：判定和打敌人一样（左右用 p.w/2，上下用 dy）；打中道具也算"打中"，可以接连招
   for (const p of props) {
     if (!canHitProp(p)) continue;
-    const dx = (p.x - h.x) * h.f;
+    const dx = (propXAt(p, h.y) - h.x) * h.f;
     const inRange = C.both ? Math.abs(dx) < rch + p.w / 2 : dx > -4 - p.w / 2 && dx < rch + p.w / 2;
-    if (inRange && Math.abs(p.y - h.y) < W.dy) {
+    if (inRange && propDY(p, h.y) < W.dy) {
       landed = true; h.lastHit = gameT; h.lastHitC = c;
       hitProp(p, Math.sign(p.x - h.x) || h.f);
     }
@@ -1680,6 +1692,24 @@ function ch2Telegraph(z){
   ctx.restore();
 }
 
+// 敌人互相让位：两人几乎站在同一点时，沿上下方向（为主）慢慢错开，站成并排，不叠在一起
+function separateEnemies(dt) {
+  const L = zs.filter(z => !z.dead && !z.air && !z.static && z.st !== 'sleep' && z.st !== 'down' && !z.T.boss);
+  const RX = 18, RY = 12, push = 60 * dt;
+  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+    const a = L[i], b = L[j], dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.abs(dx) >= RX || Math.abs(dy) >= RY) continue;
+    // 主要上下分开；完全重合时按序号决定谁上谁下，避免两人一起抖
+    let sy = Math.sign(dy) || (i % 2 ? 1 : -1);
+    if (a.y - sy * push < M.top + 1 || b.y + sy * push > M.bot - 1) sy = -sy;
+    const k = (1 - Math.abs(dy) / RY) * push, kx = (1 - Math.abs(dx) / RX) * push * .3 * (Math.sign(dx) || 1);
+    for (const [e, m] of [[a, -1], [b, 1]]) {
+      const ny = Math.max(M.top, Math.min(M.bot, e.y + m * sy * k)), nx = e.x + m * kx;
+      if (!blocked(e.x, ny)) e.y = ny;
+      if (!blocked(nx, e.y)) e.x = nx;
+    }
+  }
+}
 function zUpdate(z, dt) {
   if (window.GEAR && !z.dead) { dt = GEAR.enemyTime(z, dt); if (!dt) return; }
   if (z.T.boss) return Boss.update(z, dt);
@@ -1940,7 +1970,7 @@ function updateShots(dt) {
     // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
       if (!canHitProp(p)) continue;
-      if (Math.abs(p.x - s.x) < p.w / 2 + 3 && Math.abs(p.y - s.y) < 8) {
+      if (Math.abs(propXAt(p, s.y) - s.x) < p.w / 2 + 3 && propDY(p, s.y) < 8) {
         hero.lastHit = gameT; hero.lastHitC = s.c;
         hitProp(p, Math.sign(s.vx)); s.life = 0; break;
       }
@@ -2163,7 +2193,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(dt); zs.forEach(z => zUpdate(z, dt)); }
+    if (!over) { waves(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -2485,7 +2515,10 @@ function draw() {
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
-  for (const p of props) if (!p.back) list.push({ y: p.y, d: () => drawProp(p) });
+  for (const p of props) if (!p.back) {
+    if (p.vert && !p.broken) { const n = Math.max(1, Math.round(p.d / 9)); for (let i = 0; i < n; i++) list.push({ y: p.y - p.d * i / n, d: () => drawProp(p, i, n) }); }
+    else list.push({ y: p.y, d: () => drawProp(p) });
+  }
   if (catapults.length || allyShots.length || allyFires.length) list.push({ y: M.bot - 1, d: () => drawCatapults() });
   for (const d of drops) list.push({ y: d.y, d: () => drawDrop(d) });
   for (const v of villagers) list.push({ y: v.y, d: () => drawVillager(v) });
@@ -2996,9 +3029,20 @@ function drawHalberdBleedDots(z, top) {
   ctx.restore();
 }
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
-function drawProp(p) {
+function drawProp(p, seg, nseg) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
   const [, w0, h0] = ASSETS.props[p.g];
+  if (p.vert) {
+    // 竖放拒马：从横向图里截中间一小段（几根交叉木桩），沿场地深度一簇一簇往里排，看上去是一道竖着的拒马墙
+    const n = nseg || 1, i = seg || 0, y0 = p.y - p.d * i / n, x0 = propXAt(p, y0);
+    const img = IMG['p_' + p.g], iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const u0 = .3, u1 = .62, dw = w0 * (u1 - u0), dh = h0 * .92;
+    const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;
+    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    if (i % 2) { ctx.translate(Math.round(x0 + sh), 0); ctx.scale(-1, 1); ctx.translate(-Math.round(x0 + sh), 0); }   // 隔一簇左右翻转，避免一模一样
+    ctx.drawImage(img, iw * u0, 0, iw * (u1 - u0), ih, Math.round(x0 - dw / 2 + sh), Math.round(y0 + 2 - dh), dw, dh);
+    ctx.restore(); return;
+  }
   const w = w0 * (p.sc || 1), h = h0 * (p.sc || 1);
   const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
