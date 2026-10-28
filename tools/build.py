@@ -178,6 +178,7 @@ assets['chapter2'] = {
     'far': uri(P('art', 'bg', 'chapter2_far.webp')),
     'battlefield': uri(P('art', 'bg', 'chapter2_battlefield.webp')),
     'altar': uri(P('art', 'bg', 'chapter2_altar.webp')),
+    'altarFar': uri(P('art', 'bg', 'chapter2_altar_far.webp')),
 }
 assets['xiaochang'] = uri(P('art', 'bg', 'xiaochang.webp'))
 assets['chapter2Intro'] = uri(P('art', 'bg', 'chapter2_intro.webp'))

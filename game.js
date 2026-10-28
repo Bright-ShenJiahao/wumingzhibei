@@ -28,51 +28,12 @@ window.ensureAssets = ensureAssets;
 load('far', BG.far); load('mid', BG.mid); load('gnd', BG.gnd);
 Object.entries(ASSETS.props).forEach(([k, v]) => load('p_' + k, v[0]));
 Object.entries(ASSETS.food || {}).forEach(([k, v]) => load('food_' + k, v[0]));
-function keyChapter2Map(image) {
-  image.onload = () => {
-    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
-    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
-    const count = c.width * c.height, reached = new Uint8Array(count), queue = new Int32Array(count);
-    let head = 0, tail = 0;
-    const greenPixel = i => {
-      const j = i * 4, r = p[j], gg = p[j + 1], b = p[j + 2];
-      return gg > 40 && gg > r * 1.08 + 8 && gg > b * 1.08 + 8;
-    };
-    const add = i => {
-      if (i < 0 || i >= count || reached[i] || !greenPixel(i)) return;
-      reached[i] = 1; queue[tail++] = i;
-    };
-    for (let x = 0; x < c.width; x++) { add(x); add((c.height - 1) * c.width + x); }
-    for (let y = 1; y < c.height - 1; y++) { add(y * c.width); add(y * c.width + c.width - 1); }
-    while (head < tail) {
-      const i = queue[head++], x = i % c.width, y = (i / c.width) | 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        if (!dx && !dy) continue;
-        if ((dx < 0 && x === 0) || (dx > 0 && x === c.width - 1) ||
-            (dy < 0 && y === 0) || (dy > 0 && y === c.height - 1)) continue;
-        add(i + dy * c.width + dx);
-      }
-    }
-    for (let i = 0; i < count; i++) {
-      const j = i * 4, r = p[j], gg = p[j + 1], b = p[j + 2];
-      const strongGreen = gg > 145 && gg > r * 1.3 && gg > b * 1.3;
-      if (!strongGreen && !reached[i]) continue;
-      const alpha = strongGreen ? 0 : Math.max(0, Math.min(1, 1 - (gg - Math.max(r, b)) / 255));
-      if (alpha < .06) { p[j] = 0; p[j + 1] = 0; p[j + 2] = 0; p[j + 3] = 0; continue; }
-      p[j] = Math.min(255, Math.round(r / alpha));
-      p[j + 1] = Math.max(0, Math.min(255, Math.round((gg - (1 - alpha) * 255) / alpha)));
-      p[j + 2] = Math.min(255, Math.round(b / alpha));
-      p[j + 3] = Math.round(p[j + 3] * alpha);
-    }
-    g.putImageData(d, 0, 0); image.keyedCanvas = c;
-  };
-}
 
 if (ASSETS.chapter2) {
   if (ASSETS.chapter2.far) lazyLoad('chapter2', 'chapter2_far', ASSETS.chapter2.far);
   if (ASSETS.chapter2.battlefield) lazyLoad('chapter2', 'chapter2_battlefield', ASSETS.chapter2.battlefield);
-  if (ASSETS.chapter2.altar) keyChapter2Map(lazyLoad('chapter2', 'chapter2_altar', ASSETS.chapter2.altar));
+  if (ASSETS.chapter2.altar) lazyLoad('chapter2', 'chapter2_altar', ASSETS.chapter2.altar);   // 祭台前景（已抠好透明天空）
+  if (ASSETS.chapter2.altarFar) lazyLoad('chapter2', 'chapter2_altar_far', ASSETS.chapter2.altarFar);   // 祭台远景：雷云
 }
 if (ASSETS.xiaochang) lazyLoad('xiaochang', 'xiaochang', ASSETS.xiaochang);
 if (ASSETS.chapter2Intro) lazyLoad('chapter2', 'chapter2_intro', ASSETS.chapter2Intro);
@@ -632,8 +593,8 @@ function addChapter2Props(battle = 1) {
     3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
     4: [['flag_ren', 200, T + 4], ['jumo_v', 130, C + 20], ['rack', 330, B - 14]],
     5: [['flag_di', 200, T + 4], ['sacks', 300, T + 22], ['stones', 140, B - 14]],
-    6: [['flag_tian', 200, T + 4], ['flag_tian', 540, T + 2], ['flag_tian', 880, T + 4], ['flag_cang', 400, T + 6], ['flag_huang', 680, T + 6]],
   };
+  if (battle === 6) { addAltarProps(); return; }
   const place = layouts[battle] || [];
   for (const [g, dx, y] of place) {
     const meta = ASSETS.props[g];
@@ -649,6 +610,20 @@ function addChapter2Props(battle = 1) {
   }
 }
 
+// 祭台战（第六战）：背景图 2000×849 画成 300 高 → 宽 ALTAR_W；坐标都按这张图量
+const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };   // 圆形石坪中心
+// 之后张角开场要用的：'coffin_open' 炸开的棺材、'coffin_lid' 飞出去的棺盖
+function addAltarProps() {
+  const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
+  P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
+  P('coffin', 141, 99, { back: true, dw: 58, dh: 43 });                                  // 棺材摆在左侧祭台台面上
+  // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4 - Math.PI / 2;
+    P('fudeng', Math.round(ALTAR_C.x + Math.cos(a) * 138), Math.round(ALTAR_C.y + Math.sin(a) * 36), { hp: 2, solid: true, w: 10, lamp: true });
+  }
+}
+const altarLampsLeft = () => props.filter(p => p.lamp && p.g === 'fudeng').length;
 // 第二章每战波次：每项是一个 spawn 函数，保持现有 spawn / 单位名。
 const CHAPTER2_WAVES = {
   1: [
@@ -710,15 +685,16 @@ function startChapter2Debug() { loadChapter2(false); }
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number, walkIn = false) {
   if (window.GEAR) GEAR.collectDrops();
-  M.W = number === 6 ? 1080 : 8000;   // 战一到战五在同一片营地里一路往右走
+  M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
+  M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
   hero.inv = Math.max(hero.inv || 0, .8);
-  if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
-  // 每战锁定一个屏幕：以开战时镜头的位置为准，左右都不能离开这一屏
-  const camX = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * (walkIn ? .4 : .28)));
+  if (number === 6) { hero.x = Math.max(40, (M.W - viewW()) / 2 + 40); hero.y = (M.top + M.bot) / 2 + 20; }
+  // 每战锁定一个屏幕：以开战时镜头的位置为准，左右都不能离开这一屏（祭台战镜头居中）
+  const camX = number === 6 ? Math.max(0, (M.W - viewW()) / 2) : Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * (walkIn ? .4 : .28)));
   arenaL = camX; lockR = Math.min(M.W, camX + viewW()); clearAt = 0;
   addChapter2Props(number);
   if (number === 6) {
@@ -729,7 +705,7 @@ function startChapter2Battle(number, walkIn = false) {
     if (waves[0]) { waves[0](); fitChapter2Wave(); }
     say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5);
   }
-  if (!walkIn) cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));   // 走进下一战时镜头不跳
+  if (!walkIn) cam.x = number === 6 ? camX : Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));   // 走进下一战时镜头不跳
 }
 // 出怪位置收进当前这一屏（屏幕窄时，后排的弓手、方士、投石车会被挤到屏外）
 function fitChapter2Wave() {
@@ -1158,7 +1134,7 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 // 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
-const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang']);
+const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng']);
 const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
 function hitProp(p, dir) {
   if (!canHitProp(p)) return;
@@ -1178,7 +1154,11 @@ function hitProp(p, dir) {
       c: cols[Math.floor(Math.random() * cols.length)] });
   }
   if (broken) {
-    if (jumo) {
+    if (p.g === 'fudeng') {   // 符灯打灭：换成倒地熄灭的灯，不再挡路
+      const meta = ASSETS.props.fudeng_off;
+      p.g = 'fudeng_off'; p.solid = false; p.hp = 0;
+      if (meta) { p.w = meta[1]; p.h = meta[2]; }
+    } else if (jumo) {
       const meta = ASSETS.props[p.g + '_broken'];   // 'jumo_broken' / 'jumo_v_broken' / 'jumo_vs_broken'
       p.g = p.g + '_broken'; p.solid = false; p.hp = 0;
       if (meta && !p.vert) { p.w = meta[1]; p.h = meta[2]; }
@@ -2208,6 +2188,7 @@ function update(dt) {
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
+  if (chapter2Run && chapter2Run.battle === 6 && !(window.XIAOCHANG && XIAOCHANG.active())) tx = (M.W - vw) / 2;   // 祭台战：镜头固定在正中
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
   if (msgT <= 0 && tutorialQueue.length) { const tip = tutorialQueue.shift(); say(tip.text, tip.time); }
@@ -2332,13 +2313,11 @@ function draw() {
   } else if (chapter2Run) {
     const bossMap = chapter2Run.battle === 6;
     if (bossMap) {
-      const im = IMG.chapter2_altar, keyed = im && im.keyedCanvas;
-      if (keyed) {
-        ctx.imageSmoothingEnabled = true;
-        const tileW = M.W, tileH = 300;
-        for (let x = Math.floor(cam.x / tileW) * tileW; x < cam.x + vw + tileW; x += tileW) ctx.drawImage(keyed, x, 0, tileW, tileH);
-        ctx.imageSmoothingEnabled = false;
-      }
+      const sky = IMG.chapter2_altar_far, near = IMG.chapter2_altar;
+      ctx.imageSmoothingEnabled = true;
+      if (sky && sky.width) { const s = ALTAR_W / sky.width; tileLayer(sky, s, 1, 110 - sky.height * s * .88); }   // 雷云的地平线对齐前景的天际线
+      if (near && near.width) tileLayer(near, 300 / near.height, 1, 0);
+      ctx.imageSmoothingEnabled = false;
     } else {
       ctx.imageSmoothingEnabled = true;
       const sky = IMG.chapter2_far, field = IMG.chapter2_battlefield;
@@ -2346,8 +2325,6 @@ function draw() {
       if (field) tileLayer(field, M.viewH / field.height, 1, 0);
       ctx.imageSmoothingEnabled = false;
     }
-    // 只有祭台需要压暗走动区；新战场图的地面已经调过亮度，再压会出现一条横向分界线
-    if (bossMap) { ctx.fillStyle = 'rgba(52,27,16,.16)'; ctx.fillRect(cam.x, M.top, vw, M.bot - M.top); }
   } else {
     tileLayer(IMG.far, .577, .3, 0);
     tileLayer(IMG.gnd, .62, 1, my + 560 * ms);
@@ -3039,8 +3016,8 @@ function drawProp(p) {
     ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w0 / 2 + sh), Math.round(p.y + 3 - h0), w0, h0);
     ctx.restore(); return;
   }
-  const w = w0 * (p.sc || 1), h = h0 * (p.sc || 1);
-  const a = p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1;
+  const w = (p.dw || w0) * (p.sc || 1), h = (p.dh || h0) * (p.sc || 1);
+  const a = p.alpha || (p.solid && hero.y < p.y && hero.y > p.y - h + 6 && Math.abs(hero.x - p.x) < w / 2 + 4 ? .5 : 1);
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (p.chapter2 && ['hay', 'cart', 'mill'].includes(p.g)) ctx.filter = 'brightness(.66) saturate(.6)';   // 第二章暮色战场：道具压暗，不抢人物
