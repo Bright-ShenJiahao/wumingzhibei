@@ -138,6 +138,11 @@
     const L = LINES[z.type];
     if (z.dead) { if (L && !z.saidDie) { z.saidDie = true; say(L.die[0], 3.5); vo(L.die[1]); hz.length = 0; sand.t = 0; } z.cb = null; z.cbFrame = null; return false; }
     if (L && !z.saidIntro) { z.saidIntro = true; say(L.intro[0], 3); vo(L.intro[1]); }
+    if (!z.planted && !z.fled && (z.type === 'zhang_liang' || z.type === 'zhang_bao')) {   // 出场亲手插下自己的将旗：张梁「人」、张宝「地」
+      z.planted = true; const g = z.type === 'zhang_liang' ? 'flag_ren' : 'flag_di', m = ASSETS.props[g];
+      if (m) props.push({ g, x: z.x + 22, y: z.y - 6, solid: false, broken: false, hp: 2, hitT: 0, sc: 1, w: m[1] * .75, h: m[2], chapter2: true, back: true });
+      shake = Math.max(shake, .2); sfx('land', z.x);
+    }
     tickHz(dt);
     if (z.type === 'zhang_liang') return liang(z, dt);
     if (z.type === 'zhang_bao') return bao(z, dt);

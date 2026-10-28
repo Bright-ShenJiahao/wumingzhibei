@@ -594,8 +594,8 @@ function addChapter2Props(battle = 1) {
     1: [['jumo_v', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
     2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo_vs', 120, C - 30], ['flag_y', 240, T + 4]],
     3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
-    4: [['flag_ren', 200, T + 4], ['jumo_v', 130, C + 20], ['rack', 330, B - 14]],
-    5: [['flag_di', 200, T + 4], ['sacks', 300, T + 22], ['stones', 140, B - 14]],
+    4: [['jumo_v', 130, C + 20], ['rack', 330, B - 14]],   // 「人」字旗改由张梁出场时亲手插下（CH2B）
+    5: [['sacks', 300, T + 22], ['stones', 140, B - 14]],   // 「地」字旗改由张宝出场时亲手插下（CH2B）
   };
   if (battle === 6) { addAltarProps(); return; }
   const place = layouts[battle] || [];
@@ -764,7 +764,7 @@ function chapter2Waves() {
     }
     if (battle === 3) {
       chapter2Run.mode = 'choice';
-      say('张梁、张宝分兵突围，棺椁去向不明。选择追击路线。', 999); return;
+      msgT = 0; return;
     }
     if (battle === 4) {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('blade')) spawnWeaponDrop('blade', hero.x + 24, hero.y);
@@ -1190,7 +1190,7 @@ function hitProp(p, dir) {
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }
-      } else if (p.chapter2) { if (Math.random() < .35) spawnDrop(p.x, p.y); }   // 第二章道具 35% 掉回血食物
+      } else if (p.chapter2) { if (Math.random() < .6) spawnDrop(p.x, p.y); }   // 第二章道具 60% 掉回血食物（用户嫌 35% 太少）
       else if (Math.random() < .65) spawnDrop(p.x, p.y);                       // 第一章草垛/推车/石碾 65%
     }
   }
@@ -2848,8 +2848,16 @@ function drawChapter2Choice(HW, HH) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, pw, ph, 12); else ctx.rect(x, y, pw, ph); ctx.fill(); ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f3d37b'; ctx.font = 'bold 22px sans-serif';
-  ctx.fillText('张梁、张宝分兵突围', HW / 2, y + 35);
-  ctx.fillStyle = '#ead9bb'; ctx.font = '15px sans-serif'; ctx.fillText('选择一路追击（按 1 / 2 也可选择）', HW / 2, y + 67);
+  ctx.fillText('张梁、张宝分兵突围', HW / 2, y + 30);
+  // 曹操头像 + 台词（和开场对白同款）
+  const av = 60, ax = x + 24, ay = y + 52, im = IMG.dialog_caocao;
+  ctx.fillStyle = '#b78b4d'; ctx.fillRect(ax - 2, ay - 2, av + 4, av + 4); ctx.fillStyle = '#241912'; ctx.fillRect(ax, ay, av, av);
+  if (im && im.complete && im.naturalWidth) { const sc = Math.max(av / im.width, av / im.height); ctx.save(); ctx.beginPath(); ctx.rect(ax, ay, av, av); ctx.clip(); ctx.drawImage(im, ax + (av - im.width * sc) / 2, ay + (av - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.restore(); }
+  ctx.textAlign = 'left'; const tl = ax + av + 14, tw = x + pw - 24 - tl;
+  ctx.fillStyle = '#f1cf75'; ctx.font = 'bold 15px sans-serif'; ctx.fillText('曹操', tl, ay + 10);
+  ctx.fillStyle = '#f7f0df'; ctx.font = 'bold 15px sans-serif';
+  { let line = '', ly = ay + 34; for (const ch of '棺椁去向不明！我们兵分两路——你追哪一个？（按 1 / 2 也可选择）') { if (line && ctx.measureText(line + ch).width > tw) { ctx.fillText(line, tl, ly); line = ch; ly += 20; } else line += ch; } if (line) ctx.fillText(line, tl, ly); }
+  ctx.textAlign = 'center';
   const gap = 16, bw = (pw - 48 - gap) / 2, bh = 62, by = y + ph - bh - 24;
   const options = [
     { x: x + 24, label: '1  正面突击：追击张梁', act: 'zhang-liang' },
