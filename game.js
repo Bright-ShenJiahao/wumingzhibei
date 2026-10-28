@@ -605,7 +605,7 @@ function waves(dt = 0) {
 
 function addChapter2Props(battle = 1) {
   // 每战重新摆放；jumo 挡路可打碎，其余新道具与旗帜只作装饰。
-  props = props.filter(p => !p.chapter2);
+  if (battle === 1 || battle === 6) props = props.filter(p => !p.chapter2);
   // 旗子插在场地最后排（贴着上边缘，像背景的一部分）；其他道具分散在前 120～420 的范围，留出中间的通道
   const T = M.top, B = M.bot, C = (M.top + M.bot) / 2;
   const layouts = {
@@ -688,13 +688,14 @@ function loadChapter2(showOpening) {
 function startChapter2Debug() { loadChapter2(false); }
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
 function startChapter2() { loadChapter2(true); }
-function startChapter2Battle(number) {
+function startChapter2Battle(number, walkIn = false) {
   if (window.GEAR) GEAR.collectDrops();
-  M.W = number === 6 ? 1080 : 3600;
+  M.W = number === 6 ? 1080 : 8000;   // 战一到战五在同一片营地里一路往右走
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0;
-  hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; hero.inv = .8;
+  if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
+  hero.inv = Math.max(hero.inv || 0, .8);
   if (number === 6) { hero.x = 60; hero.y = (M.top + M.bot) / 2; }
   setRetreatLimit(hero.x);
   // 每战锁一块场地：往右最多约 1.2 屏（战三的投石车在最右边），不能一路跑出战场
@@ -708,10 +709,12 @@ function startChapter2Battle(number) {
     if (waves[0]) waves[0]();
     say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5);
   }
-  cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));
+  if (!walkIn) cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));   // 走进下一战时镜头不跳
 }
 function chapter2Waves() {
   if (!chapter2Run) return;
+  // 清完一战：和第一章一样往右走，走过关口才开始下一战
+  if (chapter2Run.mode === 'walk') { if (hero.x >= chapter2Run.walkGate) startChapter2Battle(chapter2Run.nextBattle, true); return; }
   if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
     // 战四/战五掉的大刀、汉弓：转场去祭台会换地图，没捡的自动收下，避免掉在够不着的地方
     for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
@@ -740,9 +743,9 @@ function chapter2Waves() {
       if (!window.TITLE || !TITLE.ownsWeapon || !TITLE.ownsWeapon('bow')) spawnWeaponDrop('bow', hero.x + 24, hero.y);
       chapter2Run.nextBattle = 6;
     } else {
-      chapter2Run.nextBattle = battle + 1;
+      walkToChapter2Battle(battle + 1); return;
     }
-    chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;
+    chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;   // 战四/战五之后去祭台，换地图
   }
   if (chapter2Run.mode !== 'fight') return;
   if (!zs.some(z => !z.dead)) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
@@ -752,7 +755,13 @@ function chooseChapter2Route(route) {
   chapter2Run.route = route;
   if (window.CHAPTER2 && CHAPTER2.chooseRoute) CHAPTER2.chooseRoute(route);
   say(route === 'zhang-liang' ? '曹操：正面突击，追击张梁！' : '曹操：迂回包抄，截住张宝！', 2.4);
-  startChapter2Battle(route === 'zhang-liang' ? 4 : 5);
+  walkToChapter2Battle(route === 'zhang-liang' ? 4 : 5);
+}
+function walkToChapter2Battle(next) {
+  chapter2Run.nextBattle = next; chapter2Run.mode = 'walk';
+  chapter2Run.walkGate = hero.x + 280;
+  lockR = Infinity;
+  say('往右走 →', 3);
 }
 
 // ---------- 主角 ----------
@@ -1128,8 +1137,8 @@ function hitProp(p, dir) {
       p.broken = true; p.solid = false;
       if (flag) {
         // 打倒旗子：每一战第一次打倒旗子给一次锦囊
-        if (chapter2Run && window.ROGUE && !chapter2Run['flagCard' + chapter2Run.battle]) {
-          chapter2Run['flagCard' + chapter2Run.battle] = true;
+        if (chapter2Run && chapter2Run.battle === 1 && window.ROGUE && !chapter2Run.flagCard) {   // 只有战一的旗子给锦囊
+          chapter2Run.flagCard = true;
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }
