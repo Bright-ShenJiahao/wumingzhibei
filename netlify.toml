@@ -36,3 +36,9 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+# 版本号文件：页面靠它判断有没有新版本，不能被缓存
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "no-store"

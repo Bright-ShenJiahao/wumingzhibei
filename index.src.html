@@ -66,6 +66,21 @@ window.addEventListener('unhandledrejection',function(e){error(e.reason&&e.reaso
 window.finishBoot=function(){if(failed)return;ready=true;clearTimeout(timer);var el=document.getElementById('bootSplash');if(el)el.remove();};
 if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
 })();
+// 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
+(function(){
+var BUILD='__BUILD__',busy=false;
+if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
+function check(){
+  if(busy)return;
+  if(window.TITLE&&TITLE.blocks&&!TITLE.blocks())return;   // 正在战斗：不刷新
+  busy=true;
+  fetch('/version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.v&&d.v!==BUILD)return fetch('/index.html',{cache:'reload'}).then(function(){location.reload();});
+  }).catch(function(){}).then(function(){busy=false;});
+}
+window.addEventListener('load',function(){setTimeout(check,1500);});
+document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});
+})();
 </script>
 <canvas id="c"></canvas>
 <div id="rot">📱↻<br>请把手机横过来玩

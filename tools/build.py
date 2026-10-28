@@ -198,6 +198,10 @@ h = open(P('index.src.html'), encoding='utf-8').read()
 h = re.sub(_ART_RE, _art_literal, h)
 h = h.replace('__FONT_FACE__', FONT_FACE)
 h = h.replace('__ASSETS__', json.dumps(assets)).replace('__BG__', json.dumps(bg)).replace('__GAME__', game)
+# 版本号：首页内容指纹，写进首页和 version.json，页面据此判断线上有没有新版本（自动更新）
+_build_id = __import__('hashlib').sha256(h.encode('utf-8')).hexdigest()[:12]
+h = h.replace('__BUILD__', _build_id)
+open(P('version.json'), 'w', encoding='utf-8').write(json.dumps({'v': _build_id}))
 open(P('index.html'), 'w', encoding='utf-8').write(h)
 _stale = 0
 for root, _, files in os.walk(PACK):
