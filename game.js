@@ -2301,6 +2301,8 @@ function zFrame(z) {
   }
   if (z.air) return z.vz > 0 ? 'fly1' : 'fly2';
   if (z.zjDizzy > 0) return 'dizzy';
+  if (z.type === 'zhang_jiao' && z.stun > 0) return 'hurt';
+  if (z.type === 'zhang_jiao' && z.castT > 0) return 'thunder';
   if (z.st === 'tele') return 'teleport';
   if (result && (z.st === 'land' || z.st === 'getup')) return 'down';   // 结算卷轴出现后不再画起身帧
   if (z.st === 'land') return !z.dead && z.t > .25 && CH[z.sprite || z.type]?.getup ? 'getup' : 'land';
@@ -3193,7 +3195,8 @@ function drawZ(z) {
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
     shadow(z.x, z.y, 16);
-    drawChar(z.sprite, zFrame(z), z.x, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
+    const recoil = z.type === 'zhang_jiao' && z.stun > 0 ? -z.f * 4 : 0;   // 张角受击：往后一仰
+    drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
     if (z.dead) return;
     drawHalberdBleedDots(z, z.y - 58);

@@ -113,11 +113,8 @@
     spawn('zhang_jiao', x, y);
     const z = zs[zs.length - 1]; S.boss = z;
     z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8; z.zjFu = 4;
-    z.st = 'move'; z.t = 0;
-    sfx('land', x);
-    if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x, y: y - 50, t: 0, txt: '破阵！', big: true }); }
+    z.st = 'move'; z.t = 0; z.jump = { t: 0, h0: y - ALTAR_STAGE.y };   // 从法台飞身跳下
     say('张角：“尔等蝼蚁，也敢逆天！”', 3);
-    shake = .4;
   }
   function update(dt) {
     if (!S || !chapter2Run || chapter2Run.battle !== 6) return;
@@ -183,6 +180,17 @@
 
   // ---- 决斗中的张角：传送、单雷、半血狂暴 ----
   function duel(z, dt) {
+    if (z.jump) {   // 跳下法台：0.7 秒弧线落地，落地立刻开打
+      const j = z.jump; j.t += dt; const u = Math.min(1, j.t / .7);
+      z.z = j.h0 * (1 - u) + Math.sin(u * Math.PI) * 26; z.stun = 0;
+      if (u >= 1) { z.jump = null; z.z = 0; sfx('land', z.x); shake = .4; S.hz.push({ k: 'puff', x: z.x, y: z.y - 6, t: 0 });
+        if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '破阵！', big: true }); }
+        else thunderAt(hero.x, hero.y, .9); }
+      return true;
+    }
+    if (z.teleOn && z.st !== 'tele') { z.st = 'tele'; z.stun = 0; }   // 挨打不打断瞬移
+    if (z.stun > .15) z.stun = .15;   // 只短暂受击一顿，不会被连招压死
+    z.castT = Math.max(0, (z.castT || 0) - dt);
     if (!z.dead) z.z = z.zjDizzy > 0 ? 0 : 5 + Math.sin(performance.now() / 260) * 2;   // 飘浮
     if (z.st === 'rec' && !z.zjRecThunder && Math.random() < .5) { z.zjRecThunder = true; thunderAt(hero.x, hero.y, .8); }
     if (z.st !== 'rec') z.zjRecThunder = false;
@@ -194,6 +202,7 @@
     if (z.zjDizzy <= 0 && z.pushCd <= 0 && z.st !== 'tele' && Math.abs(hero.x - z.x) < 28 && Math.abs(hero.y - z.y) < 14) {
       z.pushCd = 3; z.push = { t: .22, dir: Math.sign(hero.x - z.x) || 1 }; sfx('crack', z.x); shake = Math.max(shake, .15);
       S.hz.push({ k: 'puff', x: z.x + z.push.dir * 14, y: z.y - 18, t: 0 }); floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '退！' });
+      thunderAt(hero.x + z.push.dir * 50, hero.y, .8); z.castT = .4;
     }
     if (z.zjDizzy > 0) { z.zjDizzy -= dt; z.t += dt; return true; }
     // 挨打瞬移：1.5 秒内挨 3 下就闪到主角另一头，落地立刻放法术
@@ -201,26 +210,26 @@
     if (z.hp < z.zjLastHp) { z.zjHits = (z.zjHits || []).filter(t => gameT - t < 1.5); z.zjHits.push(gameT); }
     z.zjLastHp = z.hp; z.zjEscCd = (z.zjEscCd || 0) - dt;
     if (z.st !== 'tele' && z.zjEscCd <= 0 && (z.zjHits || []).length >= 3) {
-      z.zjHits = []; z.zjEscCd = z.rage ? 2.5 : 4; z.stun = 0; z.daze = 0; z.st = 'tele'; z.t = 0; z.teleDone = false; z.escape = true;
+      z.zjHits = []; z.zjEscCd = z.rage ? 2.5 : 4; z.stun = 0; z.daze = 0; z.st = 'tele'; z.teleOn = true; z.t = 0; z.teleDone = false; z.escape = true;
       S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 }); return true;
     }
     if (z.st === 'tele') {
       z.t += dt;
       if (z.t > .3 && !z.teleDone) { z.teleDone = true; const mid = (arenaL + lockR) / 2; z.x = Math.max(arenaL + 24, Math.min(lockR - 24, z.escape ? hero.x + (hero.x < mid ? 1 : -1) * 150 : hero.x - hero.f * 38)); z.y = Math.max(M.top + 6, Math.min(M.bot - 4, hero.y)); z.f = Math.sign(hero.x - z.x) || z.f; S.hz.push({ k: 'puff', x: z.x, y: z.y - 20, t: 0 }); }
-      if (z.t > .6) { z.st = 'move'; z.t = 0; z.cd = .3; z.teleDone = false;
+      if (z.t > .6) { z.st = 'move'; z.teleOn = false; z.t = 0; z.cd = .3; z.teleDone = false;
         if (z.escape) { z.escape = false; if (Math.random() < .5) { thunderAt(hero.x, hero.y, .9); thunderAt(hero.x + rnd2(-40, 40), hero.y + rnd2(-10, 10), 1.2); } else cast({ k: 'fu', x: z.x, y: z.y - 26 }); } }
       return true;
     }
     if (z.st === 'move' || z.st === 'idle') {
       z.zjTele -= dt; z.zjThunder -= dt; z.zjFire -= dt; z.zjFu -= dt;
-      if (z.zjFu <= 0 && Math.abs(hero.x - z.x) > 60) { z.zjFu = z.rage ? 3.2 : 5; cast({ k: 'fu', x: z.x + z.f * 10, y: z.y - 26 }); if (z.rage) cast({ k: 'fu', x: z.x, y: z.y - 40 }); z.st = 'rec'; z.t = 0; return true; }
+      if (z.zjFu <= 0 && Math.abs(hero.x - z.x) > 60) { z.zjFu = z.rage ? 3.2 : 5; cast({ k: 'fu', x: z.x + z.f * 10, y: z.y - 26 }); if (z.rage) cast({ k: 'fu', x: z.x, y: z.y - 40 }); z.castT = .4; }
       if (z.zjFire <= 0) { z.zjFire = z.rage ? 6 : 10; cast({ k: 'fire', ox: z.x, oy: z.y }); say('张角：“地火，焚！”', 1.5); }
       if (!z.rage && z.hp < z.T.hp * .5) {
         z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.3, wind: z.T.wind * .8 };
         say('张角：“天雷，降！”', 2.5); for (let i = 0; i < 3; i++) thunderAt(hero.x + (i - 1) * 40, hero.y + rnd2(-8, 8), 1.1 + i * .25);
       }
-      if (z.zjThunder <= 0) { z.zjThunder = z.rage ? 2.6 : 4.2; thunderAt(hero.x, hero.y, .9); if (z.rage) thunderAt(hero.x + (Math.random() < .5 ? -45 : 45), hero.y, 1.2); z.st = 'rec'; z.t = 0; return true; }
-      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 4; z.st = 'tele'; z.t = 0; z.teleDone = false; return true; }
+      if (z.zjThunder <= 0) { z.zjThunder = z.rage ? 2.6 : 4.2; thunderAt(hero.x, hero.y, .9); if (z.rage) thunderAt(hero.x + (Math.random() < .5 ? -45 : 45), hero.y, 1.2); z.castT = .4; }
+      if (z.zjTele <= 0 && Math.abs(hero.x - z.x) > 50) { z.zjTele = 4; z.st = 'tele'; z.teleOn = true; z.t = 0; z.teleDone = false; return true; }
     }
     return false;
   }
