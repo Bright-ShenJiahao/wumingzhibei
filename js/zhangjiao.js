@@ -49,7 +49,8 @@
     else if (e.k === 'fire') {
       const y = Math.max(M.top + 8, Math.min(M.bot - 6, hero.y)), x0 = arenaL + 20, x1 = lockR - 20, dir = Math.random() < .5 ? 1 : -1;
       const n = Math.floor((x1 - x0) / 30);
-      for (let i = 0; i < n; i++) S.hz.push({ k: 'fire', x: dir > 0 ? x0 + i * 30 : x1 - i * 30, y, t: -(.8 + i * .09), r: 14, fr: i % 4 });
+      const lampsNear = (px) => lit().some(p => Math.abs(p.x - px) < 20 && Math.abs(p.y - y) < 16);
+      for (let i = 0; i < n; i++) if (!lampsNear(dir > 0 ? x0 + i * 30 : x1 - i * 30)) S.hz.push({ k: 'fire', x: dir > 0 ? x0 + i * 30 : x1 - i * 30, y, t: -(.8 + i * .09), r: 14, fr: i % 4 });
     }
   }
   function updateHz(dt) {
@@ -89,7 +90,7 @@
     spawn('zhang_jiao', x, y);
     const z = zs[zs.length - 1]; S.boss = z;
     z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8;
-    z.st = 'land'; z.t = 0;
+    z.st = 'move'; z.t = 0;
     sfx('land', x);
     if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x, y: y - 50, t: 0, txt: '破阵！', big: true }); }
     say('张角：“尔等蝼蚁，也敢逆天！”', 3);
@@ -161,6 +162,15 @@
     if (!z.dead) z.z = z.zjDizzy > 0 ? 0 : 5 + Math.sin(performance.now() / 260) * 2;   // 飘浮
     if (z.st === 'rec' && !z.zjRecThunder && Math.random() < .5) { z.zjRecThunder = true; thunderAt(hero.x, hero.y, .8); }
     if (z.st !== 'rec') z.zjRecThunder = false;
+    if (z.push) {   // 近身推开：把主角震开一小段，不伤血
+      const p = z.push; p.t -= dt; moveEnt(hero, p.dir * 230 * dt, 0);
+      if (p.t <= 0) z.push = null;
+    }
+    z.pushCd = (z.pushCd || 0) - dt;
+    if (z.zjDizzy <= 0 && z.pushCd <= 0 && z.st !== 'tele' && Math.abs(hero.x - z.x) < 28 && Math.abs(hero.y - z.y) < 14) {
+      z.pushCd = 3; z.push = { t: .22, dir: Math.sign(hero.x - z.x) || 1 }; sfx('crack', z.x); shake = Math.max(shake, .15);
+      S.hz.push({ k: 'puff', x: z.x + z.push.dir * 14, y: z.y - 18, t: 0 }); floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '退！' });
+    }
     if (z.zjDizzy > 0) { z.zjDizzy -= dt; z.t += dt; return true; }
     if (z.st === 'tele') {
       z.t += dt;
