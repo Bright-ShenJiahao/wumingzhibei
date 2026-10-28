@@ -16,9 +16,13 @@
   function hide(){if(mode==='hover')close();}
   function later(){clearTimeout(hideTimer);hideTimer=setTimeout(hide,200);}
   function inBridge(x,y){
+    // 只算武器卡、浮窗本身，和两者之间那条窄通道；不再用两者的外接大矩形（浮窗很大时，鼠标移开也还在矩形里，浮窗关不掉）
     if(mode!=='hover'||!active||!tip||tip.hidden)return false;
-    const a=active.getBoundingClientRect(),t=tip.getBoundingClientRect(),pad=8;
-    return x>=Math.min(a.left,t.left)-pad&&x<=Math.max(a.right,t.right)+pad&&y>=Math.min(a.top,t.top)-pad&&y<=Math.max(a.bottom,t.bottom)+pad;
+    const a=active.getBoundingClientRect(),t=(dialog||tip).getBoundingClientRect(),pad=10;
+    const inside=(r)=>x>=r.left-pad&&x<=r.right+pad&&y>=r.top-pad&&y<=r.bottom+pad;
+    if(inside(a)||inside(t))return true;
+    const gapL=Math.min(a.right,t.right),gapR=Math.max(a.left,t.left);
+    return x>=Math.min(gapL,gapR)-pad&&x<=Math.max(gapL,gapR)+pad&&y>=a.top-pad&&y<=a.bottom+pad;
   }
   function weaponNode(target){
     const el=target?.closest?.('.aCard[data-uid],.tPrepSlot[data-uid]') || target?.closest?.('[data-item],[data-weapon]');
