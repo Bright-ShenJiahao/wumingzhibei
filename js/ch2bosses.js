@@ -175,10 +175,16 @@
       if (z.cb.k === 'charge' && z.cb.step === 0) { ctx.fillStyle = 'rgba(150,60,30,.28)'; ctx.fillRect(Math.min(z.x, z.x + z.f * 150), z.y - 4, 150, 8); }
       if (z.cb.k === 'spin' && z.cb.step === 0) { ctx.strokeStyle = 'rgba(160,70,35,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(z.x, z.y, 48, 18, 0, 0, 7); ctx.stroke(); }
     }
+    // 精英：脚下暗红光晕 + 举盾范围更大的提示
+    for (const e of zs) if (e.T && e.T.ch2Elite && !e.dead) {
+      const pu = .5 + .5 * Math.sin(performance.now() / 260 + e.slot);
+      ctx.strokeStyle = `rgba(150,40,30,${.45 + .3 * pu})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y, 15 + pu * 2, 6 + pu, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = 'rgba(120,30,20,.18)'; ctx.beginPath(); ctx.ellipse(e.x, e.y, 15, 6, 0, 0, 7); ctx.fill();
+    }
     // 盾兵举盾范围：暗橙半透明圈（敌方特效色）
     for (const sh of zs) if (sh.type === 'yellow-shield' && !sh.dead && sh.shieldUpUntil > gameT) {
       const u = (sh.shieldUpUntil - gameT) / .8; ctx.fillStyle = `rgba(150,70,35,${.22 * u})`; ctx.strokeStyle = `rgba(170,80,40,${.7 * u})`; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.ellipse(sh.x, sh.y, 45, 22, 0, 0, 7); ctx.fill(); ctx.stroke();
+      { const r = sh.T.ch2Elite ? 65 : 45; ctx.beginPath(); ctx.ellipse(sh.x, sh.y, r, r * .49, 0, 0, 7); ctx.fill(); ctx.stroke(); }
     }
     // 火球：落点暗橙预警圈 + 从天上掉下来的火球
     for (const h of hz) {

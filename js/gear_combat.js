@@ -110,8 +110,8 @@
   function dropEnemy(z){
     if(window.XIAOCHANG && XIAOCHANG.active()){XIAOCHANG.dropEnemy(z);return;}
     if(z.gearDropped)return;z.gearDropped=true;
-    const boss=!!(z.T.boss||z.T.chapterBoss),source=boss?'boss':z.T.elite?'elite':'grunt';
-    if(!boss&&!z.T.elite&&!chance(.005))return;
+    const boss=!!(z.T.boss||z.T.chapterBoss),elite=!!(z.T.elite||z.T.ch2Elite),source=boss?'boss':elite?'elite':'grunt';   // 第二章精英按老卒规则掉武器
+    if(!boss&&!elite&&!chance(.005))return;
     const r=Math.random(),count=boss?(r<.5?1:r<.8?2:3):1;
     const person=boss?(z.T.boss?'管亥':z.type==='zhang_liang'?'张梁':z.type==='zhang_bao'?'张宝':''):'';
     const pool=['staff','hammer','stone'];

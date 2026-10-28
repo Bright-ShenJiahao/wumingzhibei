@@ -722,7 +722,7 @@ function startChapter2Battle(number, walkIn = false) {
     if (window.ZJ) ZJ.start();
   } else {
     const waves = CHAPTER2_WAVES[number] || [];
-    const begin = () => { if (waves[0]) { waves[0](); fitChapter2Wave(); }
+    const begin = () => { if (waves[0]) { waves[0](); fitChapter2Wave(); applyCh2Elites(number, 0); }
       say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5); };
     if (number === 1 && !walkIn && window.CH2OPEN) CH2OPEN.start(begin);   // 入场：旁白大字 + 曹操号令，再开打
     else begin();
@@ -761,7 +761,7 @@ function chapter2Waves() {
     const battle = chapter2Run.battle, waves = CHAPTER2_WAVES[battle] || [];
     if (chapter2Run.wave < waves.length - 1) {
       chapter2Run.wave++; chapter2Run.mode = 'fight';
-      waves[chapter2Run.wave](); fitChapter2Wave();
+      waves[chapter2Run.wave](); fitChapter2Wave(); applyCh2Elites(battle, chapter2Run.wave);
       return;
     }
     if (window.CHAPTER2 && CHAPTER2.completeBattle) CHAPTER2.completeBattle(battle);
@@ -810,7 +810,7 @@ function walkToChapter2Battle(next) {
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   // 盾兵举盾（第二章）：穿云箭、投石车这类从天上砸下的攻击，盾兵周围 45 内的黄巾兵：50% 完全挡住，否则只吃 40% 且不硬直（用户定）
   if (chapter2Run && z && !z.dead && (traits.skyArrow || traits.siegeShot)) {
-    const sh = zs.find(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45);
+    const sh = zs.find(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < (s.T.ch2Elite ? 65 : 45));
     if (sh) {
       if (!(sh.shieldUpUntil > gameT)) { sh.shieldUpUntil = gameT + .8; floaters.push({ x: sh.x, y: sh.y - 40, t: 0, txt: '举盾！' }); }
       if (Math.random() < .5) { floaters.push({ x: z.x, y: z.y - 30, t: 0, txt: '挡住' }); return 'blocked'; }
@@ -827,7 +827,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
-    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<.56){   // 正面格挡概率 80%→56%（用户定：格挡减弱 30%）
+    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<(z.T.ch2Elite?.8:.56)){   // 正面格挡概率 80%→56%（用户定：格挡减弱 30%）
 
       const start=propFx.length, firstFloater=floaters.length;if(window.BOSS_BLOCK)BOSS_BLOCK.effect(z);
       for(let i=firstFloater;i<floaters.length;i++)floaters[i].color='#aa4c2c';
@@ -892,6 +892,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     z.dead = 1; kills++; knock = true;
     if (z.villagerChaser) thankVillagers();
     if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
+    if (z.T.ch2Elite) { spawnDrop(z.x, z.y, Math.random() < .65 ? 'leg' : 'pig'); sfx('finisher', z.x); shake = .2; }   // 第二章精英：必掉鸡腿或烤乳猪
   }
   if (knock && !(z.T.boss || z.T.chapterBoss || z.T.noLaunch) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
 
@@ -1634,6 +1635,20 @@ function ch2Armored(z) {
 function ch2NearestShield(z) {
   return zs.filter(o=>o!==z&&!o.dead&&o.st!=='gone'&&o.type==='yellow-shield').sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
 }
+// 第二章精英：现有小兵放大 15%、暗红光晕、名字加「精英·」，血/伤害提高并各有专属强化（用户定）
+const CH2_ELITE_STATS = { 'yellow-shield': { hp: 20, dmg: 2 }, 'yellow-heavy': { hp: 18, dmg: 3 }, 'yellow-spear': { hp: 14, dmg: 2.5 } };
+const CH2_ELITES = { 1: { 2: ['yellow-heavy'] }, 2: { 1: ['yellow-shield'] }, 3: { 1: ['yellow-shield'] }, 4: { 1: ['yellow-heavy', 'yellow-spear'] }, 5: { 1: ['yellow-shield', 'yellow-spear'] } };
+function makeCh2Elite(z) {
+  const s = CH2_ELITE_STATS[z.type]; if (!s || z.T.ch2Elite) return;
+  z.T = { ...z.T, ...s, ch2Elite: true, name: '精英·' + z.T.name }; z.hp = z.T.hp; z.sc = (z.sc || 1) * 1.15;
+}
+function applyCh2Elites(battle, wave) {
+  for (const type of (CH2_ELITES[battle] || {})[wave] || []) {
+    let z = zs.find(e => !e.dead && e.type === type && !e.T.ch2Elite);
+    if (!z) { spawn(type, hero.x + 220, (M.top + M.bot) / 2); z = zs[zs.length - 1]; }
+    makeCh2Elite(z);
+  }
+}
 function ch2Formation(z) {
   if(!chapter2Run)return null;
   const shield=ch2NearestShield(z);
@@ -1679,11 +1694,11 @@ function ch2Skill(z,dt) {
     if(z.type==='yellow-heavy'){
       enemySkillFx.push({x:z.x+z.f*20,y:z.y-15,f:z.f,t:0,T:.3});
       const dx=(hero.x-z.x)*z.f,dy=hero.y-z.y;
-      if(dx>=0&&Math.hypot(dx,dy)<=45&&Math.abs(dy)<=dx+8)dmgHero(2.5,z,'skill');
-      eshots.push({k:'enemyWave',x:z.x+z.f*12,y:z.y,vx:z.f*150,left:50,t:0,life:1,source:z});sfx('enemySwing',z.x);
+      if(dx>=0&&Math.hypot(dx,dy)<=45&&Math.abs(dy)<=dx+8)dmgHero(z.T.ch2Elite?3.2:2.5,z,'skill');
+      for(const oy of z.T.ch2Elite?[-14,0,14]:[0])eshots.push({k:'enemyWave',x:z.x+z.f*12,y:z.y+oy,vx:z.f*150,left:z.T.ch2Elite?70:50,t:0,life:1,source:z});sfx('enemySwing',z.x);   // 精英：一次放 3 道剑气
       skill.phase='recover';return true;
     }
-    skill.left=z.type==='yellow-shield'?30:50;
+    skill.left=z.type==='yellow-shield'?30:z.T.ch2Elite?70:50;   // 精英枪兵冲得更远
     if(z.type==='yellow-spear')for(const other of zs){
       if(other!==z&&!other.dead&&!other.air&&other.type==='yellow-spear'&&!other.enemySkill&&(other.skillCd||0)<=0&&!(other.stun>0)&&!(other.daze>0)&&Math.hypot(other.x-z.x,other.y-z.y)<=100)ch2BeginSkill(other);
     }
@@ -1691,10 +1706,13 @@ function ch2Skill(z,dt) {
   if(skill.phase==='dash'){
     const step=Math.min(skill.left,180*dt);moveEnt(z,z.f*step,0);skill.left-=step;
     if(!skill.hit&&Math.abs(hero.x-z.x)<(z.type==='yellow-spear'?37:18)&&Math.abs(hero.y-z.y)<16&&(hero.x-z.x)*z.f>=-10){
-      const before=hero.hp;dmgHero(z.type==='yellow-shield'?1:2,z,'skill');skill.hit=true;
+      const before=hero.hp;dmgHero(z.type==='yellow-shield'?(z.T.ch2Elite?2:1):2,z,'skill');skill.hit=true;   // 精英盾撞 2 伤会撞倒
       if(z.type==='yellow-shield'&&hero.hp<before)moveEnt(hero,z.f*40,0);
     }
-    if(skill.left<=0){skill.phase='recover';skill.t=0;}
+    if(skill.left<=0){
+      if(z.T.ch2Elite&&z.type==='yellow-spear'&&!skill.second){skill.second=true;skill.f=Math.sign(hero.x-z.x)||skill.f;z.f=skill.f;skill.left=70;skill.hit=false;}   // 精英枪兵：立刻接第二次冲刺
+      else{skill.phase='recover';skill.t=0;}
+    }
   }
   if(skill.phase==='recover'&&skill.t>=.35){z.enemySkill=null;z.tok=false;set(z,'move');}
   return true;
@@ -3327,9 +3345,9 @@ function drawZ(z) {
   }
   if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, top - 5, 3, 3); ctx.fillStyle = '#4c8a43'; ctx.fillRect(z.x + 3, top - 7, 2, 2); }
   if (z.st === 'wind' && !z.T.ranged) { ctx.fillStyle = '#e03a2a'; ctx.fillRect(z.x - 1, top - 10, 3, 6); ctx.fillRect(z.x - 1, top - 2.5, 3, 2); }
-  const barW = z.T.elite ? 26 : 18;
+  const barW = (z.T.elite || z.T.ch2Elite) ? 26 : 18;
   const barY = top;
-  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, barY, barW, 3); ctx.fillStyle = z.T.elite ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, barY + 1, (barW - 2) * z.hp / z.T.hp, 1);
+  ctx.fillStyle = '#18101e'; ctx.fillRect(z.x - barW / 2, barY, barW, 3); ctx.fillStyle = (z.T.elite || z.T.ch2Elite) ? '#e04a2a' : z.T.heavy ? '#e0a030' : '#7ad06a'; ctx.fillRect(z.x - barW / 2 + 1, barY + 1, (barW - 2) * z.hp / z.T.hp, 1);
 }
 function drawCheer(z) {
   const t = z.celebrateT || 0, bob = Math.abs(Math.sin(t * 7)) * 2.5, y = z.y - 20 - bob;
