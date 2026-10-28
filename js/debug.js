@@ -109,9 +109,15 @@
 
     const c2 = addGroup('chapter2', '第二章');
     btn(c2, '测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
-    btn(c2, '第六战祭台', 'alt', () => {
-      if (typeof startChapter2Debug === 'function') startChapter2Debug(6);   // 素材是异步加载的，必须等加载完再进第六战
-    });
+    // 选战：直接进第二章任意一战（素材异步加载完再进）。4=张梁、5=张宝、6=张角祭台
+    const battles = document.createElement('div'); battles.className = 'dbgFloors';
+    const bl = document.createElement('span'); bl.textContent = '选战'; battles.appendChild(bl);
+    ['1', '2', '3', '张梁', '张宝', '张角'].forEach((t, i) => btn(battles, t, 'alt', () => {
+      if (typeof startChapter2Debug !== 'function') return;
+      startChapter2Debug(i + 1);
+      if (i + 1 === 4 || i + 1 === 5) setTimeout(() => { if (typeof chapter2Run !== 'undefined' && chapter2Run) chapter2Run.route = i + 1 === 4 ? 'zhang-liang' : 'zhang-bao'; }, 1500);
+    }));
+    c2.appendChild(battles);
 
     const xc = addGroup('xiaochang', '校场');
     const floors = document.createElement('div'); floors.className = 'dbgFloors';
