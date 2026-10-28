@@ -617,7 +617,7 @@ function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
   P('coffin', 141, 112, { back: true, dw: 62, dh: 40 });   // 底边落在祭台台面上（之前飘在台面后沿）
-  P('flag_huang', 268, 127, { back: true });                // 「黄天当立」，和右边的苍天旗一左一右
+  P('flag_huang', 255, 127, { back: true, flip: true });                // 「黄天当立」，和右边的苍天旗一左一右
   P('flag_cang', 478, 124, { back: true });                 // 「苍天已死」血字旗，插在法台右侧                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
   for (let k = 0; k < 8; k++) {
@@ -3035,6 +3035,7 @@ function drawProp(p) {
   const sh = p.hitT > 0 ? Math.sin(p.hitT * 90) * 2.2 : 0;   // 被打中时左右抖一下
   ctx.save(); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (p.chapter2 && ['hay', 'cart', 'mill'].includes(p.g)) ctx.filter = 'brightness(.66) saturate(.6)';   // 第二章暮色战场：道具压暗，不抢人物
+  if (p.flip) { ctx.translate(Math.round(p.x), 0); ctx.scale(-1, 1); ctx.translate(-Math.round(p.x), 0); }   // 左右翻转（旗面朝左）
   ctx.drawImage(IMG['p_' + p.g], Math.round(p.x - w / 2 + sh), Math.round(p.y + 2 - h), w, h);
   ctx.restore();
 }
