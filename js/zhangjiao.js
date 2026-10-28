@@ -6,6 +6,9 @@
   const img = k => IMG['zj_' + k];
   const stageY = () => ALTAR_STAGE.y - 4 + Math.sin(performance.now() / 1000 * 2.2) * 2.5;
   const lamps = () => props.filter(p => p.lamp);   // 含已熄灭的（顺序固定）
+  const GUA = ['乾', '兑', '离', '震', '坤', '艮', '坎', '巽'];   // 先天八卦顺时针，对面两盏互为一对
+  const BATCH = [[0, 4], [2, 6], [1, 5], [3, 7]];   // 乾坤、离坎、兑艮、震巽：每轮亮对面的两盏
+  const batch = r => BATCH[r].map(i => lamps()[i]).filter(Boolean);
   const lit = () => props.filter(p => p.lamp && p.g === 'fudeng');
   const rnd2 = (a, b) => a + Math.random() * (b - a);
   function pic(k, x, y, s, a = 1, anchorBottom = false) {
@@ -25,7 +28,7 @@
   // ---- 危险物 ----
   function thunderAt(x, y, warn = 1) { S.hz.push({ k: 'thunder', x, y, t: -warn, r: 24 }); }
   function addRound() {
-    const r = S.round, set = lamps().slice(r * 2, r * 2 + 2);
+    const r = S.round, set = batch(r);
     set.forEach(p => { if (p.g === 'fudeng') p.lit = true; });
     const left = lit().length - set.filter(p => p.g === 'fudeng').length;   // 以前没打灭的灯
     const prevCleared = r > 0 && S.batchDone[r - 1] ? 1 : 0;
@@ -101,6 +104,8 @@
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
       say('八盏灯全灭，八卦阵破！', 3);
+      S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
+      if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; }
     }
     const t = S.t;
     if (S.phase === 'open') {
@@ -116,9 +121,10 @@
     }
     if (S.phase === 'p1') {
       S.rt += dt;
+      if (S.perfect) return;
       while (S.queue.length && S.queue[0].at <= S.rt) cast(S.queue.shift());
       if (S.rt >= ROUND_T) {
-        const set = lamps().slice(S.round * 2, S.round * 2 + 2);
+        const set = batch(S.round);
         S.batchDone[S.round] = set.every(p => p.g !== 'fudeng');
         if (S.round >= 3) { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.hz = S.hz.filter(h => h.k === 'thunder' && !h.done); say('张角：“黄巾力士，何在！”', 2.5); S.pose = 'summon'; S.sumT = 1.2; }
         else { S.round++; S.rt = 0; addRound(); }
@@ -184,6 +190,7 @@
     for (const p of lit()) if (p.lit) {
       const pulse = .5 + .5 * Math.sin(performance.now() / 180);
       ctx.strokeStyle = `rgba(255,220,110,${.5 + .4 * pulse})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x, p.y, 11 + pulse * 2, 5 + pulse, 0, 0, 7); ctx.stroke();
+      const gi = lamps().indexOf(p); ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2; ctx.strokeStyle = '#3a2208'; ctx.fillStyle = '#ffe9a0'; ctx.strokeText(GUA[gi], p.x, p.y - 33); ctx.fillText(GUA[gi], p.x, p.y - 33); ctx.textAlign = 'left';
       const hp3 = Math.max(0, p.hp);
       ctx.fillStyle = '#ffe9a0'; for (let i = 0; i < hp3; i++) ctx.fillRect(p.x - 5 + i * 4, p.y - 28, 3, 3);
     }
