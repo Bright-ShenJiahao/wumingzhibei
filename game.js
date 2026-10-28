@@ -616,7 +616,8 @@ const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };   //
 function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
-  P('coffin', 141, 99, { back: true, dw: 62, dh: 40 });                                  // 棺材摆在左侧祭台台面上
+  P('coffin', 141, 112, { back: true, dw: 62, dh: 40 });   // 底边落在祭台台面上（之前飘在台面后沿）
+  P('flag_cang', 478, 124, { back: true });                 // 「苍天已死」血字旗，插在法台右侧                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4 - Math.PI / 2;
