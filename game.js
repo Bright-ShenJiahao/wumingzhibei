@@ -664,6 +664,7 @@ const CHAPTER2_WAVES = {
       }
       spawn('yellow-shield', R - 260, (M.top + M.bot) / 2 - 20);
       spawn('yellow-shield', R - 260, (M.top + M.bot) / 2 + 20);
+      spawn('yellow-heavy', R - 230, M.top + 18); spawn('yellow-heavy', R - 230, M.bot - 18);   // 守车大刀兵
     },
   ],
   4: [
@@ -741,7 +742,8 @@ function fitChapter2Wave() {
         // gi=0 缺口在上，1 在中，2 在下；剩下的两段各成一个道具
         const segs=gi===0?[[M.top+gap+seg*2,seg],[M.top+gap+seg,seg]]:gi===2?[[M.top+seg*2,seg],[M.top+seg,seg]]:[[M.bot,seg],[M.top+seg,seg]];
         for(const [y,d] of segs)props.push({g:'jumo_v',x,y,d,vert:true,w:18,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
-      zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;});
+      zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;z.guard={x:z.x,y:z.y};});
+      zs.filter(z=>!z.dead&&z.type==='yellow-heavy').forEach((z,i)=>{z.x=right-90-55;z.y=M.top+(M.bot-M.top)*(i?.85:.15);z.guard={x:z.x,y:z.y};});   // 2 盾 2 刀固定守在拒马墙前
     }
   }
 }
@@ -1287,9 +1289,9 @@ function resolveBowSky(f) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;
     const stun = boss ? d.stun / 2 : d.stun;
-    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 80% 伤害、不被硬直（用户定）
+    // 盾兵举盾：落点附近的盾兵举盾，盾后一圈（半径 45）的友军都只吃 40% 伤害、不被硬直（用户定）
     const cover = chapter2Run && zs.some(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < 45 && Math.hypot(s.x - f.x, (s.y - f.y) * 2) < d.radius + 50);
-    if (cover) { hit(z, d.dmg * .8, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
+    if (cover) { hit(z, d.dmg * .4, 0, 0, false, 0, 0, false, false, { skyArrow: true }); continue; }
     hit(z, d.dmg, 0, 0, false, 0, stun, false, false, { skyArrow: true });
     if (boss && !z.dead) z.stun = Math.max(z.stun || 0, stun);
   }
@@ -1695,6 +1697,30 @@ function ch2Skill(z,dt) {
   return true;
 }
 const enemyTintCache=new Map();
+// 敌方火箭 / 投石：箭杆 + 三角箭头 + 尾羽 + 箭头小火苗；投石是带火的黑石块（敌方特效：暗橙土红，不加白金高光）
+function drawEnemyMissile(s, x, y, p) {
+  const vx = (s.tx - s.x0) / s.T, vy = (s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, ang = Math.atan2(vy, vx);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(1.35, 1.35);   // 放大一点，在栅栏背景前也看得清
+  if (s.k === 'catapult') {
+    for (let i = 1; i <= 3; i++) { ctx.fillStyle = `rgba(120,50,25,${.35 - i * .09})`; ctx.beginPath(); ctx.arc(-i * 4, 0, 5 - i, 0, 7); ctx.fill(); }   // 拖尾烟火
+    ctx.fillStyle = '#2a1c14'; ctx.beginPath(); ctx.arc(0, 0, 5.2, 0, 7); ctx.fill();
+    ctx.fillStyle = '#4e3a2a'; ctx.beginPath(); ctx.arc(-1, -1, 3.6, 0, 7); ctx.fill();
+    const fl = 1 + Math.sin(performance.now() / 60) * .3;
+    ctx.fillStyle = '#a0461e'; ctx.beginPath(); ctx.arc(2.5, -2, 2.4 * fl, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c4682a'; ctx.beginPath(); ctx.arc(3, -2.5, 1.2 * fl, 0, 7); ctx.fill();
+  } else {
+    const head = s.enemyVolley ? '#7d3023' : '#8a3a1c', flame = s.enemyVolley ? '#a54a28' : '#b8521f';
+    ctx.strokeStyle = 'rgba(120,60,30,.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-7, 0); ctx.stroke();   // 速度线
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(-7.5, -1, 13, 2);          // 箭杆描边
+    ctx.fillStyle = '#7a5530'; ctx.fillRect(-7, -.5, 12, 1);           // 箭杆
+    ctx.fillStyle = '#2a1a10'; ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(4, -2.5); ctx.lineTo(4, 2.5); ctx.closePath(); ctx.fill();   // 箭头
+    ctx.fillStyle = '#6b6a66'; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(4.5, -1.5); ctx.lineTo(4.5, 1.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = head; ctx.fillRect(-8, -2.5, 3, 1.5); ctx.fillRect(-8, 1, 3, 1.5);   // 尾羽
+    const fl = Math.sin(performance.now() / 50 + s.x0) * .8;
+    ctx.fillStyle = flame; ctx.beginPath(); ctx.arc(5.5 + fl * .3, -1.5, 1.8, 0, 7); ctx.fill();   // 箭头上的小火苗
+  }
+  ctx.restore();
+}
 function drawEnemySheet(key,x,y,f,width,time,duration){
   const img=IMG['ui_'+key];if(!img||!img.complete||!img.naturalWidth)return;
   let canvas=enemyTintCache.get(key);
@@ -1733,6 +1759,14 @@ function zUpdate(z, dt) {
   const T = z.T;
   if (T.siege) { updateChapter2Catapult(z, dt); return; }
   if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }
+  // 守车兵：主角离岗位远时回岗位站定，不追出去（投石车阵的盾兵、大刀兵）
+  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115) {
+    const dx = z.guard.x - z.x, dy = z.guard.y - z.y, d = Math.hypot(dx, dy);
+    z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd = Math.max(z.cd, .4);
+    if (d > 4) { z.moving = true; z.f = Math.sign(dx) || z.f; moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt); }
+    else { z.moving = false; z.f = Math.sign(hero.x - z.x) || z.f; }
+    return;
+  }
   z.t += dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1)); z.flash = Math.max(0, z.flash - dt); z.cd -= dt * (window.GEAR ? GEAR.enemyAttack(z) : (z.attackSlowT > 0 ? .9 : 1));
   z.moveSlowT = Math.max(0, (z.moveSlowT || 0) - dt); z.attackSlowT = Math.max(0, (z.attackSlowT || 0) - dt);
   if (z.qiCd > 0) z.qiCd -= dt;
@@ -1918,8 +1952,8 @@ function updateChapter2Catapult(z, dt) {
     const yOffset = [-24, 0, 24][z.catapultIndex || 0];
     const tx = Math.min(z.x - 70, Math.max(hero.x - 40, hero.x + rnd(-18, 18)));
     const ty = Math.max(M.top + 5, Math.min(M.bot - 5, hero.y + yOffset));
-    eshots.push({ k: 'catapult', x0: z.x - 18, y0: z.y - 12, tx, ty, t: 0, T: 1.15, short: 2.2 });
-    z.st = 'recoil'; z.t = 0; z.cd = 10; sfx('sling', z.x); return;
+    eshots.push({ k: 'catapult', x0: z.x - 18, y0: z.y - 12, tx, ty, t: 0, T: 1.15, short: 3 });
+    z.st = 'recoil'; z.t = 0; z.cd = 7; sfx('sling', z.x); return;   // 用户嫌弱：冷却 10→7
   }
   if (z.st === 'recoil' && z.t > .45) { z.st = 'idle'; z.t = 0; return; }
   if (z.st === 'wind') return;
@@ -2026,7 +2060,14 @@ function updateShots(dt) {
       if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
     } else {
       s.t += dt;
-      if (s.t >= s.T) { fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: s.k === 'catapult' ? 32 : 16, seed: rnd(0, 4) }); sfx('fireLand', s.tx); s.life = 0; } else s.life = 1;
+      if (s.t >= s.T) {
+        fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: s.k === 'catapult' ? 32 : 16, seed: rnd(0, 4) }); sfx('fireLand', s.tx); s.life = 0;
+        if (s.k === 'catapult') {   // 石块砸地：落点范围内直接伤 2（会击倒），再留火场
+          shake = Math.max(shake, .25);
+          if (hero.inv <= 0 && Math.abs(hero.x - s.tx) < 30 && Math.abs(hero.y - s.ty) < 14) dmgHero(2, { x: s.tx, y: s.ty });
+          for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-8, 8), y: s.ty - 3, vx: rnd(-90, 90), vy: rnd(-140, -50), w: 2.5, h: 2.5, life: .5, max: .5, c: Math.random() < .5 ? '#5a4a3a' : '#a0461e' });
+        }
+      } else s.life = 1;
     }
   }
   eshots = eshots.filter(s => s.life > 0);
@@ -2566,7 +2607,7 @@ function draw() {
     if (s.k === 'stone') list.push({ y: s.y + .1, d: () => { shadow(s.x, s.y, 3); stone(s.x, s.y - s.z); } });
     else {
       const p = Math.min(1, s.t / s.T), x = s.x0 + (s.tx - s.x0) * p, gy = s.y0 + (s.ty - s.y0) * p, z = 24 + Math.sin(p * Math.PI) * 60;
-      list.push({ y: gy, d: () => { if (s.ball) { shadow(x, gy, 4); ctx.save(); ctx.translate(x, gy - z); ctx.fillStyle = 'rgba(255,120,30,.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a24'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(-1, -1, 1.4, 0, 7); ctx.fill(); ctx.restore(); return; } shadow(x, gy, s.k === 'catapult' ? 6 : 3); const ang = Math.atan2((s.ty - s.y0) / s.T - Math.cos(p * Math.PI) * 60 * Math.PI / s.T, (s.tx - s.x0) / s.T); ctx.save(); ctx.translate(x, gy - z); ctx.rotate(ang); ctx.fillStyle = '#4a2c16'; ctx.fillRect(-7, -.5, s.k === 'catapult' ? 14 : 10, s.k === 'catapult' ? 3 : 1); ctx.fillStyle = s.enemyVolley?'#a54a28':'#ffb02e'; ctx.fillRect(3, -1.5, 4, 4); ctx.fillStyle = s.enemyVolley?'#7d3023':'#ff5a1e'; ctx.fillRect(5, -1, 2, 2); ctx.restore(); } });
+      list.push({ y: gy, d: () => { if (s.ball) { shadow(x, gy, 4); ctx.save(); ctx.translate(x, gy - z); ctx.fillStyle = 'rgba(255,120,30,.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a24'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(-1, -1, 1.4, 0, 7); ctx.fill(); ctx.restore(); return; } shadow(x, gy, s.k === 'catapult' ? 6 : 3); drawEnemyMissile(s, x, gy - z, p); } });
     }
   }
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
