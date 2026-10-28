@@ -45,12 +45,15 @@
   function cast(e) {
     S.castT = .5;
     if (e.k === 'thunder') thunderAt(hero.x + rnd2(-6, 6), hero.y + rnd2(-4, 4), 1.05);
-    else if (e.k === 'fu') S.hz.push({ k: 'fu', x: ALTAR_STAGE.x, y: ALTAR_STAGE.y + 10, t: 0, vx: 0, vy: 0, fr: Math.floor(Math.random() * 3) });
-    else if (e.k === 'fire') {
-      const y = Math.max(M.top + 8, Math.min(M.bot - 6, hero.y)), x0 = arenaL + 20, x1 = lockR - 20, dir = Math.random() < .5 ? 1 : -1;
-      const n = Math.floor((x1 - x0) / 30);
-      const lampsNear = (px) => lit().some(p => Math.abs(p.x - px) < 20 && Math.abs(p.y - y) < 16);
-      for (let i = 0; i < n; i++) if (!lampsNear(dir > 0 ? x0 + i * 30 : x1 - i * 30)) S.hz.push({ k: 'fire', x: dir > 0 ? x0 + i * 30 : x1 - i * 30, y, t: -(.8 + i * .09), r: 14, fr: i % 4 });
+    else if (e.k === 'fu') S.hz.push({ k: 'fu', x: e.x ?? ALTAR_STAGE.x, y: e.y ?? ALTAR_STAGE.y + 10, t: 0, vx: 0, vy: 0, fr: Math.floor(Math.random() * 3) });
+    else if (e.k === 'fire') {   // 地火预判：砸在主角正在打的那盏灯周围（没有亮灯就砸主角所在行）
+      const ls = lit().filter(p => p.lit).sort((p, q) => Math.hypot(p.x - hero.x, p.y - hero.y) - Math.hypot(q.x - hero.x, q.y - hero.y));
+      const tx = ls[0] ? ls[0].x : hero.x, ty = ls[0] ? ls[0].y : hero.y;
+      const y = Math.max(M.top + 8, Math.min(M.bot - 6, ty));
+      for (let i = -3; i <= 3; i++) {
+        const x = tx + i * 22; if (x < arenaL + 12 || x > lockR - 12) continue;
+        S.hz.push({ k: 'fire', x, y, t: -(1 + Math.abs(i) * .1), r: 14, fr: (i + 3) % 4 });
+      }
     }
   }
   function updateHz(dt) {
@@ -89,7 +92,7 @@
     const x = ALTAR_STAGE.x, y = M.top + 14;
     spawn('zhang_jiao', x, y);
     const z = zs[zs.length - 1]; S.boss = z;
-    z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8;
+    z.summonedHalf = true; z.f = hero.x < z.x ? -1 : 1; z.cd = 1.2; z.zjTele = 4; z.zjThunder = 3; z.zjFire = 8; z.zjFu = 4;
     z.st = 'move'; z.t = 0;
     sfx('land', x);
     if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x, y: y - 50, t: 0, txt: '破阵！', big: true }); }
@@ -179,7 +182,8 @@
       return true;
     }
     if (z.st === 'move' || z.st === 'idle') {
-      z.zjTele -= dt; z.zjThunder -= dt; z.zjFire -= dt;
+      z.zjTele -= dt; z.zjThunder -= dt; z.zjFire -= dt; z.zjFu -= dt;
+      if (z.zjFu <= 0 && Math.abs(hero.x - z.x) > 60) { z.zjFu = z.rage ? 3.2 : 5; cast({ k: 'fu', x: z.x + z.f * 10, y: z.y - 26 }); if (z.rage) cast({ k: 'fu', x: z.x, y: z.y - 40 }); z.st = 'rec'; z.t = 0; return true; }
       if (z.zjFire <= 0) { z.zjFire = z.rage ? 6 : 10; cast({ k: 'fire' }); say('张角：“地火，焚！”', 1.5); }
       if (!z.rage && z.hp < z.T.hp * .5) {
         z.rage = true; z.T = { ...z.T, spd: z.T.spd * 1.3, wind: z.T.wind * .8 };
