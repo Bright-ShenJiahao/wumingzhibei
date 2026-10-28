@@ -717,8 +717,10 @@ function startChapter2Battle(number, walkIn = false) {
     if (window.ZJ) ZJ.start();
   } else {
     const waves = CHAPTER2_WAVES[number] || [];
-    if (waves[0]) { waves[0](); fitChapter2Wave(); }
-    say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5);
+    const begin = () => { if (waves[0]) { waves[0](); fitChapter2Wave(); }
+      say(`第${['', '一', '二', '三', '四', '五', '六'][number]}战：${CHAPTER2_TITLES[number]}`, 3.5); };
+    if (number === 1 && !walkIn && window.CH2OPEN) CH2OPEN.start(begin);   // 入场：旁白大字 + 曹操号令，再开打
+    else begin();
   }
   if (!walkIn) cam.x = number === 6 ? camX : Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() * .28));   // 走进下一战时镜头不跳
 }
@@ -2192,7 +2194,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
+    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -2557,7 +2559,7 @@ function draw() {
   // HUD
   // iPhone 横屏时刘海/灵动岛在左或右：画布上的 HUD 整体让开安全区
   const SA = safeArea();
-  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r); if (window.ZJ) ZJ.hud(W / DPR - SA.l - SA.r);
+  ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); Boss.hud(W / DPR - SA.l - SA.r); if (window.ZJ) ZJ.hud(W / DPR - SA.l - SA.r); if (window.CH2OPEN) CH2OPEN.hud(W / DPR - SA.l - SA.r, H / DPR);
   ctx.setTransform(DPR, 0, 0, DPR, SA.l * DPR, 0); const HW = W / DPR - SA.l - SA.r, HH = H / DPR;
   const bw = Math.min(260, HW * .4);
   ctx.fillStyle = 'rgba(20,14,30,.7)'; ctx.fillRect(14, 64, bw + 6, 18);
