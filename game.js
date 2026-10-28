@@ -410,13 +410,24 @@ function moveEnt(e, dx, dy) {
     const p = props.find(q => q.solid && !q.broken &&
       Math.abs(q.x - (e.x + dir * 16)) < q.w / 2 + 14 && Math.abs(e.y - q.y) < 20);
     if (p) {
-      if (e.avoidDir == null) e.avoidDir = (e.y <= p.y ? -1 : 1);      // 往离得近的那一侧绕
+      // 选定绕行方向后至少坚持 0.8 秒，避免每帧上下换方向（看起来在抖）；靠边那侧走不通就直接选另一侧
+      if (e.avoidDir == null || gameT > (e.avoidUntil || 0) + 2) {
+        e.avoidDir = (e.y <= p.y ? -1 : 1);
+        if (p.y + e.avoidDir * 22 < M.top + 3 || p.y + e.avoidDir * 22 > M.bot - 2) e.avoidDir *= -1;
+        e.avoidUntil = gameT + .8;
+      }
       const goalY = p.y + e.avoidDir * 22;                              // 让开 22，能看出是绕过去
       const vs = Math.min(3, ((e.T && e.T.spd) || 40) / 60 * 1.7);      // 侧向走速（比它正常速度快一点）
-      const ny = e.y + Math.sign(goalY - e.y) * vs;
+      const ny = e.y + Math.sign(goalY - e.y) * Math.min(vs, Math.abs(goalY - e.y));
       if (ny > M.top + 3 && ny < M.bot - 2 && !blocked(e.x, ny)) e.y = ny;
-      else e.avoidDir *= -1;
-      if (Math.abs(e.y - goalY) < 1.5) e.avoidDir = null;               // 已经让开了，下次正常走
+      else if (gameT > e.avoidUntil) { e.avoidDir *= -1; e.avoidUntil = gameT + .8; }
+      if (Math.abs(e.y - goalY) < 1.5) { e.passProp = p; e.passY = goalY; e.avoidDir = null; }   // 已经让开了：记住这条绕行线，直到走过道具
+    }
+    // 绕行中：在走过道具之前不许再往道具那边靠（否则会在边缘上下来回抖）
+    const pp = e.passProp;
+    if (pp) {
+      if (pp.broken || !pp.solid || Math.abs(e.x - pp.x) > pp.w / 2 + 18) e.passProp = null;
+      else if (e.passY < pp.y) e.y = Math.min(e.y, e.passY); else e.y = Math.max(e.y, e.passY);
     }
   } else e.avoidDir = null;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
@@ -1788,7 +1799,7 @@ function zUpdate(z, dt) {
       if (z.moving) {
         const cs = Math.min(T.spd, 26);                                // 比村民（30）慢，永远追不上
         moveEnt(z, dx / d * cs * dt, dy / d * cs * .7 * dt);
-        if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * cs * dt);
+        if (z.bx && z.avoidDir == null) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * cs * dt);
       }
       return;
     }
@@ -1850,7 +1861,7 @@ function zUpdate(z, dt) {
   if (z.moving) {
     const sp = T.spd * (!window.GEAR && z.moveSlowT > 0 ? .85 : 1) * (Math.abs(dx) > 150 ? 1.8 : 1);   // 离得远时快步冲过来
     moveEnt(z, mx / l * sp * dt, my / l * sp * .7 * dt);
-    if (z.bx) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);   // 被草垛等挡住时上下绕开
+    if (z.bx && z.avoidDir == null) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);   // 被草垛等挡住时上下绕开（已在绕行时不再额外推）
   }
 }
 function updateChapter2Catapult(z, dt) {
