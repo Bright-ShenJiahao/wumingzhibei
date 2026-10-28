@@ -88,7 +88,7 @@
         armor(z);
         if (C.t > .8 && !C.sum) { C.sum = true; z.summonedHalf = false; chapter2BossSummon(z);
           const mid = (M.top + M.bot) / 2; spawn('priest', z.x + z.f * 40, mid - 40); spawn('priest', z.x + z.f * 40, mid + 40); sand.t = 9; }
-        if (C.t > 1.6) { z.cbFrame = 'rest'; if (C.t > 2.4) done(z, 1); }
+        if (C.t > 1.4) done(z, .3);   // 放完立刻行动，不喘
         return true;
       }
       if (C.k === 'slash') {   // 小伤害劈砍
@@ -103,7 +103,7 @@
           armor(z); C.tick = (C.tick || 0) - dt;
           const ahead = (hero.x - z.x) * z.f;
           if (C.tick <= 0 && ahead > 6 && ahead < 115 && Math.abs(hero.y - z.y) < 13) { C.tick = .35; dmgHero(1.5, z, 'skill'); }
-          if (C.t > .9) { C.step = 2; C.t = 0; z.cbFrame = 'rest'; }
+          if (C.t > .9) { done(z, .3); return true; }
         } else if (C.t > .8) done(z, .8);
         return true;
       }
@@ -115,7 +115,7 @@
             const x = i === 0 ? hero.x : hero.x + rnd(-70, 70), y = i === 0 ? hero.y : Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + rnd(-26, 26)));
             hz.push({ k: 'ball', x, y, t: -(1.1 + i * .18), r: 17 });
           } }
-        if (C.t > 1.1) { z.cbFrame = 'rest'; if (C.t > 1.9) done(z, .8); }
+        if (C.t > .9) done(z, .3);
         return true;
       }
     }
