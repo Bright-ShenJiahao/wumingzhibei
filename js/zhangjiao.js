@@ -154,6 +154,8 @@
     // 打灭灯：没轮到的灯被打灭 = 乱了阵序，立刻多降两道雷，破阵也不再掉血
     if (S.phase !== 'open') for (const p of lamps()) if (p.g !== 'fudeng' && !p.zjSeen) {
       p.zjSeen = true;
+      // 打灭灯掉回血：按顺序打的灯 65% 掉包子、15% 掉鸡腿；乱序打的灯什么都不掉（用户定）
+      if (p.lit) { const r = Math.random(); if (r < .15) spawnDrop(p.x, p.y, 'leg'); else if (r < .8) spawnDrop(p.x, p.y, 'bun'); }
       if (p.lit && S.phase === 'p1' && !S.saidLamp) { S.saidLamp = true; say('张角：「竖子，敢毁我法灯！」', 2); }
       if (!p.lit && S.phase === 'p1') { const first = !S.outOfOrder; S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say(first ? '阵序乱了！要打金圈里发光的灯！' : '阵序乱了！天雷降！', first ? 3.5 : 1.8); }
     }
@@ -195,6 +197,7 @@
     if (S.phase === 'p2') {
       if (S.sumT > 0) { S.sumT -= dt; if (S.sumT <= 0) { monsters(S.summonRound); S.pose = 'float'; S.next = 0; } return; }
       S.pose = 'float';
+      for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士必掉鸡腿
       if (S.fled && S.fled.dead && !S.angry) { S.angry = true; say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
       const alive = zs.some(z => !z.dead && z.zjAdd);
       S.next = (S.next || 0) + dt;

@@ -786,6 +786,7 @@ function chapter2Waves() {
 function chooseChapter2Route(route) {
   if (!chapter2Run || chapter2Run.mode !== 'choice') return;
   chapter2Run.route = route;
+  for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt: `获得${d.weapon === 'blade' ? '大刀' : '汉弓'}！`, big: true, gold: true }); }   // 首次赏的武器没捡也自动收下
   if (window.CHAPTER2 && CHAPTER2.chooseRoute) CHAPTER2.chooseRoute(route);
   const caoLine = route === 'zhang-liang' ? '我去截张宝——你追张梁！' : '张梁交给我——你去截张宝！';
   if (window.CH2OPEN) CH2OPEN.bark(caoLine, 2.8); else say('曹操：' + caoLine, 2.8);
