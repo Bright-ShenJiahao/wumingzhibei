@@ -120,6 +120,11 @@
     if (!S || !chapter2Run || chapter2Run.battle !== 6) return;
     S.t += dt; S.flash = Math.max(0, S.flash - dt); S.castT = Math.max(0, S.castT - dt);
     golems(dt); updateHz(dt);
+    // 打灭灯：没轮到的灯被打灭 = 乱了阵序，立刻多降两道雷，破阵也不再掉血
+    if (S.phase !== 'open') for (const p of lamps()) if (p.g !== 'fudeng' && !p.zjSeen) {
+      p.zjSeen = true;
+      if (!p.lit && S.phase === 'p1') { S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say('阵序乱了！天雷降！', 1.8); }
+    }
     if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; }
       if (S.shatterT > .5 && S.perfect) for (let i = props.length - 1; i >= 0; i--) if (props[i].lamp) { S.hz.push({ k: 'puff', x: props[i].x, y: props[i].y - 12, t: 0 }); props.splice(i, 1); } }
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
@@ -184,7 +189,7 @@
       const j = z.jump; j.t += dt; const u = Math.min(1, j.t / .7);
       z.z = j.h0 * (1 - u) + Math.sin(u * Math.PI) * 26; z.stun = 0;
       if (u >= 1) { z.jump = null; z.z = 0; sfx('land', z.x); shake = .4; S.hz.push({ k: 'puff', x: z.x, y: z.y - 6, t: 0 });
-        if (S.perfect) { z.hp -= z.T.hp * .1; z.zjDizzy = 3; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '破阵！', big: true }); }
+        if (S.perfect && !S.outOfOrder) { z.hp -= z.T.hp * .15; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '破阵！-15%', big: true }); }
         else thunderAt(hero.x, hero.y, .9); }
       return true;
     }
