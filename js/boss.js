@@ -81,6 +81,9 @@ const Boss = (() => {
     if (z.hp <= 0) {
       z.hp = 0; z.dead = 1; kills++; set(z, 'kneel'); fx = [];
       say('管亥：「这……这小子是什么人……」', 3.5); vo('defeat'); sfx('enemyDown', z.x); shake = .3;
+      // 结尾：村民道谢 → 曹军的马蹄声，接第二章
+      setTimeout(() => say('村民：「是那个穿着古怪衣裳的后生……他一个人把贼赶跑了！」', 3), 3600);
+      setTimeout(() => say('远处传来马蹄声，一面写着「曹」字的大旗正朝村子而来……', 3), 6600);
     }
     if (ranged) {
       if (window.BOSS_BLOCK) BOSS_BLOCK.tryStun(z, traits);

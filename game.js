@@ -174,21 +174,21 @@ const TYPES = {
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
-  { say: '黄巾喽啰来了！棍可四连击，锤和石子各三连击', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  { say: '黄巾贼来了！ | 棍子四连击，按住攻击键能蓄力', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
   // 区域 2：刀手首次登场（固定 2 个），其余随机
-  { say: '刀手举刀时头上会冒「!」—— 按 K 翻滚躲开！',
+  { say: '几个提刀的贼人堵住了去路…… | 刀手举刀时头上冒「!」——翻滚躲开！',
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
     extra: ['grunt', 'blade'], extraAt: 2, extraSay: '后面又冲上来一队！' },
   // 区域 3：投石手首次登场
-  { say: '投石手在远处扔石头 —— 别站在同一条线上，用 K 翻滚躲！',
+  { say: '远处有人朝这边扔石头！ | 别和投石手站在同一条线上',
     core: ['grunt', 'slinger', 'slinger'], budget: 5, pool: ['grunt', 'blade', 'slinger'],
     extra: ['blade', 'grunt'], extraAt: 2 },
   // 区域 4：弓箭手固定 2 个
-  { say: '弓箭手的火箭会点燃地面，看到红圈快躲开',
+  { say: '村民：「东头的弓手在放火箭！」 | 看到地上红圈快躲开，先打后面念咒的方士',
     core: ['grunt', 'blade', 'archer', 'archer', 'grunt', 'priest'], budget: 6, pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['blade', 'blade'], extraAt: 2, extraSay: '还有埋伏！', sleepers: [0, 5], sleepy: 2 },
   // 区域 5：老卒首次登场
-  { say: '村尾那个披甲的老卒 —— 血厚、打不断，绕到背后打',
+  { say: '一个披甲的老兵挡在村口…… | 他血厚、打不断，绕到背后打',
     core: ['elite', 'priest'], budget: 7, sleepy: 3, sleepers: [0, 1], pool: ['grunt', 'blade', 'slinger', 'archer'],
     extra: ['slinger', 'grunt'], extraAt: 1, sleepers: [0] },
   { boss: true },   // 村口：黄巾流寇·管亥（js/boss.js）
@@ -267,7 +267,7 @@ function reset() {
     { text: '武器：棍范围大、四连击 | 锤可打断，石子可远程攻击', time: 4 },
     { text: '蓄力：按住攻击 0.4 秒开始，最多 2 秒 | 受击会打断，松开释放', time: 4 },
   ];   // 提示对所有人显示（简单模式只降低玩家受伤，不影响提示）
-  say('村子被黄巾贼烧了！往右走 →');
+  say('这……是我刚才玩的那个游戏？村子被黄巾贼烧了！ | 往右走 →', 4);
 }
 function say(s, t = 3) { msg = s; msgT = t; }
 function noviceMode() { if (window.XIAOCHANG && XIAOCHANG.active()) return false; return !(window.TITLE && TITLE.noviceMode) || TITLE.noviceMode(); }   // 默认（简单）= 玩家受伤减半，击倒判定仍按减半前伤害
@@ -514,7 +514,7 @@ function startVillagers(edgeX) {
   const chaser = zs[zs.length - 1];
   chaser.villagerChaser = true;
   chaser.f = -1;
-  say('村民：「黄巾贼来了！」', 2.8);
+  say('村民：「黄巾贼来了！快跑啊！」', 2.8);
 }
 function thankVillagers() {
   if (villagersRewarded) return;
@@ -560,7 +560,8 @@ function waves(dt = 0) {
     zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });
   }
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
-    if (!clearAt) clearAt = gameT + (villagersThanksT >= 0 ? 2 : 1.4);   // 救下村民时先让鞠躬和锦囊掉落演完
+    const bossDone = WAVES[gateI] && WAVES[gateI].boss;
+    if (!clearAt) clearAt = gameT + (bossDone ? 8 : villagersThanksT >= 0 ? 2 : 1.4);   // 打败管亥后留时间演结尾台词   // 救下村民时先让鞠躬和锦囊掉落演完
     if (gameT >= clearAt) {
       clearAt = 0; lockR = Infinity; gateI++; arenaL = null;
       if (gateI < M.gates.length) say(WAVES[gateI].boss ? '前面是村口……小心！' : '区域清空！GO →');
