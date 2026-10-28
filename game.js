@@ -4,7 +4,7 @@ const IMG = {};
 function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
-const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2' };
+const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', zhang_jiao: 'chapter2' };
 function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
 function ensureAssets(group, { silent = false, label = '' } = {}) {
   const list = LAZY[group] || [];
@@ -622,6 +622,14 @@ function addAltarProps() {
     const a = k * Math.PI / 4 - Math.PI / 2;
     P('fudeng', Math.round(ALTAR_C.x + Math.cos(a) * 138), Math.round(ALTAR_C.y + Math.sin(a) * 36), { hp: 2, solid: true, w: 10, lamp: true });
   }
+}
+// 张角预览（战斗逻辑未接入前）：法台上浮空施法 / 降雷交替；地上站一个待机的，方便和主角比大小
+const ALTAR_STAGE = { x: 353, y: 91 };   // 法台顶上平台（背景图上量的）
+function drawZhangJiaoPreview() {
+  const t = performance.now() / 1000, cyc = t % 3.2, fr = cyc < 2 ? 'float' : 'thunder';
+  drawChar('zhang_jiao', fr, ALTAR_STAGE.x, ALTAR_STAGE.y - 4 + Math.sin(t * 2.2) * 2.5, hero.x < ALTAR_STAGE.x, 1, false, 1.12);
+  const gx = ALTAR_C.x + 175, gy = ALTAR_C.y + 30, walk = ['idle', 'wind', 'strike', 'idle'][Math.floor(t / .8) % 4];
+  drawChar('zhang_jiao', walk, gx, gy, hero.x < gx, 1, false, 1.12);
 }
 const altarLampsLeft = () => props.filter(p => p.lamp && p.g === 'fudeng').length;
 // 第二章每战波次：每项是一个 spawn 函数，保持现有 spawn / 单位名。
@@ -2490,6 +2498,7 @@ function draw() {
   }
   Boss.drawGround();
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
+  if (chapter2Run && chapter2Run.battle === 6 && chapter2Run.mode === 'preview') drawZhangJiaoPreview();
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
