@@ -616,7 +616,7 @@ const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };   //
 function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
-  P('coffin', 141, 99, { back: true, dw: 58, dh: 43 });                                  // 棺材摆在左侧祭台台面上
+  P('coffin', 141, 99, { back: true, dw: 62, dh: 40 });                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4 - Math.PI / 2;
@@ -624,12 +624,13 @@ function addAltarProps() {
   }
 }
 // 张角预览（战斗逻辑未接入前）：法台上浮空施法 / 降雷交替；地上站一个待机的，方便和主角比大小
+const ZJ_SCALE = 1.35;   // 下台决斗的张角：和法台上看起来一样大（法台那几帧原图本来就画得大）
 const ALTAR_STAGE = { x: 353, y: 91 };   // 法台顶上平台（背景图上量的）
 function drawZhangJiaoPreview() {
   const t = performance.now() / 1000, cyc = t % 3.2, fr = cyc < 2 ? 'float' : 'thunder';
   drawChar('zhang_jiao', fr, ALTAR_STAGE.x, ALTAR_STAGE.y - 4 + Math.sin(t * 2.2) * 2.5, hero.x < ALTAR_STAGE.x, 1, false, 1.12);
   const gx = ALTAR_C.x + 175, gy = ALTAR_C.y + 30, walk = ['idle', 'wind', 'strike', 'idle'][Math.floor(t / .8) % 4];
-  drawChar('zhang_jiao', walk, gx, gy, hero.x < gx, 1, false, 1.12);
+  drawChar('zhang_jiao', walk, gx, gy, hero.x < gx, 1, false, ZJ_SCALE);
 }
 const altarLampsLeft = () => props.filter(p => p.lamp && p.g === 'fudeng').length;
 // 第二章每战波次：每项是一个 spawn 函数，保持现有 spawn / 单位名。
