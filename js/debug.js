@@ -110,8 +110,7 @@
     const c2 = addGroup('chapter2', '第二章');
     btn(c2, '测试第二章', 'alt', () => { if (typeof startChapter2Debug === 'function') startChapter2Debug(); });
     btn(c2, '第六战祭台', 'alt', () => {
-      if (typeof startChapter2Debug === 'function') startChapter2Debug();
-      if (typeof startChapter2Battle === 'function') startChapter2Battle(6);
+      if (typeof startChapter2Debug === 'function') startChapter2Debug(6);   // 素材是异步加载的，必须等加载完再进第六战
     });
 
     const xc = addGroup('xiaochang', '校场');
@@ -183,8 +182,7 @@
     if (auto === 'xiaochang') setTimeout(() => { if (window.XIAOCHANG) XIAOCHANG.start(); }, 900);
     if (auto === 'boss' || auto === 'boss2') setTimeout(() => jumpBoss(auto === 'boss2'), 900);
     if (auto === 'chapter2' || auto === 'chapter2altar') setTimeout(() => {
-      if (typeof startChapter2Debug === 'function') startChapter2Debug();
-      if (auto === 'chapter2altar' && typeof startChapter2Battle === 'function') startChapter2Battle(6);
+      if (typeof startChapter2Debug === 'function') startChapter2Debug(auto === 'chapter2altar' ? 6 : 1);
     }, 900);
     console.log('%c[开发者模式] 已开启', 'color:#8ef07a;font-weight:bold', 'F2 面板 / F3 Boss一阶段 / F4 Boss二阶段');
   }

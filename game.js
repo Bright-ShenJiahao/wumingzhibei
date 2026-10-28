@@ -670,7 +670,7 @@ const CHAPTER2_WAVES = {
 };
 const CHAPTER2_TITLES = ['', '曹军入阵', '盾阵', '投石车阵', '追击张梁', '追击张宝', '祭台决战'];
 
-function prepareChapter2Run(showOpening) {
+function prepareChapter2Run(showOpening, battle = 1) {
   if (window.TITLE && TITLE.skip) TITLE.skip();
   if (window.ROOM && ROOM.skip) ROOM.skip();
   reset();
@@ -682,14 +682,14 @@ function prepareChapter2Run(showOpening) {
   if (topTitle) topTitle.textContent = '无名之辈 · 第二章：黄巾决战';
   hero.x = 60; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.hp = maxHeroHp();
   if (showOpening && window.CHAPTER2_INTRO) CHAPTER2_INTRO.start(() => startChapter2Battle(1));
-  else startChapter2Battle(1);
+  else startChapter2Battle(battle);
 }
 // 加载第二章素材期间 window.CHAPTER_LOADING=2，BGM 据此直接进第二章鼓乐，不会先响第一章的曲子。
-function loadChapter2(showOpening) {
+function loadChapter2(showOpening, battle) {
   window.CHAPTER_LOADING = 2;
-  ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => { prepareChapter2Run(showOpening); window.CHAPTER_LOADING = 0; });
+  ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => { prepareChapter2Run(showOpening, battle); window.CHAPTER_LOADING = 0; });
 }
-function startChapter2Debug() { loadChapter2(false); }
+function startChapter2Debug(battle) { loadChapter2(false, battle); }   // 开发者直跳：素材加载完再进指定的那一战
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number, walkIn = false) {
