@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=e96c86de80" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=e96c86de80)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=d66a9d9d60" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d66a9d9d60)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='8847aee71610',busy=false;
+var BUILD='d45732f3204c',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -6524,7 +6524,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     // 打灭灯：没轮到的灯被打灭 = 乱了阵序，立刻多降两道雷，破阵也不再掉血
     if (S.phase !== 'open') for (const p of lamps()) if (p.g !== 'fudeng' && !p.zjSeen) {
       p.zjSeen = true;
-      if (!p.lit && S.phase === 'p1') { S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say('阵序乱了！天雷降！', 1.8); }
+      if (!p.lit && S.phase === 'p1') { const first = !S.outOfOrder; S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say(first ? '阵序乱了！要打金圈里发光的灯！' : '阵序乱了！天雷降！', first ? 3.5 : 1.8); }
     }
     if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; }
       if (S.shatterT > .5 && S.perfect) for (let i = props.length - 1; i >= 0; i--) if (props[i].lamp) { S.hz.push({ k: 'puff', x: props[i].x, y: props[i].y - 12, t: 0 }); props.splice(i, 1); } }
@@ -6544,7 +6544,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
       if (t < 2.2) S.pose = 'situp';
       else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = 141 + (ALTAR_STAGE.x - 141) * u; S.zjY = 108 + (ALTAR_STAGE.y - 4 - 108) * u - Math.sin(u * Math.PI) * 30; }
       else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; say('张角：“苍天已死，黄天当立！”', 3.2); shake = .3; S.flash = .3; }
-      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); }
+      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); say('躲开天雷，打灭金圈里发光的灯！（每盏三下）', 4.5); }
       return;
     }
     if (S.phase === 'p1') {
@@ -6918,7 +6918,7 @@ const TYPES = {
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
-  { say: '黄巾贼来了！ | 棍子四连击，按住攻击键能蓄力', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  { say: '黄巾贼来了！ | 棍子四连击，按住攻击键能蓄力', units: ['grunt', 'grunt', 'grunt', 'slinger'] },   // 一个投石手：逼玩家第一次走位、换目标
   // 区域 2：刀手首次登场（固定 2 个），其余随机
   { say: '几个提刀的贼人堵住了去路…… | 刀手举刀时头上冒「!」——翻滚躲开！',
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],

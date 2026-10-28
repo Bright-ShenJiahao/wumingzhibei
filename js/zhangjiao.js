@@ -147,7 +147,7 @@
     // 打灭灯：没轮到的灯被打灭 = 乱了阵序，立刻多降两道雷，破阵也不再掉血
     if (S.phase !== 'open') for (const p of lamps()) if (p.g !== 'fudeng' && !p.zjSeen) {
       p.zjSeen = true;
-      if (!p.lit && S.phase === 'p1') { S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say('阵序乱了！天雷降！', 1.8); }
+      if (!p.lit && S.phase === 'p1') { const first = !S.outOfOrder; S.outOfOrder = true; thunderAt(hero.x, hero.y, .8); thunderAt(hero.x + rnd2(-30, 30), hero.y + rnd2(-8, 8), 1.1); say(first ? '阵序乱了！要打金圈里发光的灯！' : '阵序乱了！天雷降！', first ? 3.5 : 1.8); }
     }
     if (S.shatterT >= 0) { S.shatterT += dt; if (S.shatterT > 1.1) { const b = props.find(p => p.g === 'bagua'); if (b) b.broken = true, b.alpha = 0; S.shatterT = -2; }
       if (S.shatterT > .5 && S.perfect) for (let i = props.length - 1; i >= 0; i--) if (props[i].lamp) { S.hz.push({ k: 'puff', x: props[i].x, y: props[i].y - 12, t: 0 }); props.splice(i, 1); } }
@@ -167,7 +167,7 @@
       if (t < 2.2) S.pose = 'situp';
       else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = 141 + (ALTAR_STAGE.x - 141) * u; S.zjY = 108 + (ALTAR_STAGE.y - 4 - 108) * u - Math.sin(u * Math.PI) * 30; }
       else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; say('张角：“苍天已死，黄天当立！”', 3.2); shake = .3; S.flash = .3; }
-      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); }
+      if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); say('躲开天雷，打灭金圈里发光的灯！（每盏三下）', 4.5); }
       return;
     }
     if (S.phase === 'p1') {

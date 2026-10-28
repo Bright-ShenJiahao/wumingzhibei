@@ -138,7 +138,7 @@ const TYPES = {
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
-  { say: '黄巾贼来了！ | 棍子四连击，按住攻击键能蓄力', units: ['grunt', 'grunt', 'grunt', 'grunt'] },
+  { say: '黄巾贼来了！ | 棍子四连击，按住攻击键能蓄力', units: ['grunt', 'grunt', 'grunt', 'slinger'] },   // 一个投石手：逼玩家第一次走位、换目标
   // 区域 2：刀手首次登场（固定 2 个），其余随机
   { say: '几个提刀的贼人堵住了去路…… | 刀手举刀时头上冒「!」——翻滚躲开！',
     core: ['grunt', 'grunt', 'blade', 'blade'], budget: 4, pool: ['grunt', 'blade'],
