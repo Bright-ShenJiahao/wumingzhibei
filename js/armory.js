@@ -95,7 +95,7 @@
     const items=p.items.filter(i=>!equippedIds.has(i.uid)).map((item,index)=>({item,index})).sort((a,b)=>Number(!!b.item.locked)-Number(!!a.item.locked)||a.index-b.index).map(x=>x.item);
     for(const item of items){
       const card=document.createElement('div');card.className='aCard'+(selection.has(item.uid)?' selected':'');card.style.setProperty('--quality',D.qualities[item.q].color);card.dataset.uid=item.uid;card.dataset.weapon=item.type;card.setAttribute('role','button');card.setAttribute('tabindex','0');card.setAttribute('aria-label',D.label(item)+'，点击装备');
-      const check=document.createElement('input');check.className='aSelect';check.type='checkbox';check.checked=selection.has(item.uid);check.setAttribute('aria-label','选择用于熔炼或丢弃');check.onclick=e=>e.stopPropagation();check.onchange=()=>{if(check.checked&&selection.size>=5){check.checked=false;showMessage('最多选择5把');return;}if(check.checked)selection.add(item.uid);else selection.delete(item.uid);card.classList.toggle('selected',check.checked);if(window.WEAPON_TIP)WEAPON_TIP.hide();updateFooter(root);};card.append(check);
+      const check=document.createElement('input');check.className='aSelect';check.type='checkbox';check.checked=selection.has(item.uid);check.setAttribute('aria-label','选择用于熔炼或卖出');check.onclick=e=>e.stopPropagation();check.onchange=()=>{if(check.checked&&selection.size>=5){check.checked=false;showMessage('最多选择5把');return;}if(check.checked)selection.add(item.uid);else selection.delete(item.uid);card.classList.toggle('selected',check.checked);if(window.WEAPON_TIP)WEAPON_TIP.hide();updateFooter(root);};card.append(check);
       if(item.locked){const badge=document.createElement('span');badge.className='aLockMark';badge.textContent='🔒';badge.setAttribute('aria-label','已锁定');card.append(badge);}
       const image=document.createElement('span');image.className='aCardIcon';image.innerHTML=icon(item.type);card.append(image);const title=document.createElement('span');title.className='aCardName';title.textContent=D.label(item);card.append(title);
       card.onclick=e=>{if(e.target===check||e.target.closest('.aSelect'))return;if(e.target.closest('.aLockMark'))return;if(equip(item.uid)){window.TITLE.refreshPreparation();preview(item.type);}else showMessage('保存失败，未能装备');};card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};bag.append(card);
@@ -115,8 +115,12 @@
         if(ids.some(id=>{const i=now.items.find(x=>x.uid===id);return !i||i.locked||eq.has(id);})){message='这些武器有的已在其他设备使用或已装备、锁定，熔炼取消，材料未消耗';window.TITLE.refreshPreparation();return;}
         const result=reforge(ids);message=result?'熔炼获得：'+D.label(result)+(result.forgeFrom!=null?'（升阶成功）':''):'熔炼失败，材料未消耗';window.TITLE.refreshPreparation();}});};
     lock.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length)return;const makeLocked=!selected.every(i=>i.locked);for(const item of selected)item.locked=makeLocked;save();window.TITLE.refreshPreparation();};
-    discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能丢弃');return;}askConfirm({title:'确认丢弃',description:'以下武器将被丢弃，无法找回。',items:selected,action:()=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;showMessage('保存失败，未丢弃');return;}selection.clear();message='已丢弃所选武器';window.TITLE.refreshPreparation();}});};
-    updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或丢弃':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
+    discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能卖出');return;}
+      // 卖给商店老板：弹出老板界面，列出要卖的武器详情和价格
+      const sell=total=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;return false;}selection.clear();message='已卖出 '+selected.length+' 把武器，得 '+total+' 金币';window.TITLE.refreshPreparation();return true;};
+      if(window.SHOP&&SHOP.openSell)SHOP.openSell(selected,sell);
+      else askConfirm({title:'确认卖出',description:'以下武器将被卖出，无法找回。',items:selected,action:()=>{sell(0);}});};
+    updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或卖出':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
   }
   const percent=n=>Number((n*100).toFixed(2))+'%';
   const shortPercent=n=>{const v=n*100;return (v>0&&v<1?v.toFixed(1):String(Math.round(v)))+'%';};   // 按钮标签空间小：取整，不足1%留一位小数

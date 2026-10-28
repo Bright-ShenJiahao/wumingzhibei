@@ -54,6 +54,14 @@
     if (window.SHOP) SHOP.refresh();
     return true;
   }
+  function addCoins(n) {   // 卖武器所得：记进累计收入
+    n = Math.floor(Number(n) || 0); if (n <= 0) return false;
+    const p = profile(); if (!p) return false;
+    const w = walletOf(p); w.earned = clamp(w.earned + n);
+    if (!save()) { w.earned = clamp(w.earned - n); return false; }
+    if (window.SHOP) SHOP.refresh();
+    return true;
+  }
   function addFruits(n) {
     n = Math.floor(Number(n) || 0); if (n <= 0) return false;
     const p = profile(); if (!p) return false;
@@ -79,7 +87,7 @@
     runCoins: () => runEarned,
     pendingCoins: () => pending,
     awardKill, startRun, flush,
-    spendCoins, addFruits, useFruits,
+    spendCoins, addCoins, addFruits, useFruits,
   };
 
   const OPEN_LINES = ['客官，看看？', '彩色果可是西域来的稀罕物！', '钱不够？去校场多练练。'];
@@ -114,7 +122,7 @@
       .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
-      .shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+      .shopOwn{margin-left:10px;color:#e8d3a6;font-weight:400;font-size:12px}.shopSellList{display:flex;flex-direction:column;gap:8px}.shopSellItem{position:relative;padding:8px 10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17)}.shopSellPrice{position:absolute;right:10px;top:8px;z-index:1;color:#ffd96d;font:700 14px sans-serif}.shopSellFoot{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:10px;padding:8px 0 2px;margin-top:6px;background:#221a14;box-shadow:0 -8px 10px #221a14}.shopSellFoot button{min-height:38px;min-width:96px;border:1px solid #a77e47;border-radius:5px;background:#593d27;color:#f5dfb2;font:700 15px sans-serif;cursor:pointer}.shopSellFoot .shopSellGo{background:linear-gradient(#8a5a1e,#5a3a14);color:#fff1c4}.shopSellItem .wd-muted{display:none}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
       .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}
       .shopCardIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid #6d5336;border-radius:5px;background:#1c1511}
       .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
@@ -159,7 +167,7 @@
     for (const item of SHOP_ITEMS) {
       const card = document.createElement('div'); card.className = 'shopCard';
       const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : '<span aria-hidden="true">🎁</span>';
-      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币</div><div class="shopBuyRow"></div>`;
+      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币${item.id === 'fruit' ? `<span class="shopOwn">持有 ${fmt(fruits)} 个</span>` : ''}</div><div class="shopBuyRow"></div>`;
       const row = card.querySelector('.shopBuyRow');
       if (item.kind === 'stack') {
         for (const amount of item.amounts || [1]) {
@@ -220,9 +228,55 @@
       closeTimer = setTimeout(removeShop, 230);
     }, 1500);
   }
-  function refresh() { if (overlay) render(); refreshEntry(); }
+  function refresh() { if (overlay && !overlay.dataset.sell) render(); refreshEntry(); }
 
-  window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry };
+  // ---------- 卖武器：老板收货界面 ----------
+  const SELL_PRICE = [2, 5, 10, 20, 40, 80];
+  const priceOf = item => (SELL_PRICE[Math.min(5, item.q || 0)] || 2) + (item.special ? 10 : 0);
+  const SELL_OPEN = ['让老夫瞧瞧是什么好货……', '收破烂也是门学问，拿来看看。', '先说好，旧货可卖不上价。'];
+  const SELL_CHEAP = ['这破玩意儿也就值几个铜板。', '行吧，老夫就当做善事了。', '下回拿点像样的来。'];
+  const SELL_GOOD = ['好货！老夫收了！', '哟，这成色不错，客官爽快！', '这把老夫转手能赚一笔……咳，公道价！'];
+  function openSell(items, onSold) {
+    if (overlay) removeShop();
+    injectStyle();
+    const total = items.reduce((n, i) => n + priceOf(i), 0);
+    line = pick(SELL_OPEN); mood = 'normal';
+    overlay = document.createElement('div'); overlay.id = 'shopOverlay'; overlay.dataset.sell = '1';
+    overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="卖出武器">
+      <header class="shopHead"><h2>🏮 卖给老板</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
+      <div class="shopBody"><aside class="shopLeft"><div class="shopPortrait">${portraitHTML()}</div><p class="shopLine"></p><div class="shopWallet"></div></aside>
+      <div class="shopRight"><div class="shopSellList"></div><div class="shopSellFoot"><button type="button" class="shopSellNo">取消</button><button type="button" class="shopSellGo">卖出 · 得 ${fmt(total)} 金币</button></div></div></div>
+    </section>`;
+    const list = overlay.querySelector('.shopSellList');
+    for (const item of items) {
+      const box = document.createElement('div'); box.className = 'shopSellItem';
+      const tag = document.createElement('div'); tag.className = 'shopSellPrice'; tag.textContent = '+' + priceOf(item) + ' 金币';
+      const body = document.createElement('div');
+      if (window.WEAPON_DETAIL) WEAPON_DETAIL.render(body, item, { compact: true }); else body.textContent = item.name || item.type;
+      box.append(tag, body); list.append(box);
+    }
+    const wallet = () => { const w = overlay && overlay.querySelector('.shopWallet'); if (w) w.innerHTML = `💰 余额 <b>${fmt(WALLET.coins())}</b>` + (overlay.dataset.done ? '' : `<br><span class="shopOwn" style="margin:0">卖出后 ${fmt(WALLET.coins() + total)}</span>`); };
+    const say2 = () => { const n = overlay && overlay.querySelector('.shopLine'); if (n) n.textContent = line; const f = overlay && overlay.querySelector('.shopPortrait img'), src = moodSrc(mood); if (f && src) f.src = src; };
+    const shut = () => removeShop();
+    overlay.addEventListener('pointerdown', e => { if (e.target === overlay) shut(); });
+    overlay.querySelector('.shopClose').onclick = shut;
+    overlay.querySelector('.shopSellNo').onclick = () => { line = '不卖？那就别占老夫的工夫。'; mood = 'annoyed'; say2(); setTimeout(shut, 900); };
+    overlay.querySelector('.shopSellGo').onclick = async () => {
+      const go = overlay.querySelector('.shopSellGo'); go.disabled = true;
+      const ok = await onSold(total);
+      if (!ok) { go.disabled = false; line = '账没对上，客官再试一次。'; mood = 'annoyed'; say2(); return; }
+      WALLET.addCoins(total); overlay.dataset.done = '1';
+      line = pick(items.some(i => (i.q || 0) >= 3 || i.special) ? SELL_GOOD : SELL_CHEAP); mood = items.some(i => (i.q || 0) >= 3 || i.special) ? 'happy' : 'normal';
+      say2(); wallet();
+      const w = overlay.querySelector('.shopWallet'); w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump');
+      list.replaceChildren(); go.textContent = '已卖出'; overlay.querySelector('.shopSellNo').textContent = '离开';
+      overlay.querySelector('.shopSellNo').onclick = shut; refreshEntry();
+    };
+    document.body.appendChild(overlay);
+    say2(); wallet();
+  }
+
+  window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry, openSell, priceOf };
   document.addEventListener('visibilitychange', () => { if (document.hidden) WALLET.flush(); });
   window.addEventListener('pagehide', () => WALLET.flush());
 })();

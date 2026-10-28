@@ -58,7 +58,7 @@ window.XIAOCHANG = (() => {
   function start(options = {}) {
     const chapter = options.chapter || selection.chapter, c = CONFIG[chapter];
     if (!c || (!debug() && !(window.TITLE && TITLE.hasCleared(chapter)))) return false;
-    if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或丢弃，再出征'); return false; }
+    if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或卖出，再出征'); return false; }
     const floor = Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
     const wish = c.weapons.includes(options.wish ?? selection.wish) ? options.wish ?? selection.wish : '';
     Object.assign(selection, { chapter, floor, wish });
@@ -293,7 +293,7 @@ window.XIAOCHANG = (() => {
     selection.floor=Math.min(selection.floor,maxFloor(chapter));
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
-    root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或丢弃，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
+    root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
     const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));

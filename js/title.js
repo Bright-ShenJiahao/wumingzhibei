@@ -547,7 +547,7 @@
         <div id="tPrepBag"></div>
         <div id="aTools"></div>
        </div>
-       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">丢弃</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -1107,7 +1107,7 @@
   }
 
   function startSelectedChapter() {
-    if(window.ARMORY && ARMORY.count() >= ARMORY.capacity()){renderPreparation('已满50把，请先熔炼或丢弃，再出征');return;}
+    if(window.ARMORY && ARMORY.count() >= ARMORY.capacity()){renderPreparation('已满50把，请先熔炼或卖出，再出征');return;}
     if (window.ARMORY) ARMORY.markPlayed();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;

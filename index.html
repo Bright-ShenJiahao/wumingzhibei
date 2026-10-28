@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=d8d5694847" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d8d5694847)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4adeedc9c4" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4adeedc9c4)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='bef7764cb76a',busy=false;
+var BUILD='dcb6ae7504ec',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -301,7 +301,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
     const items=p.items.filter(i=>!equippedIds.has(i.uid)).map((item,index)=>({item,index})).sort((a,b)=>Number(!!b.item.locked)-Number(!!a.item.locked)||a.index-b.index).map(x=>x.item);
     for(const item of items){
       const card=document.createElement('div');card.className='aCard'+(selection.has(item.uid)?' selected':'');card.style.setProperty('--quality',D.qualities[item.q].color);card.dataset.uid=item.uid;card.dataset.weapon=item.type;card.setAttribute('role','button');card.setAttribute('tabindex','0');card.setAttribute('aria-label',D.label(item)+'，点击装备');
-      const check=document.createElement('input');check.className='aSelect';check.type='checkbox';check.checked=selection.has(item.uid);check.setAttribute('aria-label','选择用于熔炼或丢弃');check.onclick=e=>e.stopPropagation();check.onchange=()=>{if(check.checked&&selection.size>=5){check.checked=false;showMessage('最多选择5把');return;}if(check.checked)selection.add(item.uid);else selection.delete(item.uid);card.classList.toggle('selected',check.checked);if(window.WEAPON_TIP)WEAPON_TIP.hide();updateFooter(root);};card.append(check);
+      const check=document.createElement('input');check.className='aSelect';check.type='checkbox';check.checked=selection.has(item.uid);check.setAttribute('aria-label','选择用于熔炼或卖出');check.onclick=e=>e.stopPropagation();check.onchange=()=>{if(check.checked&&selection.size>=5){check.checked=false;showMessage('最多选择5把');return;}if(check.checked)selection.add(item.uid);else selection.delete(item.uid);card.classList.toggle('selected',check.checked);if(window.WEAPON_TIP)WEAPON_TIP.hide();updateFooter(root);};card.append(check);
       if(item.locked){const badge=document.createElement('span');badge.className='aLockMark';badge.textContent='🔒';badge.setAttribute('aria-label','已锁定');card.append(badge);}
       const image=document.createElement('span');image.className='aCardIcon';image.innerHTML=icon(item.type);card.append(image);const title=document.createElement('span');title.className='aCardName';title.textContent=D.label(item);card.append(title);
       card.onclick=e=>{if(e.target===check||e.target.closest('.aSelect'))return;if(e.target.closest('.aLockMark'))return;if(equip(item.uid)){window.TITLE.refreshPreparation();preview(item.type);}else showMessage('保存失败，未能装备');};card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};bag.append(card);
@@ -321,8 +321,12 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
         if(ids.some(id=>{const i=now.items.find(x=>x.uid===id);return !i||i.locked||eq.has(id);})){message='这些武器有的已在其他设备使用或已装备、锁定，熔炼取消，材料未消耗';window.TITLE.refreshPreparation();return;}
         const result=reforge(ids);message=result?'熔炼获得：'+D.label(result)+(result.forgeFrom!=null?'（升阶成功）':''):'熔炼失败，材料未消耗';window.TITLE.refreshPreparation();}});};
     lock.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length)return;const makeLocked=!selected.every(i=>i.locked);for(const item of selected)item.locked=makeLocked;save();window.TITLE.refreshPreparation();};
-    discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能丢弃');return;}askConfirm({title:'确认丢弃',description:'以下武器将被丢弃，无法找回。',items:selected,action:()=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;showMessage('保存失败，未丢弃');return;}selection.clear();message='已丢弃所选武器';window.TITLE.refreshPreparation();}});};
-    updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或丢弃':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
+    discard.onclick=()=>{const selected=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean);if(!selected.length||selected.some(i=>i.locked||equippedIds.has(i.uid))){showMessage('已装备或已锁定的武器不能卖出');return;}
+      // 卖给商店老板：弹出老板界面，列出要卖的武器详情和价格
+      const sell=total=>{const ids=new Set(selected.map(i=>i.uid)),old=p.items;p.items=p.items.filter(i=>!ids.has(i.uid));if(!save()){p.items=old;return false;}selection.clear();message='已卖出 '+selected.length+' 把武器，得 '+total+' 金币';window.TITLE.refreshPreparation();return true;};
+      if(window.SHOP&&SHOP.openSell)SHOP.openSell(selected,sell);
+      else askConfirm({title:'确认卖出',description:'以下武器将被卖出，无法找回。',items:selected,action:()=>{sell(0);}});};
+    updateFooter(root);showMessage(message|| (p.items.length>=50?'已满50把，请先熔炼或卖出':p.items.length>=40?'仓库将满，建议整理闲置武器':''));message='';
   }
   const percent=n=>Number((n*100).toFixed(2))+'%';
   const shortPercent=n=>{const v=n*100;return (v>0&&v<1?v.toFixed(1):String(Math.round(v)))+'%';};   // 按钮标签空间小：取整，不足1%留一位小数
@@ -4421,6 +4425,14 @@ const Boss = (() => {
     if (window.SHOP) SHOP.refresh();
     return true;
   }
+  function addCoins(n) {   // 卖武器所得：记进累计收入
+    n = Math.floor(Number(n) || 0); if (n <= 0) return false;
+    const p = profile(); if (!p) return false;
+    const w = walletOf(p); w.earned = clamp(w.earned + n);
+    if (!save()) { w.earned = clamp(w.earned - n); return false; }
+    if (window.SHOP) SHOP.refresh();
+    return true;
+  }
   function addFruits(n) {
     n = Math.floor(Number(n) || 0); if (n <= 0) return false;
     const p = profile(); if (!p) return false;
@@ -4446,7 +4458,7 @@ const Boss = (() => {
     runCoins: () => runEarned,
     pendingCoins: () => pending,
     awardKill, startRun, flush,
-    spendCoins, addFruits, useFruits,
+    spendCoins, addCoins, addFruits, useFruits,
   };
 
   const OPEN_LINES = ['客官，看看？', '彩色果可是西域来的稀罕物！', '钱不够？去校场多练练。'];
@@ -4481,7 +4493,7 @@ const Boss = (() => {
       .shopLine{margin:0;padding:9px;border:1px solid #82663f;border-radius:6px;background:#201812cc;color:#f1ddb9;font:13px/1.5 "PingFang SC",sans-serif;min-height:42px}
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
-      .shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+      .shopOwn{margin-left:10px;color:#e8d3a6;font-weight:400;font-size:12px}.shopSellList{display:flex;flex-direction:column;gap:8px}.shopSellItem{position:relative;padding:8px 10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17)}.shopSellPrice{position:absolute;right:10px;top:8px;z-index:1;color:#ffd96d;font:700 14px sans-serif}.shopSellFoot{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:10px;padding:8px 0 2px;margin-top:6px;background:#221a14;box-shadow:0 -8px 10px #221a14}.shopSellFoot button{min-height:38px;min-width:96px;border:1px solid #a77e47;border-radius:5px;background:#593d27;color:#f5dfb2;font:700 15px sans-serif;cursor:pointer}.shopSellFoot .shopSellGo{background:linear-gradient(#8a5a1e,#5a3a14);color:#fff1c4}.shopSellItem .wd-muted{display:none}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
       .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}
       .shopCardIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid #6d5336;border-radius:5px;background:#1c1511}
       .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
@@ -4526,7 +4538,7 @@ const Boss = (() => {
     for (const item of SHOP_ITEMS) {
       const card = document.createElement('div'); card.className = 'shopCard';
       const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : '<span aria-hidden="true">🎁</span>';
-      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币</div><div class="shopBuyRow"></div>`;
+      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币${item.id === 'fruit' ? `<span class="shopOwn">持有 ${fmt(fruits)} 个</span>` : ''}</div><div class="shopBuyRow"></div>`;
       const row = card.querySelector('.shopBuyRow');
       if (item.kind === 'stack') {
         for (const amount of item.amounts || [1]) {
@@ -4587,9 +4599,55 @@ const Boss = (() => {
       closeTimer = setTimeout(removeShop, 230);
     }, 1500);
   }
-  function refresh() { if (overlay) render(); refreshEntry(); }
+  function refresh() { if (overlay && !overlay.dataset.sell) render(); refreshEntry(); }
 
-  window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry };
+  // ---------- 卖武器：老板收货界面 ----------
+  const SELL_PRICE = [2, 5, 10, 20, 40, 80];
+  const priceOf = item => (SELL_PRICE[Math.min(5, item.q || 0)] || 2) + (item.special ? 10 : 0);
+  const SELL_OPEN = ['让老夫瞧瞧是什么好货……', '收破烂也是门学问，拿来看看。', '先说好，旧货可卖不上价。'];
+  const SELL_CHEAP = ['这破玩意儿也就值几个铜板。', '行吧，老夫就当做善事了。', '下回拿点像样的来。'];
+  const SELL_GOOD = ['好货！老夫收了！', '哟，这成色不错，客官爽快！', '这把老夫转手能赚一笔……咳，公道价！'];
+  function openSell(items, onSold) {
+    if (overlay) removeShop();
+    injectStyle();
+    const total = items.reduce((n, i) => n + priceOf(i), 0);
+    line = pick(SELL_OPEN); mood = 'normal';
+    overlay = document.createElement('div'); overlay.id = 'shopOverlay'; overlay.dataset.sell = '1';
+    overlay.innerHTML = `<section id="shopPanel" role="dialog" aria-modal="true" aria-label="卖出武器">
+      <header class="shopHead"><h2>🏮 卖给老板</h2><button type="button" class="shopClose" aria-label="关闭">✕</button></header>
+      <div class="shopBody"><aside class="shopLeft"><div class="shopPortrait">${portraitHTML()}</div><p class="shopLine"></p><div class="shopWallet"></div></aside>
+      <div class="shopRight"><div class="shopSellList"></div><div class="shopSellFoot"><button type="button" class="shopSellNo">取消</button><button type="button" class="shopSellGo">卖出 · 得 ${fmt(total)} 金币</button></div></div></div>
+    </section>`;
+    const list = overlay.querySelector('.shopSellList');
+    for (const item of items) {
+      const box = document.createElement('div'); box.className = 'shopSellItem';
+      const tag = document.createElement('div'); tag.className = 'shopSellPrice'; tag.textContent = '+' + priceOf(item) + ' 金币';
+      const body = document.createElement('div');
+      if (window.WEAPON_DETAIL) WEAPON_DETAIL.render(body, item, { compact: true }); else body.textContent = item.name || item.type;
+      box.append(tag, body); list.append(box);
+    }
+    const wallet = () => { const w = overlay && overlay.querySelector('.shopWallet'); if (w) w.innerHTML = `💰 余额 <b>${fmt(WALLET.coins())}</b>` + (overlay.dataset.done ? '' : `<br><span class="shopOwn" style="margin:0">卖出后 ${fmt(WALLET.coins() + total)}</span>`); };
+    const say2 = () => { const n = overlay && overlay.querySelector('.shopLine'); if (n) n.textContent = line; const f = overlay && overlay.querySelector('.shopPortrait img'), src = moodSrc(mood); if (f && src) f.src = src; };
+    const shut = () => removeShop();
+    overlay.addEventListener('pointerdown', e => { if (e.target === overlay) shut(); });
+    overlay.querySelector('.shopClose').onclick = shut;
+    overlay.querySelector('.shopSellNo').onclick = () => { line = '不卖？那就别占老夫的工夫。'; mood = 'annoyed'; say2(); setTimeout(shut, 900); };
+    overlay.querySelector('.shopSellGo').onclick = async () => {
+      const go = overlay.querySelector('.shopSellGo'); go.disabled = true;
+      const ok = await onSold(total);
+      if (!ok) { go.disabled = false; line = '账没对上，客官再试一次。'; mood = 'annoyed'; say2(); return; }
+      WALLET.addCoins(total); overlay.dataset.done = '1';
+      line = pick(items.some(i => (i.q || 0) >= 3 || i.special) ? SELL_GOOD : SELL_CHEAP); mood = items.some(i => (i.q || 0) >= 3 || i.special) ? 'happy' : 'normal';
+      say2(); wallet();
+      const w = overlay.querySelector('.shopWallet'); w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump');
+      list.replaceChildren(); go.textContent = '已卖出'; overlay.querySelector('.shopSellNo').textContent = '离开';
+      overlay.querySelector('.shopSellNo').onclick = shut; refreshEntry();
+    };
+    document.body.appendChild(overlay);
+    say2(); wallet();
+  }
+
+  window.SHOP = { SHOP_ITEMS, entryMarkup, bind, refresh, open, close, refreshEntry, openSell, priceOf };
   document.addEventListener('visibilitychange', () => { if (document.hidden) WALLET.flush(); });
   window.addEventListener('pagehide', () => WALLET.flush());
 })();
@@ -5143,7 +5201,7 @@ const Boss = (() => {
         <div id="tPrepBag"></div>
         <div id="aTools"></div>
        </div>
-       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">丢弃</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -5703,7 +5761,7 @@ const Boss = (() => {
   }
 
   function startSelectedChapter() {
-    if(window.ARMORY && ARMORY.count() >= ARMORY.capacity()){renderPreparation('已满50把，请先熔炼或丢弃，再出征');return;}
+    if(window.ARMORY && ARMORY.count() >= ARMORY.capacity()){renderPreparation('已满50把，请先熔炼或卖出，再出征');return;}
     if (window.ARMORY) ARMORY.markPlayed();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
@@ -5908,7 +5966,7 @@ window.XIAOCHANG = (() => {
   function start(options = {}) {
     const chapter = options.chapter || selection.chapter, c = CONFIG[chapter];
     if (!c || (!debug() && !(window.TITLE && TITLE.hasCleared(chapter)))) return false;
-    if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或丢弃，再出征'); return false; }
+    if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或卖出，再出征'); return false; }
     const floor = Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
     const wish = c.weapons.includes(options.wish ?? selection.wish) ? options.wish ?? selection.wish : '';
     Object.assign(selection, { chapter, floor, wish });
@@ -6143,7 +6201,7 @@ window.XIAOCHANG = (() => {
     selection.floor=Math.min(selection.floor,maxFloor(chapter));
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
-    root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或丢弃，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
+    root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
     const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
