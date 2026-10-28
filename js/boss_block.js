@@ -1,6 +1,6 @@
 // 首领共用：连续远程命中后的格挡架势、格挡判定、架势结束冲刺与外观。
 (() => {
-  const WINDOW = 2, NEED = 3, STANCE = 1.5, COOLDOWN = 6;
+  const WINDOW = 2, NEED = 3, STANCE = 1.05, COOLDOWN = 8;   // 用户定：格挡减弱 30%（架势 1.5→1.05 秒，冷却 6→8 秒）
   const isBoss = z => !!(z && (z.T.boss || z.T.chapterBoss));
   const front = (z, dir) => Math.sign(dir || 1) * Math.sign(z.f || 1) < 0;
   const canEnter = z => {
@@ -51,7 +51,7 @@
       z.blockT = Math.max(0, z.blockT - dt);
       z.f = Math.sign(hero.x - z.x) || z.f;
       if (z.blockT <= 0) {
-        z.blockChargeT = 1.5;
+        z.blockChargeT = 1.05;
         z.blockCdUntil = gameT + COOLDOWN;   // 冷却从架势结束开始
       }
       return true;
@@ -60,7 +60,7 @@
       z.blockChargeT = Math.max(0, z.blockChargeT - dt);
       const dx = hero.x - z.x, dy = hero.y - z.y, d = Math.hypot(dx, dy) || 1;
       z.f = Math.sign(dx) || z.f;
-      if (d > 30 && z.blockChargeT > 0 && typeof moveFn === 'function') moveFn(z, hero.x, hero.y, (baseSpeed || z.T.spd || 30) * 1.5, dt);
+      if (d > 30 && z.blockChargeT > 0 && typeof moveFn === 'function') moveFn(z, hero.x, hero.y, (baseSpeed || z.T.spd || 30) * 1.35, dt);
       if (d <= 30 || z.blockChargeT <= 0) z.blockChargeT = 0;
       return true;
     }

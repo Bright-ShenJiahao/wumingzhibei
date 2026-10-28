@@ -274,3 +274,5 @@
 - Netlify 免费额度按构建分钟计。**日常改动只在本地提交，推到 `preview` 分支给用户试玩**：`git push origin HEAD:preview`，试玩网址 `https://raw.githack.com/Bright-ShenJiahao/wumingzhibei/preview/index.html?debug`（云存档/英雄榜等后端函数在这里不可用，属正常）。
 - **只有用户说"推送/上线"时才推 main**（Netlify 只部署 main，netlify.toml 的 ignore 让其他分支跳过构建）。
 - package.json 不再登记 playwright（测试用全局安装的），部署时少装一个包。
+- 格挡减弱 30%（用户定）：盾兵正面格挡概率 80%→56%、远程减伤 rangedResist .5→.65；首领格挡架势 1.5→1.05 秒、冷却 6→8 秒、架势后冲刺 1.5→1.35 倍速。
+- 汉弓蓄力箭（js/bowammo.js）：最多 5 支，6 秒自然回 1 支，普通箭每射中回 1/4 支；没箭时蓄力只飘「蓄力箭不足」。脚下一排 5 个小箭头显示存量。

@@ -128,7 +128,7 @@ const TYPES = {
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   priest:  { name: '黄巾方士', hp: 4, spd: 40, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
   'yellow-heavy': { name: '黄巾大刀兵', hp: 7, spd: 25, wind: .9, reach: 31, dmg: 2, heavy: true, sprite: 'yellow_heavy', scale: 1.02 },
-  'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .5, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
+  'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .65, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
@@ -217,6 +217,7 @@ function reset() {
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
+  if (window.BOWAMMO) BOWAMMO.reset();
   enemySkillFx = []; zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
@@ -805,6 +806,7 @@ function walkToChapter2Battle(next) {
 
 // ---------- 主角 ----------
 function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
+  if (ranged && !traits.skyArrow && !traits.secondary && window.BOWAMMO && z && !z.dead && (traits.gearToken?.s.type || weapon) === 'bow') BOWAMMO.onHit();   // 普通箭射中回蓄力箭
   const armor=z&&ch2Armored(z),old=armor?{st:z.st,t:z.t}:null;
   const outcome=window.GEAR ? GEAR.hit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits) : rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits);
   if(armor&&!z.dead){z.st=old.st;z.t=old.t;z.air=false;z.z=0;z.vz=0;z.vx=0;z.stun=0;z.daze=0;}
@@ -814,7 +816,8 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
-    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<.8){
+    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<.56){   // 正面格挡概率 80%→56%（用户定：格挡减弱 30%）
+
       const start=propFx.length, firstFloater=floaters.length;if(window.BOSS_BLOCK)BOSS_BLOCK.effect(z);
       for(let i=firstFloater;i<floaters.length;i++)floaters[i].color='#aa4c2c';
       for(let i=start;i<propFx.length;i++){propFx[i].c='#aa4c2c';propFx[i].w*=.7;propFx[i].h*=.7;}
@@ -1386,6 +1389,7 @@ function chargedAttack(power, tier = 1) {
   const force = .35 + .65 * power;
   const R = 64 * (window.GEAR ? GEAR.range() : 1);
   if (weapon === 'bow') {                         // 穿云箭：先标记落点，再从右上方落下
+    if (window.BOWAMMO && !BOWAMMO.use()) { floaters.push({ x: h.x, y: h.y - 50, t: 0, txt: '蓄力箭不足' }); sfx('roll', h.x); return; }   // 蓄力箭用完
     const data = tier === 3 ? { radius: 45, dmg: 2.4, stun: 1 }   // 用户反馈太强、范围太大：伤害和半径都下调
       : tier === 2 ? { radius: 36, dmg: 1.9, stun: .8 }
       : { radius: 28, dmg: 1.4, stun: .6 };
@@ -2208,7 +2212,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
+    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
@@ -2537,6 +2541,7 @@ function draw() {
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
   if (window.CH2B && chapter2Run) CH2B.draw();
+  if (window.BOWAMMO) BOWAMMO.draw();
   // 按 y 排序绘制
   const list = [];
   list.push({ y: hero.y - .2, d: Boss.drawHorse });
