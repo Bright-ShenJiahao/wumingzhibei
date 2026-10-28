@@ -406,8 +406,15 @@
 
   // 屏幕上方大血条（和管亥同款位置）；法台阶段显示灰色「护体」
   function hud(HW) {
-    if (!S || !chapter2Run || chapter2Run.battle !== 6 || S.phase === 'open' || S.phase === 'dead') return;
-    const z = S.boss, guard = S.phase !== 'p3' || (z && z.array), hpR = z ? Math.max(0, z.hp / z.T.hp) : 1;
+    if (!chapter2Run) return;
+    let z, guard = false, label;
+    if (chapter2Run.battle === 6) {
+      if (!S || S.phase === 'open' || S.phase === 'dead') return;
+      z = S.boss; guard = S.phase !== 'p3' || !!(z && z.array); label = '天公将军·张角' + (guard ? '（法台护体）' : '');
+    } else {   // 张梁 / 张宝：同样画在屏幕上方，不再挂在头顶
+      z = zs.find(o => o.T && o.T.chapterBoss && !o.dead && o.st !== 'gone'); if (!z) return; label = z.T.name;
+    }
+    const hpR = z ? Math.max(0, z.hp / z.T.hp) : 1;
     const wp = document.getElementById('wp'), wr = wp && wp.getBoundingClientRect();
     const right = wr && wr.width ? wr.left - 10 : HW;
     const w = Math.max(140, Math.min(420, HW * .6, 2 * (right - HW / 2))), x = (HW - w) / 2, y = 44;
@@ -416,7 +423,6 @@
     ctx.fillRect(x, y, w * hpR, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    const label = '天公将军·张角' + (guard ? '（法台护体）' : '');
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }
 

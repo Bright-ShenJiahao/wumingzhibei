@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=5a440d542e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=5a440d542e)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=206baf792a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=206baf792a)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='a55f72ad8526',busy=false;
+var BUILD='9f33880bdd62',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -6789,8 +6789,15 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
 
   // 屏幕上方大血条（和管亥同款位置）；法台阶段显示灰色「护体」
   function hud(HW) {
-    if (!S || !chapter2Run || chapter2Run.battle !== 6 || S.phase === 'open' || S.phase === 'dead') return;
-    const z = S.boss, guard = S.phase !== 'p3' || (z && z.array), hpR = z ? Math.max(0, z.hp / z.T.hp) : 1;
+    if (!chapter2Run) return;
+    let z, guard = false, label;
+    if (chapter2Run.battle === 6) {
+      if (!S || S.phase === 'open' || S.phase === 'dead') return;
+      z = S.boss; guard = S.phase !== 'p3' || !!(z && z.array); label = '天公将军·张角' + (guard ? '（法台护体）' : '');
+    } else {   // 张梁 / 张宝：同样画在屏幕上方，不再挂在头顶
+      z = zs.find(o => o.T && o.T.chapterBoss && !o.dead && o.st !== 'gone'); if (!z) return; label = z.T.name;
+    }
+    const hpR = z ? Math.max(0, z.hp / z.T.hp) : 1;
     const wp = document.getElementById('wp'), wr = wp && wp.getBoundingClientRect();
     const right = wr && wr.width ? wr.left - 10 : HW;
     const w = Math.max(140, Math.min(420, HW * .6, 2 * (right - HW / 2))), x = (HW - w) / 2, y = 44;
@@ -6799,7 +6806,6 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     ctx.fillRect(x, y, w * hpR, 10);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-    const label = '天公将军·张角' + (guard ? '（法台护体）' : '');
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
   }
 
@@ -10011,7 +10017,7 @@ function drawZ(z) {
     const recoil = 0;
     drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
-    if (z.dead || z.type === 'zhang_jiao') return;   // 张角用屏幕上方大血条
+    return;   // 第二章首领的血条和名字统一画在屏幕上方（ZJ.hud）
     drawHalberdBleedDots(z, z.y - 58);
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);

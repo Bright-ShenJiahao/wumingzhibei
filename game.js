@@ -3203,7 +3203,7 @@ function drawZ(z) {
     const recoil = 0;
     drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);
     if (window.BOSS_BLOCK) BOSS_BLOCK.draw(z);
-    if (z.dead || z.type === 'zhang_jiao') return;   // 张角用屏幕上方大血条
+    return;   // 第二章首领的血条和名字统一画在屏幕上方（ZJ.hud）
     drawHalberdBleedDots(z, z.y - 58);
     const w = 34, y = z.y - 49;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);
