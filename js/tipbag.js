@@ -71,17 +71,26 @@
   const ORDER = { n: 0, r: 1, l: 2 };
   for (const k in CARDS) CARDS[k] = CARDS[k].map((c, i) => [c, i]).sort((x, y) => ORDER[x[0][1]] - ORDER[y[0][1]] || x[1] - y[1]).map(x => x[0]);
   let tab = 'gong', sel = 0;
-  // 锁定：每类 1 张，价格按稀有度（用户定：普通 30 / 稀有 60 / 传说 120）。锁定只管下一局，出征时扣金币。
-  const PRICE = { n: 30, r: 60, l: 120 };
-  const KEY = 'wzb-tip-locks';
-  let locks = {};
-  try { locks = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { locks = {}; }
-  const saveLocks = () => { try { localStorage.setItem(KEY, JSON.stringify(locks)); } catch (e) {} };
+  // 锁定（用户定）：锁定时一次性付金币，之后每局自动生效；换卡要按新卡价格重新付，取消免费但不退钱。
+  // 存在玩家存档里（tipLocks，随云存档同步），价格 普通 150 / 稀有 300 / 传说 600。
+  const PRICE = { n: 150, r: 300, l: 600 };
+  const profile = () => window.ARMORY && ARMORY.state ? ARMORY.state() : null;
+  const store = () => { const p = profile(); if (!p) return {}; if (!p.tipLocks || typeof p.tipLocks !== 'object') p.tipLocks = { _at: 0 }; return p.tipLocks; };
+  let msg = '';
+  function setLock(cat, name) {
+    const t = store(); if (!profile()) { msg = '没有存档，无法锁定'; return; }
+    if (name) {
+      const card = find(cat, name); if (!card) return;
+      if (!window.WALLET || !WALLET.spendCoins(PRICE[card[1]])) { msg = `金币不够（需要 ${PRICE[card[1]]}）`; return; }
+      t[cat] = name; msg = `已锁定「${name}」，以后每局自动带上`;
+    } else { delete t[cat]; msg = '已取消锁定（不退金币）'; }
+    t._at = Date.now(); if (window.ARMORY && ARMORY.saveNow) ARMORY.saveNow();
+    if (window.SHOP && SHOP.refresh) SHOP.refresh();
+  }
   const find = (cat, name) => (CARDS[cat] || []).find(c => c[0] === name);
   const carried = () => { const A = window.ARMORY; if (!A || !A.equipped) return null; return ['long', 'short', 'ranged'].map(s => { try { const i = A.equipped(s); return i && i.type; } catch (e) { return null; } }).filter(Boolean); };
   const usable = (cat, c) => cat !== 'zhuan' || !c[3] || !carried() || carried().includes(c[3]);
-  function lockList() { return Object.entries(locks).map(([cat, name]) => ({ cat, card: find(cat, name) })).filter(x => x.card && usable(x.cat, x.card)); }
-  function lockCost() { return lockList().reduce((n, x) => n + PRICE[x.card[1]], 0); }
+  function lockList() { const locks = store(); return Object.entries(locks).filter(([k]) => k !== '_at').map(([cat, name]) => ({ cat, card: find(cat, name) })).filter(x => x.card && usable(x.cat, x.card)); }
   // 小锦囊图标：布袋 + 束口绳，按类别上色
   const pouch = c => `<svg viewBox="0 0 40 44" width="40" height="44" aria-hidden="true"><path d="M13 9 Q20 13 27 9 L25 15 Q34 20 34 31 Q34 41 20 41 Q6 41 6 31 Q6 20 15 15 Z" fill="${c}" stroke="#2a160f" stroke-width="2"/><path d="M14 15 Q20 18 26 15" fill="none" stroke="#f1d58f" stroke-width="2"/><circle cx="27" cy="17" r="2" fill="#f1d58f"/><path d="M27 19 l2 6 M27 19 l-1 6" stroke="#f1d58f" stroke-width="1.4"/><path d="M12 28 Q20 24 28 28 Q20 34 12 28" fill="none" stroke="#0005" stroke-width="1.5"/></svg>`;
   function css() {
@@ -92,13 +101,14 @@
   }
   function render(box) {
     const cat = CATS.find(c => c.id === tab);
+    const locks = store();
     const lockRow = CATS.filter(c => c.id !== 'bing').map(c => { const card = locks[c.id] && find(c.id, locks[c.id]), ok = card && usable(c.id, card); return `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot${card ? ' got' : ''}${card && !ok ? ' bad' : ''}" ${card ? `data-unlock="${c.id}"` : ''}>${card ? `🔒 ${card[0]}` : '空'}</div></div>`; }).join('');
     const tabs = CATS.map(c => `<button type="button" data-tab="${c.id}" class="${c.id === tab ? 'on' : ''}">${c.name} ${CARDS[c.id].length}</button>`).join('');
     const cards = CARDS[tab], cur = cards[Math.min(sel, cards.length - 1)];
-    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">锁定 · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${cur[2]}</p></div>`;
+    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">${locks[tab] ? '换成这张' : '锁定'} · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${cur[2]}</p></div>`;
     const card = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.rogue_card;
     box.style.setProperty('--card', card ? `url(${card})` : '#3a2a1c');
-    box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可锁定 1 张，其余随机</p><div class="tlocks">${lockRow}</div><p class="tsum">已锁 ${lockList().length} / 5 · 出征时扣 <b>${lockCost()}</b> 金币（现有 ${window.WALLET ? WALLET.coins() : 0}）</p><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定只管下一局；点上方已锁的格子可以取消。'}</p></section>`;
+    box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可锁定 1 张（长期有效），其余随机</p><div class="tlocks">${lockRow}</div><p class="tsum">已锁 ${lockList().length} / 5 · 现有金币 <b>${window.WALLET ? WALLET.coins() : 0}</b>${msg ? ' · ' + msg : ''}</p><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定一次付费，以后每局自动带上；换卡要重新付费，取消不退钱。'}</p></section>`;
   }
   function open() {
     css();
@@ -109,15 +119,15 @@
         const b = e.target.closest('[data-tab]');
         if (b) { tab = b.dataset.tab; sel = 0; render(box); return; }
         const L = e.target.closest('[data-lock]');
-        if (L) { if (L.dataset.lock === '1') locks[tab] = CARDS[tab][sel][0]; else delete locks[tab]; saveLocks(); render(box); return; }
+        if (L) { setLock(tab, L.dataset.lock === '1' ? CARDS[tab][sel][0] : ''); render(box); return; }
         const U = e.target.closest('[data-unlock]');
-        if (U) { delete locks[U.dataset.unlock]; saveLocks(); render(box); return; }
+        if (U) { setLock(U.dataset.unlock, ''); render(box); return; }
         const c = e.target.closest('[data-i]');
         if (c) { sel = +c.dataset.i; render(box); return; }
         if (e.target === box || e.target.closest('.tx')) box.hidden = true;
       });
     }
-    render(box); box.hidden = false;
+    msg = ''; render(box); box.hidden = false;
   }
-  window.TIPBAG = { CATS, CARDS, PRICE, open, locks: lockList, lockCost, clearLocks() { locks = {}; saveLocks(); } };
+  window.TIPBAG = { CATS, CARDS, PRICE, open, locks: lockList };
 })();

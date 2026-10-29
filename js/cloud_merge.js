@@ -2,12 +2,15 @@
 (function(root){
   function merge(...profiles){
     const result={items:[],equipped:{},_equipAt:{},_removed:Object.create(null),campaign:{},played:false,migrated:true,wallet:{earned:0,spent:0},fruit:{got:6,used:0},outfit:{hair:0,shirt:0,pants:0,_at:0}};
-    const items=new Map();let pityAt=-1,outfitAt=-1;
+    const items=new Map();let pityAt=-1,outfitAt=-1,tipAt=-1;
     const count=(v)=>{const n=Number(v);return Number.isInteger(n)&&n>=0?Math.min(1e9,n):0;};
     const part=(v)=>{const n=Number(v);return Number.isInteger(n)&&n>=0&&n<=7?n:0;};
     for(const p of profiles){if(!p||typeof p!=='object')continue;
       const oa=Number(p.outfit?._at)||0;
       if(oa>outfitAt){outfitAt=oa;result.outfit={hair:part(p.outfit?.hair),shirt:part(p.outfit?.shirt),pants:part(p.outfit?.pants),_at:oa};}
+      // 锦囊锁定（花金币买的，长期有效）：以最后改动的那份为准
+      const ta=Number(p.tipLocks?._at)||0;
+      if(p.tipLocks&&typeof p.tipLocks==='object'&&ta>tipAt){tipAt=ta;result.tipLocks={_at:ta};for(const k of ['gong','ji','shu','shou','zhuan'])if(typeof p.tipLocks[k]==='string'&&p.tipLocks[k].length<=12)result.tipLocks[k]=p.tipLocks[k];}
       result.wallet.earned=Math.max(result.wallet.earned,count(p.wallet?.earned));
       result.wallet.spent=Math.max(result.wallet.spent,count(p.wallet?.spent));
       result.fruit.got=Math.max(result.fruit.got,count(p.fruit?.got));

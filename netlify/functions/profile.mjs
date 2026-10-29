@@ -23,6 +23,12 @@ function validate(p){
     const at=Number(o._at), stamp=Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0;
     clean.outfit={hair:o.hair,shirt:o.shirt,pants:o.pants,_at:stamp};
   }
+  if(clean.tipLocks!=null){
+    const t=clean.tipLocks,out={};
+    if(typeof t!=='object'||Array.isArray(t))throw new Error('锦囊锁定数据不合法');
+    for(const k of ['gong','ji','shu','shou','zhuan'])if(typeof t[k]==='string'&&t[k].length<=12)out[k]=t[k];
+    const at=Number(t._at);out._at=Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0;clean.tipLocks=out;
+  }
   // 校场进度属于 campaign；统一按章节白名单和0～6层校验，云合并取最大值。
   clean.campaign = globalThis.CLOUD_MERGE.merge({campaign:clean.campaign}).campaign;
   return clean;

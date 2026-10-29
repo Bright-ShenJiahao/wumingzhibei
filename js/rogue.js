@@ -48,13 +48,7 @@
     const cards = allCards().filter(c => c.cat !== 'bing');
     lockedNames = new Set();
     const locks = window.TIPBAG && TIPBAG.locks ? TIPBAG.locks().filter(x => IMPL[x.card[0]]) : [];
-    let cost = locks.reduce((n, x) => n + TIPBAG.PRICE[x.card[1]], 0);
-    if (locks.length) {
-      if (window.WALLET && WALLET.spendCoins && cost > 0 && WALLET.spendCoins(cost)) {
-        locks.forEach(x => lockedNames.add(x.card[0]));
-        if (typeof say === 'function') say(`锁定锦囊 ${locks.length} 张，花费 ${cost} 金币`, 2.6);
-      } else if (cost > 0 && typeof say === 'function') say('金币不够，本局锁定的锦囊未生效', 2.6);
-    }
+    locks.forEach(x => lockedNames.add(x.card[0]));   // 锁定已在面板里一次性付过钱
     const rest = cards.filter(c => !lockedNames.has(c.name));
     const picked = cards.filter(c => lockedNames.has(c.name));
     while (picked.length < 20 && rest.length) {
