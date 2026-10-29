@@ -2374,7 +2374,6 @@ function heroFrame(h) {
   }
   if (h.st === 'hurt') return 'hurt';
   if (h.st === 'down') return 'down';
-  if (charging && weapon === 'blade' && CH.hero && CH.hero.blade_charge) return 'blade_charge';   // 大刀蓄力：拧腰横刀
   return frameWeapon + '0';
 }
 function zFrame(z) {

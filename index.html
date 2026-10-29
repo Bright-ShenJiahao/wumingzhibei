@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=2b6ead6232" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2b6ead6232)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=3234da47cf" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3234da47cf)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='b06c5ee250b0',busy=false;
+var BUILD='aa23ed9f4582',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -5048,7 +5048,6 @@ const Boss = (() => {
     { id: 'zhuan', name: '兵刃', color: '#c58ae0' },
     { id: 'bing', name: '将令', color: '#b98a52' },
   ];
-  const R = { n: '普通', r: '稀有', l: '传说' };
   const CARDS = {
     gong: [
       ['先登战意', 'n', '每波敌人出现后，第一下打中的敌人受 3 倍伤害并被击倒'],
@@ -5089,7 +5088,7 @@ const Boss = (() => {
       ['背水一战', 'l', '血量低于 20% 时伤害 +30%、蓄力时间减半，身上冒红气'],
     ],
     zhuan: [
-      ['定海', 'r', '【棍】终段戳晕敌人时周围一起晕；打眩晕的敌人每段 +30% 伤害', 'stick'],
+      ['定海', 'r', '【棍】终段戳晕敌人时周围一起晕；打眩晕的敌人每段 +30% 伤害', 'staff'],
       ['崩山', 'r', '【锤】回旋锤转两圈，第二圈范围更大；击倒的敌人落地再震一下', 'hammer'],
       ['飞蝗', 'r', '【石子】每第 3 发变散弹；蓄力石子打中后弹向下一个敌人', 'stone'],
       ['血债', 'r', '【长戟】裂伤上限 5 → 8 层；引爆时把伤害溅给周围', 'halberd'],
@@ -5107,23 +5106,34 @@ const Boss = (() => {
     ],
   };
   let tab = 'gong', sel = 0;
+  // 锁定：每类 1 张，价格按稀有度（用户定：普通 30 / 稀有 60 / 传说 120）。锁定只管下一局，出征时扣金币。
+  const PRICE = { n: 30, r: 60, l: 120 };
+  const KEY = 'wzb-tip-locks';
+  let locks = {};
+  try { locks = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { locks = {}; }
+  const saveLocks = () => { try { localStorage.setItem(KEY, JSON.stringify(locks)); } catch (e) {} };
+  const find = (cat, name) => (CARDS[cat] || []).find(c => c[0] === name);
+  const carried = () => { const A = window.ARMORY; if (!A || !A.equipped) return null; return ['long', 'short', 'ranged'].map(s => { try { const i = A.equipped(s); return i && i.type; } catch (e) { return null; } }).filter(Boolean); };
+  const usable = (cat, c) => cat !== 'zhuan' || !c[3] || !carried() || carried().includes(c[3]);
+  function lockList() { return Object.entries(locks).map(([cat, name]) => ({ cat, card: find(cat, name) })).filter(x => x.card && usable(x.cat, x.card)); }
+  function lockCost() { return lockList().reduce((n, x) => n + PRICE[x.card[1]], 0); }
   // 小锦囊图标：布袋 + 束口绳，按类别上色
   const pouch = c => `<svg viewBox="0 0 40 44" width="40" height="44" aria-hidden="true"><path d="M13 9 Q20 13 27 9 L25 15 Q34 20 34 31 Q34 41 20 41 Q6 41 6 31 Q6 20 15 15 Z" fill="${c}" stroke="#2a160f" stroke-width="2"/><path d="M14 15 Q20 18 26 15" fill="none" stroke="#f1d58f" stroke-width="2"/><circle cx="27" cy="17" r="2" fill="#f1d58f"/><path d="M27 19 l2 6 M27 19 l-1 6" stroke="#f1d58f" stroke-width="1.4"/><path d="M12 28 Q20 24 28 28 Q20 34 12 28" fill="none" stroke="#0005" stroke-width="1.5"/></svg>`;
   function css() {
     if (document.getElementById('tipBagCss')) return;
     const s = document.createElement('style'); s.id = 'tipBagCss';
-    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}#tipBag .tcell{position:relative;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;background:var(--card) center/100% 100% no-repeat;border-radius:6px;cursor:pointer;color:#f1d58f;outline:2px solid transparent;outline-offset:-1px}#tipBag .tcell.r{outline-color:#4f7fae}#tipBag .tcell.l{outline-color:#e0a63a;box-shadow:0 0 8px #e0a63a99}#tipBag .tcell.on{filter:brightness(1.3);outline:2px solid #fff3c4}#tipBag .tnm{writing-mode:vertical-rl;font:700 15px MaShanZheng,"STKaiti",serif;letter-spacing:2px;text-shadow:0 1px 2px #000}#tipBag .tdot{position:absolute;top:9%;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;box-shadow:0 0 3px #000}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
+    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}#tipBag .tcell{position:relative;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;background:var(--card) center/100% 100% no-repeat;border-radius:6px;cursor:pointer;color:#f1d58f;outline:2px solid transparent;outline-offset:-1px}#tipBag .tcell.r{outline-color:#4f7fae}#tipBag .tcell.l{outline-color:#e0a63a;box-shadow:0 0 8px #e0a63a99}#tipBag .tcell.on{filter:brightness(1.3);outline:2px solid #fff3c4}#tipBag .tnm{writing-mode:vertical-rl;font:700 15px MaShanZheng,"STKaiti",serif;letter-spacing:2px;text-shadow:0 1px 2px #000}#tipBag .tdot{position:absolute;top:9%;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;box-shadow:0 0 3px #000}#tipBag .tslot.got{border-style:solid;border-color:#e5c98a;color:#f1d58f;cursor:pointer}#tipBag .tslot.bad{opacity:.45;text-decoration:line-through}#tipBag .tsum{text-align:center;font-size:12px;margin:-4px 0 8px;color:#cdb78e}#tipBag .tsum b{color:#f1d58f}#tipBag .tlock{float:right;min-height:30px;padding:2px 12px;border:1px solid #e5c98a;border-radius:5px;background:#6b4a2a;color:#fff3c4;cursor:pointer}#tipBag .tlock.on{background:#3a2a1c;color:#cdb78e;border-color:#7a5c38}#tipBag .tno{float:right;font-size:12px;color:#c98a6a}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
     document.head.append(s);
   }
   function render(box) {
     const cat = CATS.find(c => c.id === tab);
-    const locks = CATS.filter(c => c.id !== 'bing').map(c => `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot">🔒 空</div></div>`).join('');
+    const lockRow = CATS.filter(c => c.id !== 'bing').map(c => { const card = locks[c.id] && find(c.id, locks[c.id]), ok = card && usable(c.id, card); return `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot${card ? ' got' : ''}${card && !ok ? ' bad' : ''}" ${card ? `data-unlock="${c.id}"` : ''}>${card ? `🔒 ${card[0]}` : '空'}</div></div>`; }).join('');
     const tabs = CATS.map(c => `<button type="button" data-tab="${c.id}" class="${c.id === tab ? 'on' : ''}">${c.name} ${CARDS[c.id].length}</button>`).join('');
     const cards = CARDS[tab], cur = cards[Math.min(sel, cards.length - 1)];
-    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b><i style="color:${{ n: '#bbb', r: '#7fb7f0', l: '#f0b84a' }[cur[1]]}">${R[cur[1]]}</i><p>${cur[2]}</p></div>`;
+    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">锁定 · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${cur[2]}</p></div>`;
     const card = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.rogue_card;
     box.style.setProperty('--card', card ? `url(${card})` : '#3a2a1c');
-    box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可花金币锁定 1 张，其余随机</p><div class="tlocks">${locks}</div><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定功能制作中，目前可浏览全部锦囊。'}</p></section>`;
+    box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可锁定 1 张，其余随机</p><div class="tlocks">${lockRow}</div><p class="tsum">已锁 ${lockList().length} / 5 · 出征时扣 <b>${lockCost()}</b> 金币（现有 ${window.WALLET ? WALLET.coins() : 0}）</p><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定只管下一局；点上方已锁的格子可以取消。'}</p></section>`;
   }
   function open() {
     css();
@@ -5133,6 +5143,10 @@ const Boss = (() => {
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-tab]');
         if (b) { tab = b.dataset.tab; sel = 0; render(box); return; }
+        const L = e.target.closest('[data-lock]');
+        if (L) { if (L.dataset.lock === '1') locks[tab] = CARDS[tab][sel][0]; else delete locks[tab]; saveLocks(); render(box); return; }
+        const U = e.target.closest('[data-unlock]');
+        if (U) { delete locks[U.dataset.unlock]; saveLocks(); render(box); return; }
         const c = e.target.closest('[data-i]');
         if (c) { sel = +c.dataset.i; render(box); return; }
         if (e.target === box || e.target.closest('.tx')) box.hidden = true;
@@ -5140,7 +5154,7 @@ const Boss = (() => {
     }
     render(box); box.hidden = false;
   }
-  window.TIPBAG = { CATS, CARDS, open };
+  window.TIPBAG = { CATS, CARDS, PRICE, open, locks: lockList, lockCost, clearLocks() { locks = {}; saveLocks(); } };
 })();
 
 // 开始界面（登录页）：标题 / 电视演示 / 名字输入 / 开始按钮 / 操作说明 / 穿越转场。
@@ -9647,7 +9661,6 @@ function heroFrame(h) {
   }
   if (h.st === 'hurt') return 'hurt';
   if (h.st === 'down') return 'down';
-  if (charging && weapon === 'blade' && CH.hero && CH.hero.blade_charge) return 'blade_charge';   // 大刀蓄力：拧腰横刀
   return frameWeapon + '0';
 }
 function zFrame(z) {
