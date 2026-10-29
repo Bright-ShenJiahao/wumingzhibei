@@ -110,8 +110,8 @@
 - 兵刃卡只有武器槽里有那把武器才能锁、才会抽到，正在用的那把概率 ×2。
 - 现状：局内已换成新系统（js/rogue.js），44 张卡全部做出效果（IMPL）。新卡全部直接给玩家，不用解锁（用户定）。
 - 卡池在本局第一次抽卡时建立（ROGUE.reset 后），锁定的卡直接放进卡池。
-- 第二批挂钩：strike 的 ROGUE.onShoot（飞蝗/乘胜连箭副弹）；setW 的 ROGUE.onSwap（倒持）；chargeMaxMs/chargeGateMs 乘 ROGUE.chargeScale（寸劲/背水一战）；翻滚结束 ROGUE.onRollEnd（回马枪）；dmgHero 的 ROGUE.sidestep（闪身步）/onHurt（解围）；大刀斩杀线与 ROGUE.onExecute（斩首）；长戟裂伤上限与撕开溅射（血债）；moveEnt 乘 ROGUE.enemyMove（水淹七军减速）；BOWAMMO.add（箭补）。特效图 art/ui/tip_*（tools/process_tipfx.py）。
-- 挂钩：翻滚躲过 = 翻滚无敌中碰到本该命中的攻击（dmgHero 开头 / heroOpen()）→ ROGUE.onDodge；startAtk 用 ROGUE.takeFinisher（回锋）；GEAR.attackToken 用 ROGUE.takeCrit（避实回气）；rawHit 用 ROGUE.onHit / afterHit（震慑、避实回气）；dmgHero 用 ROGUE.hardClash（硬拼）；翻滚开始 ROGUE.onRoll（风火轮）；将令统一走 useRogueSkill()（U 键 / bSkill）。
+- 第二批挂钩：strike 的 ROGUE.onShoot（飞蝗/矢如连珠副弹）；setW 的 ROGUE.onSwap（倒持）；chargeMaxMs/chargeGateMs 乘 ROGUE.chargeScale（寸劲/背水）；翻滚结束 ROGUE.onRollEnd（回马）；dmgHero 的 ROGUE.sidestep（闪身）/onHurt（解围）；大刀斩杀线与 ROGUE.onExecute（斩首）；长戟裂伤上限与撕开溅射（血债）；moveEnt 乘 ROGUE.enemyMove（水淹七军减速）；BOWAMMO.add（回矢）。特效图 art/ui/tip_*（tools/process_tipfx.py）。
+- 挂钩：翻滚躲过 = 翻滚无敌中碰到本该命中的攻击（dmgHero 开头 / heroOpen()）→ ROGUE.onDodge；startAtk 用 ROGUE.takeFinisher（回锋）；GEAR.attackToken 用 ROGUE.takeCrit（避实）；rawHit 用 ROGUE.onHit / afterHit（震慑、避实）；dmgHero 用 ROGUE.hardClash（硬撼）；翻滚开始 ROGUE.onRoll（燎步）；将令统一走 useRogueSkill()（U 键 / bSkill）。
 - 下方「肉鸽系统」一节是旧卡的说明，旧卡（先登、终招、疾风、稳身、致命一击、献祭）已删除。
 
 ## 开发者模式（调试用，普通玩家看不到）

@@ -14,24 +14,24 @@
   let bing = '';            // 本局拿到的将令：wanjian / toushi / leiting
   // ---- 已实现的卡：名字 → 效果 ----
   const IMPL = {
-    '会心一击': () => { S.crit += .08; },
-    '分裂之击': () => { S.split = 1; },
+    '直取要害': () => { S.crit += .08; },
+    '横扫千军': () => { S.split = 1; },
     '淬毒': () => { S.poison = 1; },
-    '烈火焚身': () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; },
-    '金光咒': () => { S.shield = 1; },
+    '焚身': () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; },
+    '护体': () => { S.shield = 1; },
     '饮血': () => { S.lifesteal = .5; },
-    '回锋': () => {}, '避实回气': () => {}, '藏势': () => {}, '风火轮': () => {}, '震慑': () => {}, '硬拼': () => {},
+    '回锋': () => {}, '避实': () => {}, '藏势': () => {}, '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
     '万箭齐发': () => { bing = 'wanjian'; S.summon = 1; },
-    '投石问路': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 6; },
+    '霹雳飞石': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 6; },
     '雷霆万钧': () => { bing = 'leiting'; },
     // ---- 第二批 ----
-    '先登战意': () => { vanguard = true; }, '一鼓作气': () => {}, '弱点击破': () => {}, '乘胜追击': () => {},
-    '乘胜连箭': () => {}, '暗箭伤人': () => {}, '陷阵之志': () => {},
-    '狂风骤雨': () => {}, '破军': () => {}, '倒持': () => {}, '寸劲': () => {}, '回马枪': () => {},
-    '明火': () => {}, '乘人之危': () => {},
-    '解围': () => {}, '以守为攻': () => {}, '闪身步': () => {}, '背水一战': () => {},
-    '定海': () => {}, '崩山': () => {}, '飞蝗': () => {}, '血债': () => {}, '斩首': () => {}, '箭补': () => {},
-    '草木皆兵': () => { bing = 'caomu'; }, '借我西风': () => { bing = 'xifeng'; }, '火烧连营': () => { bing = 'huoshao'; }, '水淹七军': () => { bing = 'shuiyan'; },
+    '先声夺人': () => { vanguard = true; }, '一鼓作气': () => {}, '积羽沉舟': () => {}, '乘胜追击': () => {},
+    '矢如连珠': () => {}, '声东击西': () => {}, '陷阵之志': () => {},
+    '骤雨': () => {}, '破军': () => {}, '倒持': () => {}, '寸劲': () => {}, '回马': () => {},
+    '明火': () => {}, '乘危': () => {},
+    '解围': () => {}, '反戈': () => {}, '闪身': () => {}, '背水': () => {},
+    '定海': () => {}, '崩山': () => {}, '飞蝗': () => {}, '血债': () => {}, '斩首': () => {}, '回矢': () => {},
+    '草木皆兵': () => { bing = 'caomu'; }, '借我东风': () => { bing = 'xifeng'; }, '火烧连营': () => { bing = 'huoshao'; }, '水淹七军': () => { bing = 'shuiyan'; },
   };
   const WEIGHT = { n: 6, r: 3, l: 1 };
   function allCards() {
@@ -60,7 +60,7 @@
   const typeOf = traits => (traits && traits.gearToken && traits.gearToken.s && traits.gearToken.s.type) || weaponNow();
   const isBoss = z => !!(z && z.T && (z.T.boss || z.T.chapterBoss));
   const maxHp = () => (window.GEAR && GEAR.maxHp ? GEAR.maxHp() : 10);
-  const lowHp = () => has['背水一战'] && typeof hero !== 'undefined' && hero.hp > 0 && hero.hp < maxHp() * .2;
+  const lowHp = () => has['背水'] && typeof hero !== 'undefined' && hero.hp > 0 && hero.hp < maxHp() * .2;
   const pop = (x, y, txt, color, big) => { if (typeof floaters !== 'undefined') floaters.push({ x, y, t: 0, txt, color, big, gold: !color }); };
   const carried = () => { const A = window.ARMORY; if (!A || !A.equipped) return null; return ['long', 'short', 'ranged'].map(k => { try { const i = A.equipped(k); return i && i.type; } catch (e) { return null; } }).filter(Boolean); };
   const now = () => (typeof gameT !== 'undefined' ? gameT : performance.now() / 1000);
@@ -97,7 +97,7 @@
     return out.sort(() => Math.random() - .5);
   }
   const setOpen = value => { open = value; document.body.classList.toggle('wzb-rogue', open); };
-  const SKILL_NAME = { wanjian: '万箭齐发', toushi: '投石问路', leiting: '雷霆万钧', caomu: '草木皆兵', xifeng: '借我西风', huoshao: '火烧连营', shuiyan: '水淹七军' };
+  const SKILL_NAME = { wanjian: '万箭齐发', toushi: '霹雳飞石', leiting: '雷霆万钧', caomu: '草木皆兵', xifeng: '借我东风', huoshao: '火烧连营', shuiyan: '水淹七军' };
   function updateSkillButton() {
     document.body.classList.toggle('wzb-summon', !!bing);
     document.body.classList.remove('wzb-catapult');
@@ -134,7 +134,7 @@
     skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton();
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
-    else if (bing === 'xifeng') { windT = 5; if (typeof say === 'function') say('借我西风！', 1.4); }
+    else if (bing === 'xifeng') { windT = 5; if (typeof say === 'function') say('借我东风！', 1.4); }
     else if (bing === 'huoshao') castFire();
     else if (bing === 'shuiyan') castWater();
     return bing;
@@ -147,7 +147,7 @@
     if (!S.shield || !shieldReady) return false;
     fx.push({ k: 'shieldBreak', t: 0, T: .3 });
     shieldReady = false; shieldTimer = 10;
-    if (typeof toast === 'function') toast('金光咒挡下了攻击！');
+    if (typeof toast === 'function') toast('护体挡下了攻击！');
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
@@ -193,7 +193,7 @@
     }
     // 着火的敌人：身上小火苗
     for (const z of zs) if (!z.dead && z.burnT > 0) { ctx.fillStyle = 'rgba(255,' + (120 + Math.floor(60 * Math.sin(T * 12))) + ',40,.75)'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 16 - Math.sin(T * 9) * 2, 3, 6, 0, 0, Math.PI * 2); ctx.fill(); }
-    // 一鼓作气 / 狂风骤雨叠层：脚下光圈；倒持就绪：金色描边光；背水一战：红气
+    // 一鼓作气 / 骤雨叠层：脚下光圈；倒持就绪：金色描边光；背水：红气
     const lv = Math.max(momentum / 10, gale / 5);
     if (lv > .05) { ctx.globalAlpha = .25 + .5 * lv; ctx.strokeStyle = '#ffd36a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(hero.x, hero.y, 12 + 6 * lv, 4 + 2 * lv, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
     if (swapReady) { ctx.globalAlpha = .5 + .3 * Math.sin(T * 8); ctx.strokeStyle = '#fff0a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(hero.x, hero.y - 16, 11, 19, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
@@ -220,20 +220,20 @@
   // ---- 翻滚、受击、命中的挂钩（game.js 调用） ----
   function onRoll(x, y) {
     if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; shockwave(x, y, 55, .5, true); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
-    if (has['风火轮'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
+    if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
   }
   function onDodge(from, n, kind) {
     if (typeof hero === 'undefined' || hero.st !== 'roll') return;
     const rid = hero.rollId || 0; if (dodgeRollT === rid) return; dodgeRollT = rid;
     let fx = false;
-    // 以守为攻：躲过蓄力攻击或技能，50% 让对方承受这招一半伤害
+    // 反戈：躲过蓄力攻击或技能，50% 让对方承受这招一半伤害
     const src = from && from.T ? from : from && from.source && from.source.T ? from.source : null;
-    if (has['以守为攻'] && src && !src.dead && (kind === 'skill' || (n || 0) >= 2) && Math.random() < .5) {
+    if (has['反戈'] && src && !src.dead && (kind === 'skill' || (n || 0) >= 2) && Math.random() < .5) {
       hit(src, (n || 2) * .5, 60, Math.sign(src.x - hero.x) || 1, false, 0, .35, true, false, { secondary: true });
       pop(src.x, src.y - 42, '反噬！', '#ff9a5a', true); fx = true;
     }
     if (has['回锋'] && finisherCd <= 0) { finisherUntil = now() + 3; finisherCd = 8; fx = true; }
-    if (has['避实回气'] && avoidCd <= 0) { avoidUntil = now() + 3; avoidCrit = true; avoidCd = 4; fx = true; }
+    if (has['避实'] && avoidCd <= 0) { avoidUntil = now() + 3; avoidCrit = true; avoidCd = 4; fx = true; }
     if (fx && typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '闪！', gold: true });
   }
   function takeFinisher() { if (swapPending) { swapPending = false; return 'swap'; } if (finisherUntil > now()) { finisherUntil = 0; return true; } return false; }
@@ -247,16 +247,16 @@
     const t = now(), type = typeOf(traits), charged = !!(traits && (traits.charged || traits.skyArrow || traits.halberdCharge || (traits.gearToken && traits.gearToken.charged)));
     const fin = !!(traits && traits.finisher);
     if (has['震慑'] && z.flawUntil > t) dmg *= 1.25;
-    if (vanguard && has['先登战意']) { vanguard = false; dmg *= 3; z.vanguardKnock = true; pop(z.x, z.y - 44, '先登！', null, true); }
+    if (vanguard && has['先声夺人']) { vanguard = false; dmg *= 3; z.vanguardKnock = true; pop(z.x, z.y - 44, '先登！', null, true); }
     if (has['一鼓作气']) { momentum = Math.min(10, momentum + 1); momentumIdle = 0; dmg *= 1 + .015 * momentum; }
-    if (has['狂风骤雨']) { gale = Math.min(5, gale + 1); momentumIdle = 0; }
-    if (has['弱点击破'] && !charged && !ranged) { z.weakN = (z.weakN || 0) + 1; if (z.weakN >= 4) { z.weakN = 0; dmg *= 1.5; pop(z.x, z.y - 46, '弱点！', '#ffd25a', true); } }
+    if (has['骤雨']) { gale = Math.min(5, gale + 1); momentumIdle = 0; }
+    if (has['积羽沉舟'] && !charged && !ranged) { z.weakN = (z.weakN || 0) + 1; if (z.weakN >= 4) { z.weakN = 0; dmg *= 1.5; pop(z.x, z.y - 46, '弱点！', '#ffd25a', true); } }
     if (has['陷阵之志'] && !ranged && typeof hero !== 'undefined' && hero.atk) {
       if (swing.atk !== hero.atk) { swing.atk = hero.atk; swing.n = 0; }
       swing.n++; if (swing.n >= 2) dmg *= 1 + .15 * Math.min(3, swing.n - 1);
       if (swing.n >= 4) z.vanguardKnock = true;
     }
-    if (has['乘人之危'] && !charged && !fin && (z.daze > 0 || z.flawUntil > t || z.poisonT > 0 || z.burnT > 0)) {
+    if (has['乘危'] && !charged && !fin && (z.daze > 0 || z.flawUntil > t || z.poisonT > 0 || z.burnT > 0)) {
       dmg *= 1.35; if (z.daze > 0) z.daze += .5; if (z.flawUntil > t) z.flawUntil += .5; if (z.poisonT > 0) z.poisonT += .5; if (z.burnT > 0) z.burnT += .5;
     }
     if (lowHp()) dmg *= 1.3;
@@ -267,13 +267,13 @@
     if (has['倒持'] && !ranged) { if (glowW !== type) { glowW = type; glowN = 0; } glowN++; glowIdle = 0; if (glowN >= 5 && !swapReady) { swapReady = true; pop(hero.x, hero.y - 48, '可倒持', '#ffe08a'); } }
     if (ranged && !charged) {
       if (rangedChain.z === z) rangedChain.n++; else rangedChain = { z, n: 1 };
-      if (has['乘胜连箭'] && rangedChain.n >= 3) { rangedChain.n = 0; volleyNext = true; }
-      if (has['暗箭伤人'] && Math.random() < .3) {
+      if (has['矢如连珠'] && rangedChain.n >= 3) { rangedChain.n = 0; volleyNext = true; }
+      if (has['声东击西'] && Math.random() < .3) {
         const side = Math.sign(z.x - hero.x) || 1;
         fx.push({ k: 'darkArrow', z, x: z.x + side * 70, y: z.y - 14, t: 0, T: .18, dmg: dmg * .5, dir: -side });
       }
     }
-    if (has['避实回气'] && avoidUntil > now()) {
+    if (has['避实'] && avoidUntil > now()) {
       avoidUntil = 0;
       if (!z.T.boss && !z.T.chapterBoss) { z.daze = Math.max(z.daze || 0, .8); z.st = 'move'; z.tok = false; }
       if (hero.hp < (window.GEAR ? GEAR.maxHp() : 10)) { hero.hp = Math.min(window.GEAR ? GEAR.maxHp() : 10, hero.hp + .5); floaters.push({ x: hero.x, y: hero.y - 46, t: 0, txt: '+0.5', color: '#8fe08a' }); }
@@ -289,7 +289,7 @@
       z.rogueDeadSeen = true;
       if (has['乘胜追击'] && !secondary) { killCritUntil = t + 3; pop(hero.x, hero.y - 46, '乘胜！', '#ffd25a'); }
       if (z.burnT > 0 && typeof allyFires !== 'undefined') allyFires.push({ x: z.x, y: z.y, t: 2, r: 20, tick: 0 });   // 明火：着火的敌人死后留火场
-      if (has['箭补'] && traits && traits.skyArrow && ammoBackT <= t && window.BOWAMMO && BOWAMMO.add) { ammoBackT = t + .3; BOWAMMO.add(1); pop(hero.x, hero.y - 50, '箭补 +1', '#9fd3ff'); }
+      if (has['回矢'] && traits && traits.skyArrow && ammoBackT <= t && window.BOWAMMO && BOWAMMO.add) { ammoBackT = t + .3; BOWAMMO.add(1); pop(hero.x, hero.y - 50, '回矢 +1', '#9fd3ff'); }
     }
     if (secondary) return;
     if (has['破军'] && fin && !ranged) {
@@ -314,7 +314,7 @@
     const h = hero, w = weaponNow();
     const extra = (k, mult) => { for (const ang of k) shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life || .8, C: { ...C, dmg: C.dmg * mult, noPierce: true, daze: 0, dazeChance: 0, dazeTime: 0 }, c, hitSet: [], secondary: true, kind: w === 'bow' ? 'arrow' : undefined }); };
     if (has['飞蝗'] && w === 'stone' && !finisher && ++stoneShots % 3 === 0) extra([-.16, .16], .5);
-    if (has['乘胜连箭'] && volleyNext) { volleyNext = false; extra([-.14, .14], .35); }
+    if (has['矢如连珠'] && volleyNext) { volleyNext = false; extra([-.14, .14], .35); }
   }
   function onSwap() {
     if (!has['倒持'] || !swapReady) return false;
@@ -323,12 +323,12 @@
   function onChargeRelease() { cunjin = false; }   // 松手出招时用掉（同一招打中后会重新点亮）
   function chargeScale() { return (cunjin && has['寸劲'] ? .7 : 1) * (lowHp() ? .5 : 1); }
   function onRollEnd() {
-    if (has['回马枪'] && backCd <= 0) { backCd = 3; return true; }
+    if (has['回马'] && backCd <= 0) { backCd = 3; return true; }
     return false;
   }
   function onHurt() { hurtAt = now(); glowN = 0; }
   function sidestep(n, kind) {
-    if (!has['闪身步'] || !(kind === 'skill' || n >= 2) || Math.random() >= .2) return false;
+    if (!has['闪身'] || !(kind === 'skill' || n >= 2) || Math.random() >= .2) return false;
     hero.inv = Math.max(hero.inv || 0, .4); sideUntil = now() + 3; pop(hero.x, hero.y - 46, '闪', '#bfe8ff', true); return true;
   }
   function onExecute() { zhanUntil = now() + 3; }
@@ -364,7 +364,7 @@
     }
     for (const s of scarecrows) if (s.boom != null) s.boom += dt;
     scarecrows = scarecrows.filter(s => s.boom == null || s.boom < .5);
-    // 借我西风：把敌人往远离主角的方向吹，敌人的箭被吹偏
+    // 借我东风：把敌人往远离主角的方向吹，敌人的箭被吹偏
     if (windT > 0) {
       windT -= dt;
       for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) moveEnt(z, (Math.sign(z.x - hero.x) || 1) * 45 * dt, 0);
@@ -388,10 +388,10 @@
     if (typeof allyFires !== 'undefined') for (const f of allyFires) if (f.ignite) for (const z of zs) if (!z.dead && !z.air && !(z.burnT > 0) && Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .45) { z.burnT = 3; z.burnSpread = true; }
   }
   function hardClash(from) {
-    if (!has['硬拼'] || typeof charging === 'undefined' || !charging || chargeTier < 3) return false;
+    if (!has['硬撼'] || typeof charging === 'undefined' || !charging || chargeTier < 3) return false;
     atkHeldSince = performance.now() - chargeMaxMs() * .5; chargeTier = 2;   // 抵消这次伤害，蓄力效果只剩一半
     hero.inv = Math.max(hero.inv || 0, .4); shake = Math.max(shake, .2);
-    floaters.push({ x: hero.x, y: hero.y - 48, t: 0, txt: '硬拼！', big: true, gold: true });
+    floaters.push({ x: hero.x, y: hero.y - 48, t: 0, txt: '硬撼！', big: true, gold: true });
     if (typeof sfx === 'function') sfx('finisher', hero.x);
     for (const z of zs) if (!z.dead && !z.air && Math.hypot(z.x - hero.x, (z.y - hero.y) * 2) < 55) rogueHitFull(z, 1, Math.sign(z.x - hero.x) || 1, true);
     return true;
@@ -399,9 +399,9 @@
   function rogueHitFull(z, dmg, dir, knock = true) { if (typeof hit === 'function') hit(z, dmg, 110, dir, knock, 0, .35, true, false, { secondary: true }); }
   function tick(dt) {
     finisherCd = Math.max(0, finisherCd - dt); avoidCd = Math.max(0, avoidCd - dt); backCd = Math.max(0, backCd - dt);
-    // 先登战意：每波敌人出现（场上从没人到有人）时重新就绪
+    // 先声夺人：每波敌人出现（场上从没人到有人）时重新就绪
     const alive = zs.filter(z => !z.dead).length; if (alive > 0 && lastAlive === 0) vanguard = true; lastAlive = alive;
-    // 一鼓作气 / 狂风骤雨：2 秒没打中开始掉层（每秒 2 层）
+    // 一鼓作气 / 骤雨：2 秒没打中开始掉层（每秒 2 层）
     momentumIdle += dt; if (momentumIdle > 2) { momentum = Math.max(0, momentum - 2 * dt); gale = Math.max(0, gale - 2 * dt); }
     glowIdle += dt; if (glowIdle > 3 && !swapReady) glowN = 0;
     S.aspd = 1 / (1 + .03 * Math.floor(gale)); S.move = (1 + .03 * Math.floor(gale)) * (sideUntil > now() ? 1.2 : 1);

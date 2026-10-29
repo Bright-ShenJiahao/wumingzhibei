@@ -315,7 +315,7 @@ window.addEventListener('pointerup', endAttackPointer);
 window.addEventListener('blur', () => { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; } });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
-// 将令（主动技能锦囊）：万箭齐发 / 投石问路 / 雷霆万钧，共用一个按钮和 U 键
+// 将令（主动技能锦囊）：万箭齐发 / 霹雳飞石 / 雷霆万钧，共用一个按钮和 U 键
 function useRogueSkill() { const k = ROGUE.useSkill ? ROGUE.useSkill() : ''; if (k === 'wanjian') summonArchersVolley(); else if (k === 'toushi') catapultVolley(); }
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE) useRogueSkill(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
@@ -870,7 +870,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
-  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);   // 震慑破绽加伤、避实回气眩晕回血
+  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);   // 震慑破绽加伤、避实眩晕回血
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
@@ -962,7 +962,7 @@ function heroUpdate(dt) {
   updateHalberdDash(h, dt);
   pressRoll = false;
   if (h.st === 'roll' && charging && atkHeldSince) atkHeldSince += dt * 1000;   // 藏势：翻滚时蓄力暂停
-  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd && ROGUE.onRollEnd()) { h.f = -h.f; h.comboWin = 0; startAtk(); } } pressAtk = false; return; }   // 回马枪：滚完自动向身后打一下
+  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd && ROGUE.onRollEnd()) { h.f = -h.f; h.comboWin = 0; startAtk(); } } pressAtk = false; return; }   // 回马：滚完自动向身后打一下
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
@@ -1515,7 +1515,7 @@ function strike() {
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? (weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0;   // 跑动中弹道偏：石子 ±6、汉弓 ±3，站定不偏
     shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
-    if (window.ROGUE && ROGUE.onShoot) ROGUE.onShoot(C, c, finisher, sOff);   // 飞蝗散弹、乘胜连箭副弹
+    if (window.ROGUE && ROGUE.onShoot) ROGUE.onShoot(C, c, finisher, sOff);   // 飞蝗散弹、矢如连珠副弹
     if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
       const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;
       for (const ang of [-.20944, .20944]) {
@@ -1610,7 +1610,7 @@ function strike() {
   if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); sfx('crack', h.x + h.f * 26); if (c === W.combo.length - 1) sfx('finisher', h.x); }
   else if (!landed) sfx('swing_' + snd, h.x);   // 只打中道具时，音效由 hitProp 自己播
 }
-// 主角能不能被打中；翻滚无敌中被「本来会打中」的攻击擦过 → 算躲过（回锋、避实回气用）
+// 主角能不能被打中；翻滚无敌中被「本来会打中」的攻击擦过 → 算躲过（回锋、避实用）
 function heroOpen() { if (hero.inv <= 0) return true; if (hero.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(); return false; }
 function dmgHero(n, from, kind = 'basic') {
   if (hero.decoy) { hero.hp -= n; hero.hitT = .2; return; }   // 打中的是稻草人
@@ -1618,7 +1618,7 @@ function dmgHero(n, from, kind = 'basic') {
   if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
   if (window.ROGUE && ROGUE.hardClash && ROGUE.hardClash(from)) return;
-  if (window.ROGUE && ROGUE.sidestep && ROGUE.sidestep(n, kind)) return;   // 闪身步
+  if (window.ROGUE && ROGUE.sidestep && ROGUE.sidestep(n, kind)) return;   // 闪身
   if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n, from);
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
@@ -2187,7 +2187,7 @@ function updateCatapults(dt) {
       for (const z of zs) {
         if (z.dead || z.air) continue;
         if (Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .45) {
-          if (f.once) { if (f.once.has(z)) continue; f.once.add(z); }   // 风火轮：每个敌人只烫一次
+          if (f.once) { if (f.once.has(z)) continue; f.once.add(z); }   // 燎步：每个敌人只烫一次
           hit(z, f.dmg || .3, 0, 0, false, 0, 0, false, true, { dot: true });
         }
       }
