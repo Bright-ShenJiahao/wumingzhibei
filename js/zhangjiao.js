@@ -240,6 +240,7 @@
       const j = z.jump; j.t += dt; const u = Math.min(1, j.t / .7);
       z.z = j.h0 * (1 - u) + Math.sin(u * Math.PI) * 26; z.stun = 0;
       if (u >= 1) { z.jump = null; z.z = 0; sfx('land', z.x); shake = .4; S.hz.push({ k: 'puff', x: z.x, y: z.y - 6, t: 0 }); z.gap = 1.2; z.shotT = .6;
+        if (j.first && !S.tianFlag) { S.tianFlag = true; const m = ASSETS.props.flag_tian; if (m) props.push({ g: 'flag_tian', x: z.x + 22, y: z.y - 6, solid: false, broken: false, hp: 2, hitT: 0, sc: 1, w: m[1] * .75, h: m[2], chapter2: true, back: true }); }   // 第一次跳下法台：亲手插下「天」字将旗（天公将军，和张梁「人」、张宝「地」一套）
         if (j.first) { if (S.perfect && !S.outOfOrder) { z.hp -= z.T.hp * .15; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '破阵！-15%', big: true }); } else thunderAt(hero.x, hero.y, .9); } }
       return true;
     }

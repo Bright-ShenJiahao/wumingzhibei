@@ -988,7 +988,7 @@ function heroUpdate(dt) {
     return;
   }
   if (over) return;   // 死亡后彻底停止玩家操作
-  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (charging ? (weapon === 'bow' ? .55 : .65) : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
+  if (ix || iy) { if (h.st !== 'walk') set(h, 'walk'); if (ix) h.f = Math.sign(ix); const mv = R_('move') * (window.Boss && Boss.wxMove ? Boss.wxMove() : 1) * (window.CH2B && CH2B.sandOn && CH2B.sandOn() ? .75 : 1) * (charging ? (weapon === 'bow' ? .55 : .65) : 1); moveEnt(h, ix * 70 * mv * dt, iy * 52 * mv * dt); }   // 蓄力时走路慢 35%
   else if (h.st !== 'idle') set(h, 'idle');
   if (lockR < Infinity) h.x = Math.max(cam.x + 12, Math.min(h.x, cam.x + viewW() - 12));
 }

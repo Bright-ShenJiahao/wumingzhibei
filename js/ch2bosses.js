@@ -196,6 +196,8 @@
       } else { const u = h.t / .5; ctx.fillStyle = `rgba(160,60,25,${.5 * (1 - u)})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (1 + u * .4), h.r * .45 * (1 + u * .4), 0, 0, 7); ctx.fill(); }
     }
     if (sand.t > 0) { const a = Math.min(1, sand.t, (9 - sand.t) * 2) * .22; ctx.fillStyle = `rgba(170,130,60,${a})`; ctx.fillRect(cam.x - 4, 0, viewW() + 8, 600); }
+    // 黄沙迷阵：横飞的沙粒（主角移速 -25%，在 game.js 里算）
+    if (sand.t > 0) { const T = performance.now() / 1000, a = Math.min(1, sand.t, (9 - sand.t) * 2); ctx.fillStyle = `rgba(214,170,90,${.55 * a})`; for (let i = 0; i < 46; i++) { const x = cam.x + ((i * 97 + T * (160 + i % 5 * 30)) % (viewW() + 40)) - 20, y = M.top - 60 + (i * 53 % 200) + Math.sin(T * 3 + i) * 4; ctx.fillRect(x, y, 3 + i % 3, 1); } }
   }
   function reset() { hz.length = 0; sand.t = 0; }
 
