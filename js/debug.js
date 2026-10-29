@@ -155,12 +155,18 @@
       cam.x = Math.max(0, Math.min(M.W - viewW(), hero.x - viewW() / 2));
     }
     const info = document.createElement('i'); panel.appendChild(info);
+    let lastErr = '';
+    addEventListener('error', e => { lastErr = String(e.message || '').slice(0, 60); });
     setInterval(() => {
       if (!panel || typeof gateI === 'undefined') return;
       const z = typeof zs !== 'undefined' && zs.find(o => o.T && o.T.boss);
       info.textContent = `区域 ${Math.min(gateI + 1, M.gates.length)}/${M.gates.length}\n` +
         (z ? `管亥 ${Math.max(0, Math.round(z.hp))}/80 · ${z.st}\n` : '') +
-        `帧率 ${Math.round(fps)} · 血 ${typeof hero !== 'undefined' ? hero.hp : '-'}`;
+        `帧率 ${Math.round(fps)} · 血 ${typeof hero !== 'undefined' ? hero.hp : '-'}\n` +
+        // 排查「人物不见」用：主角坐标/状态、镜头、第二章状态、最近的报错
+        (typeof hero !== 'undefined' ? `主角 ${Math.round(hero.x)},${Math.round(hero.y)} ${hero.st}${hero.air ? ' 空中' : ''} 镜头 ${Math.round(cam.x)}` : '') +
+        (typeof chapter2Run !== 'undefined' && chapter2Run ? ` · 战${chapter2Run.battle} ${chapter2Run.mode} 波${chapter2Run.wave}` : '') +
+        (lastErr ? `\n报错：${lastErr}` : '');
     }, 300);
   }
 
