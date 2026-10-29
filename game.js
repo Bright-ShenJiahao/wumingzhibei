@@ -195,7 +195,8 @@ let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一
 let tutorialQueue = [];
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 读锦囊数值（没抽卡时就是默认值）
-const R_ = (k, d = 1) => { const value = window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d; return window.GEAR && (k === 'move' || k === 'aspd') ? GEAR.speed(k, value) : value; };
+const R_ = (k, d = 1) => { let value = window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d; if (k === 'move' && window.ARTIFACT) value *= ARTIFACT.moveMult();   // 太平飞剑：踩剑时移速 +10%
+  return window.GEAR && (k === 'move' || k === 'aspd') ? GEAR.speed(k, value) : value; };
 const maxHeroHp = () => window.GEAR ? GEAR.maxHp() : 10;
 // 播放音效，按世界坐标 x 计算左右声道
 function sfx(name, x) { if (window.SFX) SFX.play(name, x == null ? 0 : ((x - cam.x) / viewW()) * 2 - 1); }
@@ -212,6 +213,7 @@ function reset() {
   weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
   ui();
   if (window.ROGUE) ROGUE.reset();
+  if (window.ARTIFACT) ARTIFACT.startRun();   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -1638,6 +1640,7 @@ function dmgHero(n, from, kind = 'basic') {
   if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
   else if (raw >= 2 || h.hp <= 0) {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
+    if (window.ARTIFACT) ARTIFACT.onKnock(dir);   // 被击倒：从飞剑上摔下
     if (h.hp <= 0) h.deathArc = true;
   } else { set(h, 'hurt'); h.vx = dir * 80; }
   if (h.hp <= 0) {
@@ -2288,6 +2291,7 @@ function update(dt) {
   if (window.TITLE && TITLE.blocks()) return;   // 标题界面/转场：游戏不推进
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
+  if (window.ARTIFACT && !over && !won) ARTIFACT.tick(dt);
   gameT += dt;
   if (window.GEAR && !over && !won) GEAR.tick(dt);
   if (!over && !won) runT += dt;   // 计时：通关/倒下后停表；切后台 rAF 不走，也不会多算
@@ -2334,7 +2338,8 @@ function update(dt) {
     if (window.WALLET) WALLET.flush();
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
-    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);   // 第二章通关记第二章，不再误记成第一章
+    if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
+    if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
@@ -2628,6 +2633,7 @@ function draw() {
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
   if (window.CH2B && chapter2Run) CH2B.draw();
   if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
+  if (window.ARTIFACT) ARTIFACT.drawWorld();
   if (window.BOWAMMO) BOWAMMO.draw();
   // 按 y 排序绘制
   const list = [];
@@ -3352,7 +3358,8 @@ function drawHero() {
   if (h.shieldFlash > 0) { ctx.save(); ctx.globalAlpha = h.shieldFlash / .22; ctx.fillStyle = '#ffe79b'; ctx.beginPath(); ctx.arc(h.x, h.y - 15, 17, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
-  drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0), h.f < 0);
+  const lift = window.ARTIFACT ? ARTIFACT.drawUnder(h) : 0;   // 踩在飞剑上：剑画在脚下，人抬高一点
+  drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0) - lift, h.f < 0);
 }
 function drawZ(z) {
   ch2Telegraph(z);

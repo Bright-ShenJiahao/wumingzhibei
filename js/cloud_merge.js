@@ -8,6 +8,8 @@
     for(const p of profiles){if(!p||typeof p!=='object')continue;
       const oa=Number(p.outfit?._at)||0;
       if(oa>outfitAt){outfitAt=oa;result.outfit={hair:part(p.outfit?.hair),shirt:part(p.outfit?.shirt),pants:part(p.outfit?.pants),_at:oa};}
+      // 神器：拥有取并集（只增不减），装备哪件以最后改动的为准
+      if(p.artifacts&&typeof p.artifacts==='object'){result.artifacts ||= {owned:{},eq:'',_at:-1};for(const k of ['feijian'])if(p.artifacts.owned?.[k])result.artifacts.owned[k]=1;const aa=Number(p.artifacts._at)||0;if(aa>result.artifacts._at){result.artifacts._at=aa;result.artifacts.eq=typeof p.artifacts.eq==='string'&&p.artifacts.eq.length<=12?p.artifacts.eq:'';}}
       // 锦囊锁定（花金币买的，长期有效）：以最后改动的那份为准
       const ta=Number(p.tipLocks?._at)||0;
       if(p.tipLocks&&typeof p.tipLocks==='object'&&ta>tipAt){tipAt=ta;result.tipLocks={_at:ta};for(const k of ['gong','ji','shu','shou','zhuan'])if(typeof p.tipLocks[k]==='string'&&p.tipLocks[k].length<=12)result.tipLocks[k]=p.tipLocks[k];}

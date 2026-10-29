@@ -114,6 +114,11 @@
 - 挂钩：翻滚躲过 = 翻滚无敌中碰到本该命中的攻击（dmgHero 开头 / heroOpen()）→ ROGUE.onDodge；startAtk 用 ROGUE.takeFinisher（回锋）；GEAR.attackToken 用 ROGUE.takeCrit（避实）；rawHit 用 ROGUE.onHit / afterHit（震慑、避实）；dmgHero 用 ROGUE.hardClash（硬撼）；翻滚开始 ROGUE.onRoll（燎步）；将令统一走 useRogueSkill()（U 键 / bSkill）。
 - 下方「肉鸽系统」一节是旧卡的说明，旧卡（先登、终招、疾风、稳身、致命一击、献祭）已删除。
 
+## 神器（js/artifact.js，用户定）
+- 整军备战「神器」栏像时装一样点开选择（ARTIFACT.open），存档字段 `artifacts {owned, eq, _at}`（cloud_merge 拥有取并集、装备按 _at，profile 函数校验）。
+- 太平飞剑：第二章首次通关掉落（结算台词提示）。装上后每局踩剑开场，移速 +10%（R_('move')）；被击倒（dmgHero 里 launch）时摔下，剑斜插在旁边地上，走过去捡回；一局被打落 3 次，第 3 次的剑慢慢闪几下消失。剑和光痕暂用代码画，等正式美术。
+- 调试面板有「给太平飞剑」「看结算动画」按钮。
+
 ## 开发者模式（调试用，普通玩家看不到）
 - 新增 `js/debug.js`：网址带 `?debug` 才启用。
   - `?debug` 显示调试面板；`?debug=boss` 直接进管亥一阶段；`?debug=boss2` 直接进二阶段。

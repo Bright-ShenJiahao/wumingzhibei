@@ -23,6 +23,11 @@ function validate(p){
     const at=Number(o._at), stamp=Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0;
     clean.outfit={hair:o.hair,shirt:o.shirt,pants:o.pants,_at:stamp};
   }
+  if(clean.artifacts!=null){
+    const a=clean.artifacts;if(typeof a!=='object'||Array.isArray(a))throw new Error('神器数据不合法');
+    const owned={};for(const k of ['feijian'])if(a.owned?.[k])owned[k]=1;
+    const at=Number(a._at);clean.artifacts={owned,eq:typeof a.eq==='string'&&owned[a.eq]?a.eq:'',_at:Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0};
+  }
   if(clean.tipLocks!=null){
     const t=clean.tipLocks,out={};
     if(typeof t!=='object'||Array.isArray(t))throw new Error('锦囊锁定数据不合法');
