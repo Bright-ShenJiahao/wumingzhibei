@@ -277,8 +277,7 @@ addEventListener('keydown', e => {
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
   if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE) {
-    if (ROGUE.useSummon()) summonArchersVolley();
-    else if (ROGUE.useCatapult()) catapultVolley();
+    useRogueSkill();
   }
   // KeyI 预留给后续法器技能，暂不绑定
   if (e.code === 'Digit1') setW(longWeapon()); if (e.code === 'Digit2') setW(shortWeapon()); if (e.code === 'Digit3') setW(rangedWeapon());
@@ -316,7 +315,9 @@ window.addEventListener('pointerup', endAttackPointer);
 window.addEventListener('blur', () => { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; } });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
-document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useSummon()) summonArchersVolley(); });
+// 将令（主动技能锦囊）：万箭齐发 / 投石问路 / 雷霆万钧，共用一个按钮和 U 键
+function useRogueSkill() { const k = ROGUE.useSkill ? ROGUE.useSkill() : ''; if (k === 'wanjian') summonArchersVolley(); else if (k === 'toushi') catapultVolley(); }
+document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE) useRogueSkill(); });
 document.getElementById('bCatapult').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE && ROGUE.useCatapult()) catapultVolley(); });
 function toolbarWeapon(slot) { return slot === 'staff' ? longWeapon() : slot === 'hammer' ? shortWeapon() : slot === 'stone' ? rangedWeapon() : slot; }
 document.querySelectorAll('[data-w]').forEach(b => {
@@ -840,6 +841,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
+    if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits);
     const res = Boss.hit(z, dmg, dir, ranged, traits);
     if (z.hp < hp0) {
       if (traits.dot) return res;
@@ -865,6 +867,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
+  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits);   // 震慑破绽加伤、避实回气眩晕回血
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
@@ -895,6 +898,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     if (z.T.ch2Elite) { spawnDrop(z.x, z.y, Math.random() < .65 ? 'leg' : 'pig'); sfx('finisher', z.x); shake = .2; }   // 第二章精英：必掉鸡腿或烤乳猪
   }
   if (knock && !(z.T.boss || z.T.chapterBoss || z.T.noLaunch) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
+  if (window.ROGUE && ROGUE.afterHit) ROGUE.afterHit(z, knock);   // 震慑：眩晕/击倒挂破绽
 
 }
 function summonArchersVolley() {
@@ -946,12 +950,15 @@ function heroUpdate(dt) {
   if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
     sfx('roll', h.x);
-    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0; cancelCharge();
+    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0; h.rollId = (h.rollId || 0) + 1;
+    if (!(charging && window.ROGUE && ROGUE.has('藏势'))) cancelCharge();   // 藏势：蓄力中翻滚，进度保留
+    if (window.ROGUE && ROGUE.onRoll) ROGUE.onRoll(h.x, h.y);
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
     if (Math.abs(h.rx) > .1) h.f = Math.sign(h.rx);
   }
   updateHalberdDash(h, dt);
   pressRoll = false;
+  if (h.st === 'roll' && charging && atkHeldSince) atkHeldSince += dt * 1000;   // 藏势：翻滚时蓄力暂停
   if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
@@ -1483,7 +1490,8 @@ function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
   const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
-  set(h, 'atk'); h.atk = { c: chain ? (h.combo + 1) % WEAP[weapon].combo.length : 0, fi: 0, t: 0, lg: 0, gearToken: window.GEAR ? GEAR.attackToken() : null };
+  const fin = window.ROGUE && ROGUE.takeFinisher && ROGUE.takeFinisher();   // 回锋：翻滚躲过攻击后，下一下直接是终段
+  set(h, 'atk'); h.atk = { c: fin ? WEAP[weapon].combo.length - 1 : chain ? (h.combo + 1) % WEAP[weapon].combo.length : 0, fi: 0, t: 0, lg: 0, gearToken: window.GEAR ? GEAR.attackToken() : null };
 }
 function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
@@ -1596,9 +1604,13 @@ function strike() {
   if (hitEnemy) { sfx('hit_' + snd, h.x + h.f * 20); sfx('crack', h.x + h.f * 26); if (c === W.combo.length - 1) sfx('finisher', h.x); }
   else if (!landed) sfx('swing_' + snd, h.x);   // 只打中道具时，音效由 hitProp 自己播
 }
+// 主角能不能被打中；翻滚无敌中被「本来会打中」的攻击擦过 → 算躲过（回锋、避实回气用）
+function heroOpen() { if (hero.inv <= 0) return true; if (hero.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(); return false; }
 function dmgHero(n, from, kind = 'basic') {
-  const h = hero; if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
+  const h = hero; if (h.inv > 0 && h.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge();
+  if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
+  if (window.ROGUE && ROGUE.hardClash && ROGUE.hardClash(from)) return;
   if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n, from);
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
@@ -1798,7 +1810,7 @@ function zUpdate(z, dt) {
       qiFx.push({ x: z.x, y: z.y, f: z.f, t: 0, T: .28 });
       sfx('enemySwing', z.x); shake = Math.max(shake, .18);
       const hx = hero.x - z.x;
-      if (hero.inv <= 0 && Math.abs(hx) < 60 && Math.abs(hero.y - z.y) < 20 && hx * z.f > -10) dmgHero(2, z, 'skill');
+      if (Math.abs(hx) < 60 && Math.abs(hero.y - z.y) < 20 && hx * z.f > -10) dmgHero(2, z, 'skill');
     }
   }
   if (z.adds != null) {                 // 援军弓箭手：两轮箭，然后撤离
@@ -2019,7 +2031,7 @@ function updateChapter2Boss(z, dt) {
   if (z.st === 'wind') {
     if (z.t >= z.T.wind) {
       z.st = 'strike'; z.t = 0; sfx('enemySwing', z.x); shake = Math.max(shake, .12);
-      if (hero.inv <= 0 && Math.abs(hero.x - z.x) < z.T.reach + 10 && Math.abs(hero.y - z.y) < 20 && (hero.x - z.x) * z.f > -8) dmgHero(z.T.dmg, z);
+      if (Math.abs(hero.x - z.x) < z.T.reach + 10 && Math.abs(hero.y - z.y) < 20 && (hero.x - z.x) * z.f > -8) dmgHero(z.T.dmg, z);
     }
     return;
   }
@@ -2075,17 +2087,17 @@ function updateShots(dt) {
   for (const h of stoneHits) h.t += dt;
   stoneHits = stoneHits.filter(h => h.t < h.T);
   for (const s of eshots) {
-    if(s.k==='enemyWave'){const step=Math.min(s.left,Math.abs(s.vx)*dt);s.x+=Math.sign(s.vx)*step;s.left-=step;s.t+=dt;if(hero.inv<=0&&Math.abs(hero.x-s.x)<12&&Math.abs(hero.y-s.y)<12){dmgHero(1.5,s.source,'skill');s.left=0;}s.life=s.left>0?1:0;continue;}
+    if(s.k==='enemyWave'){const step=Math.min(s.left,Math.abs(s.vx)*dt);s.x+=Math.sign(s.vx)*step;s.left-=step;s.t+=dt;if(Math.abs(hero.x-s.x)<12&&Math.abs(hero.y-s.y)<12&&heroOpen()){dmgHero(1.5,s.source,'skill');s.left=0;}s.life=s.left>0?1:0;continue;}
     if (s.k === 'stone' || s.k === 'arrow') {
       s.x += s.vx * dt; s.life -= dt;
-      if (s.life > 0 && hero.inv <= 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
+      if (s.life > 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9 && heroOpen()) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
     } else {
       s.t += dt;
       if (s.t >= s.T) {
         fires.push({ x: s.tx, y: s.ty, t: s.short || 3, r: s.k === 'catapult' ? 32 : 16, seed: rnd(0, 4) }); sfx('fireLand', s.tx); s.life = 0;
         if (s.k === 'catapult') {   // 石块砸地：落点范围内直接伤 2（会击倒），再留火场
           shake = Math.max(shake, .25);
-          if (hero.inv <= 0 && Math.abs(hero.x - s.tx) < 30 && Math.abs(hero.y - s.ty) < 14) dmgHero(2, { x: s.tx, y: s.ty });
+          if (Math.abs(hero.x - s.tx) < 30 && Math.abs(hero.y - s.ty) < 14) dmgHero(2, { x: s.tx, y: s.ty });
           for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-8, 8), y: s.ty - 3, vx: rnd(-90, 90), vy: rnd(-140, -50), w: 2.5, h: 2.5, life: .5, max: .5, c: Math.random() < .5 ? '#5a4a3a' : '#a0461e' });
         }
       } else s.life = 1;
@@ -2154,7 +2166,7 @@ function updateCatapults(dt) {
         if (z.dead || z.air) continue;
         if (Math.abs(z.x - s.tx) < 34 && Math.abs(z.y - s.ty) < 22) hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
       }
-      allyFires.push({ x: s.tx, y: s.ty, t: 4, r: 32, tick: 0 });
+      allyFires.push({ x: s.tx, y: s.ty, t: R_('catapultFire', 4), r: 32, tick: 0 });
       for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-16, 16), y: s.ty + rnd(-8, 4), vx: rnd(-60, 60), vy: rnd(-110, -30), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.3, .6), max: .6, c: '#ff9a2e' });
     }
   }
@@ -2165,7 +2177,10 @@ function updateCatapults(dt) {
       f.tick = .5;
       for (const z of zs) {
         if (z.dead || z.air) continue;
-        if (Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .45) hit(z, .3, 0, 0, false, 0, 0, false, true, { dot: true });
+        if (Math.abs(z.x - f.x) < f.r && Math.abs(z.y - f.y) < f.r * .45) {
+          if (f.once) { if (f.once.has(z)) continue; f.once.add(z); }   // 风火轮：每个敌人只烫一次
+          hit(z, f.dmg || .3, 0, 0, false, 0, 0, false, true, { dot: true });
+        }
       }
     }
   }
@@ -2603,6 +2618,7 @@ function draw() {
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
   if (window.CH2B && chapter2Run) CH2B.draw();
+  if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
   if (window.BOWAMMO) BOWAMMO.draw();
   // 按 y 排序绘制
   const list = [];

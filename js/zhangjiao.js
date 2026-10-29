@@ -74,7 +74,7 @@
         z.grab.t += dt; z.st = 'wind'; z.t = 0; z.moving = false;
         if (z.grab.t >= .6) {
           z.grab = null; z.st = 'strike'; z.t = 0; z.hurlT = .45; sfx('enemySwing', z.x);
-          if (Math.abs(hero.x - z.x) < 30 && Math.abs(hero.y - z.y) < 14 && hero.inv <= 0) {
+          if (Math.abs(hero.x - z.x) < 30 && Math.abs(hero.y - z.y) < 14 && heroOpen()) {
             hero.f = Math.sign(z.x - hero.x) || 1; dmgHero(2, z);
             if (hero.air) hero.ax = (hero.ax || 0) * 1.7;   // 扔得更远
             floaters.push({ x: z.x, y: z.y - 60, t: 0, txt: '起！' }); shake = .3;
@@ -289,7 +289,7 @@
     if (z.push && !z.push.go) {
       z.push.wt -= dt; z.st = 'wind';
       if (z.push.wt <= 0) {
-        if (Math.abs(hero.x - z.x) < 38 && Math.abs(hero.y - z.y) < 16 && hero.inv <= 0) {
+        if (Math.abs(hero.x - z.x) < 38 && Math.abs(hero.y - z.y) < 16 && heroOpen()) {
           z.push.go = true; z.push.t = .22; z.push.dir = Math.sign(hero.x - z.x) || z.f; sfx('crack', z.x); shake = Math.max(shake, .15);
           floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '退！' }); thunderAt(hero.x + z.push.dir * 50, hero.y, .8);
         } else z.push = null;
