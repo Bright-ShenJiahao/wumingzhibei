@@ -2227,7 +2227,8 @@ function allyFireFrame(k) {
   if (!im || !im.complete || !im.naturalWidth) return null;
   const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
   const g = c.getContext('2d'); g.drawImage(im, 0, 0);
-  const px = g.getImageData(0, 0, c.width, c.height), d = px.data;
+  let px; try { px = g.getImageData(0, 0, c.width, c.height); } catch (e) { allyFireTint[k] = im; return im; }   // 跨域读不了像素：直接用原图
+  const d = px.data;
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
     const lum = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114;
