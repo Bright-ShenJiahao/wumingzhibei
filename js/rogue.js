@@ -14,7 +14,7 @@
   let bing = '';            // 本局拿到的将令：wanjian / toushi / leiting
   // ---- 已实现的卡：名字 → 效果 ----
   const IMPL = {
-    '直取要害': () => { S.crit += .08; },
+    '直取要害': () => { S.crit += .05; },   // 看破：平时 +5%，打正在蓄力出招的敌人必暴击并打断
     '横扫千军': () => { S.split = 1; },
     '淬毒': () => { S.poison = 1; },
     '焚身': () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; },
@@ -55,6 +55,7 @@
   let rangedChain = { z: null, n: 0 }, volleyNext = false, stoneShots = 0, swing = { atk: null, n: 0 };
   let glowW = '', glowN = 0, glowIdle = 0, swapReady = false, swapPending = false, cunjin = false, cunjinNext = false;
   let backCd = 0, hurtAt = -9, guardShield = 0, guardShieldT = 0, sideUntil = 0, zhanUntil = 0, beng = [], fx = [];
+  let rallyT = 0, jiyu = 0, ghosts = [], huifengNext = false, gustT = 0;
   let scarecrows = [], windT = 0, waters = [], spreadT = 0, ammoBackT = 0;
   const weaponNow = () => (typeof weapon !== 'undefined' ? weapon : '');
   const typeOf = traits => (traits && traits.gearToken && traits.gearToken.s && traits.gearToken.s.type) || weaponNow();
@@ -134,7 +135,7 @@
     skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton();
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
-    else if (bing === 'xifeng') { windT = 5; if (typeof say === 'function') say('借我东风！', 1.4); }
+    else if (bing === 'xifeng') { windT = 8; gustT = 0; if (typeof say === 'function') say('借我东风！', 1.4); }
     else if (bing === 'huoshao') castFire();
     else if (bing === 'shuiyan') castWater();
     return bing;
@@ -153,7 +154,7 @@
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
   function castThunder() {
     const foes = (typeof zs !== 'undefined' ? zs : []).filter(z => !z.dead && !z.air && z.x > cam.x - 10 && z.x < cam.x + viewW() + 10);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       let x, y;
       if (foes.length) {
         // 选身边敌人最多的那个
@@ -176,7 +177,7 @@
     thunder = thunder.filter(b => b.t < .45);
   }
   const im = k => { const i = typeof IMG !== 'undefined' && IMG['ui_' + k]; return i && i.complete && i.naturalWidth ? i : null; };
-  function drawImg(k, x, y, w, alpha = 1, flip = false) { const i = im(k); if (!i) return false; const h = w * i.height / i.width; ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); if (flip) ctx.scale(-1, 1); ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore(); return true; }
+  function drawImg(k, x, y, w, alpha = 1, flip = false) { const i = im(k); if (!i) return false; const h = w * i.height / i.width; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha *= alpha; ctx.translate(x, y); if (flip) ctx.scale(-1, 1); ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore(); return true; }
   function drawWorld() {
     if (typeof ctx === 'undefined') return;
     const T = performance.now() / 1000;
@@ -196,7 +197,17 @@
     // 一鼓作气 / 骤雨叠层：脚下光圈；倒持就绪：金色描边光；背水：红气
     const lv = Math.max(momentum / 10, gale / 5);
     if (lv > .05) { ctx.globalAlpha = .25 + .5 * lv; ctx.strokeStyle = '#ffd36a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(hero.x, hero.y, 12 + 6 * lv, 4 + 2 * lv, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
-    if (swapReady) { ctx.globalAlpha = .5 + .3 * Math.sin(T * 8); ctx.strokeStyle = '#fff0a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(hero.x, hero.y - 16, 11, 19, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (swapReady) {   // 倒持就绪：头顶闪「⇄」+ 手边金色火星（不用光圈，免得和护体护盾混）
+      ctx.globalAlpha = .6 + .4 * Math.sin(T * 8); ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 2; ctx.strokeStyle = '#3a2410'; ctx.fillStyle = '#ffe08a';
+      ctx.strokeText('⇄', hero.x, hero.y - 44); ctx.fillText('⇄', hero.x, hero.y - 44); ctx.textAlign = 'left';
+      for (let i = 0; i < 3; i++) { ctx.fillStyle = '#ffd76a'; ctx.fillRect(hero.x + hero.f * (8 + Math.sin(T * 9 + i) * 4), hero.y - 18 - ((T * 40 + i * 7) % 14), 1.5, 1.5); }
+      ctx.globalAlpha = 1; }
+    // 战意（先声夺人）：身上金光
+    if (rallyT > 0) { ctx.globalAlpha = .25 + .15 * Math.sin(T * 10); ctx.fillStyle = '#ffd36a'; ctx.beginPath(); ctx.ellipse(hero.x, hero.y - 14, 10, 18, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    // 积羽沉舟：头顶 3 个小点
+    if (has['积羽沉舟']) for (let i = 0; i < 3; i++) { ctx.fillStyle = i < jiyu ? '#ffd25a' : 'rgba(60,40,20,.7)'; ctx.fillRect(hero.x - 6 + i * 5, hero.y - 40, 3, 3); }
+    // 回马残影
+    for (const g of ghosts) { const W = WEAP[g.w]; const fr = W && W.combo[0].f[Math.min(W.combo[0].f.length - 1, Math.floor(g.t / .1))]; if (fr && typeof drawChar === 'function') { ctx.save(); ctx.globalAlpha = .55 * (1 - g.t / .45); ctx.filter = 'sepia(1) hue-rotate(150deg) saturate(3) brightness(1.2)'; drawChar('hero', fr, g.x, g.y, g.f < 0, 1); ctx.restore(); } }
     if (lowHp()) { for (let i = 0; i < 3; i++) { ctx.globalAlpha = .35; ctx.fillStyle = '#ff3a2a'; ctx.beginPath(); ctx.ellipse(hero.x + Math.sin(T * 5 + i * 2) * 7, hero.y - 10 - ((T * 30 + i * 11) % 30), 2.5, 5, 0, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; }
     ctx.restore();
     if (!thunder.length) return;
@@ -219,6 +230,7 @@
   }
   // ---- 翻滚、受击、命中的挂钩（game.js 调用） ----
   function onRoll(x, y) {
+    if (typeof hero !== 'undefined') hero.rollFrom = { x, y };
     if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; shockwave(x, y, 55, .5, true); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
     if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
   }
@@ -232,11 +244,11 @@
       hit(src, (n || 2) * .5, 60, Math.sign(src.x - hero.x) || 1, false, 0, .35, true, false, { secondary: true });
       pop(src.x, src.y - 42, '反噬！', '#ff9a5a', true); fx = true;
     }
-    if (has['回锋'] && finisherCd <= 0) { finisherUntil = now() + 3; finisherCd = 8; fx = true; }
+    if (has['回锋'] && finisherCd <= 0) { finisherUntil = now() + 3; finisherCd = 5; huifengNext = true; fx = true; if (typeof slowT !== 'undefined') slowT = Math.max(slowT, .4); pop(hero.x, hero.y - 52, '抓到了！', '#ffe08a', true); }   // 回锋：冷却 5 秒、0.4 秒慢动作，下一下终段 +50%
     if (has['避实'] && avoidCd <= 0) { avoidUntil = now() + 3; avoidCrit = true; avoidCd = 4; fx = true; }
     if (fx && typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '闪！', gold: true });
   }
-  function takeFinisher() { if (swapPending) { swapPending = false; return 'swap'; } if (finisherUntil > now()) { finisherUntil = 0; return true; } return false; }
+  function takeFinisher() { if (swapPending) { swapPending = false; return 'swap'; } if (finisherUntil > now()) { finisherUntil = 0; return huifengNext ? (huifengNext = false, 'huifeng') : true; } return false; }
   function takeCrit() {
     if (avoidCrit && avoidUntil > now()) { avoidCrit = false; return true; }
     if (killCritUntil > now()) { killCritUntil = 0; return true; }
@@ -247,10 +259,16 @@
     const t = now(), type = typeOf(traits), charged = !!(traits && (traits.charged || traits.skyArrow || traits.halberdCharge || (traits.gearToken && traits.gearToken.charged)));
     const fin = !!(traits && traits.finisher);
     if (has['震慑'] && z.flawUntil > t) dmg *= 1.25;
-    if (vanguard && has['先声夺人']) { vanguard = false; dmg *= 3; z.vanguardKnock = true; pop(z.x, z.y - 44, '先登！', null, true); }
+    if (vanguard && has['先声夺人']) { vanguard = false; dmg *= 3; z.vanguardKnock = true; pop(z.x, z.y - 44, '先声夺人！', null, true); shockwave(z.x, z.y, 45, .5, true); }
+    if (rallyT > 0 && has['先声夺人']) dmg *= 1.4;   // 战意：每波开头 4 秒伤害 +40%
+    // 直取要害（看破）：打正在蓄力出招的敌人必暴击并打断
+    if (has['直取要害'] && (z.st === 'wind' || (z.enemySkill && z.enemySkill.phase === 'wind'))) {
+      dmg *= 1.5; pop(z.x, z.y - 46, '看破！', '#ffd25a', true);
+      if (!isBoss(z)) { z.st = 'move'; z.tok = false; z.stun = Math.max(z.stun || 0, .5); if (z.enemySkill) z.enemySkill = null; }
+    }
     if (has['一鼓作气']) { momentum = Math.min(10, momentum + 1); momentumIdle = 0; dmg *= 1 + .015 * momentum; }
     if (has['骤雨']) { gale = Math.min(5, gale + 1); momentumIdle = 0; }
-    if (has['积羽沉舟'] && !charged && !ranged) { z.weakN = (z.weakN || 0) + 1; if (z.weakN >= 4) { z.weakN = 0; dmg *= 1.5; pop(z.x, z.y - 46, '弱点！', '#ffd25a', true); } }
+    if (has['积羽沉舟'] && !charged) { jiyu++; if (jiyu >= 3) { jiyu = 0; dmg *= 1.5; pop(z.x, z.y - 46, '沉舟！', '#ffd25a', true); if (!isBoss(z)) { z.daze = Math.max(z.daze || 0, .5); z.st = 'move'; z.tok = false; z.vx = (Math.sign(z.x - hero.x) || 1) * 90; } } }   // 不管打谁都累计，每第 3 下暴击、击退并晕 0.5 秒
     if (has['陷阵之志'] && !ranged && typeof hero !== 'undefined' && hero.atk) {
       if (swing.atk !== hero.atk) { swing.atk = hero.atk; swing.n = 0; }
       swing.n++; if (swing.n >= 2) dmg *= 1 + .15 * Math.min(3, swing.n - 1);
@@ -262,7 +280,8 @@
     if (lowHp()) dmg *= 1.3;
     if (has['定海'] && type === 'staff' && z.daze > 0) dmg *= 1.3;
     if (has['斩首'] && type === 'blade' && fin && zhanUntil > t) { zhanUntil = 0; dmg *= 1.5; pop(z.x, z.y - 48, '斩首！', '#ffd25a', true); }
-    if (typeof hero !== 'undefined' && hero.atk && hero.atk.weak) dmg *= .7;   // 倒持：切武器挥出的终段 70%
+    if (typeof hero !== 'undefined' && hero.atk && hero.atk.weak) dmg *= .7;
+    if (typeof hero !== 'undefined' && hero.atk && hero.atk.huifeng) dmg *= 1.5;   // 倒持：切武器挥出的终段 70%
     if (has['寸劲'] && charged) cunjin = true;   // 这次蓄力打中 → 下一次蓄力 -30%
     if (has['倒持'] && !ranged) { if (glowW !== type) { glowW = type; glowN = 0; } glowN++; glowIdle = 0; if (glowN >= 5 && !swapReady) { swapReady = true; pop(hero.x, hero.y - 48, '可倒持', '#ffe08a'); } }
     if (ranged && !charged) {
@@ -323,7 +342,10 @@
   function onChargeRelease() { cunjin = false; }   // 松手出招时用掉（同一招打中后会重新点亮）
   function chargeScale() { return (cunjin && has['寸劲'] ? .7 : 1) * (lowHp() ? .5 : 1); }
   function onRollEnd() {
-    if (has['回马'] && backCd <= 0) { backCd = 3; return true; }
+    if (has['回马'] && backCd <= 0 && hero.rollFrom) {   // 回马：翻滚起点留下青色残影，向身后挥一次普攻（主角不受影响）
+      backCd = 3; const f = -(Math.sign(hero.rx || hero.f) || 1);
+      ghosts.push({ x: hero.rollFrom.x, y: hero.rollFrom.y, f, t: 0, w: weaponNow(), hit: false });
+    }
     return false;
   }
   function onHurt() { hurtAt = now(); glowN = 0; }
@@ -338,19 +360,31 @@
     for (const s of scarecrows) { if (s.boom != null) continue; const d = Math.hypot(z.x - s.x, (z.y - s.y) * 1.5); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  function enemyMove(z) { for (const w of waters) if (Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 22) return .4; return 1; }
+  function enemyMove(z) { for (const w of waters) if (Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) return .4; return 1; }
   // ---- 将令（第二批） ----
+  // 将令统一对准敌群：返回身边敌人最多的那个敌人的位置；没有敌人就是主角前方
+  function cluster(r = 50) {
+    const foes = zs.filter(z => !z.dead && !z.air && z.x > cam.x - 10 && z.x < cam.x + viewW() + 10);
+    if (!foes.length) return { x: hero.x + hero.f * 80, y: hero.y };
+    let best = foes[0], bn = -1;
+    for (const z of foes) { const n = foes.filter(o => Math.hypot(o.x - z.x, (o.y - z.y) * 2) < r).length; if (n > bn) { bn = n; best = z; } }
+    return { x: best.x, y: best.y };
+  }
   function castScarecrows() {
     // 稻草人是新的「敌方目标」：附近敌人优先去打它（敌人更新时把它当成主角），被打碎或 8 秒后爆炸
     for (const dx of [50, 95]) scarecrows.push({ decoy: true, x: hero.x + hero.f * dx, y: Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + (dx === 50 ? -14 : 14))), f: -hero.f, st: 'idle', t: 0, hp: 6, hitT: 0, inv: 0, air: false, z: 0 });
     if (typeof say === 'function') say('草木皆兵！', 1.4);
   }
   function castFire() {
-    for (let i = 0; i < 5; i++) allyFires.push({ x: hero.x + hero.f * (35 + i * 30), y: hero.y + rnd(-10, 10), t: 5, r: 26, tick: 0, dmg: .4, ignite: true });
+    const c = cluster(70);   // 火铺在敌群那里：6 片，每秒 1 伤害，会在敌人之间传开
+    for (let i = 0; i < 6; i++) allyFires.push({ x: c.x + (i % 3 - 1) * 34 + rnd(-6, 6), y: c.y + (i < 3 ? -12 : 12), t: 5, r: 28, tick: 0, dmg: .5, ignite: true });
     if (typeof say === 'function') say('火烧连营！', 1.4);
   }
   function castWater() {
-    waters.push({ x: hero.x + hero.f * 90, y: hero.y, w: 150, t: 0, T: 5, tick: 0, wave: 0 });
+    const c = cluster(80);   // 对准敌群：宽 260、持续 7 秒，浪头先拍一下（1.5 伤害并推开）
+    waters.push({ x: c.x, y: c.y, w: 260, t: 0, T: 7, tick: .6, wave: 0 });
+    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 130 && Math.abs(z.y - c.y) < 28) hit(z, 1.5, 120, Math.sign(z.x - hero.x) || 1, false, 0, .4, true, false, { secondary: true });
+    shake = Math.max(shake, .2);
     if (typeof say === 'function') say('水淹七军！', 1.4);
   }
   function updateBing(dt) {
@@ -360,20 +394,28 @@
       s.inv = 0; s.st = 'idle';
       // 飞来的敌方箭、石子打到稻草人
       if (s.boom == null && typeof eshots !== 'undefined') for (const e of eshots) if ((e.k === 'stone' || e.k === 'arrow') && e.life > 0 && Math.abs(e.x - s.x) < 9 && Math.abs(e.y - s.y) < 9) { e.life = 0; s.hp -= 1; s.hitT = .2; }
-      if ((s.hp <= 0 || s.t > 8) && s.boom == null) { s.boom = 0; shockwave(s.x, s.y, 55, 2, true); if (typeof sfx === 'function') sfx('finisher', s.x); shake = Math.max(shake, .2); }
+      if ((s.hp <= 0 || s.t > 8) && s.boom == null) { s.boom = 0; shockwave(s.x, s.y, 55, 3, true); if (typeof sfx === 'function') sfx('finisher', s.x); shake = Math.max(shake, .2); }
     }
     for (const s of scarecrows) if (s.boom != null) s.boom += dt;
     scarecrows = scarecrows.filter(s => s.boom == null || s.boom < .5);
     // 借我东风：把敌人往远离主角的方向吹，敌人的箭被吹偏
-    if (windT > 0) {
-      windT -= dt;
-      for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) moveEnt(z, (Math.sign(z.x - hero.x) || 1) * 45 * dt, 0);
-      if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent) { e.windBent = true; e.vx *= .6; e.life = Math.min(e.life || 1, .5); }
+    if (windT > 0) {   // 借我东风：8 秒；持续吹开，每 2 秒一阵强风吹倒普通敌人；敌人的箭石被吹回去
+      windT -= dt; gustT -= dt;
+      const gust = gustT <= 0; if (gust) gustT = 2;
+      for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) {
+        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 80 * dt, 0);
+        if (gust && !z.T.elite && !z.T.ch2Elite && !z.T.siege && typeof launch === 'function') launch(z, d * 70, 90);
+      }
+      if (gust && typeof sfx === 'function') sfx('roll', hero.x);
+      if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && (e.k === 'stone' || e.k === 'arrow')) {
+        e.windBent = true; e.life = 0;   // 被风吹回：变成我方的箭石打向敌人
+        shots.push({ x: e.x, y: e.y, z: 22, vx: -e.vx, life: .9, C: { dmg: 1, kb: 20 }, c: 0, hitSet: [], kind: e.k === 'arrow' ? 'arrow' : undefined, secondary: true });
+      }
     }
     // 水淹七军：水里的敌人持续受伤（减速在 enemyMove）
     for (const w of waters) {
       w.t += dt; w.tick -= dt;
-      if (w.tick <= 0) { w.tick = .5; for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 22) hit(z, .3, 0, 0, false, 0, 0, false, false, { dot: true }); }
+      if (w.tick <= 0) { w.tick = .5; for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) hit(z, .5, 0, 0, false, 0, 0, false, false, { dot: true }); }
     }
     waters = waters.filter(w => w.t < w.T);
     // 着火（明火 / 火烧连营）：每秒掉血；火烧连营的火会传给身边的敌人
@@ -400,11 +442,19 @@
   function tick(dt) {
     finisherCd = Math.max(0, finisherCd - dt); avoidCd = Math.max(0, avoidCd - dt); backCd = Math.max(0, backCd - dt);
     // 先声夺人：每波敌人出现（场上从没人到有人）时重新就绪
-    const alive = zs.filter(z => !z.dead).length; if (alive > 0 && lastAlive === 0) vanguard = true; lastAlive = alive;
+    const alive = zs.filter(z => !z.dead).length; if (alive > 0 && lastAlive === 0) { vanguard = true; if (has['先声夺人']) { rallyT = 4; pop(hero.x, hero.y - 50, '战意！', null, true); } } lastAlive = alive;
+    rallyT = Math.max(0, rallyT - dt);
+    for (const g of ghosts) {
+      g.t += dt;
+      if (g.t > .12 && !g.hit) { g.hit = true; const W = WEAP[g.w] || {}, reach = (W.reach || 30) + 10;
+        for (const z of zs) if (!z.dead && !z.air && (z.x - g.x) * g.f > -6 && Math.abs(z.x - g.x) < reach && Math.abs(z.y - g.y) < 16) hit(z, 1.2, 60, g.f, false, 0, .35, true, false, { secondary: true });
+        if (typeof sfx === 'function') sfx('swing_' + (W.snd || g.w), g.x); }
+    }
+    ghosts = ghosts.filter(g => g.t < .45);
     // 一鼓作气 / 骤雨：2 秒没打中开始掉层（每秒 2 层）
     momentumIdle += dt; if (momentumIdle > 2) { momentum = Math.max(0, momentum - 2 * dt); gale = Math.max(0, gale - 2 * dt); }
     glowIdle += dt; if (glowIdle > 3 && !swapReady) glowN = 0;
-    S.aspd = 1 / (1 + .03 * Math.floor(gale)); S.move = (1 + .03 * Math.floor(gale)) * (sideUntil > now() ? 1.2 : 1);
+    S.aspd = 1 / (1 + .03 * Math.floor(gale)); S.move = (1 + .03 * Math.floor(gale)) * (sideUntil > now() ? 1.2 : 1) * (rallyT > 0 ? 1.25 : 1);
     if (guardShield > 0) { guardShieldT -= dt; if (guardShieldT <= 0) guardShield = 0; }
     for (const b of beng) { b.t += dt; if (b.t >= 0 && !b.done) { b.done = true; fx.push({ k: 'ring', x: b.x, y: b.y, r: 60, t: 0, T: .3 }); for (const o of zs) if (!o.dead && !o.air && Math.hypot(o.x - b.x, (o.y - b.y) * 2) < 60) { hit(o, 1.5, 90, Math.sign(o.x - b.x) || 1, !isBoss(o), 0, .35, true, false, { secondary: true }); o.bengLand = 1; } if (typeof sfx === 'function') sfx('finisher', b.x); } }
     beng = beng.filter(b => !b.done);
@@ -507,7 +557,7 @@
       finisherUntil = finisherCd = avoidUntil = avoidCd = 0; avoidCrit = false; dodgeRollT = -1;
       vanguard = false; lastAlive = 0; momentum = momentumIdle = gale = killCritUntil = 0; rangedChain = { z: null, n: 0 }; volleyNext = false; stoneShots = 0;
       glowW = ''; glowN = glowIdle = 0; swapReady = swapPending = cunjin = cunjinNext = false; backCd = 0; hurtAt = -9; guardShield = guardShieldT = 0; sideUntil = zhanUntil = 0;
-      beng = []; fx = []; scarecrows = []; windT = 0; waters = []; spreadT = 0; ammoBackT = 0;
+      beng = []; fx = []; scarecrows = []; windT = 0; rallyT = 0; jiyu = 0; ghosts = []; huifengNext = false; gustT = 0; waters = []; spreadT = 0; ammoBackT = 0;
       for (const k in has) delete has[k]; for (const k in DEFAULT) S[k] = DEFAULT[k]; updateSkillButton();
     },
   };

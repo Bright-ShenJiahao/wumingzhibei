@@ -36,6 +36,7 @@ for y0, y1, names, gap in ROWS:
         ys = np.where((sub[..., 3] > 20).any(1))[0]
         sub = sub[ys[0]:ys[-1] + 1]
         im = Image.fromarray(sub, 'RGBA')
-        im = im.resize((max(1, im.width // 2), max(1, im.height // 2)), Image.LANCZOS)
+        if not n.startswith(('tip_water', 'tip_wave')):   # 水面/浪头保留原分辨率（水淹七军放大后不糊）
+            im = im.resize((max(1, im.width // 2), max(1, im.height // 2)), Image.LANCZOS)
         im.save(os.path.join(R, 'art', 'ui', n + '.png')); im.save(os.path.join(R, 'art', 'ui', n + '.webp'), quality=88, method=6)
         print(n, im.size)
