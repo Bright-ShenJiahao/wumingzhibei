@@ -104,11 +104,11 @@
   威胁值见 `THREAT`（喽啰1/刀手2/投石手2/弓手2/老卒4）。
 
 ## 新锦囊系统（进行中，用户定，js/tipbag.js）
-- 整军备战页「🎴 锦囊」按钮打开面板：六类 破敌/身法/秘术/坚守/兵刃(武器专属)/将令(兵，主动技能)，共 44 张，卡表在 TIPBAG.CARDS。卡面不显示稀有度文字，只用框色（稀有蓝、传说金）。
+- 整军备战页「🎴 锦囊」按钮打开面板：六类 破敌/身法/秘术/坚守/兵刃(武器专属)/将令(兵，主动技能)，共 40 张（用户删去回锋、藏势、反戈），卡表在 TIPBAG.CARDS。卡面不显示稀有度文字，只用框色（稀有蓝、传说金）。
 - 每局卡池固定 20 张：破敌/身法/秘术/坚守/兵刃 每类最多锁 1 张，其余随机。锁定在面板里一次性付金币（普通 150 / 稀有 300 / 传说 600），之后每局自动生效；换卡按新卡价格重新付，取消免费不退钱。锁定存在玩家存档 `tipLocks`（cloud_merge 按 `_at` 取最新，profile 函数校验）。锁定的卡不按稀有度加权，且每张保底出现一次；未锁的按 普通6/稀有3/传说1 加权。
 - 将令（兵）不进卡池：三选一时概率多出第 4 张兵卡（30%，没出现每次 +15%），选了之后本局不再出现。
 - 兵刃卡只有武器槽里有那把武器才能锁、才会抽到，正在用的那把概率 ×2。
-- 现状：局内已换成新系统（js/rogue.js），44 张卡全部做出效果（IMPL）。新卡全部直接给玩家，不用解锁（用户定）。
+- 现状：局内已换成新系统（js/rogue.js），全部卡都做出效果（IMPL）。新卡全部直接给玩家，不用解锁（用户定）。
 - 卡池在本局第一次抽卡时建立（ROGUE.reset 后），锁定的卡直接放进卡池。
 - 第二批挂钩：strike 的 ROGUE.onShoot（飞蝗/矢如连珠副弹）；setW 的 ROGUE.onSwap（倒持）；chargeMaxMs/chargeGateMs 乘 ROGUE.chargeScale（寸劲/背水）；翻滚结束 ROGUE.onRollEnd（回马）；dmgHero 的 ROGUE.sidestep（闪身）/onHurt（解围）；大刀斩杀线与 ROGUE.onExecute（斩首）；长戟裂伤上限与撕开溅射（血债）；moveEnt 乘 ROGUE.enemyMove（水淹七军减速）；BOWAMMO.add（回矢）。特效图 art/ui/tip_*（tools/process_tipfx.py）。
 - 挂钩：翻滚躲过 = 翻滚无敌中碰到本该命中的攻击（dmgHero 开头 / heroOpen()）→ ROGUE.onDodge；startAtk 用 ROGUE.takeFinisher（回锋）；GEAR.attackToken 用 ROGUE.takeCrit（避实）；rawHit 用 ROGUE.onHit / afterHit（震慑、避实）；dmgHero 用 ROGUE.hardClash（硬撼）；翻滚开始 ROGUE.onRoll（燎步）；将令统一走 useRogueSkill()（U 键 / bSkill）。

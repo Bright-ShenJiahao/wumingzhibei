@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=78d1c9b1cd" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=78d1c9b1cd)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=aaeedd80dd" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=aaeedd80dd)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='f048b476cb38',busy=false;
+var BUILD='8bbb47b395e6',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4003,7 +4003,7 @@ const Boss = (() => {
     '焚身': () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; },
     '护体': () => { S.shield = 1; },
     '饮血': () => { S.lifesteal = .5; },
-    '回锋': () => {}, '避实': () => {}, '藏势': () => {}, '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
+    '避实': () => {}, '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
     '万箭齐发': () => { bing = 'wanjian'; S.summon = 1; },
     '霹雳飞石': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 6; },
     '雷霆万钧': () => { bing = 'leiting'; },
@@ -4012,7 +4012,7 @@ const Boss = (() => {
     '矢如连珠': () => {}, '声东击西': () => {}, '陷阵之志': () => {},
     '骤雨': () => {}, '破军': () => {}, '倒持': () => {}, '寸劲': () => {}, '回马': () => {},
     '明火': () => {}, '乘危': () => {},
-    '解围': () => {}, '反戈': () => {}, '闪身': () => {}, '背水': () => {},
+    '解围': () => {}, '闪身': () => {}, '背水': () => {},
     '定海': () => {}, '崩山': () => {}, '飞蝗': () => {}, '血债': () => {}, '斩首': () => {}, '回矢': () => {},
     '草木皆兵': () => { bing = 'caomu'; }, '借我东风': () => { bing = 'xifeng'; }, '火烧连营': () => { bing = 'huoshao'; }, '水淹七军': () => { bing = 'shuiyan'; },
   };
@@ -5631,9 +5631,7 @@ const Boss = (() => {
       ['骤雨', 'n', '连续打中叠层，每层攻速、移速 +3%，最多 5 层'],
       ['破军', 'r', '终段打死敌人时放冲击波；打精英、首领有概率小冲击'],
       ['倒持', 'l', '同一把武器连续打中 5 次后发光，此时切武器直接挥出新武器终段'],
-      ['藏势', 'r', '蓄力中可以翻滚，蓄力进度保留'],
       ['寸劲', 'n', '一档以上蓄力打中后，下一次蓄力时间 -30%'],
-      ['回锋', 'l', '翻滚躲过攻击后慢动作一瞬，下一下普攻直接是终段且伤害 +50%，冷却 5 秒'],
       ['避实', 'r', '翻滚躲过攻击后，下一击必暴击、眩晕敌人并回 0.5 血，冷却 4 秒'],
       ['回马', 'r', '翻滚结束时在起点留下残影，向身后挥一次普攻，冷却 3 秒'],
       ['燎步', 'r', '翻滚时原地留一小片地火，每个敌人只烫一次'],
@@ -5649,7 +5647,6 @@ const Boss = (() => {
       ['护体', 'r', '每 10 秒获得一层护盾，挡一次伤害'],
       ['饮血', 'n', '每次打中回少量血（打首领减半）'],
       ['解围', 'n', '受伤后 2 秒内翻滚，震开周围敌人并获得薄护盾'],
-      ['反戈', 'r', '躲过敌人蓄力攻击或技能后，50% 概率让对方承受这招一半伤害'],
       ['闪身', 'n', '被蓄力攻击或技能打中时，20% 概率自动闪开并短暂加速'],
       ['硬撼', 'l', '蓄满力时被打中：抵消伤害并反击震开周围，但蓄力效果只剩 50%'],
       ['背水', 'l', '血量低于 20% 时伤害 +30%、蓄力时间减半，身上冒红气'],
