@@ -3,12 +3,12 @@
 // 兵类不进卡池，三选一时随机多出第 4 张兵卡，选了之后本局不再出现。
 (() => {
   const CATS = [
-    { id: 'gong', name: '攻', color: '#d9644a' },
-    { id: 'ji', name: '技', color: '#e2b04a' },
-    { id: 'shu', name: '术', color: '#8fc35a' },
-    { id: 'shou', name: '守', color: '#5aa6d9' },
-    { id: 'zhuan', name: '专属', color: '#c58ae0' },
-    { id: 'bing', name: '兵', color: '#b98a52' },
+    { id: 'gong', name: '破敌', color: '#d9644a' },
+    { id: 'ji', name: '身法', color: '#e2b04a' },
+    { id: 'shu', name: '秘术', color: '#8fc35a' },
+    { id: 'shou', name: '坚守', color: '#5aa6d9' },
+    { id: 'zhuan', name: '兵刃', color: '#c58ae0' },
+    { id: 'bing', name: '将令', color: '#b98a52' },
   ];
   const R = { n: '普通', r: '稀有', l: '传说' };
   const CARDS = {
@@ -74,7 +74,7 @@
   function css() {
     if (document.getElementById('tipBagCss')) return;
     const s = document.createElement('style'); s.id = 'tipBagCss';
-    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}#tipBag .tcell{position:relative;display:flex;flex-direction:column;align-items:center;padding:6px 2px 4px;background:#2a1f17;border:2px solid #5d4428;border-radius:6px;cursor:pointer;font-size:12px;color:#ecdcbc}#tipBag .tcell.r{border-color:#4f7fae}#tipBag .tcell.l{border-color:#e0a63a;box-shadow:0 0 6px #e0a63a88}#tipBag .tcell.on{background:#4b3622;outline:2px solid #f1d58f}#tipBag .tcell span{margin-top:2px;white-space:nowrap}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
+    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}#tipBag .tcell{position:relative;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;background:var(--card) center/100% 100% no-repeat;border-radius:6px;cursor:pointer;color:#f1d58f;outline:2px solid transparent;outline-offset:-1px}#tipBag .tcell.r{outline-color:#4f7fae}#tipBag .tcell.l{outline-color:#e0a63a;box-shadow:0 0 8px #e0a63a99}#tipBag .tcell.on{filter:brightness(1.3);outline:2px solid #fff3c4}#tipBag .tnm{writing-mode:vertical-rl;font:700 15px MaShanZheng,"STKaiti",serif;letter-spacing:2px;text-shadow:0 1px 2px #000}#tipBag .tdot{position:absolute;top:9%;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;box-shadow:0 0 3px #000}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
     document.head.append(s);
   }
   function render(box) {
@@ -82,7 +82,9 @@
     const locks = CATS.filter(c => c.id !== 'bing').map(c => `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot">🔒 空</div></div>`).join('');
     const tabs = CATS.map(c => `<button type="button" data-tab="${c.id}" class="${c.id === tab ? 'on' : ''}">${c.name} ${CARDS[c.id].length}</button>`).join('');
     const cards = CARDS[tab], cur = cards[Math.min(sel, cards.length - 1)];
-    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}">${pouch(cat.color)}<span>${n}</span></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b><i style="color:${{ n: '#bbb', r: '#7fb7f0', l: '#f0b84a' }[cur[1]]}">${R[cur[1]]}</i><p>${cur[2]}</p></div>`;
+    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b><i style="color:${{ n: '#bbb', r: '#7fb7f0', l: '#f0b84a' }[cur[1]]}">${R[cur[1]]}</i><p>${cur[2]}</p></div>`;
+    const card = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.rogue_card;
+    box.style.setProperty('--card', card ? `url(${card})` : '#3a2a1c');
     box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可花金币锁定 1 张，其余随机</p><div class="tlocks">${locks}</div><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定功能制作中，目前可浏览全部锦囊。'}</p></section>`;
   }
   function open() {
