@@ -128,7 +128,7 @@ const TYPES = {
   elite:   { name: '老卒', hp: 10, spd: 26, wind: 1.05, reach: 30, dmg: 3, heavy: true, elite: true, w: 12, sprite: 'elite', scale: 1.05 },   // 精英：血厚、出手慢、打不断
   priest:  { name: '黄巾方士', hp: 4, spd: 40, priest: true, w: 10, sprite: 'priest', scale: .9 },   // 不打人，念咒奶人+加速，跑位躲后排
   'yellow-heavy': { name: '黄巾大刀兵', hp: 7, spd: 25, wind: .9, reach: 31, dmg: 2, heavy: true, sprite: 'yellow_heavy', scale: 1.02 },
-  'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .65, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
+  'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .7, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
@@ -819,7 +819,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
     const sh = zs.find(s => s.type === 'yellow-shield' && !s.dead && Math.hypot(s.x - z.x, (s.y - z.y) * 2) < (s.T.ch2Elite ? 65 : 45));
     if (sh) {
       if (!(sh.shieldUpUntil > gameT)) { sh.shieldUpUntil = gameT + .8; floaters.push({ x: sh.x, y: sh.y - 40, t: 0, txt: '举盾！' }); }
-      if (Math.random() < .5) { floaters.push({ x: z.x, y: z.y - 30, t: 0, txt: '挡住' }); return 'blocked'; }
+      if (Math.random() < (sh.T.ch2Elite ? .2 : .1)) { floaters.push({ x: z.x, y: z.y - 30, t: 0, txt: '挡住' }); return 'blocked'; }   // 用户定：举盾 10% 整下挡掉（精英 20%），否则只吃 40%
       dmg *= .4; stun = 0; daze = 0; kb = 0; knock = false;
     }
   }
@@ -833,7 +833,12 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
-    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&Math.random()<(z.T.ch2Elite?.8:.56)){   // 正面格挡概率 80%→56%（用户定：格挡减弱 30%）
+    const roll=Math.random(),fullP=z.T.ch2Elite?.2:.1;   // 用户定：正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
+    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll>=fullP&&roll<fullP+.5){
+      dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
+      for(let i=0;i<4;i++)propFx.push({x:z.x+z.f*8,y:z.y-18+rnd(-6,6),vx:rnd(-40,40)+z.f*30,vy:rnd(-80,-20),w:1.5,h:1.5,life:.2,max:.2,c:'#d88a4a'});
+    }
+    else if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll<fullP){
 
       const start=propFx.length, firstFloater=floaters.length;if(window.BOSS_BLOCK)BOSS_BLOCK.effect(z);
       for(let i=firstFloater;i<floaters.length;i++)floaters[i].color='#aa4c2c';
