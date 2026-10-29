@@ -913,7 +913,7 @@ function summonArchersVolley(again) {
   if (!again) { volleyAgainAt = gameT + .5; zs.forEach(z => z.wjHits = 0); }
   const angles = Array.from({ length: 10 }, (_, i) => (-20 + i * 40 / 9) * Math.PI / 180);
   for (const a of angles) {
-    const C = { dmg: 1, kb: 12, pierce: true, pierceOff: .6 };
+    const C = { dmg: 1.5, kb: 12, pierce: true, pierceOff: .6 };
     const ang = a * hero.f;
     shots.push({ x: hero.x + hero.f * 14, y: hero.y + rnd(-8, 8), z: 24, vx: Math.cos(ang) * 260 * hero.f, vy: Math.sin(a) * 190, life: 1.05, C, c: 0, hitSet: [], kind: 'arrow', secondary: true, summon: true });
   }
@@ -2086,7 +2086,7 @@ function updateShots(dt) {
       if (!s.villagerHits.has(v)) { v.flash = .12; s.villagerHits.add(v); }
     }
     const projectileTargets = chapter2Run ? zs.slice().sort((a, b) => s.vx >= 0 ? a.x - b.x : b.x - a.x) : zs;
-    for (const z of projectileTargets) if (!z.dead && !s.hitSet.includes(z) && !(s.summon && (z.wjHits || 0) >= 3) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
+    for (const z of projectileTargets) if (!z.dead && !s.hitSet.includes(z) && !(s.summon && (z.wjHits || 0) >= 4) && Math.abs(z.x - s.x) < 10 + (z.T.w || 0) && Math.abs(z.y - s.y) < 10 && s.life > 0) {
       const baseDmg = window.GEAR ? GEAR.projectileDamage(s,z) : s.C.dmg;
       let pdmg = s.hitSet.length > 0 ? baseDmg * (s.C.pierce ? (s.C.pierceOff || .4) : .5) : baseDmg;   // 穿透：后续目标按武器系数衰减（石子 40%、箭 30%）
       if (s.kind === 'arrow') pdmg *= bowRangeMult(s.traveled || 0);   // 汉弓远射：按已飞行距离结算
@@ -2094,7 +2094,7 @@ function updateShots(dt) {
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
       if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = s.C.dazeChance * .5; traits.dazeTime = s.C.dazeTime; }
-      if (s.summon) z.wjHits = (z.wjHits || 0) + 1;
+      if (s.summon) { z.wjHits = (z.wjHits || 0) + 1; if (window.ROGUE && ROGUE.stat) ROGUE.stat('万箭齐发', pdmg, 0); }
       const result = hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
       if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
@@ -2189,9 +2189,9 @@ function updateCatapults(dt) {
       sfx('land', s.tx);
       for (const z of zs) {
         if (z.dead || z.air) continue;
-        if (Math.abs(z.x - s.tx) < 40 && Math.abs(z.y - s.ty) < 24) hit(z, 2, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
+        if (Math.abs(z.x - s.tx) < 40 && Math.abs(z.y - s.ty) < 24) (window.ROGUE && ROGUE.stat && ROGUE.stat('霹雳飞石', 1.5, 0)), hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
       }
-      allyFires.push({ x: s.tx, y: s.ty, t: R_('catapultFire', 4), r: 32, tick: 0 });
+      allyFires.push({ x: s.tx, y: s.ty, t: R_('catapultFire', 4), r: 26, tick: 0, dmg: .2 });   // 霹雳飞石火场：3 秒、每 0.5 秒 0.2
       for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-16, 16), y: s.ty + rnd(-8, 4), vx: rnd(-60, 60), vy: rnd(-110, -30), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.3, .6), max: .6, c: '#ff9a2e' });
     }
   }
@@ -2994,6 +2994,17 @@ function drawResult(HW, HH) {
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
   ctx.globalAlpha = 1;
+  // 开发者模式：结算时在左上角列出本局锦囊统计（触发次数 / 伤害 / 回血），方便测强弱
+  if (/[?&]debug/.test(location.search) && window.ROGUE && ROGUE.stats) {
+    const st = Object.entries(ROGUE.stats()).sort((a, b) => b[1].dmg - a[1].dmg);
+    if (st.length) {
+      ctx.save(); ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(15,10,6,.82)'; ctx.fillRect(8, 40, 220, 22 + st.length * 16);
+      ctx.fillStyle = '#f1d58f'; ctx.fillText('锦囊统计（调试）', 16, 56);
+      st.forEach(([n, o], i) => { ctx.fillStyle = '#ecdcbc'; ctx.fillText(`${n}  触发 ${o.trig}  伤害 ${o.dmg.toFixed(1)}${o.heal ? '  回血 ' + o.heal.toFixed(1) : ''}`, 16, 74 + i * 16); });
+      ctx.restore();
+    }
+  }
 
   if (toastT > 0) {   // 分享结果的提示条：放在屏幕下方，不压面板
     ctx.font = 'bold 15px ' + F;

@@ -22,7 +22,7 @@
     '饮血': () => { S.lifesteal = .5; },
     '避实': () => {}, '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
     '万箭齐发': () => { bing = 'wanjian'; S.summon = 1; },
-    '霹雳飞石': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 6; },
+    '霹雳飞石': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 3; },
     '雷霆万钧': () => { bing = 'leiting'; },
     // ---- 第二批 ----
     '先声夺人': () => { vanguard = true; }, '一鼓作气': () => {}, '积羽沉舟': () => {}, '乘胜追击': () => {},
@@ -39,7 +39,7 @@
     if (!window.TIPBAG) return out;
     for (const cat of TIPBAG.CATS) for (const c of TIPBAG.CARDS[cat.id] || []) {
       if (!IMPL[c[0]]) continue;
-      out.push({ name: c[0], r: c[1], desc: c[2], weapon: c[3] || '', cat: cat.id, catName: cat.name, color: cat.color });
+      out.push({ name: c[0], r: c[1], desc: c[2], trig: TIPBAG.trigOf ? TIPBAG.trigOf(c[0], cat.id) : '', weapon: c[3] || '', cat: cat.id, catName: cat.name, color: cat.color });
     }
     return out;
   }
@@ -55,6 +55,10 @@
   let rangedChain = { z: null, n: 0 }, volleyNext = false, stoneShots = 0, swing = { atk: null, n: 0 };
   let glowW = '', glowN = 0, glowIdle = 0, swapReady = false, swapPending = false, cunjin = false, cunjinNext = false;
   let backCd = 0, hurtAt = -9, guardShield = 0, guardShieldT = 0, sideUntil = 0, zhanUntil = 0, beng = [], fx = [];
+  // 调试用锦囊统计：每张卡触发次数、造成伤害、回血
+  const STATS = {};
+  function stat(name, dmg = 0, trig = 1, heal = 0) { const o = STATS[name] ||= { trig: 0, dmg: 0, heal: 0 }; o.trig += trig; o.dmg += dmg || 0; o.heal += heal; }
+  let leechFxT = 0, qiFxT = 0, avoidGhost = null;
   let rallyT = 0, jiyu = 0, ghosts = [], huifengNext = false, gustT = 0;
   let scarecrows = [], windT = 0, waters = [], spreadT = 0, ammoBackT = 0;
   const weaponNow = () => (typeof weapon !== 'undefined' ? weapon : '');
@@ -132,7 +136,7 @@
   }
   function useSkill() {
     if (!bing || skillCd > 0) return '';
-    skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton();
+    skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton(); stat(SKILL_NAME[bing], 0, 1);
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
     else if (bing === 'xifeng') { windT = 8; gustT = 0; if (typeof say === 'function') say('借我东风！', 1.4); }
@@ -144,17 +148,17 @@
   function useSummon() { return bing === 'wanjian' && useSkill() === 'wanjian'; }
   function useCatapult() { return bing === 'toushi' && useSkill() === 'toushi'; }
   function absorbHit() {
-    if (guardShield > 0) { guardShield = 0; fx.push({ k: 'shieldBreak', t: 0, T: .3 }); pop(hero.x, hero.y - 44, '挡！', '#ffe08a'); return true; }
+    if (guardShield > 0) { guardShield = 0; stat('解围', 0, 0); fx.push({ k: 'shieldBreak', t: 0, T: .3 }); pop(hero.x, hero.y - 44, '挡！', '#ffe08a'); return true; }
     if (!S.shield || !shieldReady) return false;
     fx.push({ k: 'shieldBreak', t: 0, T: .3 });
-    shieldReady = false; shieldTimer = 10;
+    shieldReady = false; shieldTimer = 10; stat('护体');
     if (typeof toast === 'function') toast('护体挡下了攻击！');
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
   function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
     const c = cluster(60);
-    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 3, done: [] });
+    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [] });
     if (typeof say === 'function') say('雷霆万钧！', 1.4);
   }
   function updateThunder(dt) {
@@ -163,7 +167,7 @@
       if (b.t >= 0 && !b.hit) {
         b.hit = true; shake = Math.max(shake, .22);
         if (typeof sfx === 'function') sfx('finisher', b.x);
-        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 2, Math.sign(z.x - b.x) || 1); b.done.push(z); }
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 3, Math.sign(z.x - b.x) || 1); b.done.push(z); stat('雷霆万钧', 3, 0); }
         // 跳到下一个目标：最近的、还没被这道雷劈过的敌人；没有就在附近乱劈
         if (--b.hops > 0) {
           const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
@@ -186,6 +190,7 @@
     for (const f of fx) {
       if (f.k === 'shieldBreak') drawImg(f.t < .15 ? 'tip_shield_break1' : 'tip_shield_break2', hero.x, hero.y + 4, 28, 1 - f.t / f.T);
       if (f.k === 'ring') { ctx.save(); ctx.globalAlpha = 1 - f.t / f.T; ctx.strokeStyle = '#ffe3a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (.4 + .6 * f.t / f.T), f.r * .4 * (.4 + .6 * f.t / f.T), 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      if (f.k === 'leech' && f.t > 0) { const p = f.t / f.T; ctx.fillStyle = 'rgba(230,40,40,' + (1 - p * .5) + ')'; ctx.fillRect(f.x + (hero.x - f.x) * p - 1, f.y + (hero.y - 16 - f.y) * p - Math.sin(p * Math.PI) * 10 - 1, 2.5, 2.5); }
       if (f.k === 'darkArrow') { const p = Math.min(1, f.t / f.T); drawImg('tip_arrow', f.x + (f.z.x - f.x) * p, f.y + 6, 50, 1, f.dir < 0); }
       if (f.k === 'bounce') { const p = Math.min(1, f.t / f.T); ctx.fillStyle = '#ddd'; ctx.beginPath(); ctx.arc(f.x0 + (f.z.x - f.x0) * p, f.y0 + (f.z.y - 10 - f.y0) * p - Math.sin(p * Math.PI) * 14, 2, 0, Math.PI * 2); ctx.fill(); }
     }
@@ -203,6 +208,11 @@
     if (rallyT > 0) { ctx.globalAlpha = .25 + .15 * Math.sin(T * 10); ctx.fillStyle = '#ffd36a'; ctx.beginPath(); ctx.ellipse(hero.x, hero.y - 14, 10, 18, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
     // 积羽沉舟：头顶 3 个小点
     if (has['积羽沉舟']) for (let i = 0; i < 3; i++) { ctx.fillStyle = i < jiyu ? '#ffd25a' : 'rgba(60,40,20,.7)'; ctx.fillRect(hero.x - 6 + i * 5, hero.y - 40, 3, 3); }
+    // 避实：躲过时原地留下蓝色残影
+    if (avoidGhost && typeof drawChar === 'function') { ctx.save(); ctx.globalAlpha = .5 * (1 - avoidGhost.t / .4); ctx.filter = 'sepia(1) hue-rotate(180deg) saturate(4)'; drawChar('hero', avoidGhost.fr, avoidGhost.x, avoidGhost.y, avoidGhost.f < 0, 1); ctx.restore(); }
+    // 乘胜追击就绪：武器位置金光闪烁；寸劲就绪且在蓄力：脚下金圈
+    if (killCritUntil > now()) { ctx.globalAlpha = .6 + .4 * Math.sin(T * 14); ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 4; i++) ctx.fillRect(hero.x + hero.f * (10 + i * 3), hero.y - 20 - i * 2, 2, 2); ctx.globalAlpha = 1; }
+    if (cunjin && has['寸劲'] && typeof charging !== 'undefined' && charging) { ctx.strokeStyle = '#ffd25a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(hero.x, hero.y, 15, 5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // 回马残影
     for (const g of ghosts) { const W = WEAP[g.w]; const fr = W && W.combo[0].f[Math.min(W.combo[0].f.length - 1, Math.floor(g.t / .1))]; if (fr && typeof drawChar === 'function') { ctx.save(); ctx.globalAlpha = .55 * (1 - g.t / .45); ctx.filter = 'sepia(1) hue-rotate(150deg) saturate(3) brightness(1.2)'; drawChar('hero', fr, g.x, g.y, g.f < 0, 1); ctx.restore(); } }
     if (lowHp()) { for (let i = 0; i < 3; i++) { ctx.globalAlpha = .35; ctx.fillStyle = '#ff3a2a'; ctx.beginPath(); ctx.ellipse(hero.x + Math.sin(T * 5 + i * 2) * 7, hero.y - 10 - ((T * 30 + i * 11) % 30), 2.5, 5, 0, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; }
@@ -229,7 +239,7 @@
   // ---- 翻滚、受击、命中的挂钩（game.js 调用） ----
   function onRoll(x, y) {
     if (typeof hero !== 'undefined') hero.rollFrom = { x, y };
-    if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; shockwave(x, y, 55, .5, true); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
+    if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; stat('解围'); shockwave(x, y, 55, .5, true, '解围'); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
     if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
   }
   function onDodge(from, n, kind) {
@@ -243,58 +253,61 @@
       pop(src.x, src.y - 42, '反噬！', '#ff9a5a', true); fx = true;
     }
     if (has['回锋'] && finisherCd <= 0) { finisherUntil = now() + 3; finisherCd = 5; huifengNext = true; fx = true; if (typeof slowT !== 'undefined') slowT = Math.max(slowT, .4); pop(hero.x, hero.y - 52, '抓到了！', '#ffe08a', true); }   // 回锋：冷却 5 秒、0.4 秒慢动作，下一下终段 +50%
-    if (has['避实'] && avoidCd <= 0) { avoidUntil = now() + 3; avoidCrit = true; avoidCd = 4; fx = true; }
+    if (has['避实'] && avoidCd <= 0) { avoidUntil = now() + 3; avoidCrit = true; avoidCd = 4; fx = true; avoidGhost = { x: hero.x, y: hero.y, f: hero.f, fr: typeof heroFrame === 'function' ? heroFrame(hero) : 'roll1', t: 0 }; }
     if (fx && typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '闪！', gold: true });
   }
   function takeFinisher() { if (swapPending) { swapPending = false; return 'swap'; } if (finisherUntil > now()) { finisherUntil = 0; return huifengNext ? (huifengNext = false, 'huifeng') : true; } return false; }
   function takeCrit() {
     if (avoidCrit && avoidUntil > now()) { avoidCrit = false; return true; }
-    if (killCritUntil > now()) { killCritUntil = 0; return true; }
+    if (killCritUntil > now()) { killCritUntil = 0; stat('乘胜追击'); pop(hero.x, hero.y - 52, '乘胜！', '#ffd25a', true); return true; }
     return false;
   }
   function onHit(z, dmg, traits, ranged) {
     if (traits && (traits.dot || traits.secondary)) return dmg;
     const t = now(), type = typeOf(traits), charged = !!(traits && (traits.charged || traits.skyArrow || traits.halberdCharge || (traits.gearToken && traits.gearToken.charged)));
     const fin = !!(traits && traits.finisher);
-    if (has['震慑'] && z.flawUntil > t) dmg *= 1.25;
-    if (vanguard && has['先声夺人']) { vanguard = false; dmg *= 3; z.vanguardKnock = true; pop(z.x, z.y - 44, '先声夺人！', null, true); shockwave(z.x, z.y, 45, .5, true); }
-    if (rallyT > 0 && has['先声夺人']) dmg *= 1.4;   // 战意：每波开头 4 秒伤害 +40%
+    const mul = (n, k) => { const b = dmg; dmg *= k; stat(n, dmg - b); };   // 加伤并记统计
+    if (has['震慑'] && z.flawUntil > t) mul('震慑', 1.25);
+    if (windT > 0 && has['借我东风']) mul('借我东风', 1.2);   // 风中敌人受到的伤害 +20%
+    if (vanguard && has['先声夺人']) { vanguard = false; mul('先声夺人', 3); z.vanguardKnock = true; pop(z.x, z.y - 44, '先声夺人！', null, true); shockwave(z.x, z.y, 45, .5, true, '先声夺人'); }
+    if (rallyT > 0 && has['先声夺人']) mul('先声夺人', 1.4);   // 战意：每波开头 4 秒伤害 +40%
     // 直取要害（看破）：打正在蓄力出招的敌人必暴击并打断
     if (has['直取要害'] && (z.st === 'wind' || (z.enemySkill && z.enemySkill.phase === 'wind'))) {
-      dmg *= 1.5; pop(z.x, z.y - 46, '看破！', '#ffd25a', true);
+      mul('直取要害', 1.5); pop(z.x, z.y - 46, '看破！', '#ffd25a', true);
       if (!isBoss(z)) { z.st = 'move'; z.tok = false; z.stun = Math.max(z.stun || 0, .5); if (z.enemySkill) z.enemySkill = null; }
     }
-    if (has['一鼓作气']) { momentum = Math.min(10, momentum + 1); momentumIdle = 0; dmg *= 1 + .015 * momentum; }
+    if (has['一鼓作气']) { momentum = Math.min(10, momentum + 1); momentumIdle = 0; mul('一鼓作气', 1 + .015 * momentum); }
     if (has['骤雨']) { gale = Math.min(5, gale + 1); momentumIdle = 0; }
-    if (has['积羽沉舟'] && !charged) { jiyu++; if (jiyu >= 3) { jiyu = 0; dmg *= 1.5; pop(z.x, z.y - 46, '沉舟！', '#ffd25a', true); if (!isBoss(z)) { z.daze = Math.max(z.daze || 0, .5); z.st = 'move'; z.tok = false; z.vx = (Math.sign(z.x - hero.x) || 1) * 90; } } }   // 不管打谁都累计，每第 3 下暴击、击退并晕 0.5 秒
+    if (has['积羽沉舟'] && !charged) { jiyu++; if (jiyu >= 3) { jiyu = 0; mul('积羽沉舟', 1.5); pop(z.x, z.y - 46, '沉舟！', '#ffd25a', true); if (!isBoss(z)) { z.daze = Math.max(z.daze || 0, .5); z.st = 'move'; z.tok = false; z.vx = (Math.sign(z.x - hero.x) || 1) * 90; } } }   // 不管打谁都累计，每第 3 下暴击、击退并晕 0.5 秒
     if (has['陷阵之志'] && !ranged && typeof hero !== 'undefined' && hero.atk) {
       if (swing.atk !== hero.atk) { swing.atk = hero.atk; swing.n = 0; }
-      swing.n++; if (swing.n >= 2) dmg *= 1 + .15 * Math.min(3, swing.n - 1);
+      swing.n++; if (swing.n >= 2) mul('陷阵之志', 1 + .15 * Math.min(3, swing.n - 1));
       if (swing.n >= 4) z.vanguardKnock = true;
     }
     if (has['乘危'] && !charged && !fin && (z.daze > 0 || z.flawUntil > t || z.poisonT > 0 || z.burnT > 0)) {
-      dmg *= 1.35; if (z.daze > 0) z.daze += .5; if (z.flawUntil > t) z.flawUntil += .5; if (z.poisonT > 0) z.poisonT += .5; if (z.burnT > 0) z.burnT += .5;
+      mul('乘危', 1.35); if (qiFxT <= t) { qiFxT = t + .5; pop(z.x, z.y - 42, '趁势', '#ff9a3a'); } if (z.daze > 0) z.daze += .5; if (z.flawUntil > t) z.flawUntil += .5; if (z.poisonT > 0) z.poisonT += .5; if (z.burnT > 0) z.burnT += .5;
     }
-    if (lowHp()) dmg *= 1.3;
-    if (has['定海'] && type === 'staff' && z.daze > 0) dmg *= 1.3;
-    if (has['斩首'] && type === 'blade' && fin && zhanUntil > t) { zhanUntil = 0; dmg *= 1.5; pop(z.x, z.y - 48, '斩首！', '#ffd25a', true); }
-    if (typeof hero !== 'undefined' && hero.atk && hero.atk.weak) dmg *= .7;
-    if (typeof hero !== 'undefined' && hero.atk && hero.atk.huifeng) dmg *= 1.5;   // 倒持：切武器挥出的终段 70%
-    if (has['寸劲'] && charged) cunjin = true;   // 这次蓄力打中 → 下一次蓄力 -30%
+    if (lowHp()) mul('背水', 1.3);
+    if (has['定海'] && type === 'staff' && z.daze > 0) mul('定海', 1.3);
+    if (has['斩首'] && type === 'blade' && fin && zhanUntil > t) { zhanUntil = 0; mul('斩首', 1.5); pop(z.x, z.y - 48, '斩首！', '#ffd25a', true); }
+    if (typeof hero !== 'undefined' && hero.atk && hero.atk.weak) { dmg *= .7; if (!hero.atk.statted) { hero.atk.statted = 1; stat('倒持', 0); } }
+    if (has['寸劲'] && charged && !cunjin) { cunjin = true; stat('寸劲'); pop(hero.x, hero.y - 50, '寸劲', '#ffd25a'); }   // 这次蓄力打中 → 下一次蓄力 -30%
     if (has['倒持'] && !ranged) { if (glowW !== type) { glowW = type; glowN = 0; } glowN++; glowIdle = 0; if (glowN >= 5 && !swapReady) { swapReady = true; pop(hero.x, hero.y - 48, '可倒持', '#ffe08a'); } }
     if (ranged && !charged) {
       if (rangedChain.z === z) rangedChain.n++; else rangedChain = { z, n: 1 };
-      if (has['矢如连珠'] && rangedChain.n >= 3) { rangedChain.n = 0; volleyNext = true; }
+      if (has['矢如连珠'] && rangedChain.n >= 3) { rangedChain.n = 0; volleyNext = true; stat('矢如连珠'); }
       if (has['声东击西'] && Math.random() < .3) {
         const side = Math.sign(z.x - hero.x) || 1;
-        fx.push({ k: 'darkArrow', z, x: z.x + side * 70, y: z.y - 14, t: 0, T: .18, dmg: dmg * .5, dir: -side });
+        fx.push({ k: 'darkArrow', z, x: z.x + side * 70, y: z.y - 14, t: 0, T: .18, dmg: dmg * .5, dir: -side }); stat('声东击西', dmg * .5);
       }
     }
     if (has['避实'] && avoidUntil > now()) {
-      avoidUntil = 0;
+      avoidUntil = 0; stat('避实', 0, 1, .5); pop(z.x, z.y - 48, '避实！', '#8fd0ff', true);
       if (!z.T.boss && !z.T.chapterBoss) { z.daze = Math.max(z.daze || 0, .8); z.st = 'move'; z.tok = false; }
       if (hero.hp < (window.GEAR ? GEAR.maxHp() : 10)) { hero.hp = Math.min(window.GEAR ? GEAR.maxHp() : 10, hero.hp + .5); floaters.push({ x: hero.x, y: hero.y - 46, t: 0, txt: '+0.5', color: '#8fe08a' }); }
     }
+    // 饮血：吸血时红色光点飞回主角（gear_combat 里每 3 秒最多回一次血）
+    if (has['饮血'] && leechFxT <= t) { leechFxT = t + 3; stat('饮血', 0, 1, .5); for (let i = 0; i < 5; i++) fx.push({ k: 'leech', x: z.x + rnd(-6, 6), y: z.y - 16 + rnd(-6, 6), t: -i * .04, T: .45 }); }
     return dmg;
   }
   function afterHit(z, knocked, traits, dmg, ranged) {
@@ -304,52 +317,52 @@
     if (z.vanguardKnock) { z.vanguardKnock = false; if (!z.dead && !isBoss(z) && !z.air && typeof launch === 'function') launch(z, (Math.sign(z.x - hero.x) || 1) * 80, 105); }
     if (z.dead && !z.rogueDeadSeen) {
       z.rogueDeadSeen = true;
-      if (has['乘胜追击'] && !secondary) { killCritUntil = t + 3; pop(hero.x, hero.y - 46, '乘胜！', '#ffd25a'); }
+      if (has['乘胜追击'] && !secondary) killCritUntil = t + 3;   // 武器亮金光，见 drawWorld
       if (z.burnT > 0 && typeof allyFires !== 'undefined') allyFires.push({ x: z.x, y: z.y, t: 2, r: 20, tick: 0 });   // 明火：着火的敌人死后留火场
-      if (has['回矢'] && traits && traits.skyArrow && ammoBackT <= t && window.BOWAMMO && BOWAMMO.add) { ammoBackT = t + .3; BOWAMMO.add(1); pop(hero.x, hero.y - 50, '回矢 +1', '#9fd3ff'); }
+      if (has['回矢'] && traits && traits.skyArrow && ammoBackT <= t && window.BOWAMMO && BOWAMMO.add) { ammoBackT = t + .3; BOWAMMO.add(1); stat('回矢'); pop(hero.x, hero.y - 50, '回矢 +1', '#9fd3ff'); }
     }
     if (secondary) return;
     if (has['破军'] && fin && !ranged) {
-      if (z.dead) shockwave(z.x, z.y, 60, 1, false);
-      else if ((z.T.elite || z.T.ch2Elite || isBoss(z)) && Math.random() < .3) shockwave(z.x, z.y, 40, .5, false);
+      if (z.dead) { stat('破军'); shockwave(z.x, z.y, 60, 1, false, '破军'); }
+      else if ((z.T.elite || z.T.ch2Elite || isBoss(z)) && Math.random() < .3) { stat('破军'); shockwave(z.x, z.y, 40, .5, false, '破军'); }
     }
-    if (has['明火'] && fin && !z.dead) { z.burnT = 3; z.burnTick = 0; }
+    if (has['明火'] && fin && !z.dead) { z.burnT = 3; z.burnTick = 0; stat('明火'); }
     if (has['定海'] && type === 'staff' && fin && z.daze > 0) for (const o of zs) if (o !== z && !o.dead && !o.air && !isBoss(o) && Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 50) { o.daze = Math.max(o.daze || 0, .6); o.st = 'move'; o.tok = false; }
-    if (has['崩山'] && type === 'hammer' && fin && hero.atk && !hero.atk.bengDone) { hero.atk.bengDone = true; beng.push({ x: hero.x, y: hero.y, t: -.3 }); }
+    if (has['崩山'] && type === 'hammer' && fin && hero.atk && !hero.atk.bengDone) { hero.atk.bengDone = true; beng.push({ x: hero.x, y: hero.y, t: -.3 }); stat('崩山'); }
     if (has['飞蝗'] && type === 'stone' && charged && !z.rogueBounce) {
       const n = zs.filter(o => o !== z && !o.dead && !o.air && Math.hypot(o.x - z.x, o.y - z.y) < 90).sort((a, b) => Math.hypot(a.x - z.x, a.y - z.y) - Math.hypot(b.x - z.x, b.y - z.y))[0];
-      if (n) { fx.push({ k: 'bounce', x0: z.x, y0: z.y - 10, z: n, t: 0, T: .15, dmg: (dmg || 1) * .6 }); }
+      if (n) { stat('飞蝗'); fx.push({ k: 'bounce', x0: z.x, y0: z.y - 10, z: n, t: 0, T: .15, dmg: (dmg || 1) * .6 }); }
     }
-    if (has['震慑'] && !z.dead && (z.daze > 0 || knocked || z.air) && !(z.flawUntil > t)) { z.flawUntil = t + 4; pop(z.x, z.y - 40, '破绽', '#ff7a5a'); }
+    if (has['震慑'] && !z.dead && (z.daze > 0 || knocked || z.air) && !(z.flawUntil > t)) { z.flawUntil = t + 4; stat('震慑', 0); pop(z.x, z.y - 40, '破绽', '#ff7a5a'); }
   }
-  function shockwave(x, y, r, dmg, knock) {
+  function shockwave(x, y, r, dmg, knock, name) {
     fx.push({ k: 'ring', x, y, r, t: 0, T: .3 });
-    for (const o of zs) if (!o.dead && !o.air && Math.hypot(o.x - x, (o.y - y) * 2) < r) hit(o, dmg, 80, Math.sign(o.x - x) || 1, knock && !isBoss(o), 0, .3, true, false, { secondary: true });
+    for (const o of zs) if (!o.dead && !o.air && Math.hypot(o.x - x, (o.y - y) * 2) < r) (name && stat(name, dmg, 0)), hit(o, dmg, 80, Math.sign(o.x - x) || 1, knock && !isBoss(o), 0, .3, true, false, { secondary: true });
   }
   // ---- 其他挂钩 ----
   function onShoot(C, c, finisher, sOff) {
     const h = hero, w = weaponNow();
     const extra = (k, mult) => { for (const ang of k) shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life || .8, C: { ...C, dmg: C.dmg * mult, noPierce: true, daze: 0, dazeChance: 0, dazeTime: 0 }, c, hitSet: [], secondary: true, kind: w === 'bow' ? 'arrow' : undefined }); };
-    if (has['飞蝗'] && w === 'stone' && !finisher && ++stoneShots % 3 === 0) extra([-.16, .16], .5);
+    if (has['飞蝗'] && w === 'stone' && !finisher && ++stoneShots % 3 === 0) { stat('飞蝗'); extra([-.16, .16], .5); }
     if (has['矢如连珠'] && volleyNext) { volleyNext = false; extra([-.14, .14], .35); }
   }
   function onSwap() {
     if (!has['倒持'] || !swapReady) return false;
-    swapReady = false; glowN = 0; swapPending = true; pop(hero.x, hero.y - 48, '倒持！', null, true); return true;
+    swapReady = false; glowN = 0; swapPending = true; stat('倒持', 0, 0); pop(hero.x, hero.y - 48, '倒持！', null, true); return true;
   }
   function onChargeRelease() { cunjin = false; }   // 松手出招时用掉（同一招打中后会重新点亮）
   function chargeScale() { return (cunjin && has['寸劲'] ? .7 : 1) * (lowHp() ? .5 : 1); }
   function onRollEnd() {
     if (has['回马'] && backCd <= 0 && hero.rollFrom) {   // 回马：翻滚起点留下青色残影，向身后挥一次普攻（主角不受影响）
       backCd = 3; const f = -(Math.sign(hero.rx || hero.f) || 1);
-      ghosts.push({ x: hero.rollFrom.x, y: hero.rollFrom.y, f, t: 0, w: weaponNow(), hit: false });
+      ghosts.push({ x: hero.rollFrom.x, y: hero.rollFrom.y, f, t: 0, w: weaponNow(), hit: false }); stat('回马');
     }
     return false;
   }
   function onHurt() { hurtAt = now(); glowN = 0; }
   function sidestep(n, kind) {
     if (!has['闪身'] || !(kind === 'skill' || n >= 2) || Math.random() >= .2) return false;
-    hero.inv = Math.max(hero.inv || 0, .4); sideUntil = now() + 3; pop(hero.x, hero.y - 46, '闪', '#bfe8ff', true); return true;
+    hero.inv = Math.max(hero.inv || 0, .4); sideUntil = now() + 3; stat('闪身'); pop(hero.x, hero.y - 46, '闪', '#bfe8ff', true); return true;
   }
   function onExecute() { zhanUntil = now() + 3; }
   function decoyFor(z) {
@@ -391,7 +404,7 @@
       s.inv = 0; s.st = 'idle';
       // 飞来的敌方箭、石子打到稻草人
       if (s.boom == null && typeof eshots !== 'undefined') for (const e of eshots) if ((e.k === 'stone' || e.k === 'arrow') && e.life > 0 && Math.abs(e.x - s.x) < 9 && Math.abs(e.y - s.y) < 9) { e.life = 0; s.hp -= 1; s.hitT = .2; }
-      if ((s.hp <= 0 || s.t > 8) && s.boom == null) { s.boom = 0; shockwave(s.x, s.y, 55, 3, true); if (typeof sfx === 'function') sfx('finisher', s.x); shake = Math.max(shake, .2); }
+      if ((s.hp <= 0 || s.t > 8) && s.boom == null) { s.boom = 0; shockwave(s.x, s.y, 55, 3, true, '草木皆兵'); if (typeof sfx === 'function') sfx('finisher', s.x); shake = Math.max(shake, .2); }
     }
     for (const s of scarecrows) if (s.boom != null) s.boom += dt;
     scarecrows = scarecrows.filter(s => s.boom == null || s.boom < .5);
@@ -401,7 +414,7 @@
       const gust = gustT <= 0; if (gust) gustT = 2;
       for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) {
         const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 45 * dt, 0);
-        if (gust) z.vx = d * 60;   // 强风只推一下（不再吹倒，控制减弱）
+        if (gust) { z.vx = d * 60; hit(z, .5, 0, d, false, 0, .2, false, false, { secondary: true }); stat('借我东风', .5); }   // 强风推一下并带 0.5 伤害
       }
       if (gust && typeof sfx === 'function') sfx('roll', hero.x);
       if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && (e.k === 'stone' || e.k === 'arrow')) {
@@ -415,13 +428,13 @@
       if (w.next <= 0 && w.t < w.T) { w.next = .7; w.waves.push({ x: hero.x - w.dir * 20, y: (w.y + hero.y) / 2 + rnd(-16, 16), x0: hero.x, hit: new Set() }); if (typeof sfx === 'function') sfx('roll', hero.x); }
       for (const v of w.waves) {
         v.x += w.dir * 230 * dt;
-        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; z.waveShove = now() + .5; }
+        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); stat('水淹七军', .8, 0); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; z.waveShove = now() + .5; }
       }
       w.waves = w.waves.filter(v => Math.abs(v.x - v.x0) < 320);
       // 浪卷敌兵相撞：被冲开的敌人撞上别的敌人，两个都再受 0.5 伤害并一起倒地（每个敌人每道浪只撞一次）
       for (const z of zs) if (z.waveShove > now() && !z.dead) for (const o of zs) if (o !== z && !o.dead && !o.air && !o.waveBumped && Math.abs(o.x - z.x) < 14 && Math.abs(o.y - z.y) < 10) {
         o.waveBumped = true; z.waveShove = 0;
-        for (const e of [z, o]) { hit(e, .5, 60, w.dir, !isBoss(e), 0, .4, true, false, { secondary: true }); }
+        stat('水淹七军', 1, 0); for (const e of [z, o]) { hit(e, .5, 60, w.dir, !isBoss(e), 0, .4, true, false, { secondary: true }); }
         pop((z.x + o.x) / 2, z.y - 40, '相撞！', '#9fd3ff');
       }
       if (!w.waves.length) for (const z of zs) z.waveBumped = false;
@@ -442,7 +455,7 @@
     if (!has['硬撼'] || typeof charging === 'undefined' || !charging || chargeTier < 3) return false;
     atkHeldSince = performance.now() - chargeMaxMs() * .5; chargeTier = 2;   // 抵消这次伤害，蓄力效果只剩一半
     hero.inv = Math.max(hero.inv || 0, .4); shake = Math.max(shake, .2);
-    floaters.push({ x: hero.x, y: hero.y - 48, t: 0, txt: '硬撼！', big: true, gold: true });
+    floaters.push({ x: hero.x, y: hero.y - 48, t: 0, txt: '硬撼！', big: true, gold: true }); stat('硬撼');
     if (typeof sfx === 'function') sfx('finisher', hero.x);
     for (const z of zs) if (!z.dead && !z.air && Math.hypot(z.x - hero.x, (z.y - hero.y) * 2) < 55) rogueHitFull(z, 1, Math.sign(z.x - hero.x) || 1, true);
     return true;
@@ -456,7 +469,7 @@
     for (const g of ghosts) {
       g.t += dt;
       if (g.t > .12 && !g.hit) { g.hit = true; const W = WEAP[g.w] || {}, reach = (W.reach || 30) + 10;
-        for (const z of zs) if (!z.dead && !z.air && (z.x - g.x) * g.f > -6 && Math.abs(z.x - g.x) < reach && Math.abs(z.y - g.y) < 16) hit(z, 1.2, 60, g.f, false, 0, .35, true, false, { secondary: true });
+        for (const z of zs) if (!z.dead && !z.air && (z.x - g.x) * g.f > -6 && Math.abs(z.x - g.x) < reach && Math.abs(z.y - g.y) < 16) { stat('回马', 1.2, 0); hit(z, 1.2, 60, g.f, false, 0, .35, true, false, { secondary: true }); }
         if (typeof sfx === 'function') sfx('swing_' + (W.snd || g.w), g.x); }
     }
     ghosts = ghosts.filter(g => g.t < .45);
@@ -473,6 +486,7 @@
       if (f.k === 'darkArrow' && f.t >= f.T && !f.done) { f.done = true; if (!f.z.dead) hit(f.z, f.dmg, 30, f.dir, false, 0, .2, false, false, { secondary: true }); }
       if (f.k === 'bounce' && f.t >= f.T && !f.done) { f.done = true; if (!f.z.dead) { f.z.rogueBounce = true; hit(f.z, f.dmg, 40, 1, false, 0, .3, false, true, { secondary: true }); f.z.rogueBounce = false; } }
     }
+    if (avoidGhost) { avoidGhost.t += dt; if (avoidGhost.t > .4) avoidGhost = null; }
     fx = fx.filter(f => f.t < (f.k === 'darkArrow' ? f.T + .1 : f.T));
     updateBing(dt);
     if (S.shield && !shieldReady) { shieldTimer -= dt; if (shieldTimer <= 0) { shieldReady = true; shieldTimer = 0; } }
@@ -523,8 +537,10 @@
       ctx.font = '700 12px ' + F; ctx.fillStyle = c.color || '#d5b678'; ctx.fillText(c.catName, x + cw / 2, y + ch * .18, cw - 38);
       ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.fillStyle = '#ffe08a'; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
       ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.shadowBlur = 0;
-      const fs = Math.max(9, Math.min(12, cw * .067)); ctx.font = '600 ' + fs + 'px ' + F; ctx.fillStyle = '#f2e6c9';
-      let line = '', ly = y + ch * .41; const lh = fs * 1.42;
+      const fs = Math.max(9, Math.min(12, cw * .067)); const lh = fs * 1.42; let ly = y + ch * .39;
+      if (c.trig) { ctx.font = '700 ' + fs + 'px ' + F; ctx.fillStyle = '#ffcf6a'; ctx.fillText('【' + c.trig + '】', x + cw / 2, ly, cw - 40); ly += lh * 1.2; }   // 触发条件
+      ctx.font = '600 ' + fs + 'px ' + F; ctx.fillStyle = '#f2e6c9';
+      let line = '';
       for (const ch2 of c.desc) { if (ctx.measureText(line + ch2).width > cw - 42 && line) { ctx.fillText(line, x + cw / 2, ly, cw - 40); line = ch2; ly += lh; } else line += ch2; }
       if (line) ctx.fillText(line, x + cw / 2, ly, cw - 40);
       ctx.font = '700 11px ' + F; ctx.fillStyle = c.isBing ? '#f0c27a' : 'rgba(242,230,201,.8)';
@@ -551,7 +567,7 @@
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, drawWorld, update, tick, choose, useSkill, useSummon, useCatapult, absorbHit,
     onRoll, onDodge, takeFinisher, takeCrit, onHit, afterHit, hardClash, has: name => !!has[name],
-    decoyFor, onShoot, onSwap, onChargeRelease, chargeScale, onRollEnd, onHurt, sidestep, onExecute, enemyMove,
+    stat, stats: () => STATS, decoyFor, onShoot, onSwap, onChargeRelease, chargeScale, onRollEnd, onHurt, sidestep, onExecute, enemyMove,
     shieldReady: () => !!S.shield && shieldReady,
     summonState: () => ({ cooldown: skillCd }),
     catapultState: () => ({ cooldown: skillCd }),
@@ -566,6 +582,7 @@
       finisherUntil = finisherCd = avoidUntil = avoidCd = 0; avoidCrit = false; dodgeRollT = -1;
       vanguard = false; lastAlive = 0; momentum = momentumIdle = gale = killCritUntil = 0; rangedChain = { z: null, n: 0 }; volleyNext = false; stoneShots = 0;
       glowW = ''; glowN = glowIdle = 0; swapReady = swapPending = cunjin = cunjinNext = false; backCd = 0; hurtAt = -9; guardShield = guardShieldT = 0; sideUntil = zhanUntil = 0;
+      for (const k in STATS) delete STATS[k]; leechFxT = qiFxT = 0; avoidGhost = null;
       beng = []; fx = []; scarecrows = []; windT = 0; rallyT = 0; jiyu = 0; ghosts = []; huifengNext = false; gustT = 0; waters = []; spreadT = 0; ammoBackT = 0;
       for (const k in has) delete has[k]; for (const k in DEFAULT) S[k] = DEFAULT[k]; updateSkillButton();
     },

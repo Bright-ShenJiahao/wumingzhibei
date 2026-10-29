@@ -67,6 +67,9 @@
   // 每类按稀有度排：普通 → 稀有 → 传说（用户定），同稀有度保持原顺序
   const ORDER = { n: 0, r: 1, l: 2 };
   for (const k in CARDS) CARDS[k] = CARDS[k].map((c, i) => [c, i]).sort((x, y) => ORDER[x[0][1]] - ORDER[y[0][1]] || x[1] - y[1]).map(x => x[0]);
+  // 卡面第一行：怎么触发（用户定：触发条件和效果分开写，触发条件用【】）
+  const TRIG = {'先声夺人': '每波开始', '直取要害': '打头顶冒!的敌人', '一鼓作气': '连续打中', '横扫千军': '近战打中', '积羽沉舟': '普攻每第 3 下', '乘胜追击': '击杀敌人后', '矢如连珠': '远程连中同一目标 3 次', '声东击西': '远程打中时', '陷阵之志': '一下打中多人', '骤雨': '连续打中', '破军': '终段打死敌人', '倒持': '同一把武器连中 5 次后切武器', '寸劲': '蓄力攻击打中后', '避实': '翻滚躲过攻击', '回马': '翻滚结束', '燎步': '翻滚时', '震慑': '眩晕或击倒敌人', '淬毒': '普攻打中', '明火': '终段打中', '焚身': '敌人贴身', '乘危': '打带状态的敌人', '护体': '每 10 秒', '饮血': '打中敌人', '解围': '受伤后 2 秒内翻滚', '闪身': '被重招打中时', '硬撼': '蓄满力时被打中', '背水': '血量低于 20%', '定海': '棍子终段', '崩山': '锤子终段', '飞蝗': '石子普攻 / 蓄力', '血债': '长戟裂伤', '斩首': '大刀斩杀', '回矢': '汉弓蓄力箭打死敌人'};
+  const trigOf = (name, cat) => TRIG[name] || (cat === 'bing' ? '按 U 释放 · 冷却 30 秒' : '');
   let tab = 'gong', sel = 0;
   // 锁定（用户定）：锁定时一次性付金币，之后每局自动生效；换卡要按新卡价格重新付，取消免费但不退钱。
   // 存在玩家存档里（tipLocks，随云存档同步），价格 普通 150 / 稀有 300 / 传说 600。
@@ -103,7 +106,7 @@
     const lockRow = CATS.filter(c => c.id !== 'bing').map(c => { const card = locks[c.id] && find(c.id, locks[c.id]), ok = card && usable(c.id, card); return `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot${card ? ' got' : ''}${card && !ok ? ' bad' : ''}" ${card ? `data-unlock="${c.id}"` : ''}>${card ? `🔒 ${card[0]}` : '空'}</div></div>`; }).join('');
     const tabs = CATS.map(c => `<button type="button" data-tab="${c.id}" class="${c.id === tab ? 'on' : ''}">${c.name} ${CARDS[c.id].length}</button>`).join('');
     const cards = CARDS[tab], cur = cards[Math.min(sel, cards.length - 1)];
-    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">${locks[tab] ? '换成这张' : '锁定'} · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${cur[2]}</p></div>`;
+    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">${locks[tab] ? '换成这张' : '锁定'} · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${trigOf(cur[0], tab) ? `<span style="color:#ffcf6a">【${trigOf(cur[0], tab)}】</span> ` : ''}${cur[2]}</p></div>`;
     const card = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.rogue_card;
     box.style.setProperty('--card', card ? `url(${card})` : '#3a2a1c');
     box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可锁定 1 张（长期有效），其余随机</p><div class="tlocks">${lockRow}</div><p class="tsum">已锁 ${lockList().length} / 5 · 现有金币 <b>${window.WALLET ? WALLET.coins() : 0}</b>${msg ? ' · ' + msg : ''}</p><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定一次付费，以后每局自动带上；换卡要重新付费，取消不退钱。'}</p></section>`;
@@ -127,5 +130,5 @@
     }
     msg = ''; render(box); box.hidden = false;
   }
-  window.TIPBAG = { CATS, CARDS, PRICE, open, locks: lockList };
+  window.TIPBAG = { CATS, CARDS, PRICE, open, locks: lockList, trigOf };
 })();
