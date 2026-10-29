@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=3bde73a6fe" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3bde73a6fe)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=d331bbd978" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d331bbd978)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='89b52173fa20',busy=false;
+var BUILD='f35480298dbe',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2788,7 +2788,7 @@ const Boss = (() => {
 // 武器详情仅此一套：桌面只读悬停预览，点击/触屏长按打开可交互的居中对比弹窗。
 (() => {
   let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
-  let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
+  let hoverTimer, suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
   const coarse=()=>matchMedia('(pointer: coarse)').matches;
   let actions;
   const now=()=>performance.now();
@@ -2910,7 +2910,8 @@ const Boss = (() => {
       if(e.target.closest?.('.aSelect')){if(mode==='hover')hide();return;}
       const n=weaponNode(e.target);
       if(mode==='hover'&&active?.contains(e.target)){clearTimeout(hideTimer);return;}
-      if(n&&n!==active)show(n);
+      // 用户定：鼠标停 0.5 秒才弹详情，划过去不弹，免得挡住旁边的武器
+      clearTimeout(hoverTimer);if(n&&n!==active)hoverTimer=setTimeout(()=>{if(n.isConnected&&n.matches(':hover'))show(n);},500);
     });
     root.addEventListener('pointermove',e=>{
       if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}

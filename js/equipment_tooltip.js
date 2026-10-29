@@ -1,7 +1,7 @@
 // 武器详情仅此一套：桌面只读悬停预览，点击/触屏长按打开可交互的居中对比弹窗。
 (() => {
   let tip, dialog, panels, closeButton, root, active=null, mode='', hideTimer, longTimer, touch=null;
-  let suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
+  let hoverTimer, suppressClickUntil=0, suppressFocusUntil=0, returnFocus=null;
   const coarse=()=>matchMedia('(pointer: coarse)').matches;
   let actions;
   const now=()=>performance.now();
@@ -123,7 +123,8 @@
       if(e.target.closest?.('.aSelect')){if(mode==='hover')hide();return;}
       const n=weaponNode(e.target);
       if(mode==='hover'&&active?.contains(e.target)){clearTimeout(hideTimer);return;}
-      if(n&&n!==active)show(n);
+      // 用户定：鼠标停 0.5 秒才弹详情，划过去不弹，免得挡住旁边的武器
+      clearTimeout(hoverTimer);if(n&&n!==active)hoverTimer=setTimeout(()=>{if(n.isConnected&&n.matches(':hover'))show(n);},500);
     });
     root.addEventListener('pointermove',e=>{
       if(touch&&e.pointerId===touch.id&&Math.hypot(e.clientX-touch.x,e.clientY-touch.y)>10){clearTimeout(longTimer);touch.moved=true;}
