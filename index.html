@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=f9d7e2d906" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=f9d7e2d906)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=770a587d99" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=770a587d99)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='ca3f5c2b8c02',busy=false;
+var BUILD='ae50a506f4dc',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -397,9 +397,17 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
 
   // ---- 局内：飞剑 ----
   const R = { on: false, drops: 0, ground: null, trail: [] };
-  function startRun() { R.on = equipped() === 'feijian'; R.drops = 0; R.ground = null; R.trail = []; }
+  function startRun() { hitLog = []; R.on = equipped() === 'feijian'; R.drops = 0; R.ground = null; R.trail = []; }
   const mounted = () => R.on && typeof hero !== 'undefined' && !hero.air && !['down', 'bounce', 'getup'].includes(hero.st);
   const moveMult = () => (mounted() ? 1.1 : 1);
+  // 踩剑时被连击：2 秒内挨第 2 下就从剑上摔下（人只被打退、不倒地）；重击（会击倒的）一下就掉
+  let hitLog = [];
+  function onHit(dir) {
+    if (!R.on) return;
+    const t = performance.now() / 1000; hitLog = hitLog.filter(x => t - x < 2); hitLog.push(t);
+    if (hitLog.length >= 2) { hitLog = []; onKnock(dir); }
+    else if (typeof floaters !== 'undefined' && typeof hero !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '剑身一晃！', color: '#9fe3ff' });
+  }
   function onKnock(dir) {   // 主角被击倒（launch）时调用
     if (!R.on || typeof hero === 'undefined') return;
     R.on = false; R.drops++;
@@ -494,7 +502,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
     c.fillStyle = '#c9a24a'; c.fillRect(-7, -2.6, 1.6, 5.2); c.fillStyle = '#6b3a22'; c.fillRect(-12, -1, 5, 2);
     c.restore();
   }
-  window.ARTIFACT = { LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
+  window.ARTIFACT = { LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, onHit, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
 })();
 
 // 背景音乐分配（用户定的，不要改）：主页/选章/整军备战/校场页 = 《灯下》（js/menu_music.js）；
@@ -9416,7 +9424,7 @@ function dmgHero(n, from, kind = 'basic') {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (window.ARTIFACT) ARTIFACT.onKnock(dir);   // 被击倒：从飞剑上摔下
     if (h.hp <= 0) h.deathArc = true;
-  } else { set(h, 'hurt'); h.vx = dir * 80; }
+  } else { set(h, 'hurt'); h.vx = dir * 80; if (window.ARTIFACT && ARTIFACT.onHit && from && from.T) ARTIFACT.onHit(dir); }   // 踩剑被近战连击会摔下（箭石不算）
   if (h.hp <= 0) {
     if (window.GEAR && GEAR.tryRevive()) return;
     over = true; deathLandedAt = null; enemiesCelebrating = false; say(chapter2Run && chapter2Run.battle === 6 ? '张角：“蝼蚁，也敢逆天。”' : '倒下了……', chapter2Run && chapter2Run.battle === 6 ? 3 : 1.4);

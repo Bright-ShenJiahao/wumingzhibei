@@ -1642,7 +1642,7 @@ function dmgHero(n, from, kind = 'basic') {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (window.ARTIFACT) ARTIFACT.onKnock(dir);   // 被击倒：从飞剑上摔下
     if (h.hp <= 0) h.deathArc = true;
-  } else { set(h, 'hurt'); h.vx = dir * 80; }
+  } else { set(h, 'hurt'); h.vx = dir * 80; if (window.ARTIFACT && ARTIFACT.onHit && from && from.T) ARTIFACT.onHit(dir); }   // 踩剑被近战连击会摔下（箭石不算）
   if (h.hp <= 0) {
     if (window.GEAR && GEAR.tryRevive()) return;
     over = true; deathLandedAt = null; enemiesCelebrating = false; say(chapter2Run && chapter2Run.battle === 6 ? '张角：“蝼蚁，也敢逆天。”' : '倒下了……', chapter2Run && chapter2Run.battle === 6 ? 3 : 1.4);

@@ -20,9 +20,17 @@
 
   // ---- 局内：飞剑 ----
   const R = { on: false, drops: 0, ground: null, trail: [] };
-  function startRun() { R.on = equipped() === 'feijian'; R.drops = 0; R.ground = null; R.trail = []; }
+  function startRun() { hitLog = []; R.on = equipped() === 'feijian'; R.drops = 0; R.ground = null; R.trail = []; }
   const mounted = () => R.on && typeof hero !== 'undefined' && !hero.air && !['down', 'bounce', 'getup'].includes(hero.st);
   const moveMult = () => (mounted() ? 1.1 : 1);
+  // 踩剑时被连击：2 秒内挨第 2 下就从剑上摔下（人只被打退、不倒地）；重击（会击倒的）一下就掉
+  let hitLog = [];
+  function onHit(dir) {
+    if (!R.on) return;
+    const t = performance.now() / 1000; hitLog = hitLog.filter(x => t - x < 2); hitLog.push(t);
+    if (hitLog.length >= 2) { hitLog = []; onKnock(dir); }
+    else if (typeof floaters !== 'undefined' && typeof hero !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '剑身一晃！', color: '#9fe3ff' });
+  }
   function onKnock(dir) {   // 主角被击倒（launch）时调用
     if (!R.on || typeof hero === 'undefined') return;
     R.on = false; R.drops++;
@@ -117,5 +125,5 @@
     c.fillStyle = '#c9a24a'; c.fillRect(-7, -2.6, 1.6, 5.2); c.fillStyle = '#6b3a22'; c.fillRect(-12, -1, 5, 2);
     c.restore();
   }
-  window.ARTIFACT = { LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
+  window.ARTIFACT = { LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, onHit, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
 })();
