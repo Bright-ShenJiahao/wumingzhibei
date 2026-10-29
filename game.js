@@ -2768,6 +2768,32 @@ const eOut = t => 1 - Math.pow(1 - t, 3);
 const eBack = t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);   // 盖章回弹
 let stampPlayed = false, pressAct = null, pressAt = 0;
 
+// 结算动画：数字滚动 + 街机式金币雨（用户定）
+function countUp(v, raw, t0, dur) {
+  v = Math.round(v || 0); if (result.countSkip) return v;
+  const p = Math.max(0, Math.min(1, (raw - t0) / dur));
+  const n = Math.round(v * (1 - Math.pow(1 - p, 2)));
+  if (p > 0 && p < 1 && n !== (result['_c' + t0] || 0)) { const now = performance.now(); if (now - (result.tickAt || 0) > 55) { result.tickAt = now; sfx('tick'); } }
+  if (p >= 1 && v > 0 && !result['_d' + t0]) { result['_d' + t0] = 1; sfx('food'); }
+  result['_c' + t0] = n; return n;
+}
+function drawCoinRain(HW, HH, raw) {
+  const R = result; R.rain ||= []; const dt = Math.min(.05, Math.max(0, raw - (R.rainT || raw))); R.rainT = raw;
+  const rate = Math.min(26, 4 + (R.coins || 0) / 6) * (raw < 3.2 ? 1 : .25);   // 赚得越多掉得越密；滚完后变稀疏
+  R.rainAcc = (R.rainAcc || 0) + rate * dt;
+  while (R.rainAcc >= 1 && R.coins > 0) { R.rainAcc--; R.rain.push({ x: Math.random() * HW, y: -12, vy: 60 + Math.random() * 80, vx: (Math.random() - .5) * 20, r: 5 + Math.random() * 4, ph: Math.random() * 6, sp: 5 + Math.random() * 6 }); }
+  ctx.save();
+  for (const c of R.rain) {
+    c.vy += 260 * dt; c.y += c.vy * dt; c.x += c.vx * dt; c.ph += c.sp * dt;
+    const w = Math.abs(Math.cos(c.ph)) * c.r + .8;   // 翻转：宽度随角度变化
+    ctx.fillStyle = '#c98a1c'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 1, w, c.r, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.ellipse(c.x, c.y, w * .86, c.r * .86, 0, 0, Math.PI * 2); ctx.fill();
+    if (w > c.r * .5) { ctx.fillStyle = '#9a6612'; ctx.fillRect(c.x - w * .25, c.y - c.r * .25, w * .5, c.r * .5); }   // 方孔
+    if (Math.sin(c.ph * 2) > .9) { ctx.fillStyle = '#fff8d0'; ctx.fillRect(c.x - 1, c.y - c.r, 2, 2); }   // 闪光
+  }
+  ctx.restore();
+  R.rain = R.rain.filter(c => c.y < HH + 20);
+}
 function drawResult(HW, HH) {
   if (!result || gameT < result.born) return;
   const raw = gameT - result.born;
@@ -2780,6 +2806,7 @@ function drawResult(HW, HH) {
   const vg = ctx.createRadialGradient(HW / 2, HH / 2, Math.min(HW, HH) * .22, HW / 2, HH / 2, Math.max(HW, HH) * .72);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.66)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, HW, HH);
+  drawCoinRain(HW, HH, raw);
 
   // 卷轴：按屏幕适配，从中间向左右展开
   const sw0 = Math.min(HW * .90, HH * 1.62) * .75, sh0 = sw0 / 1.66;   // 缩到 3/4，仍然居中
@@ -2823,10 +2850,13 @@ function drawResult(HW, HH) {
   // 击倒 / 用时
   ctx.font = Math.round(sh * .058) + 'px ' + F;
   ctx.fillStyle = '#4a3a2a';
-  ctx.fillText('击倒 ' + result.kills + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + result.score, px0 + pw * .50, sy + sh * .385);
+  // 数字从 0 往上跳：击倒 → 评分 → 金币，依次滚动；点一下屏幕直接跳到最终值
+  const cK = countUp(result.kills, raw, .55, .55), cS = countUp(result.score, raw, 1.0, .8), cC = countUp(result.coins || 0, raw, 1.7, .8);
+  ctx.fillText('击倒 ' + cK + ' 名　用时 ' + fmtTime(result.time) + '　评分 ' + cS, px0 + pw * .50, sy + sh * .385);
   ctx.fillStyle = '#a97618';
-  ctx.font = Math.round(sh * .050) + 'px ' + F;
-  ctx.fillText('💰 本局获得金币 ' + (result.coins || 0), px0 + pw * .50, sy + sh * .455);
+  const pop = result.coins && !result.countSkip && raw > 2.5 && raw < 2.8 ? 1 + .25 * Math.sin((raw - 2.5) / .3 * Math.PI) : 1;   // 金币滚完：放大弹一下
+  ctx.font = Math.round(sh * .050 * pop) + 'px ' + F;
+  ctx.fillText('💰 本局获得金币 ' + cC, px0 + pw * .50, sy + sh * .455);
 
   // 台词：按卷轴内宽换行，标点不能单独落到下一行
   const line = result.line || '';
@@ -3010,6 +3040,7 @@ async function doShare() {
 }
 // 结算板上的按钮：手机上只能点这里（没有 R 键），电脑上点按钮或按 R 都行
 document.addEventListener('pointerdown', e => {
+  if (result && gameT >= result.born && !result.countSkip && gameT - result.born < 2.6) result.countSkip = true;   // 结算数字还在滚：点一下直接跳到最终值
   if (chapter2Run && chapter2Run.mode === 'choice') {
     for (const b of uiBtns) if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation(); chooseChapter2Route(b.act); return;
