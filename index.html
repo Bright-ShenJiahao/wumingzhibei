@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=1eb64945e2" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=1eb64945e2)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4e6812e868" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4e6812e868)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='3bbe1da5767c',busy=false;
+var BUILD='4bcc02cd607b',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2516,6 +2516,15 @@ const Boss = (() => {
     btn(heroGroup, '回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = maxHeroHp(); });
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
+    });
+    // 预览结算动画（数字滚动 + 铜钱雨）：直接判本局通关，结算显示 37 击倒、180 金币
+    btn(heroGroup, '看结算动画', '', () => {
+      if (window.TITLE && TITLE.blocks && TITLE.blocks()) { if (TITLE.skip) TITLE.skip(); if (window.ROOM && ROOM.skip) ROOM.skip(); }
+      setTimeout(() => {
+        if (typeof result !== 'undefined' && result) { result.born = gameT; result.rain = []; result.countSkip = false; for (const k in result) if (/^_[cd]/.test(k)) delete result[k]; result.coins = 180; return; }
+        kills = Math.max(kills, 37); won = true;
+        const w = setInterval(() => { if (typeof result !== 'undefined' && result) { clearInterval(w); result.coins = 180; result.rain = []; } }, 30);
+      }, 400);
     });
     const revive = btn(heroGroup, '复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
     // 测试用：六种武器熟练度拉满，并每种各给一把传说武器（会写进当前玩家的存档）

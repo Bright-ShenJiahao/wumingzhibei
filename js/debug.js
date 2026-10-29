@@ -85,6 +85,15 @@
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
+    // 预览结算动画（数字滚动 + 铜钱雨）：直接判本局通关，结算显示 37 击倒、180 金币
+    btn(heroGroup, '看结算动画', '', () => {
+      if (window.TITLE && TITLE.blocks && TITLE.blocks()) { if (TITLE.skip) TITLE.skip(); if (window.ROOM && ROOM.skip) ROOM.skip(); }
+      setTimeout(() => {
+        if (typeof result !== 'undefined' && result) { result.born = gameT; result.rain = []; result.countSkip = false; for (const k in result) if (/^_[cd]/.test(k)) delete result[k]; result.coins = 180; return; }
+        kills = Math.max(kills, 37); won = true;
+        const w = setInterval(() => { if (typeof result !== 'undefined' && result) { clearInterval(w); result.coins = 180; result.rain = []; } }, 30);
+      }, 400);
+    });
     const revive = btn(heroGroup, '复活次数 +1', '', () => { if (typeof reviveUsed !== 'undefined') reviveUsed = false; });
     // 测试用：六种武器熟练度拉满，并每种各给一把传说武器（会写进当前玩家的存档）
     btn(heroGroup, '满熟练+传说武器', '', () => {
