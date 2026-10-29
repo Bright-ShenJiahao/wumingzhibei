@@ -1088,7 +1088,9 @@ function weaponDropBounds(im) {
   canvas.width = w; canvas.height = h;
   const c = canvas.getContext('2d', { willReadFrequently: true });
   c.drawImage(im, 0, 0);
-  const pixels = c.getImageData(0, 0, w, h).data;
+  let pixels;
+  try { pixels = c.getImageData(0, 0, w, h).data; }
+  catch (e) { const full = { x: 0, y: 0, w, h }; dropIconBounds.set(im, full); return full; }   // 跨域图片读不了像素（试玩网址上会这样）：退回整张图，不再报错卡死
   let left = w, top = h, right = -1, bottom = -1;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (!pixels[(y * w + x) * 4 + 3]) continue;
