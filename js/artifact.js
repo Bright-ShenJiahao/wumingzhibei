@@ -47,7 +47,10 @@
     R.trail = R.trail.filter(p => p.t < .35);
   }
   // 横放的飞剑（代码画，等正式美术）：剑尖朝 f 方向
+  const pic = k => { const i = typeof IMG !== 'undefined' && IMG['ui_' + k]; return i && i.complete && i.naturalWidth ? i : null; };
   function sword(x, y, f, alpha = 1) {
+    const im = pic('fj_ride');   // 正式美术（GPT 图）：剑尖朝右，横放带青光
+    if (im) { const w = 38, h = w * im.height / im.width; ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(f, 1); ctx.imageSmoothingEnabled = true; ctx.drawImage(im, -w / 2, -h * .42, w, h); ctx.restore(); return; }
     ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(f, 1);
     ctx.fillStyle = 'rgba(120,220,255,.25)'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 3.2, 0, 0, Math.PI * 2); ctx.fill();   // 剑气
     ctx.fillStyle = '#dfe9f2'; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-7, -1.6); ctx.lineTo(-7, 1.6); ctx.closePath(); ctx.fill();   // 剑身
@@ -59,6 +62,8 @@
   }
   // 斜插在地上的飞剑
   function stuck(x, y, alpha) {
+    const im = pic('fj_stuck');   // 斜插在地上（底部是一小撮土）
+    if (im) { const h = 28, w = h * im.width / im.height; ctx.save(); ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(im, x - w / 2, y - h + 3, w, h); ctx.restore(); return; }
     ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(-1.15);
     ctx.fillStyle = 'rgba(120,220,255,.3)'; ctx.beginPath(); ctx.ellipse(-4, 0, 12, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#dfe9f2'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(-14, -1.5); ctx.lineTo(-14, 1.5); ctx.closePath(); ctx.fill();
@@ -87,7 +92,7 @@
     if (!box) {
       box = document.createElement('div'); box.id = 'artifactPanel';
       const css = document.createElement('style');
-      css.textContent = '#artifactPanel{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;background:#100b08c9;font:14px/1.5 sans-serif}#artifactPanel[hidden]{display:none!important}#artifactPanel section{position:relative;width:min(460px,94vw);max-height:90dvh;overflow:auto;padding:18px 20px;background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;color:#ecdcbc;box-sizing:border-box}#artifactPanel h3{margin:0 0 12px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#artifactPanel .ax{position:absolute;right:14px;top:12px;min-height:34px;padding:2px 14px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;cursor:pointer}#artifactPanel .ar{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px;margin:6px 0;background:#35271de8;border:1px solid #805d37;border-radius:8px}#artifactPanel .ar.no{opacity:.5}#artifactPanel .ar canvas{position:static!important;inset:auto!important;display:block!important;width:52px!important;height:52px!important;background:#1c140e;border-radius:6px}#artifactPanel b{color:#f1d58f}#artifactPanel small{display:block;color:#cdb78e;font-size:12px}#artifactPanel button.ae{min-height:34px;padding:2px 12px;border:1px solid #e5c98a;border-radius:6px;background:#6b4a2a;color:#fff3c4;cursor:pointer}#artifactPanel button.ae.on{background:#3a2a1c;color:#cdb78e;border-color:#7a5c38}';
+      css.textContent = '#artifactPanel{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;background:#100b08c9;font:14px/1.5 sans-serif}#artifactPanel[hidden]{display:none!important}#artifactPanel section{position:relative;width:min(460px,94vw);max-height:90dvh;overflow:auto;padding:18px 20px;background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;color:#ecdcbc;box-sizing:border-box}#artifactPanel h3{margin:0 0 12px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#artifactPanel .ax{position:absolute;right:14px;top:12px;min-height:34px;padding:2px 14px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;cursor:pointer}#artifactPanel .ar{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px;margin:6px 0;background:#35271de8;border:1px solid #805d37;border-radius:8px}#artifactPanel .ar.no{opacity:.5}#artifactPanel .aico{width:52px;height:52px;object-fit:contain;background:#1c140e;border-radius:6px;padding:4px;box-sizing:border-box}#artifactPanel .ar canvas{position:static!important;inset:auto!important;display:block!important;width:52px!important;height:52px!important;background:#1c140e;border-radius:6px}#artifactPanel b{color:#f1d58f}#artifactPanel small{display:block;color:#cdb78e;font-size:12px}#artifactPanel button.ae{min-height:34px;padding:2px 12px;border:1px solid #e5c98a;border-radius:6px;background:#6b4a2a;color:#fff3c4;cursor:pointer}#artifactPanel button.ae.on{background:#3a2a1c;color:#cdb78e;border-color:#7a5c38}';
       document.head.append(css); document.body.append(box);
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-eq]');
@@ -101,7 +106,7 @@
     const eq = equipped();
     box.innerHTML = '<section><button class="ax" type="button">关闭</button><h3>神器</h3>' + LIST.map(a => {
       const has = owned(a.id), on = eq === a.id;
-      return `<div class="ar${has ? '' : ' no'}"><canvas data-icon="${a.id}" width="52" height="52"></canvas><div><b>${a.name}</b><small>${has ? a.desc : '未获得：' + a.from}</small></div>${has ? `<button type="button" class="ae${on ? ' on' : ''}" data-eq="${on ? '' : a.id}">${on ? '卸下' : '装备'}</button>` : ''}</div>`;
+      return `<div class="ar${has ? '' : ' no'}">${typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.fj_icon ? `<img class="aico" src="${ASSETS.ui.fj_icon}" alt="">` : `<canvas data-icon="${a.id}" width="52" height="52"></canvas>`}<div><b>${a.name}</b><small>${has ? a.desc : '未获得：' + a.from}</small></div>${has ? `<button type="button" class="ae${on ? ' on' : ''}" data-eq="${on ? '' : a.id}">${on ? '卸下' : '装备'}</button>` : ''}</div>`;
     }).join('') + '</section>';
     box.querySelectorAll('canvas[data-icon]').forEach(cv => drawIcon(cv.getContext('2d')));
   }
