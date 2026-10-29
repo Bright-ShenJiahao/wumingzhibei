@@ -247,9 +247,9 @@ const CHARGE_MS = 400;
 let chargeTier = 0, chargeTierFlash = 0;
 function chargeMaxMs() {
   const base = WEAP[weapon] && WEAP[weapon].class === 'ranged' ? 1200 : 1600;
-  return base * (window.GEAR ? GEAR.chargeScale() : 1);
+  return base * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1);
 }
-function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1); }
+function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1); }
 function chargeTierFor(held) {
   const max = chargeMaxMs();
   if (held >= max) return 3;
@@ -345,6 +345,7 @@ function setW(w) {
   else weapon = w;
   ui();
   if (changed) toast('切换：' + WEAP[w].name);
+  if (changed && hero && window.ROGUE && ROGUE.onSwap && ROGUE.onSwap()) startAtk();   // 倒持：发光时切武器直接挥出新武器终段
 }
 function ui() {
   document.querySelectorAll('[data-w]').forEach(b => {
@@ -371,6 +372,7 @@ function blocked(x, y) {
 }
 function moveEnt(e, dx, dy) {
   if (window.GEAR && e !== hero) { const mult=GEAR.enemyMove(e); dx*=mult; dy*=mult; }
+  if (window.ROGUE && e !== hero && ROGUE.enemyMove) { const m = ROGUE.enemyMove(e); dx *= m; dy *= m; }   // 水淹七军减速
   if (e !== hero && e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
@@ -841,9 +843,10 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
   if (z.T.boss) {
     const hp0 = z.hp;
-    if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits);
+    if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);
     const res = Boss.hit(z, dmg, dir, ranged, traits);
     if (z.hp < hp0) {
+      if (window.ROGUE && ROGUE.afterHit) ROGUE.afterHit(z, false, traits, dmg, ranged);
       if (traits.dot) return res;
 
       countComboHit();
@@ -867,7 +870,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
-  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits);   // 震慑破绽加伤、避实回气眩晕回血
+  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);   // 震慑破绽加伤、避实回气眩晕回血
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
@@ -898,7 +901,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     if (z.T.ch2Elite) { spawnDrop(z.x, z.y, Math.random() < .65 ? 'leg' : 'pig'); sfx('finisher', z.x); shake = .2; }   // 第二章精英：必掉鸡腿或烤乳猪
   }
   if (knock && !(z.T.boss || z.T.chapterBoss || z.T.noLaunch) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
-  if (window.ROGUE && ROGUE.afterHit) ROGUE.afterHit(z, knock);   // 震慑：眩晕/击倒挂破绽
+  if (window.ROGUE && ROGUE.afterHit) ROGUE.afterHit(z, knock, traits, dmg, ranged);   // 震慑：眩晕/击倒挂破绽
 
 }
 function summonArchersVolley() {
@@ -959,7 +962,7 @@ function heroUpdate(dt) {
   updateHalberdDash(h, dt);
   pressRoll = false;
   if (h.st === 'roll' && charging && atkHeldSince) atkHeldSince += dt * 1000;   // 藏势：翻滚时蓄力暂停
-  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) set(h, 'idle'); pressAtk = false; return; }
+  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd && ROGUE.onRollEnd()) { h.f = -h.f; h.comboWin = 0; startAtk(); } } pressAtk = false; return; }   // 回马枪：滚完自动向身后打一下
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk') {
@@ -1285,7 +1288,7 @@ function atkRelease() {
   const tier = chargeTierFor(held);
   if (held >= chargeGateMs()) {
     charging = false;
-    if (canAct) chargedAttack(Math.min(1, held / chargeMaxMs()), tier);
+    if (canAct) { const p0 = Math.min(1, held / chargeMaxMs()); if (window.ROGUE && ROGUE.onChargeRelease) ROGUE.onChargeRelease(); chargedAttack(p0, tier); }
     chargeTier = 0; chargeTierFlash = 0;
     return;
   }
@@ -1314,7 +1317,7 @@ function resolveBowSky(f) {
 function addHalberdBleed(z, base, stacks = 1) {
   if (!z || z.dead) return 0;
   const alive = halberdStacks(z);
-  z.halberdBleed = Math.min(5, (alive || 0) + stacks);
+  z.halberdBleed = Math.min(window.ROGUE && ROGUE.has('血债') ? 8 : 5, (alive || 0) + stacks);   // 血债：上限 8
   if (alive === 4 && z.halberdBleed === 5) bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .18, big: true });
   z.halberdBleedUntil = gameT + 3;
   z.halberdBleedBase = base;
@@ -1490,8 +1493,8 @@ function startAtk() {
   const h = hero;
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
   const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
-  const fin = window.ROGUE && ROGUE.takeFinisher && ROGUE.takeFinisher();   // 回锋：翻滚躲过攻击后，下一下直接是终段
-  set(h, 'atk'); h.atk = { c: fin ? WEAP[weapon].combo.length - 1 : chain ? (h.combo + 1) % WEAP[weapon].combo.length : 0, fi: 0, t: 0, lg: 0, gearToken: window.GEAR ? GEAR.attackToken() : null };
+  const fin = window.ROGUE && ROGUE.takeFinisher && ROGUE.takeFinisher();   // 回锋 / 倒持：下一下直接是终段
+  set(h, 'atk'); h.atk = { weak: fin === 'swap', c: fin ? WEAP[weapon].combo.length - 1 : chain ? (h.combo + 1) % WEAP[weapon].combo.length : 0, fi: 0, t: 0, lg: 0, gearToken: window.GEAR ? GEAR.attackToken() : null };
 }
 function strike() {
   const h = hero, W = WEAP[weapon], c = h.atk.c, C = W.combo[c];
@@ -1512,6 +1515,7 @@ function strike() {
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? (weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0;   // 跑动中弹道偏：石子 ±6、汉弓 ±3，站定不偏
     shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
+    if (window.ROGUE && ROGUE.onShoot) ROGUE.onShoot(C, c, finisher, sOff);   // 飞蝗散弹、乘胜连箭副弹
     if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
       const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;
       for (const ang of [-.20944, .20944]) {
@@ -1551,7 +1555,8 @@ function strike() {
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
       hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0 || bladeFinisher, ...(bladeFinisher ? { critCap: 2 } : {}), ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
-      if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * .25) {
+      if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * (window.ROGUE && ROGUE.has('斩首') ? .35 : .25)) {
+        if (window.ROGUE && ROGUE.onExecute) ROGUE.onExecute();
         z.hp = 0; z.dead = 1; kills++; set(z, 'land');
         if (z.villagerChaser) thankVillagers();
         if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); }
@@ -1566,6 +1571,7 @@ function strike() {
             const rupture = stacks * .3 * unit;
             clearHalberdBleed(z);
             hit(z, rupture, 0, 0, false, 0, 0, false, false, { secondary: true, halberdRupture: true });
+            if (window.ROGUE && ROGUE.has('血债')) for (const o of zs) if (o !== z && !o.dead && !o.air && Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 50) { hit(o, rupture * .5, 0, 0, false, 0, 0, false, false, { secondary: true }); bleedFx.push({ kind: 'splash', x: o.x, y: o.y - 12, t: 0, T: .15 }); }   // 血债：溅给周围
             bleedFx.push({ kind: 'rip', x: z.x, y: z.y - 12, t: 0, T: .2 });
             bleedFx.push({ kind: 'splash', x: z.x, y: z.y - 12, t: 0, T: .15 });
             floaters.push({ x: z.x, y: z.y - 38, t: 0, txt: (Math.round(rupture * 10) / 10).toFixed(1), big: true, red: true });
@@ -1607,10 +1613,11 @@ function strike() {
 // 主角能不能被打中；翻滚无敌中被「本来会打中」的攻击擦过 → 算躲过（回锋、避实回气用）
 function heroOpen() { if (hero.inv <= 0) return true; if (hero.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(); return false; }
 function dmgHero(n, from, kind = 'basic') {
-  const h = hero; if (h.inv > 0 && h.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge();
+  const h = hero; if (h.inv > 0 && h.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(from, n, kind);
   if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
   if (window.ROGUE && ROGUE.hardClash && ROGUE.hardClash(from)) return;
+  if (window.ROGUE && ROGUE.sidestep && ROGUE.sidestep(n, kind)) return;   // 闪身步
   if (window.XIAOCHANG && XIAOCHANG.active()) n = XIAOCHANG.heroDamage(n, from);
   n = n * R_('take');
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
@@ -1623,6 +1630,7 @@ function dmgHero(n, from, kind = 'basic') {
   comboCount = 0; comboExpireAt = 0;   // 主角实际受击，连击立即结束
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2;
+  if (window.ROGUE && ROGUE.onHurt) ROGUE.onHurt();   // 解围
   if (window.XIAOCHANG) XIAOCHANG.onHitHero(from);
   if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;

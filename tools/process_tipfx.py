@@ -37,5 +37,5 @@ for y0, y1, names, gap in ROWS:
         sub = sub[ys[0]:ys[-1] + 1]
         im = Image.fromarray(sub, 'RGBA')
         im = im.resize((max(1, im.width // 2), max(1, im.height // 2)), Image.LANCZOS)
-        im.save(os.path.join(R, 'art', 'ui', n + '.png'))
+        im.save(os.path.join(R, 'art', 'ui', n + '.png')); im.save(os.path.join(R, 'art', 'ui', n + '.webp'), quality=88, method=6)
         print(n, im.size)

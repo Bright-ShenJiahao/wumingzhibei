@@ -29,5 +29,5 @@
   }
   // 标题/整备页时游戏画面不绘制，单独定时检查一下把箭袋藏起来
   setInterval(() => { if (box && window.TITLE && TITLE.active && TITLE.active()) box.style.display = 'none'; }, 300);
-  window.BOWAMMO = { reset, tick, onHit, use, draw, count: () => Math.floor(n) };
+  window.BOWAMMO = { add(k = 1) { n = Math.min(MAX, n + k); }, reset, tick, onHit, use, draw, count: () => Math.floor(n) };
 })();
