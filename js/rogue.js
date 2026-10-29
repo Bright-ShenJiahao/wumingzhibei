@@ -332,10 +332,17 @@
     hero.inv = Math.max(hero.inv || 0, .4); sideUntil = now() + 3; pop(hero.x, hero.y - 46, '闪', '#bfe8ff', true); return true;
   }
   function onExecute() { zhanUntil = now() + 3; }
+  function decoyFor(z) {
+    if (!scarecrows.length || !z || z.dead || isBoss(z)) return null;
+    let best = null, bd = 140;
+    for (const s of scarecrows) { if (s.boom != null) continue; const d = Math.hypot(z.x - s.x, (z.y - s.y) * 1.5); if (d < bd) { bd = d; best = s; } }
+    return best;
+  }
   function enemyMove(z) { for (const w of waters) if (Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 22) return .4; return 1; }
   // ---- 将令（第二批） ----
   function castScarecrows() {
-    for (const dx of [50, 95]) scarecrows.push({ x: hero.x + hero.f * dx, y: Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + (dx === 50 ? -14 : 14))), t: 0, hp: 4, hitT: 0 });
+    // 稻草人是新的「敌方目标」：附近敌人优先去打它（敌人更新时把它当成主角），被打碎或 8 秒后爆炸
+    for (const dx of [50, 95]) scarecrows.push({ decoy: true, x: hero.x + hero.f * dx, y: Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + (dx === 50 ? -14 : 14))), f: -hero.f, st: 'idle', t: 0, hp: 6, hitT: 0, inv: 0, air: false, z: 0 });
     if (typeof say === 'function') say('草木皆兵！', 1.4);
   }
   function castFire() {
@@ -350,11 +357,9 @@
     // 草木皆兵：附近的敌人被稻草人吸引，停在旁边围着打；稻草人被打碎时爆炸
     for (const s of scarecrows) {
       s.t += dt; s.hitT = Math.max(0, s.hitT - dt);
-      for (const z of zs) if (!z.dead && !z.air && !isBoss(z) && Math.hypot(z.x - s.x, (z.y - s.y) * 2) < 90) {
-        z.stun = Math.max(z.stun || 0, .15); z.st = 'move'; z.tok = false; z.f = Math.sign(s.x - z.x) || z.f;
-        const d = Math.hypot(z.x - s.x, z.y - s.y); if (d > 22) moveEnt(z, (s.x - z.x) / d * 30 * dt, (s.y - z.y) / d * 20 * dt);
-        z.scareHit = (z.scareHit || 0) - dt; if (z.scareHit <= 0 && d < 30) { z.scareHit = 1.2; s.hp--; s.hitT = .2; }
-      }
+      s.inv = 0; s.st = 'idle';
+      // 飞来的敌方箭、石子打到稻草人
+      if (s.boom == null && typeof eshots !== 'undefined') for (const e of eshots) if ((e.k === 'stone' || e.k === 'arrow') && e.life > 0 && Math.abs(e.x - s.x) < 9 && Math.abs(e.y - s.y) < 9) { e.life = 0; s.hp -= 1; s.hitT = .2; }
       if ((s.hp <= 0 || s.t > 8) && s.boom == null) { s.boom = 0; shockwave(s.x, s.y, 55, 2, true); if (typeof sfx === 'function') sfx('finisher', s.x); shake = Math.max(shake, .2); }
     }
     for (const s of scarecrows) if (s.boom != null) s.boom += dt;
@@ -401,8 +406,10 @@
     glowIdle += dt; if (glowIdle > 3 && !swapReady) glowN = 0;
     S.aspd = 1 / (1 + .03 * Math.floor(gale)); S.move = (1 + .03 * Math.floor(gale)) * (sideUntil > now() ? 1.2 : 1);
     if (guardShield > 0) { guardShieldT -= dt; if (guardShieldT <= 0) guardShield = 0; }
-    for (const b of beng) { b.t += dt; if (b.t >= 0 && !b.done) { b.done = true; fx.push({ k: 'ring', x: b.x, y: b.y, r: 60, t: 0, T: .3 }); for (const o of zs) if (!o.dead && !o.air && Math.hypot(o.x - b.x, (o.y - b.y) * 2) < 60) hit(o, 1.5, 90, Math.sign(o.x - b.x) || 1, !isBoss(o), 0, .35, true, false, { secondary: true }); if (typeof sfx === 'function') sfx('finisher', b.x); } }
+    for (const b of beng) { b.t += dt; if (b.t >= 0 && !b.done) { b.done = true; fx.push({ k: 'ring', x: b.x, y: b.y, r: 60, t: 0, T: .3 }); for (const o of zs) if (!o.dead && !o.air && Math.hypot(o.x - b.x, (o.y - b.y) * 2) < 60) { hit(o, 1.5, 90, Math.sign(o.x - b.x) || 1, !isBoss(o), 0, .35, true, false, { secondary: true }); o.bengLand = 1; } if (typeof sfx === 'function') sfx('finisher', b.x); } }
     beng = beng.filter(b => !b.done);
+    // 崩山：被第二圈击倒的敌人落地时再震一下周围（半径 35、0.5 伤害）
+    for (const z of zs) if (z.bengLand) { if (z.air) z.bengLand = 2; else if (z.bengLand === 2) { z.bengLand = 0; fx.push({ k: 'ring', x: z.x, y: z.y, r: 35, t: 0, T: .25 }); for (const o of zs) if (o !== z && !o.dead && !o.air && Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 35) hit(o, .5, 40, Math.sign(o.x - z.x) || 1, false, 0, .3, false, false, { secondary: true }); } else if (z.dead) z.bengLand = 0; }
     for (const f of fx) { f.t += dt;
       if (f.k === 'darkArrow' && f.t >= f.T && !f.done) { f.done = true; if (!f.z.dead) hit(f.z, f.dmg, 30, f.dir, false, 0, .2, false, false, { secondary: true }); }
       if (f.k === 'bounce' && f.t >= f.T && !f.done) { f.done = true; if (!f.z.dead) { f.z.rogueBounce = true; hit(f.z, f.dmg, 40, 1, false, 0, .3, false, true, { secondary: true }); f.z.rogueBounce = false; } }
@@ -485,7 +492,7 @@
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, drawWorld, update, tick, choose, useSkill, useSummon, useCatapult, absorbHit,
     onRoll, onDodge, takeFinisher, takeCrit, onHit, afterHit, hardClash, has: name => !!has[name],
-    onShoot, onSwap, onChargeRelease, chargeScale, onRollEnd, onHurt, sidestep, onExecute, enemyMove,
+    decoyFor, onShoot, onSwap, onChargeRelease, chargeScale, onRollEnd, onHurt, sidestep, onExecute, enemyMove,
     shieldReady: () => !!S.shield && shieldReady,
     summonState: () => ({ cooldown: skillCd }),
     catapultState: () => ({ cooldown: skillCd }),

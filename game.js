@@ -1613,6 +1613,7 @@ function strike() {
 // 主角能不能被打中；翻滚无敌中被「本来会打中」的攻击擦过 → 算躲过（回锋、避实回气用）
 function heroOpen() { if (hero.inv <= 0) return true; if (hero.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(); return false; }
 function dmgHero(n, from, kind = 'basic') {
+  if (hero.decoy) { hero.hp -= n; hero.hitT = .2; return; }   // 打中的是稻草人
   const h = hero; if (h.inv > 0 && h.st === 'roll' && window.ROGUE && ROGUE.onDodge) ROGUE.onDodge(from, n, kind);
   if (h.inv > 0 || h.air || h.st === 'down' || h.st === 'bounce' || h.st === 'getup' || over) return;
   if (window.ROGUE && ROGUE.absorbHit && ROGUE.absorbHit()) { h.shieldFlash = .22; return; }
@@ -2297,7 +2298,7 @@ function update(dt) {
     if (!chapter2Run || chapter2Run.mode !== 'choice') heroUpdate(dt);
     // 第二章没有右侧闸门：后退边界跟着战斗推进往前走，永远只留 1.2 屏回头路
     if (chapter2Run && arenaL != null && chapter2Run.mode === 'fight') arenaL = Math.max(arenaL, hero.x - viewW() * RETREAT_SCREENS);
-    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => zUpdate(z, dt)); separateEnemies(dt); }
+    if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => { const d = window.ROGUE && ROGUE.decoyFor ? ROGUE.decoyFor(z) : null; if (!d) { zUpdate(z, dt); return; } const real = hero; hero = d; try { zUpdate(z, dt); } finally { hero = real; } }); separateEnemies(dt); }   // 草木皆兵：被吸引的敌人把稻草人当成主角
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
