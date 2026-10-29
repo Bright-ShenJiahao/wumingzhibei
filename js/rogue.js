@@ -152,17 +152,9 @@
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
-  function castThunder() {
-    const foes = (typeof zs !== 'undefined' ? zs : []).filter(z => !z.dead && !z.air && z.x > cam.x - 10 && z.x < cam.x + viewW() + 10);
-    for (let i = 0; i < 8; i++) {
-      let x, y;
-      if (foes.length) {
-        // 选身边敌人最多的那个
-        const best = foes.map(z => [z, foes.filter(o => Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 40).length + Math.random()]).sort((a, b) => b[1] - a[1]);
-        const z = best[i % best.length][0]; x = z.x + rnd(-10, 10); y = z.y + rnd(-5, 5);
-      } else { x = cam.x + rnd(40, viewW() - 40); y = rnd(M.top + 10, M.bot - 6); }
-      thunder.push({ x, y, t: -i * .22 - .35, hit: false });
-    }
+  function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
+    const c = cluster(60);
+    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 3, done: [] });
     if (typeof say === 'function') say('雷霆万钧！', 1.4);
   }
   function updateThunder(dt) {
@@ -171,7 +163,12 @@
       if (b.t >= 0 && !b.hit) {
         b.hit = true; shake = Math.max(shake, .22);
         if (typeof sfx === 'function') sfx('finisher', b.x);
-        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) rogueHitFull(z, 2, Math.sign(z.x - b.x) || 1);
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 2, Math.sign(z.x - b.x) || 1); b.done.push(z); }
+        // 跳到下一个目标：最近的、还没被这道雷劈过的敌人；没有就在附近乱劈
+        if (--b.hops > 0) {
+          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+          thunder.push({ x: n ? n.x : b.x + rnd(-50, 50), y: n ? n.y : b.y + rnd(-12, 12), t: -.28, hit: false, hops: b.hops, done: b.done, from: { x: b.x, y: b.y } });
+        }
       }
     }
     thunder = thunder.filter(b => b.t < .45);
@@ -182,7 +179,7 @@
     if (typeof ctx === 'undefined') return;
     const T = performance.now() / 1000;
     ctx.save();
-    for (const w of waters) { const a = Math.min(1, w.t / .3, (w.T - w.t) / .5); drawImg('tip_water' + (1 + Math.floor(T * 5) % 3), w.x, w.y + 12, w.w, a * .9); if (w.t < .6) drawImg('tip_wave' + (w.t < .3 ? 1 : 2), w.x, w.y + 6, w.w * .9, 1 - w.t / .6); }
+    for (const w of waters) for (const v of w.waves) { const p = Math.abs(v.x - v.x0) / 320; drawImg(p < .7 ? 'tip_wave1' : 'tip_wave2', v.x, v.y + 6, 64, Math.min(1, (1 - p) * 3), w.dir < 0); }   // 海浪：一道道往前冲
     for (const s of scarecrows) { const k = s.boom != null ? (s.boom < .25 ? 'tip_scare_break1' : 'tip_scare_break2') : s.hitT > 0 ? 'tip_scare_hit' : 'tip_scare'; if (!drawImg(k, s.x, s.y + 2, 30)) { ctx.fillStyle = '#c9a050'; ctx.fillRect(s.x - 2, s.y - 26, 4, 26); } }
     if (windT > 0) { const a = Math.min(1, windT / .5) * .8; for (let i = 0; i < 4; i++) drawImg('tip_wind' + (1 + Math.floor(T * 6 + i) % 3), cam.x + ((T * 160 + i * 140) % (viewW() + 120)) - 60, M.top + 30 + i * 32, 90, a, hero.f < 0); }
     if (guardShield > 0 || (S.shield && shieldReady)) drawImg('tip_shield', hero.x, hero.y + 4, 22, .55 + .15 * Math.sin(T * 4));
@@ -225,6 +222,7 @@
       while (y < b.y) { y += 18; x += rnd(-7, 7); ctx.lineTo(y >= b.y ? b.x : x, Math.min(y, b.y)); }
       ctx.stroke(); ctx.shadowBlur = 0;
       ctx.fillStyle = 'rgba(255,255,255,' + (.5 * a) + ')'; ctx.beginPath(); ctx.ellipse(b.x, b.y, 24 * (1 - a * .4), 9, 0, 0, Math.PI * 2); ctx.fill();
+      if (b.from) { ctx.strokeStyle = '#dff0ff'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(b.from.x, b.from.y - 8); for (let k = 1; k <= 5; k++) ctx.lineTo(b.from.x + (b.x - b.from.x) * k / 5 + (k < 5 ? rnd(-5, 5) : 0), b.from.y - 8 + (b.y - b.from.y) * k / 5 + (k < 5 ? rnd(-6, 6) : 0)); ctx.stroke(); }   // 雷在地面上窜过去
     }
     ctx.restore();
   }
@@ -360,7 +358,7 @@
     for (const s of scarecrows) { if (s.boom != null) continue; const d = Math.hypot(z.x - s.x, (z.y - s.y) * 1.5); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  function enemyMove(z) { for (const w of waters) if (Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) return .4; return 1; }
+  function enemyMove(z) { return z.wetUntil > now() ? .5 : 1; }   // 被浪冲过的敌人 1.5 秒内减速一半
   // ---- 将令（第二批） ----
   // 将令统一对准敌群：返回身边敌人最多的那个敌人的位置；没有敌人就是主角前方
   function cluster(r = 50) {
@@ -381,10 +379,9 @@
     if (typeof say === 'function') say('火烧连营！', 1.4);
   }
   function castWater() {
-    const c = cluster(80);   // 对准敌群：宽 260、持续 7 秒，浪头先拍一下（1.5 伤害并推开）
-    waters.push({ x: c.x, y: c.y, w: 260, t: 0, T: 7, tick: .6, wave: 0 });
-    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 130 && Math.abs(z.y - c.y) < 28) hit(z, 1.5, 120, Math.sign(z.x - hero.x) || 1, false, 0, .4, true, false, { secondary: true });
-    shake = Math.max(shake, .2);
+    // 改成海浪：6 秒里每 0.7 秒从主角身后涌出一道浪，冲过前方 300 的距离，沿途敌人被冲开、受 0.8 伤害并减速
+    const c = cluster(80), dir = Math.sign(c.x - hero.x) || hero.f;
+    waters.push({ dir, y: c.y, t: 0, T: 6, next: 0, waves: [] });
     if (typeof say === 'function') say('水淹七军！', 1.4);
   }
   function updateBing(dt) {
@@ -403,8 +400,8 @@
       windT -= dt; gustT -= dt;
       const gust = gustT <= 0; if (gust) gustT = 2;
       for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) {
-        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 80 * dt, 0);
-        if (gust && !z.T.elite && !z.T.ch2Elite && !z.T.siege && typeof launch === 'function') launch(z, d * 70, 90);
+        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 45 * dt, 0);
+        if (gust) z.vx = d * 60;   // 强风只推一下（不再吹倒，控制减弱）
       }
       if (gust && typeof sfx === 'function') sfx('roll', hero.x);
       if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && (e.k === 'stone' || e.k === 'arrow')) {
@@ -414,10 +411,15 @@
     }
     // 水淹七军：水里的敌人持续受伤（减速在 enemyMove）
     for (const w of waters) {
-      w.t += dt; w.tick -= dt;
-      if (w.tick <= 0) { w.tick = .5; for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) hit(z, .5, 0, 0, false, 0, 0, false, false, { dot: true }); }
+      w.t += dt; w.next -= dt;
+      if (w.next <= 0 && w.t < w.T) { w.next = .7; w.waves.push({ x: hero.x - w.dir * 20, y: (w.y + hero.y) / 2 + rnd(-16, 16), x0: hero.x, hit: new Set() }); if (typeof sfx === 'function') sfx('roll', hero.x); }
+      for (const v of w.waves) {
+        v.x += w.dir * 230 * dt;
+        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; }
+      }
+      w.waves = w.waves.filter(v => Math.abs(v.x - v.x0) < 320);
     }
-    waters = waters.filter(w => w.t < w.T);
+    waters = waters.filter(w => w.t < w.T || w.waves.length);
     // 着火（明火 / 火烧连营）：每秒掉血；火烧连营的火会传给身边的敌人
     spreadT -= dt;
     for (const z of zs) {

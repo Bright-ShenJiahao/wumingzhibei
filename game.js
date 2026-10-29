@@ -2135,10 +2135,12 @@ function updateShots(dt) {
 
 // ---------- 投石车 ----------
 function catapultVolley() {
+  for (const k in CH.yellow_catapult || {}) { const fr = CH.yellow_catapult[k], e = (LAZY.chapter2 || []).find(x => x[0] === fr.img); if (e && !e[0].src) e[0].src = e[1]; }   // 第一章也用正式投石车图：只单独下载这几帧
   // 霹雳飞石（加强）：投石车直接出现在主角身后，不再慢慢走进来；每台投两轮（共 6 块），砸向敌群
   for (let i = 0; i < 3; i++) {
-    const x = Math.max(cam.x + 20, Math.min(cam.x + viewW() - 20, hero.x - hero.f * (40 + i * 10))), y = Math.max(M.top + 20, Math.min(M.bot - 4, hero.y + (i - 1) * 34));
-    catapults.push({ x, y, tx: x, t: -i * .2, fired: false, phase: 'aim', ft: 0, shots: 2 });
+    // 用户定：投石车在画面最左边一字排开，往右投，投完往左撤出
+    const x = cam.x + 24 + (i % 2) * 26, y = M.top + 40 + i * ((M.bot - M.top - 60) / 2);
+    catapults.push({ x: x - 50, y, tx: x, t: -i * .15, fired: false, phase: 'in', ft: 0, shots: 2 });
   }
   sfx('land', cam.x + 40); say('投石车来了！', 1.6);
 }
@@ -2147,7 +2149,7 @@ function updateCatapults(dt) {
     c.t += dt;
     if (c.t < 0) continue;
     if (c.phase === 'in') {
-      c.x += 46 * dt;
+      c.x += 160 * dt;   // 快速推进场
       if (c.x >= c.tx) { c.x = c.tx; c.phase = 'aim'; c.ft = 0; }
     } else if (c.phase === 'aim') {
       c.ft += dt;
@@ -2214,10 +2216,15 @@ function drawCatapults() {
     if (c.t < 0) continue;
     const fr = c.phase === 'fire' ? 'fire' : c.phase === 'aim' ? 'load' : 'idle';
     const f = CH.yellow_catapult && (CH.yellow_catapult[fr] || CH.yellow_catapult.idle);
-    if (f && f.img) {
+    if (f && f.img && f.img.complete && f.img.naturalWidth) {
       const sc = .62, w = f.w * sc, h = f.h * sc;
-      ctx.drawImage(f.img, Math.round(c.x - w / 2), Math.round(c.y + 4 - h), w, h);
-    } else { ctx.fillStyle = '#5a3a1c'; ctx.fillRect(c.x - 18, c.y - 22, 36, 26); }
+      ctx.save(); ctx.translate(Math.round(c.x), 0); ctx.scale(-1, 1); ctx.drawImage(f.img, Math.round(-w / 2), Math.round(c.y + 4 - h), w, h); ctx.restore();   // 原图朝左（敌方用），我方投石车往右投，镜像
+    } else {   // 第一章没加载投石车图（只在第二章按需下载）：用代码画一台简易投石车
+      ctx.save(); ctx.translate(c.x, c.y); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 1, 18, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#6b4424'; ctx.fillRect(-16, -8, 32, 6); ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.arc(-11, -1, 4, 0, 7); ctx.arc(11, -1, 4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#7a5030'; ctx.fillRect(-3, -22, 6, 15);
+      const ang = c.phase === 'fire' ? -1.1 : -.25; ctx.save(); ctx.translate(0, -20); ctx.rotate(ang); ctx.fillStyle = '#8a5a32'; ctx.fillRect(-20, -2, 26, 4); ctx.fillStyle = '#4a3020'; ctx.fillRect(-22, -4, 5, 8); ctx.restore(); ctx.restore();
+    }
   }
   for (const s of allyShots) {
     ctx.fillStyle = '#6b6b6b';

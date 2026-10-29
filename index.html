@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=6f584ffa6a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=6f584ffa6a)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=626463a135" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=626463a135)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='201be3c02be9',busy=false;
+var BUILD='7f12b24c42c0',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4135,17 +4135,9 @@ const Boss = (() => {
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
-  function castThunder() {
-    const foes = (typeof zs !== 'undefined' ? zs : []).filter(z => !z.dead && !z.air && z.x > cam.x - 10 && z.x < cam.x + viewW() + 10);
-    for (let i = 0; i < 8; i++) {
-      let x, y;
-      if (foes.length) {
-        // 选身边敌人最多的那个
-        const best = foes.map(z => [z, foes.filter(o => Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 40).length + Math.random()]).sort((a, b) => b[1] - a[1]);
-        const z = best[i % best.length][0]; x = z.x + rnd(-10, 10); y = z.y + rnd(-5, 5);
-      } else { x = cam.x + rnd(40, viewW() - 40); y = rnd(M.top + 10, M.bot - 6); }
-      thunder.push({ x, y, t: -i * .22 - .35, hit: false });
-    }
+  function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
+    const c = cluster(60);
+    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 3, done: [] });
     if (typeof say === 'function') say('雷霆万钧！', 1.4);
   }
   function updateThunder(dt) {
@@ -4154,7 +4146,12 @@ const Boss = (() => {
       if (b.t >= 0 && !b.hit) {
         b.hit = true; shake = Math.max(shake, .22);
         if (typeof sfx === 'function') sfx('finisher', b.x);
-        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) rogueHitFull(z, 2, Math.sign(z.x - b.x) || 1);
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 2, Math.sign(z.x - b.x) || 1); b.done.push(z); }
+        // 跳到下一个目标：最近的、还没被这道雷劈过的敌人；没有就在附近乱劈
+        if (--b.hops > 0) {
+          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+          thunder.push({ x: n ? n.x : b.x + rnd(-50, 50), y: n ? n.y : b.y + rnd(-12, 12), t: -.28, hit: false, hops: b.hops, done: b.done, from: { x: b.x, y: b.y } });
+        }
       }
     }
     thunder = thunder.filter(b => b.t < .45);
@@ -4165,7 +4162,7 @@ const Boss = (() => {
     if (typeof ctx === 'undefined') return;
     const T = performance.now() / 1000;
     ctx.save();
-    for (const w of waters) { const a = Math.min(1, w.t / .3, (w.T - w.t) / .5); drawImg('tip_water' + (1 + Math.floor(T * 5) % 3), w.x, w.y + 12, w.w, a * .9); if (w.t < .6) drawImg('tip_wave' + (w.t < .3 ? 1 : 2), w.x, w.y + 6, w.w * .9, 1 - w.t / .6); }
+    for (const w of waters) for (const v of w.waves) { const p = Math.abs(v.x - v.x0) / 320; drawImg(p < .7 ? 'tip_wave1' : 'tip_wave2', v.x, v.y + 6, 64, Math.min(1, (1 - p) * 3), w.dir < 0); }   // 海浪：一道道往前冲
     for (const s of scarecrows) { const k = s.boom != null ? (s.boom < .25 ? 'tip_scare_break1' : 'tip_scare_break2') : s.hitT > 0 ? 'tip_scare_hit' : 'tip_scare'; if (!drawImg(k, s.x, s.y + 2, 30)) { ctx.fillStyle = '#c9a050'; ctx.fillRect(s.x - 2, s.y - 26, 4, 26); } }
     if (windT > 0) { const a = Math.min(1, windT / .5) * .8; for (let i = 0; i < 4; i++) drawImg('tip_wind' + (1 + Math.floor(T * 6 + i) % 3), cam.x + ((T * 160 + i * 140) % (viewW() + 120)) - 60, M.top + 30 + i * 32, 90, a, hero.f < 0); }
     if (guardShield > 0 || (S.shield && shieldReady)) drawImg('tip_shield', hero.x, hero.y + 4, 22, .55 + .15 * Math.sin(T * 4));
@@ -4208,6 +4205,7 @@ const Boss = (() => {
       while (y < b.y) { y += 18; x += rnd(-7, 7); ctx.lineTo(y >= b.y ? b.x : x, Math.min(y, b.y)); }
       ctx.stroke(); ctx.shadowBlur = 0;
       ctx.fillStyle = 'rgba(255,255,255,' + (.5 * a) + ')'; ctx.beginPath(); ctx.ellipse(b.x, b.y, 24 * (1 - a * .4), 9, 0, 0, Math.PI * 2); ctx.fill();
+      if (b.from) { ctx.strokeStyle = '#dff0ff'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(b.from.x, b.from.y - 8); for (let k = 1; k <= 5; k++) ctx.lineTo(b.from.x + (b.x - b.from.x) * k / 5 + (k < 5 ? rnd(-5, 5) : 0), b.from.y - 8 + (b.y - b.from.y) * k / 5 + (k < 5 ? rnd(-6, 6) : 0)); ctx.stroke(); }   // 雷在地面上窜过去
     }
     ctx.restore();
   }
@@ -4343,7 +4341,7 @@ const Boss = (() => {
     for (const s of scarecrows) { if (s.boom != null) continue; const d = Math.hypot(z.x - s.x, (z.y - s.y) * 1.5); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  function enemyMove(z) { for (const w of waters) if (Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) return .4; return 1; }
+  function enemyMove(z) { return z.wetUntil > now() ? .5 : 1; }   // 被浪冲过的敌人 1.5 秒内减速一半
   // ---- 将令（第二批） ----
   // 将令统一对准敌群：返回身边敌人最多的那个敌人的位置；没有敌人就是主角前方
   function cluster(r = 50) {
@@ -4364,10 +4362,9 @@ const Boss = (() => {
     if (typeof say === 'function') say('火烧连营！', 1.4);
   }
   function castWater() {
-    const c = cluster(80);   // 对准敌群：宽 260、持续 7 秒，浪头先拍一下（1.5 伤害并推开）
-    waters.push({ x: c.x, y: c.y, w: 260, t: 0, T: 7, tick: .6, wave: 0 });
-    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 130 && Math.abs(z.y - c.y) < 28) hit(z, 1.5, 120, Math.sign(z.x - hero.x) || 1, false, 0, .4, true, false, { secondary: true });
-    shake = Math.max(shake, .2);
+    // 改成海浪：6 秒里每 0.7 秒从主角身后涌出一道浪，冲过前方 300 的距离，沿途敌人被冲开、受 0.8 伤害并减速
+    const c = cluster(80), dir = Math.sign(c.x - hero.x) || hero.f;
+    waters.push({ dir, y: c.y, t: 0, T: 6, next: 0, waves: [] });
     if (typeof say === 'function') say('水淹七军！', 1.4);
   }
   function updateBing(dt) {
@@ -4386,8 +4383,8 @@ const Boss = (() => {
       windT -= dt; gustT -= dt;
       const gust = gustT <= 0; if (gust) gustT = 2;
       for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) {
-        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 80 * dt, 0);
-        if (gust && !z.T.elite && !z.T.ch2Elite && !z.T.siege && typeof launch === 'function') launch(z, d * 70, 90);
+        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 45 * dt, 0);
+        if (gust) z.vx = d * 60;   // 强风只推一下（不再吹倒，控制减弱）
       }
       if (gust && typeof sfx === 'function') sfx('roll', hero.x);
       if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && (e.k === 'stone' || e.k === 'arrow')) {
@@ -4397,10 +4394,15 @@ const Boss = (() => {
     }
     // 水淹七军：水里的敌人持续受伤（减速在 enemyMove）
     for (const w of waters) {
-      w.t += dt; w.tick -= dt;
-      if (w.tick <= 0) { w.tick = .5; for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - w.x) < w.w / 2 && Math.abs(z.y - w.y) < 26) hit(z, .5, 0, 0, false, 0, 0, false, false, { dot: true }); }
+      w.t += dt; w.next -= dt;
+      if (w.next <= 0 && w.t < w.T) { w.next = .7; w.waves.push({ x: hero.x - w.dir * 20, y: (w.y + hero.y) / 2 + rnd(-16, 16), x0: hero.x, hit: new Set() }); if (typeof sfx === 'function') sfx('roll', hero.x); }
+      for (const v of w.waves) {
+        v.x += w.dir * 230 * dt;
+        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; }
+      }
+      w.waves = w.waves.filter(v => Math.abs(v.x - v.x0) < 320);
     }
-    waters = waters.filter(w => w.t < w.T);
+    waters = waters.filter(w => w.t < w.T || w.waves.length);
     // 着火（明火 / 火烧连营）：每秒掉血；火烧连营的火会传给身边的敌人
     spreadT -= dt;
     for (const z of zs) {
@@ -5655,12 +5657,12 @@ const Boss = (() => {
     ],
     bing: [
       ['万箭齐发', 'n', '对准前方连射两轮、每轮 10 支穿透箭，每支 1 伤害，同一敌人最多中 3 支'],
-      ['霹雳飞石', 'r', '投石车出现在身后，连投两轮共 6 块燃烧石砸向敌群，每块 2 伤害并留火场'],
+      ['霹雳飞石', 'r', '投石车在画面左侧排开，连投两轮共 6 块燃烧石砸向敌群，每块 2 伤害并留火场'],
       ['草木皆兵', 'r', '召出 2 个稻草人吸引敌人，被打碎时爆炸（3 伤害）'],
-      ['借我东风', 'r', '8 秒大风：持续吹开敌人，每 2 秒一阵强风吹倒普通敌人，敌人的箭石被吹回去'],
+      ['借我东风', 'r', '8 秒大风：把敌人往外吹，敌人的箭石被吹回去'],
       ['火烧连营', 'l', '在敌群处铺开一大片地火，火会在敌人之间传开'],
-      ['雷霆万钧', 'l', '落下 8 道天雷，优先劈人多的地方'],
-      ['水淹七军', 'r', '对准敌群涌出大水：浪头先拍开敌人，之后 7 秒水里的敌人持续受伤、移速大降'],
+      ['雷霆万钧', 'l', '4 道天雷落向敌群，每道连劈 3 下、在敌人之间窜动'],
+      ['水淹七军', 'r', '6 秒里一道道海浪从身后涌出向前冲，冲开沿途敌人并让其减速'],
     ],
   };
   // 每类按稀有度排：普通 → 稀有 → 传说（用户定），同稀有度保持原顺序
@@ -9997,10 +9999,12 @@ function updateShots(dt) {
 
 // ---------- 投石车 ----------
 function catapultVolley() {
+  for (const k in CH.yellow_catapult || {}) { const fr = CH.yellow_catapult[k], e = (LAZY.chapter2 || []).find(x => x[0] === fr.img); if (e && !e[0].src) e[0].src = e[1]; }   // 第一章也用正式投石车图：只单独下载这几帧
   // 霹雳飞石（加强）：投石车直接出现在主角身后，不再慢慢走进来；每台投两轮（共 6 块），砸向敌群
   for (let i = 0; i < 3; i++) {
-    const x = Math.max(cam.x + 20, Math.min(cam.x + viewW() - 20, hero.x - hero.f * (40 + i * 10))), y = Math.max(M.top + 20, Math.min(M.bot - 4, hero.y + (i - 1) * 34));
-    catapults.push({ x, y, tx: x, t: -i * .2, fired: false, phase: 'aim', ft: 0, shots: 2 });
+    // 用户定：投石车在画面最左边一字排开，往右投，投完往左撤出
+    const x = cam.x + 24 + (i % 2) * 26, y = M.top + 40 + i * ((M.bot - M.top - 60) / 2);
+    catapults.push({ x: x - 50, y, tx: x, t: -i * .15, fired: false, phase: 'in', ft: 0, shots: 2 });
   }
   sfx('land', cam.x + 40); say('投石车来了！', 1.6);
 }
@@ -10009,7 +10013,7 @@ function updateCatapults(dt) {
     c.t += dt;
     if (c.t < 0) continue;
     if (c.phase === 'in') {
-      c.x += 46 * dt;
+      c.x += 160 * dt;   // 快速推进场
       if (c.x >= c.tx) { c.x = c.tx; c.phase = 'aim'; c.ft = 0; }
     } else if (c.phase === 'aim') {
       c.ft += dt;
@@ -10076,10 +10080,15 @@ function drawCatapults() {
     if (c.t < 0) continue;
     const fr = c.phase === 'fire' ? 'fire' : c.phase === 'aim' ? 'load' : 'idle';
     const f = CH.yellow_catapult && (CH.yellow_catapult[fr] || CH.yellow_catapult.idle);
-    if (f && f.img) {
+    if (f && f.img && f.img.complete && f.img.naturalWidth) {
       const sc = .62, w = f.w * sc, h = f.h * sc;
-      ctx.drawImage(f.img, Math.round(c.x - w / 2), Math.round(c.y + 4 - h), w, h);
-    } else { ctx.fillStyle = '#5a3a1c'; ctx.fillRect(c.x - 18, c.y - 22, 36, 26); }
+      ctx.save(); ctx.translate(Math.round(c.x), 0); ctx.scale(-1, 1); ctx.drawImage(f.img, Math.round(-w / 2), Math.round(c.y + 4 - h), w, h); ctx.restore();   // 原图朝左（敌方用），我方投石车往右投，镜像
+    } else {   // 第一章没加载投石车图（只在第二章按需下载）：用代码画一台简易投石车
+      ctx.save(); ctx.translate(c.x, c.y); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 1, 18, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#6b4424'; ctx.fillRect(-16, -8, 32, 6); ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.arc(-11, -1, 4, 0, 7); ctx.arc(11, -1, 4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#7a5030'; ctx.fillRect(-3, -22, 6, 15);
+      const ang = c.phase === 'fire' ? -1.1 : -.25; ctx.save(); ctx.translate(0, -20); ctx.rotate(ang); ctx.fillStyle = '#8a5a32'; ctx.fillRect(-20, -2, 26, 4); ctx.fillStyle = '#4a3020'; ctx.fillRect(-22, -4, 5, 8); ctx.restore(); ctx.restore();
+    }
   }
   for (const s of allyShots) {
     ctx.fillStyle = '#6b6b6b';
