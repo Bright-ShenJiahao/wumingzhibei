@@ -272,6 +272,7 @@ let deathLandedAt = null, enemiesCelebrating = false;
 function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / chargeMaxMs())) : 0; }
 addEventListener('keydown', e => {
   if (window.XIAOCHANG && XIAOCHANG.blocks()) return;
+  if (result && !e.repeat && !(e.target && e.target.tagName === 'INPUT') && resultKey(e)) { e.preventDefault(); return; }   // 结算界面：键盘选按钮
   if (e.target && ['INPUT','SELECT','BUTTON'].includes(e.target.tagName) && window.XIAOCHANG && XIAOCHANG.active()) return;
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
@@ -1281,7 +1282,7 @@ let qiFx = [];   // 老卒的扇形剑气特效
 let blessFx = []; // 方士施法成功的黄圈
 // 攻击按下先等待：短按松开才出普通攻击，长按到 0.4 秒后转为蓄力。
 function atkPress() {
-  if (over) { if (result && gameT >= result.born) reset(); return; }
+  if (over) return;   // 结算界面由 resultKey 处理（J 确定当前选中的按钮）
   if (atkHeldSince) return;
   atkHeldSince = performance.now(); charging = false; chargeTier = 0; chargeTierFlash = 0;
 }
@@ -2336,7 +2337,7 @@ function update(dt) {
       coins: window.WALLET ? WALLET.runCoins() : 0,
       // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
-      rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      rank: won ? rankOf(endT) : '', sel: won ? 'restart' : 'revive', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
     if (window.WALLET) WALLET.flush();
@@ -2943,6 +2944,7 @@ function drawResult(HW, HH) {
     ctx.fillStyle = off ? 'rgba(52,40,26,.92)' : (red ? '#f6e2c0' : '#2b1a0c');
     ctx.fillText(label, x + bw / 2, yy + bh * .62 + lfs * .18);
     ctx.restore();
+    if (result.sel === act) { ctx.save(); ctx.globalAlpha = btnFade; ctx.strokeStyle = '#fff1b8'; ctx.lineWidth = 3; ctx.shadowColor = '#ffd76a'; ctx.shadowBlur = 10; ctx.strokeRect(x - 3, yy - 3, bw + 6, bh + 6); ctx.restore(); }   // 键盘选中
     uiBtns.push({ x, y: yy, w: bw, h: bh, act });
   };
   plank(0, '分享', 'share', false);
@@ -2973,6 +2975,7 @@ function drawResult(HW, HH) {
     const label = revives >= 1 ? '分享复活（第 3 条命起评分减半）' : '分享给好友 · 免费复活';
     ctx.fillText(label, rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
     ctx.restore();
+    if (result.sel === 'revive') { ctx.save(); ctx.strokeStyle = '#fff1b8'; ctx.lineWidth = 3; ctx.strokeRect(rx - 4, ry - 4, rw + 8, rh + 8); ctx.restore(); }
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
   ctx.globalAlpha = 1;
@@ -3061,9 +3064,15 @@ document.addEventListener('pointerdown', e => {
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation();
-      pressAct = b.act; pressAt = performance.now();
-      const act = b.act;
-      setTimeout(() => {
+      resultAct(b.act);
+      return;
+    }
+  }
+}, true);
+// 结算按钮：鼠标点、键盘选（← → / A D 移动，J / 回车 / 空格确定）都走这里
+function resultAct(act) {
+  pressAct = act; pressAt = performance.now();
+  setTimeout(() => {
         if (act === 'share') doShare();
         else if (act === 'revive') doRevive();
         else if (act === 'home') { if (window.TITLE) TITLE.show(); }
@@ -3073,11 +3082,19 @@ document.addEventListener('pointerdown', e => {
         }
         else if (act === 'prep') { if (window.TITLE) TITLE.openPreparation({ chapter: 2, view: 'campaign' }); }
         else reset();
-      }, 140);
-      return;
-    }
-  }
-}, true);
+  }, 140);
+}
+function resultKey(e) {
+  if (!result || gameT < result.born) return false;
+  const acts = uiBtns.map(b => b.act); if (!acts.length) return false;
+  if (!acts.includes(result.sel)) result.sel = acts.includes('revive') ? 'revive' : 'restart';
+  const order = ['revive', 'share', 'home', 'restart', 'next', 'prep'].filter(a => acts.includes(a));
+  const k = order.indexOf(result.sel);
+  if (['ArrowLeft', 'KeyA', 'ArrowUp', 'KeyW'].includes(e.code)) { result.sel = order[(k + order.length - 1) % order.length]; sfx('tick'); return true; }
+  if (['ArrowRight', 'KeyD', 'ArrowDown', 'KeyS'].includes(e.code)) { result.sel = order[(k + 1) % order.length]; sfx('tick'); return true; }
+  if (['Enter', 'KeyJ', 'Space', 'NumpadEnter'].includes(e.code)) { if (result.countSkip === false || gameT - result.born < 2.6) result.countSkip = true; resultAct(result.sel); return true; }
+  return false;
+}
 function drawShot(s) {
   if (s.kind === 'arrow') {
     const ar = IMG.ui_arrow;

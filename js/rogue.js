@@ -497,6 +497,8 @@
     summonState: () => ({ cooldown: skillCd }),
     catapultState: () => ({ cooldown: skillCd }),
     fireAura: () => ({ active: !!S.fireAura, stacks: S.fireAura ? auraStacks : 0 }),
+    // 调试用：直接获得某张锦囊（兵卡会顶替已有的兵卡）
+    grant(name) { if (!IMPL[name] || has[name]) return false; const isBing = allCards().some(c => c.name === name && c.cat === 'bing'); if (isBing && bing) { for (const k of Object.keys(has)) if (allCards().some(c => c.name === k && c.cat === 'bing')) delete has[k]; S.summon = 0; S.catapult = 0; } has[name] = 1; IMPL[name](); skillCd = 0; updateSkillButton(); return true; },
     grantReroll() { if (rerollToken) return false; rerollToken = true; return true; },
     rerolls: () => rerollToken, pickedUp: () => has, cards: () => offer,
     reset() {

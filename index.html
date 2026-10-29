@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=228e2f7f4a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=228e2f7f4a)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=620ff8d8b8" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=620ff8d8b8)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='fafe1f0aa683',busy=false;
+var BUILD='76cde631e9f4',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2650,6 +2650,28 @@ const Boss = (() => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
     btn(heroGroup, '给太平飞剑', '', () => { if (window.ARTIFACT) { ARTIFACT.grant('feijian'); ARTIFACT.equip('feijian'); ARTIFACT.startRun(); if (typeof say === 'function') say('已获得并装备太平飞剑', 2); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
+    // 测评锦囊：直接挑任意一张拿到手（要在关卡里用）
+    btn(heroGroup, '选锦囊', '', () => {
+      let box = document.getElementById('dbgTips');
+      if (!box) {
+        box = document.createElement('div'); box.id = 'dbgTips';
+        box.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(420px,60vw);overflow:auto;z-index:10003;background:#1d140ef2;border:1px solid #9d7845;border-radius:8px;padding:8px;font:13px sans-serif;color:#ecdcbc';
+        document.body.append(box);
+        box.addEventListener('click', e => {
+          const b = e.target.closest('[data-tip]');
+          if (b) { const ok = window.ROGUE && ROGUE.grant(b.dataset.tip); if (typeof say === 'function') say(ok ? '获得「' + b.dataset.tip + '」' : '已经有了，或不在关卡里', 1.6); render(); return; }
+          if (e.target.closest('[data-x]')) box.hidden = true;
+        });
+      }
+      const render = () => {
+        const T = window.TIPBAG; if (!T) return;
+        box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="color:#f1d58f">选锦囊（点一下直接获得）</b><button data-x style="min-height:30px">关闭</button></div>' +
+          T.CATS.map(c => `<div style="margin:6px 0 2px;color:${c.color};font-weight:700">${c.name}</div><div style="display:flex;flex-wrap:wrap;gap:4px">` +
+            T.CARDS[c.id].map(([n, r, d]) => { const got = window.ROGUE && ROGUE.has(n); return `<button data-tip="${n}" title="${d}" style="min-height:30px;padding:2px 8px;border-radius:5px;border:1px solid ${r === 'l' ? '#e0a63a' : r === 'r' ? '#5d9ad6' : '#7a5c38'};background:${got ? '#4a6a3a' : '#35271d'};color:#f5e6c4;cursor:pointer">${got ? '✓ ' : ''}${n}</button>`; }).join('') + '</div>').join('') +
+          '<div style="margin-top:8px;font-size:12px;color:#cdb78e">鼠标停在按钮上看说明；兵卡（将令）只能有一张，选新的会顶替旧的，按 U 使用。</div>';
+      };
+      render(); box.hidden = false;
+    });
     // 预览结算动画（数字滚动 + 铜钱雨）：直接判本局通关，结算显示 37 击倒、180 金币
     btn(heroGroup, '看结算动画', '', () => {
       if (window.TITLE && TITLE.blocks && TITLE.blocks()) { if (TITLE.skip) TITLE.skip(); if (window.ROOM && ROOM.skip) ROOM.skip(); }
@@ -4458,6 +4480,8 @@ const Boss = (() => {
     summonState: () => ({ cooldown: skillCd }),
     catapultState: () => ({ cooldown: skillCd }),
     fireAura: () => ({ active: !!S.fireAura, stacks: S.fireAura ? auraStacks : 0 }),
+    // 调试用：直接获得某张锦囊（兵卡会顶替已有的兵卡）
+    grant(name) { if (!IMPL[name] || has[name]) return false; const isBing = allCards().some(c => c.name === name && c.cat === 'bing'); if (isBing && bing) { for (const k of Object.keys(has)) if (allCards().some(c => c.name === k && c.cat === 'bing')) delete has[k]; S.summon = 0; S.catapult = 0; } has[name] = 1; IMPL[name](); skillCd = 0; updateSkillButton(); return true; },
     grantReroll() { if (rerollToken) return false; rerollToken = true; return true; },
     rerolls: () => rerollToken, pickedUp: () => has, cards: () => offer,
     reset() {
@@ -8060,6 +8084,7 @@ let deathLandedAt = null, enemiesCelebrating = false;
 function chargeRatio(now = performance.now()) { return atkHeldSince ? Math.min(1, Math.max(0, (now - atkHeldSince) / chargeMaxMs())) : 0; }
 addEventListener('keydown', e => {
   if (window.XIAOCHANG && XIAOCHANG.blocks()) return;
+  if (result && !e.repeat && !(e.target && e.target.tagName === 'INPUT') && resultKey(e)) { e.preventDefault(); return; }   // 结算界面：键盘选按钮
   if (e.target && ['INPUT','SELECT','BUTTON'].includes(e.target.tagName) && window.XIAOCHANG && XIAOCHANG.active()) return;
   if (e.target && e.target.tagName === 'INPUT') return;   // 在标题页输入名字时别触发游戏按键
   if (window.TITLE && TITLE.blocks()) return;             // 标题/转场期间不响应游戏按键
@@ -9069,7 +9094,7 @@ let qiFx = [];   // 老卒的扇形剑气特效
 let blessFx = []; // 方士施法成功的黄圈
 // 攻击按下先等待：短按松开才出普通攻击，长按到 0.4 秒后转为蓄力。
 function atkPress() {
-  if (over) { if (result && gameT >= result.born) reset(); return; }
+  if (over) return;   // 结算界面由 resultKey 处理（J 确定当前选中的按钮）
   if (atkHeldSince) return;
   atkHeldSince = performance.now(); charging = false; chargeTier = 0; chargeTierFlash = 0;
 }
@@ -10124,7 +10149,7 @@ function update(dt) {
       coins: window.WALLET ? WALLET.runCoins() : 0,
       // 困难 ×1，简单 ×0.8（= 困难 ÷1.25）；时间取整后再算，和服务端一分不差
       score: Math.round((scoreOfRun(kills, Math.round(endT), won ? 6 : Math.max(0, zoneNow - 1), won, hitsTaken) + runBonus) * (hardMode() ? 1 : .8) * (revives >= 2 ? .5 : 1)),   // 第 3 条命起评分减半
-      rank: won ? rankOf(endT) : '', born: gameT + (won ? 1.2 : .45),
+      rank: won ? rankOf(endT) : '', sel: won ? 'restart' : 'revive', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
     if (window.WALLET) WALLET.flush();
@@ -10731,6 +10756,7 @@ function drawResult(HW, HH) {
     ctx.fillStyle = off ? 'rgba(52,40,26,.92)' : (red ? '#f6e2c0' : '#2b1a0c');
     ctx.fillText(label, x + bw / 2, yy + bh * .62 + lfs * .18);
     ctx.restore();
+    if (result.sel === act) { ctx.save(); ctx.globalAlpha = btnFade; ctx.strokeStyle = '#fff1b8'; ctx.lineWidth = 3; ctx.shadowColor = '#ffd76a'; ctx.shadowBlur = 10; ctx.strokeRect(x - 3, yy - 3, bw + 6, bh + 6); ctx.restore(); }   // 键盘选中
     uiBtns.push({ x, y: yy, w: bw, h: bh, act });
   };
   plank(0, '分享', 'share', false);
@@ -10761,6 +10787,7 @@ function drawResult(HW, HH) {
     const label = revives >= 1 ? '分享复活（第 3 条命起评分减半）' : '分享给好友 · 免费复活';
     ctx.fillText(label, rx + rw / 2, ry + rh * .68 + (pressed ? 2 : 0));
     ctx.restore();
+    if (result.sel === 'revive') { ctx.save(); ctx.strokeStyle = '#fff1b8'; ctx.lineWidth = 3; ctx.strokeRect(rx - 4, ry - 4, rw + 8, rh + 8); ctx.restore(); }
     uiBtns.push({ x: rx, y: ry, w: rw, h: rh, act: 'revive' });
   }
   ctx.globalAlpha = 1;
@@ -10849,9 +10876,15 @@ document.addEventListener('pointerdown', e => {
   for (const b of uiBtns) {
     if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) {
       e.preventDefault(); e.stopPropagation();
-      pressAct = b.act; pressAt = performance.now();
-      const act = b.act;
-      setTimeout(() => {
+      resultAct(b.act);
+      return;
+    }
+  }
+}, true);
+// 结算按钮：鼠标点、键盘选（← → / A D 移动，J / 回车 / 空格确定）都走这里
+function resultAct(act) {
+  pressAct = act; pressAt = performance.now();
+  setTimeout(() => {
         if (act === 'share') doShare();
         else if (act === 'revive') doRevive();
         else if (act === 'home') { if (window.TITLE) TITLE.show(); }
@@ -10861,11 +10894,19 @@ document.addEventListener('pointerdown', e => {
         }
         else if (act === 'prep') { if (window.TITLE) TITLE.openPreparation({ chapter: 2, view: 'campaign' }); }
         else reset();
-      }, 140);
-      return;
-    }
-  }
-}, true);
+  }, 140);
+}
+function resultKey(e) {
+  if (!result || gameT < result.born) return false;
+  const acts = uiBtns.map(b => b.act); if (!acts.length) return false;
+  if (!acts.includes(result.sel)) result.sel = acts.includes('revive') ? 'revive' : 'restart';
+  const order = ['revive', 'share', 'home', 'restart', 'next', 'prep'].filter(a => acts.includes(a));
+  const k = order.indexOf(result.sel);
+  if (['ArrowLeft', 'KeyA', 'ArrowUp', 'KeyW'].includes(e.code)) { result.sel = order[(k + order.length - 1) % order.length]; sfx('tick'); return true; }
+  if (['ArrowRight', 'KeyD', 'ArrowDown', 'KeyS'].includes(e.code)) { result.sel = order[(k + 1) % order.length]; sfx('tick'); return true; }
+  if (['Enter', 'KeyJ', 'Space', 'NumpadEnter'].includes(e.code)) { if (result.countSkip === false || gameT - result.born < 2.6) result.countSkip = true; resultAct(result.sel); return true; }
+  return false;
+}
 function drawShot(s) {
   if (s.kind === 'arrow') {
     const ar = IMG.ui_arrow;

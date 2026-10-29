@@ -86,6 +86,28 @@
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
     btn(heroGroup, '给太平飞剑', '', () => { if (window.ARTIFACT) { ARTIFACT.grant('feijian'); ARTIFACT.equip('feijian'); ARTIFACT.startRun(); if (typeof say === 'function') say('已获得并装备太平飞剑', 2); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
+    // 测评锦囊：直接挑任意一张拿到手（要在关卡里用）
+    btn(heroGroup, '选锦囊', '', () => {
+      let box = document.getElementById('dbgTips');
+      if (!box) {
+        box = document.createElement('div'); box.id = 'dbgTips';
+        box.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(420px,60vw);overflow:auto;z-index:10003;background:#1d140ef2;border:1px solid #9d7845;border-radius:8px;padding:8px;font:13px sans-serif;color:#ecdcbc';
+        document.body.append(box);
+        box.addEventListener('click', e => {
+          const b = e.target.closest('[data-tip]');
+          if (b) { const ok = window.ROGUE && ROGUE.grant(b.dataset.tip); if (typeof say === 'function') say(ok ? '获得「' + b.dataset.tip + '」' : '已经有了，或不在关卡里', 1.6); render(); return; }
+          if (e.target.closest('[data-x]')) box.hidden = true;
+        });
+      }
+      const render = () => {
+        const T = window.TIPBAG; if (!T) return;
+        box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="color:#f1d58f">选锦囊（点一下直接获得）</b><button data-x style="min-height:30px">关闭</button></div>' +
+          T.CATS.map(c => `<div style="margin:6px 0 2px;color:${c.color};font-weight:700">${c.name}</div><div style="display:flex;flex-wrap:wrap;gap:4px">` +
+            T.CARDS[c.id].map(([n, r, d]) => { const got = window.ROGUE && ROGUE.has(n); return `<button data-tip="${n}" title="${d}" style="min-height:30px;padding:2px 8px;border-radius:5px;border:1px solid ${r === 'l' ? '#e0a63a' : r === 'r' ? '#5d9ad6' : '#7a5c38'};background:${got ? '#4a6a3a' : '#35271d'};color:#f5e6c4;cursor:pointer">${got ? '✓ ' : ''}${n}</button>`; }).join('') + '</div>').join('') +
+          '<div style="margin-top:8px;font-size:12px;color:#cdb78e">鼠标停在按钮上看说明；兵卡（将令）只能有一张，选新的会顶替旧的，按 U 使用。</div>';
+      };
+      render(); box.hidden = false;
+    });
     // 预览结算动画（数字滚动 + 铜钱雨）：直接判本局通关，结算显示 37 击倒、180 金币
     btn(heroGroup, '看结算动画', '', () => {
       if (window.TITLE && TITLE.blocks && TITLE.blocks()) { if (TITLE.skip) TITLE.skip(); if (window.ROOM && ROOM.skip) ROOM.skip(); }
