@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=e21683593a" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=e21683593a)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=0190f474aa" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=0190f474aa)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='91548146b781',busy=false;
+var BUILD='2fb87d1cc44e',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4027,6 +4027,7 @@ const Boss = (() => {
     return out;
   }
   let pool = null, lockedNames = new Set(), seen = new Set(), bingChance = .3;
+  let hoverI = -1;
   let open = false, offer = [], anim = 0, rects = [], rerollToken = false, rerollRect = null;
   let inputLockT = 0, shieldReady = false, shieldTimer = 10, skillCd = 0;
   let auraStacks = 0, auraHold = 0, auraIdle = 0;
@@ -4120,6 +4121,7 @@ const Boss = (() => {
   function useSkill() {
     if (!bing || skillCd > 0) return '';
     skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton(); stat(SKILL_NAME[bing], 0, 1);
+    if (bing === 'wanjian') { castRain(); return 'rain'; }
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
     else if (bing === 'xifeng') { windT = 8; gustT = 0; if (typeof say === 'function') say('借我东风！', 1.4); }
@@ -4139,6 +4141,38 @@ const Boss = (() => {
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
+  // 万箭齐发（改成箭雨）：身后弓手阵往敌群上空齐射，3 秒内约 42 支箭落在敌人最密的一片（宽 140），每支 0.9 伤害（半径约 16），同一敌人一次最多中 8 支
+  let rain = null, rainArrows = [];
+  function castRain() {
+    const c = cluster(60); rain = { x: c.x, y: c.y, t: 0, acc: 0, hits: new Map() };
+    if (typeof sfx === 'function') sfx('sling', hero.x); if (typeof say === 'function') say('万箭齐发！', 1.2);
+  }
+  function updateRain(dt) {
+    if (rain) {
+      rain.t += dt; rain.acc += dt * 14;
+      // 箭雨跟着敌群慢慢挪（目标走开也能追上一点）
+      if (rain.t > .5) { const c = cluster(60); rain.x += (c.x - rain.x) * Math.min(1, dt * 1.5); rain.y += (c.y - rain.y) * Math.min(1, dt * 1.5); }
+      while (rain.acc >= 1 && rain.t > .4) { rain.acc--; const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()); rainArrows.push({ x: rain.x + Math.cos(a) * 60 * r, y: rain.y + Math.sin(a) * 18 * r, t: 0, hit: false }); }
+      if (rain.t > 3.4) rain = null;
+    }
+    for (const a of rainArrows) {
+      a.t += dt;
+      if (a.t >= .25 && !a.hit) {
+        a.hit = true;
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - a.x) < 16 && Math.abs(z.y - a.y) < 12) { const H = (rain && rain.hits) || new Map(), n = H.get(z) || 0; if (n >= 8) continue; H.set(z, n + 1); stat('万箭齐发', .9, 0); hit(z, .9, 10, Math.sign(z.x - hero.x) || 1, false, 0, .15, false, false, { secondary: true }); }
+      }
+    }
+    rainArrows = rainArrows.filter(a => a.t < 1.2);
+  }
+  function drawRain() {
+    if (rain && rain.t < 3.4) { ctx.save(); ctx.globalAlpha = .35 * Math.min(1, rain.t * 3); ctx.strokeStyle = '#ffe6a0'; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.ellipse(rain.x, rain.y, 70, 20, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    for (const a of rainArrows) {
+      ctx.save();
+      if (a.t < .25) { const p = a.t / .25, hy = a.y - 160 * (1 - p); ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x - 4, hy - 14); ctx.lineTo(a.x, hy); ctx.stroke(); ctx.fillStyle = '#cfd6dc'; ctx.fillRect(a.x - 1, hy - 1, 2, 2); }
+      else { ctx.globalAlpha = Math.max(0, 1 - (a.t - .8) / .4); ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x - 3, a.y - 9); ctx.lineTo(a.x, a.y); ctx.stroke(); ctx.fillStyle = '#e8e0cc'; ctx.fillRect(a.x - 4, a.y - 10, 2, 2); }   // 插在地上的箭
+      ctx.restore();
+    }
+  }
   function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
     const c = cluster(60);
     for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [] });
@@ -4164,6 +4198,7 @@ const Boss = (() => {
   function drawImg(k, x, y, w, alpha = 1, flip = false) { const i = im(k); if (!i) return false; const h = w * i.height / i.width; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha *= alpha; ctx.translate(x, y); if (flip) ctx.scale(-1, 1); ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore(); return true; }
   function drawWorld() {
     if (typeof ctx === 'undefined') return;
+    drawRain();
     const T = performance.now() / 1000;
     ctx.save();
     for (const w of waters) for (const v of w.waves) { const p = Math.abs(v.x - v.x0) / 320; drawImg(p < .7 ? 'tip_wave1' : 'tip_wave2', v.x, v.y + 6, 64, Math.min(1, (1 - p) * 3), w.dir < 0); }   // 海浪：一道道往前冲
@@ -4475,6 +4510,7 @@ const Boss = (() => {
     if (S.shield && !shieldReady) { shieldTimer -= dt; if (shieldTimer <= 0) { shieldReady = true; shieldTimer = 0; } }
     if (skillCd > 0) { skillCd = Math.max(0, skillCd - dt); updateSkillButton(); }
     if (thunder.length) updateThunder(dt);
+    if (rain || rainArrows.length) updateRain(dt);
     if (S.fireAura && typeof zs !== 'undefined') {
       let near = false;
       const lv = Math.max(1, auraStacks);
@@ -4510,16 +4546,23 @@ const Boss = (() => {
     const cw = Math.min(194, (W - 48 - gap * (n - 1)) / n, ch * .68), x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H * (compact ? .245 : .29);
     const frame = typeof IMG !== 'undefined' ? IMG.ui_rogue_card : null;
     for (let i = 0; i < n; i++) {
-      const c = offer[i], x = x0 + i * (cw + gap), y = y0 + Math.sin(anim * 1.5 + i) * 2;
+      const hv = hoverI === i ? 1 : 0;   // 鼠标移上去：卡片上浮放大（代替选中框）
+      const c = offer[i], x = x0 + i * (cw + gap), y = y0 + Math.sin(anim * 1.5 + i) * 2 - hv * 8;
+      ctx.save(); if (hv) { ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(1.04, 1.04); ctx.translate(-(x + cw / 2), -(y + ch / 2)); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 18; }
       if (frame && frame.complete && frame.naturalWidth) ctx.drawImage(frame, x, y, cw, ch);
       else { ctx.fillStyle = '#342117'; ctx.fillRect(x, y, cw, ch); }
-      // 稀有度只用框色：稀有蓝、传说金；兵卡青铜
-      const edge = c.isBing ? '#c08a4a' : c.r === 'l' ? '#f0b84a' : c.r === 'r' ? '#5d9ad6' : '';
-      if (edge) { ctx.save(); ctx.strokeStyle = edge; ctx.lineWidth = 3; if (c.r === 'l') { ctx.shadowColor = edge; ctx.shadowBlur = 10; } ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6); ctx.restore(); }
+      ctx.restore();
+      // 稀有度（用户定：不用外框）：稀有木纹透青光 + 蓝印「稀」；传说四周飘金光点 + 朱印「传」；卡名颜色区分
+      if (c.r === 'r') { ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = '#6fc6ff'; ctx.fillRect(x + 16, y + 22, cw - 32, ch - 44); ctx.restore(); }
+      if (c.r === 'l') { ctx.save(); for (let k = 0; k < 10; k++) { const a = anim * .9 + k * .63, px = x + cw / 2 + Math.cos(a) * (cw / 2 + 4) * Math.sin(a * 1.3 + k), py = y + ch / 2 + Math.sin(a) * (ch / 2 + 4); ctx.globalAlpha = .4 + .4 * Math.sin(anim * 3 + k); ctx.fillStyle = '#ffd76a'; ctx.fillRect(px, py, 2.5, 2.5); } ctx.restore(); }
+      const seal = c.isBing ? null : c.r === 'l' ? ['#b8321f', '传'] : c.r === 'r' ? ['#2f6fb0', '稀'] : null;
+      if (seal) { ctx.save(); ctx.fillStyle = seal[0]; ctx.globalAlpha = .92; const sx = x + 16, sy = y + 18; ctx.fillRect(sx, sy, 18, 18); ctx.strokeStyle = 'rgba(255,240,220,.7)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 2, sy + 2, 14, 14); ctx.fillStyle = '#fff4e0'; ctx.font = '700 12px "KaiTi","STKaiti",serif'; ctx.textAlign = 'center'; ctx.fillText(seal[1], sx + 9, sy + 13.5); ctx.restore(); }
       ctx.save(); ctx.beginPath(); ctx.rect(x + 18, y + 24, cw - 36, ch - 48); ctx.clip();
       ctx.font = '700 12px ' + F; ctx.fillStyle = c.color || '#d5b678'; ctx.fillText(c.catName, x + cw / 2, y + ch * .18, cw - 38);
-      ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.fillStyle = '#ffe08a'; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
+      ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
+      ctx.fillStyle = c.isBing ? '#f0c27a' : c.r === 'l' ? '#ffd24a' : c.r === 'r' ? '#8fd0ff' : '#f6ecd6';
       ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.shadowBlur = 0;
+      if (c.r === 'l') { const nw = ctx.measureText(c.name).width, sweep = ((anim * .8) % 1.6) - .3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55; const gx = x + cw / 2 - nw / 2 + nw * sweep; const gr = ctx.createLinearGradient(gx - 10, 0, gx + 10, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, 'rgba(255,250,220,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = gr; ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.restore(); }   // 传说：名字上扫过一道光
       const fs = Math.max(9, Math.min(12, cw * .067)); const lh = fs * 1.42; let ly = y + ch * .39;
       if (c.trig) { ctx.font = '700 ' + fs + 'px ' + F; ctx.fillStyle = '#ffcf6a'; ctx.fillText('【' + c.trig + '】', x + cw / 2, ly, cw - 40); ly += lh * 1.2; }   // 触发条件
       ctx.font = '600 ' + fs + 'px ' + F; ctx.fillStyle = '#f2e6c9';
@@ -4546,6 +4589,7 @@ const Boss = (() => {
     if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) { e.preventDefault(); e.stopPropagation(); rerollToken = false; offer.forEach(c => seen.delete(c.isBing ? 'bing:' + c.name : c.name)); offerCards(); return; }
     for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) { e.preventDefault(); e.stopPropagation(); choose(r.i); return; }
   }, { capture: true });
+  addEventListener('pointermove', e => { if (!open) return; hoverI = -1; for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) hoverI = r.i; });
   addEventListener('keydown', e => { if (!open) return; if (window.XIAOCHANG && XIAOCHANG.active()) { e.preventDefault(); e.stopImmediatePropagation(); } const k = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (k >= 0) choose(k); }, true);
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, drawWorld, update, tick, choose, useSkill, useSummon, useCatapult, absorbHit,
@@ -4561,7 +4605,7 @@ const Boss = (() => {
     rerolls: () => rerollToken, pickedUp: () => has, cards: () => offer,
     reset() {
       setOpen(false); offer = []; rerollToken = false; rerollRect = null; shieldReady = false; shieldTimer = 10; skillCd = 0; bing = '';
-      auraStacks = 0; auraHold = 0; auraIdle = 0; pool = null; thunder = [];
+      auraStacks = 0; auraHold = 0; auraIdle = 0; pool = null; thunder = []; rain = null; rainArrows = []; hoverI = -1;
       finisherUntil = finisherCd = avoidUntil = avoidCd = 0; avoidCrit = false; dodgeRollT = -1;
       vanguard = false; lastAlive = 0; momentum = momentumIdle = gale = killCritUntil = 0; rangedChain = { z: null, n: 0 }; volleyNext = false; stoneShots = 0;
       glowW = ''; glowN = glowIdle = 0; swapReady = swapPending = cunjin = cunjinNext = false; backCd = 0; hurtAt = -9; guardShield = guardShieldT = 0; sideUntil = zhanUntil = 0;
@@ -5677,7 +5721,7 @@ const Boss = (() => {
       ['回矢', 'l', '【汉弓】蓄力箭打死目标时返还这支箭', 'bow'],
     ],
     bing: [
-      ['万箭齐发', 'n', '对准前方连射两轮、每轮 10 支穿透箭，每支 1 伤害，同一敌人最多中 3 支'],
+      ['万箭齐发', 'n', '弓手阵往敌群上空齐射，3 秒内约 40 支箭从天而降，每支 0.9 伤害'],
       ['霹雳飞石', 'r', '投石车在画面左侧排开，连投两轮共 6 块燃烧石砸向敌群，每块 2 伤害并留火场'],
       ['草木皆兵', 'r', '召出 2 个稻草人吸引敌人，被打碎时爆炸（3 伤害）'],
       ['借我东风', 'r', '8 秒大风：把敌人往外吹，敌人的箭石被吹回去'],
@@ -5719,7 +5763,7 @@ const Boss = (() => {
   function css() {
     if (document.getElementById('tipBagCss')) return;
     const s = document.createElement('style'); s.id = 'tipBagCss';
-    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}#tipBag .tcell{position:relative;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;background:var(--card) center/100% 100% no-repeat;border-radius:6px;cursor:pointer;color:#f1d58f;outline:2px solid transparent;outline-offset:-1px}#tipBag .tcell.r{outline-color:#4f7fae}#tipBag .tcell.l{outline-color:#e0a63a;box-shadow:0 0 8px #e0a63a99}#tipBag .tcell.on{filter:brightness(1.3);box-shadow:0 0 0 3px #1c140e,0 0 0 5px #fff3c4}#tipBag .tcell.l.on{box-shadow:0 0 0 3px #1c140e,0 0 0 5px #fff3c4,0 0 10px #e0a63a}#tipBag .tnm{writing-mode:vertical-rl;font:700 15px MaShanZheng,"STKaiti",serif;letter-spacing:2px;text-shadow:0 1px 2px #000}#tipBag .tdot{position:absolute;top:9%;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;box-shadow:0 0 3px #000}#tipBag .tslot.got{border-style:solid;border-color:#e5c98a;color:#f1d58f;cursor:pointer}#tipBag .tslot.bad{opacity:.45;text-decoration:line-through}#tipBag .tsum{text-align:center;font-size:12px;margin:-4px 0 8px;color:#cdb78e}#tipBag .tsum b{color:#f1d58f}#tipBag .tlock{float:right;min-height:30px;padding:2px 12px;border:1px solid #e5c98a;border-radius:5px;background:#6b4a2a;color:#fff3c4;cursor:pointer}#tipBag .tlock.on{background:#3a2a1c;color:#cdb78e;border-color:#7a5c38}#tipBag .tno{float:right;font-size:12px;color:#c98a6a}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
+    s.textContent = '#tipBag{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#tipBag[hidden]{display:none!important}#tipBag section{position:relative;box-sizing:border-box;width:min(680px,96vw);max-height:92dvh;overflow:auto;padding:clamp(12px,3vh,22px) clamp(12px,3vw,24px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#tipBag h3{margin:2px 0 4px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#tipBag .tx{position:absolute;right:14px;top:12px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:34px;padding:2px 14px;cursor:pointer}#tipBag .tsub{text-align:center;font-size:12px;color:#cdb78e;margin:0 0 10px}#tipBag .tlocks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}#tipBag .tcol{background:#2a1f17;border:1px solid #6e5232;border-radius:6px;padding:4px;text-align:center;font-size:12px}#tipBag .tcol b{display:block;font-size:14px}#tipBag .tslot{margin-top:4px;height:26px;line-height:24px;border:1px dashed #7a5c38;border-radius:4px;color:#8f7656}#tipBag .ttabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#tipBag .ttabs button{flex:1;min-height:32px;border:1px solid #7a5c38;background:#35271d;color:#ecdcbc;border-radius:5px;cursor:pointer}#tipBag .ttabs button.on{background:#6b4a2a;color:#fff;border-color:#e5c98a}#tipBag .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}#tipBag .tcell{position:relative;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;background:var(--card) center/100% 100% no-repeat;border-radius:6px;cursor:pointer;color:#f1d58f;outline:2px solid transparent;outline-offset:-1px}#tipBag .tcell.r .tnm{color:#8fd0ff}#tipBag .tcell.l .tnm{color:#ffd24a}#tipBag .tcell .tseal{position:absolute;top:4px;left:4px;width:13px;height:13px;font:700 9px/13px KaiTi,STKaiti,serif;color:#fff4e0;text-align:center;border-radius:1px}#tipBag .tcell.r .tseal{background:#2f6fb0}#tipBag .tcell.l .tseal{background:#b8321f}#tipBag .tcell.on{filter:brightness(1.3);box-shadow:0 0 0 3px #1c140e,0 0 0 5px #fff3c4}#tipBag .tnm{writing-mode:vertical-rl;font:700 15px MaShanZheng,"STKaiti",serif;letter-spacing:2px;text-shadow:0 1px 2px #000}#tipBag .tdot{position:absolute;top:9%;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;box-shadow:0 0 3px #000}#tipBag .tslot.got{border-style:solid;border-color:#e5c98a;color:#f1d58f;cursor:pointer}#tipBag .tslot.bad{opacity:.45;text-decoration:line-through}#tipBag .tsum{text-align:center;font-size:12px;margin:-4px 0 8px;color:#cdb78e}#tipBag .tsum b{color:#f1d58f}#tipBag .tlock{float:right;min-height:30px;padding:2px 12px;border:1px solid #e5c98a;border-radius:5px;background:#6b4a2a;color:#fff3c4;cursor:pointer}#tipBag .tlock.on{background:#3a2a1c;color:#cdb78e;border-color:#7a5c38}#tipBag .tno{float:right;font-size:12px;color:#c98a6a}#tipBag .tdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px}#tipBag .tdet b{color:#f1d58f;margin-right:8px}#tipBag .tdet i{font-style:normal;font-size:12px}#tipBag .tdet p{margin:3px 0 0;font-size:13px;color:#d9c8a4}#tipBag .tnote{margin:8px 0 0;font-size:12px;color:#cdb78e;text-align:center}';
     document.head.append(s);
   }
   function render(box) {
@@ -5728,7 +5772,7 @@ const Boss = (() => {
     const lockRow = CATS.filter(c => c.id !== 'bing').map(c => { const card = locks[c.id] && find(c.id, locks[c.id]), ok = card && usable(c.id, card); return `<div class="tcol"><b style="color:${c.color}">${c.name}</b><div class="tslot${card ? ' got' : ''}${card && !ok ? ' bad' : ''}" ${card ? `data-unlock="${c.id}"` : ''}>${card ? `🔒 ${card[0]}` : '空'}</div></div>`; }).join('');
     const tabs = CATS.map(c => `<button type="button" data-tab="${c.id}" class="${c.id === tab ? 'on' : ''}">${c.name} ${CARDS[c.id].length}</button>`).join('');
     const cards = CARDS[tab], cur = cards[Math.min(sel, cards.length - 1)];
-    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i></div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">${locks[tab] ? '换成这张' : '锁定'} · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${trigOf(cur[0], tab) ? `<span style="color:#ffcf6a">【${trigOf(cur[0], tab)}】</span> ` : ''}${cur[2]}</p></div>`;
+    const list = `<div class="tgrid">${cards.map(([n, r], i) => `<div class="tcell ${r}${cards[i] === cur ? ' on' : ''}" data-i="${i}"><span class="tnm">${n}</span><i class="tdot" style="background:${cat.color}"></i>${r === 'l' ? '<b class="tseal">传</b>' : r === 'r' ? '<b class="tseal">稀</b>' : ''}</div>`).join('')}</div><div class="tdet"><b>${cur[0]}</b>${tab === 'bing' ? '' : locks[tab] === cur[0] ? `<button type="button" class="tlock on" data-lock="0">取消锁定</button>` : usable(tab, cur) ? `<button type="button" class="tlock" data-lock="1">${locks[tab] ? '换成这张' : '锁定'} · ${PRICE[cur[1]]} 金币</button>` : '<span class="tno">武器槽里没有这把武器</span>'}<p>${trigOf(cur[0], tab) ? `<span style="color:#ffcf6a">【${trigOf(cur[0], tab)}】</span> ` : ''}${cur[2]}</p></div>`;
     const card = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui.rogue_card;
     box.style.setProperty('--card', card ? `url(${card})` : '#3a2a1c');
     box.innerHTML = `<section><button class="tx" type="button">关闭</button><h3>锦囊</h3><p class="tsub">每局卡池 20 张：每类可锁定 1 张（长期有效），其余随机</p><div class="tlocks">${lockRow}</div><p class="tsum">已锁 ${lockList().length} / 5 · 现有金币 <b>${window.WALLET ? WALLET.coins() : 0}</b>${msg ? ' · ' + msg : ''}</p><div class="ttabs">${tabs}</div>${list}<p class="tnote">${tab === 'bing' ? '兵类不进卡池：三选一时偶尔多出第 4 张兵卡，选了后本局不再出现。' : tab === 'zhuan' ? '武器专属：武器槽里有这把武器才会抽到。' : '锁定一次付费，以后每局自动带上；换卡要重新付费，取消不退钱。'}</p></section>`;

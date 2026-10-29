@@ -44,6 +44,7 @@
     return out;
   }
   let pool = null, lockedNames = new Set(), seen = new Set(), bingChance = .3;
+  let hoverI = -1;
   let open = false, offer = [], anim = 0, rects = [], rerollToken = false, rerollRect = null;
   let inputLockT = 0, shieldReady = false, shieldTimer = 10, skillCd = 0;
   let auraStacks = 0, auraHold = 0, auraIdle = 0;
@@ -137,6 +138,7 @@
   function useSkill() {
     if (!bing || skillCd > 0) return '';
     skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton(); stat(SKILL_NAME[bing], 0, 1);
+    if (bing === 'wanjian') { castRain(); return 'rain'; }
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
     else if (bing === 'xifeng') { windT = 8; gustT = 0; if (typeof say === 'function') say('借我东风！', 1.4); }
@@ -156,6 +158,38 @@
     return true;
   }
   // ---- 雷霆万钧：屏幕内落 6 道天雷，优先劈人多的地方 ----
+  // 万箭齐发（改成箭雨）：身后弓手阵往敌群上空齐射，3 秒内约 42 支箭落在敌人最密的一片（宽 140），每支 0.9 伤害（半径约 16），同一敌人一次最多中 8 支
+  let rain = null, rainArrows = [];
+  function castRain() {
+    const c = cluster(60); rain = { x: c.x, y: c.y, t: 0, acc: 0, hits: new Map() };
+    if (typeof sfx === 'function') sfx('sling', hero.x); if (typeof say === 'function') say('万箭齐发！', 1.2);
+  }
+  function updateRain(dt) {
+    if (rain) {
+      rain.t += dt; rain.acc += dt * 14;
+      // 箭雨跟着敌群慢慢挪（目标走开也能追上一点）
+      if (rain.t > .5) { const c = cluster(60); rain.x += (c.x - rain.x) * Math.min(1, dt * 1.5); rain.y += (c.y - rain.y) * Math.min(1, dt * 1.5); }
+      while (rain.acc >= 1 && rain.t > .4) { rain.acc--; const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()); rainArrows.push({ x: rain.x + Math.cos(a) * 60 * r, y: rain.y + Math.sin(a) * 18 * r, t: 0, hit: false }); }
+      if (rain.t > 3.4) rain = null;
+    }
+    for (const a of rainArrows) {
+      a.t += dt;
+      if (a.t >= .25 && !a.hit) {
+        a.hit = true;
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - a.x) < 16 && Math.abs(z.y - a.y) < 12) { const H = (rain && rain.hits) || new Map(), n = H.get(z) || 0; if (n >= 8) continue; H.set(z, n + 1); stat('万箭齐发', .9, 0); hit(z, .9, 10, Math.sign(z.x - hero.x) || 1, false, 0, .15, false, false, { secondary: true }); }
+      }
+    }
+    rainArrows = rainArrows.filter(a => a.t < 1.2);
+  }
+  function drawRain() {
+    if (rain && rain.t < 3.4) { ctx.save(); ctx.globalAlpha = .35 * Math.min(1, rain.t * 3); ctx.strokeStyle = '#ffe6a0'; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.ellipse(rain.x, rain.y, 70, 20, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    for (const a of rainArrows) {
+      ctx.save();
+      if (a.t < .25) { const p = a.t / .25, hy = a.y - 160 * (1 - p); ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x - 4, hy - 14); ctx.lineTo(a.x, hy); ctx.stroke(); ctx.fillStyle = '#cfd6dc'; ctx.fillRect(a.x - 1, hy - 1, 2, 2); }
+      else { ctx.globalAlpha = Math.max(0, 1 - (a.t - .8) / .4); ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(a.x - 3, a.y - 9); ctx.lineTo(a.x, a.y); ctx.stroke(); ctx.fillStyle = '#e8e0cc'; ctx.fillRect(a.x - 4, a.y - 10, 2, 2); }   // 插在地上的箭
+      ctx.restore();
+    }
+  }
   function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
     const c = cluster(60);
     for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [] });
@@ -181,6 +215,7 @@
   function drawImg(k, x, y, w, alpha = 1, flip = false) { const i = im(k); if (!i) return false; const h = w * i.height / i.width; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha *= alpha; ctx.translate(x, y); if (flip) ctx.scale(-1, 1); ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore(); return true; }
   function drawWorld() {
     if (typeof ctx === 'undefined') return;
+    drawRain();
     const T = performance.now() / 1000;
     ctx.save();
     for (const w of waters) for (const v of w.waves) { const p = Math.abs(v.x - v.x0) / 320; drawImg(p < .7 ? 'tip_wave1' : 'tip_wave2', v.x, v.y + 6, 64, Math.min(1, (1 - p) * 3), w.dir < 0); }   // 海浪：一道道往前冲
@@ -492,6 +527,7 @@
     if (S.shield && !shieldReady) { shieldTimer -= dt; if (shieldTimer <= 0) { shieldReady = true; shieldTimer = 0; } }
     if (skillCd > 0) { skillCd = Math.max(0, skillCd - dt); updateSkillButton(); }
     if (thunder.length) updateThunder(dt);
+    if (rain || rainArrows.length) updateRain(dt);
     if (S.fireAura && typeof zs !== 'undefined') {
       let near = false;
       const lv = Math.max(1, auraStacks);
@@ -527,16 +563,23 @@
     const cw = Math.min(194, (W - 48 - gap * (n - 1)) / n, ch * .68), x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H * (compact ? .245 : .29);
     const frame = typeof IMG !== 'undefined' ? IMG.ui_rogue_card : null;
     for (let i = 0; i < n; i++) {
-      const c = offer[i], x = x0 + i * (cw + gap), y = y0 + Math.sin(anim * 1.5 + i) * 2;
+      const hv = hoverI === i ? 1 : 0;   // 鼠标移上去：卡片上浮放大（代替选中框）
+      const c = offer[i], x = x0 + i * (cw + gap), y = y0 + Math.sin(anim * 1.5 + i) * 2 - hv * 8;
+      ctx.save(); if (hv) { ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(1.04, 1.04); ctx.translate(-(x + cw / 2), -(y + ch / 2)); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 18; }
       if (frame && frame.complete && frame.naturalWidth) ctx.drawImage(frame, x, y, cw, ch);
       else { ctx.fillStyle = '#342117'; ctx.fillRect(x, y, cw, ch); }
-      // 稀有度只用框色：稀有蓝、传说金；兵卡青铜
-      const edge = c.isBing ? '#c08a4a' : c.r === 'l' ? '#f0b84a' : c.r === 'r' ? '#5d9ad6' : '';
-      if (edge) { ctx.save(); ctx.strokeStyle = edge; ctx.lineWidth = 3; if (c.r === 'l') { ctx.shadowColor = edge; ctx.shadowBlur = 10; } ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6); ctx.restore(); }
+      ctx.restore();
+      // 稀有度（用户定：不用外框）：稀有木纹透青光 + 蓝印「稀」；传说四周飘金光点 + 朱印「传」；卡名颜色区分
+      if (c.r === 'r') { ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = '#6fc6ff'; ctx.fillRect(x + 16, y + 22, cw - 32, ch - 44); ctx.restore(); }
+      if (c.r === 'l') { ctx.save(); for (let k = 0; k < 10; k++) { const a = anim * .9 + k * .63, px = x + cw / 2 + Math.cos(a) * (cw / 2 + 4) * Math.sin(a * 1.3 + k), py = y + ch / 2 + Math.sin(a) * (ch / 2 + 4); ctx.globalAlpha = .4 + .4 * Math.sin(anim * 3 + k); ctx.fillStyle = '#ffd76a'; ctx.fillRect(px, py, 2.5, 2.5); } ctx.restore(); }
+      const seal = c.isBing ? null : c.r === 'l' ? ['#b8321f', '传'] : c.r === 'r' ? ['#2f6fb0', '稀'] : null;
+      if (seal) { ctx.save(); ctx.fillStyle = seal[0]; ctx.globalAlpha = .92; const sx = x + 16, sy = y + 18; ctx.fillRect(sx, sy, 18, 18); ctx.strokeStyle = 'rgba(255,240,220,.7)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 2, sy + 2, 14, 14); ctx.fillStyle = '#fff4e0'; ctx.font = '700 12px "KaiTi","STKaiti",serif'; ctx.textAlign = 'center'; ctx.fillText(seal[1], sx + 9, sy + 13.5); ctx.restore(); }
       ctx.save(); ctx.beginPath(); ctx.rect(x + 18, y + 24, cw - 36, ch - 48); ctx.clip();
       ctx.font = '700 12px ' + F; ctx.fillStyle = c.color || '#d5b678'; ctx.fillText(c.catName, x + cw / 2, y + ch * .18, cw - 38);
-      ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.fillStyle = '#ffe08a'; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
+      ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
+      ctx.fillStyle = c.isBing ? '#f0c27a' : c.r === 'l' ? '#ffd24a' : c.r === 'r' ? '#8fd0ff' : '#f6ecd6';
       ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.shadowBlur = 0;
+      if (c.r === 'l') { const nw = ctx.measureText(c.name).width, sweep = ((anim * .8) % 1.6) - .3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55; const gx = x + cw / 2 - nw / 2 + nw * sweep; const gr = ctx.createLinearGradient(gx - 10, 0, gx + 10, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, 'rgba(255,250,220,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = gr; ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.restore(); }   // 传说：名字上扫过一道光
       const fs = Math.max(9, Math.min(12, cw * .067)); const lh = fs * 1.42; let ly = y + ch * .39;
       if (c.trig) { ctx.font = '700 ' + fs + 'px ' + F; ctx.fillStyle = '#ffcf6a'; ctx.fillText('【' + c.trig + '】', x + cw / 2, ly, cw - 40); ly += lh * 1.2; }   // 触发条件
       ctx.font = '600 ' + fs + 'px ' + F; ctx.fillStyle = '#f2e6c9';
@@ -563,6 +606,7 @@
     if (rerollRect && e.clientX >= rerollRect.x && e.clientX <= rerollRect.x + rerollRect.w && e.clientY >= rerollRect.y && e.clientY <= rerollRect.y + rerollRect.h) { e.preventDefault(); e.stopPropagation(); rerollToken = false; offer.forEach(c => seen.delete(c.isBing ? 'bing:' + c.name : c.name)); offerCards(); return; }
     for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) { e.preventDefault(); e.stopPropagation(); choose(r.i); return; }
   }, { capture: true });
+  addEventListener('pointermove', e => { if (!open) return; hoverI = -1; for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) hoverI = r.i; });
   addEventListener('keydown', e => { if (!open) return; if (window.XIAOCHANG && XIAOCHANG.active()) { e.preventDefault(); e.stopImmediatePropagation(); } const k = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (k >= 0) choose(k); }, true);
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, drawWorld, update, tick, choose, useSkill, useSummon, useCatapult, absorbHit,
@@ -578,7 +622,7 @@
     rerolls: () => rerollToken, pickedUp: () => has, cards: () => offer,
     reset() {
       setOpen(false); offer = []; rerollToken = false; rerollRect = null; shieldReady = false; shieldTimer = 10; skillCd = 0; bing = '';
-      auraStacks = 0; auraHold = 0; auraIdle = 0; pool = null; thunder = [];
+      auraStacks = 0; auraHold = 0; auraIdle = 0; pool = null; thunder = []; rain = null; rainArrows = []; hoverI = -1;
       finisherUntil = finisherCd = avoidUntil = avoidCd = 0; avoidCrit = false; dodgeRollT = -1;
       vanguard = false; lastAlive = 0; momentum = momentumIdle = gale = killCritUntil = 0; rangedChain = { z: null, n: 0 }; volleyNext = false; stoneShots = 0;
       glowW = ''; glowN = glowIdle = 0; swapReady = swapPending = cunjin = cunjinNext = false; backCd = 0; hurtAt = -9; guardShield = guardShieldT = 0; sideUntil = zhanUntil = 0;
