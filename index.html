@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=626463a135" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=626463a135)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=78d1c9b1cd" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=78d1c9b1cd)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='7f12b24c42c0',busy=false;
+var BUILD='f048b476cb38',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4398,9 +4398,16 @@ const Boss = (() => {
       if (w.next <= 0 && w.t < w.T) { w.next = .7; w.waves.push({ x: hero.x - w.dir * 20, y: (w.y + hero.y) / 2 + rnd(-16, 16), x0: hero.x, hit: new Set() }); if (typeof sfx === 'function') sfx('roll', hero.x); }
       for (const v of w.waves) {
         v.x += w.dir * 230 * dt;
-        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; }
+        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; z.waveShove = now() + .5; }
       }
       w.waves = w.waves.filter(v => Math.abs(v.x - v.x0) < 320);
+      // 浪卷敌兵相撞：被冲开的敌人撞上别的敌人，两个都再受 0.5 伤害并一起倒地（每个敌人每道浪只撞一次）
+      for (const z of zs) if (z.waveShove > now() && !z.dead) for (const o of zs) if (o !== z && !o.dead && !o.air && !o.waveBumped && Math.abs(o.x - z.x) < 14 && Math.abs(o.y - z.y) < 10) {
+        o.waveBumped = true; z.waveShove = 0;
+        for (const e of [z, o]) { hit(e, .5, 60, w.dir, !isBoss(e), 0, .4, true, false, { secondary: true }); }
+        pop((z.x + o.x) / 2, z.y - 40, '相撞！', '#9fd3ff');
+      }
+      if (!w.waves.length) for (const z of zs) z.waveBumped = false;
     }
     waters = waters.filter(w => w.t < w.T || w.waves.length);
     // 着火（明火 / 火烧连营）：每秒掉血；火烧连营的火会传给身边的敌人
@@ -5662,7 +5669,7 @@ const Boss = (() => {
       ['借我东风', 'r', '8 秒大风：把敌人往外吹，敌人的箭石被吹回去'],
       ['火烧连营', 'l', '在敌群处铺开一大片地火，火会在敌人之间传开'],
       ['雷霆万钧', 'l', '4 道天雷落向敌群，每道连劈 3 下、在敌人之间窜动'],
-      ['水淹七军', 'r', '6 秒里一道道海浪从身后涌出向前冲，冲开沿途敌人并让其减速'],
+      ['水淹七军', 'r', '6 秒里一道道海浪从身后冲向前方，冲开沿途敌人并减速；被冲开的敌人撞上同伴会一起倒地'],
     ],
   };
   // 每类按稀有度排：普通 → 稀有 → 传说（用户定），同稀有度保持原顺序

@@ -415,9 +415,16 @@
       if (w.next <= 0 && w.t < w.T) { w.next = .7; w.waves.push({ x: hero.x - w.dir * 20, y: (w.y + hero.y) / 2 + rnd(-16, 16), x0: hero.x, hit: new Set() }); if (typeof sfx === 'function') sfx('roll', hero.x); }
       for (const v of w.waves) {
         v.x += w.dir * 230 * dt;
-        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; }
+        for (const z of zs) if (!z.dead && !z.air && !v.hit.has(z) && Math.abs(z.x - v.x) < 24 && Math.abs(z.y - v.y) < 30) { v.hit.add(z); hit(z, .8, 140, w.dir, false, 0, .3, true, false, { secondary: true }); z.wetUntil = now() + 1.5; z.waveShove = now() + .5; }
       }
       w.waves = w.waves.filter(v => Math.abs(v.x - v.x0) < 320);
+      // 浪卷敌兵相撞：被冲开的敌人撞上别的敌人，两个都再受 0.5 伤害并一起倒地（每个敌人每道浪只撞一次）
+      for (const z of zs) if (z.waveShove > now() && !z.dead) for (const o of zs) if (o !== z && !o.dead && !o.air && !o.waveBumped && Math.abs(o.x - z.x) < 14 && Math.abs(o.y - z.y) < 10) {
+        o.waveBumped = true; z.waveShove = 0;
+        for (const e of [z, o]) { hit(e, .5, 60, w.dir, !isBoss(e), 0, .4, true, false, { secondary: true }); }
+        pop((z.x + o.x) / 2, z.y - 40, '相撞！', '#9fd3ff');
+      }
+      if (!w.waves.length) for (const z of zs) z.waveBumped = false;
     }
     waters = waters.filter(w => w.t < w.T || w.waves.length);
     // 着火（明火 / 火烧连营）：每秒掉血；火烧连营的火会传给身边的敌人
