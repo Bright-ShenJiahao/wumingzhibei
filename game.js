@@ -967,6 +967,7 @@ function heroUpdate(dt) {
   if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd && ROGUE.onRollEnd()) { h.f = -h.f; h.comboWin = 0; startAtk(); } } pressAtk = false; return; }   // 回马：滚完自动向身后打一下
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
+  if (h.st === 'atk' && (!h.atk || !WEAP[weapon].combo[h.atk.c])) { h.atk = null; set(h, 'idle'); }   // 防卡死：出招状态和当前武器对不上就复位
   if (h.st === 'atk') {
     const W2 = WEAP[weapon], a = h.atk, C = W2.combo[a.c]; a.t += dt; a.lg += dt;
     if (a.t >= C.d[a.fi] * R_('aspd') / (W2.aspd || 1) * (window.Boss && Boss.wxAspd ? Boss.wxAspd() : 1)) {
@@ -2393,7 +2394,7 @@ function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = 
 }
 function heroFrame(h) {
   const frameWeapon = weapon === 'halberd' ? 'halberd' : weapon;
-  if (h.st === 'atk') return WEAP[weapon].combo[h.atk.c].f[h.atk.fi];
+  if (h.st === 'atk') { const C = h.atk && WEAP[weapon].combo[h.atk.c]; if (C && C.f[h.atk.fi]) return C.f[h.atk.fi]; }   // 出招数据对不上（如中途换武器）时不再报错
   if (h.st === 'roll') return Math.floor(h.t * 15) % 2 ? 'roll2' : 'roll1';
   if (h.air) return h.vz > 0 ? 'fly1' : 'fly2';
   if (h.st === 'bounce' || h.st === 'getup') return h.st;
@@ -3482,5 +3483,7 @@ window.GAME_PAUSE = {
   returnPreparation: () => returnFromPausedGame(false),
   returnHome: () => returnFromPausedGame(true),
 };
-function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; update(dt); draw(); requestAnimationFrame(loop); }
+// 主循环：某一帧出错也不让整个游戏卡死（以前一处报错就会冻住画面、人物消失）；错误记下来给调试面板看
+function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
+function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);
