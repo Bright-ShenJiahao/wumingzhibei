@@ -2336,6 +2336,7 @@ function update(dt) {
   const vw = viewW();
   let tx = hero.x - vw * .4;
   if (lockR < Infinity) tx = Math.min(tx, lockR - vw);
+  if (arenaL != null) tx = Math.max(tx, arenaL);   // 用户定：左边走不过去的地方，镜头也不往那边移，免得以为还能走
   if (chapter2Run && chapter2Run.battle === 6 && !(window.XIAOCHANG && XIAOCHANG.active())) tx = (M.W - vw) / 2;   // 祭台战：镜头固定在正中
   cam.x += (Math.max(0, Math.min(M.W - vw, tx)) - cam.x) * Math.min(1, dt * 6);
   shake = Math.max(0, shake - dt); msgT -= dt;
