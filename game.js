@@ -890,7 +890,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (z.adds != null) z.adds = null;   // 受击后立即退出援军状态机，后续按普通弓手受击/击飞处理
   hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC;
     if (!traits.secondary && z.T.priest && z.st === 'chant') {   // 打断念咒：这一轮白念，冷却照走
-      set(z, 'hurt'); z.t = 0; z.chantCd = z.castKind === 'fire' ? 5 : 8; z.chant = 0;
+      set(z, 'hurt'); z.t = 0; z.chantCd = z.castKind === 'fire' ? 3.5 : 8; z.chant = 0;
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
@@ -960,6 +960,7 @@ function startEnemyCelebration() {
   });
 }
 function heroUpdate(dt) {
+  if (dt > 0) { const vx = (hero.x - (hero.px ?? hero.x)) / dt, vy = (hero.y - (hero.py ?? hero.y)) / dt; hero.mvx = (hero.mvx || 0) * .85 + vx * .15; hero.mvy = (hero.mvy || 0) * .85 + vy * .15; hero.px = hero.x; hero.py = hero.y; }   // 平滑速度：投石车算提前量用
   const h = hero;
   if (pendingWeapon && !h.air && !['hurt','down','bounce','getup'].includes(h.st)) { const requested=pendingWeapon; pendingWeapon=null; setW(requested); }
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
@@ -1921,7 +1922,7 @@ function zUpdate(z, dt) {
     z.chantCd -= dt;
     if (z.st === 'chant') {
       const fire = z.castKind === 'fire';
-      if (z.t >= (fire ? 1 : 2)) { fire ? firePriestCast(z) : priestCast(z); set(z, 'idle'); z.chantCd = fire ? 5 : 8; }
+      if (z.t >= (fire ? 1 : 2)) { fire ? firePriestCast(z) : priestCast(z); set(z, 'idle'); z.chantCd = fire ? 3.5 : 8; }
       return;
     }
     if (z.chantCd <= 0) {
@@ -2008,8 +2009,9 @@ function zUpdate(z, dt) {
     const side = Math.sign(z.x - hero.x) || 1, want = (T.range[0] + T.range[1]) / 2;
     tx = hero.x + side * want; ty = hero.y + (z.slot % 2 ? 10 : -10);
     tx = Math.max(cam.x + 30, Math.min(tx, (lockR < Infinity ? lockR : cam.x + viewW()) - 30));
+    if (z.siegeArcher && z.guard) { tx = z.guard.x; ty = z.guard.y; }   // 投石车弓手：站岗不动，远处也射（抛射）
     const ad = Math.abs(dx);
-    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < T.range[1] * 1.2 && Math.abs(dy) < (T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = chapter2Run&&z.type==='archer'?4.5:T.cd; return; }
+    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < (z.siegeArcher ? 340 : T.range[1] * 1.2) && Math.abs(dy) < (z.siegeArcher ? 120 : T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = chapter2Run&&z.type==='archer'?4.5:T.cd; return; }
   } else {          // 近战：最多 M.token 个同时贴身，其余在旁边游走
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < (window.XIAOCHANG && XIAOCHANG.tokenCap ? XIAOCHANG.tokenCap() : M.token) && Math.abs(dx) < 130) z.tok = true;
@@ -2033,9 +2035,10 @@ function updateChapter2Catapult(z, dt) {
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
   if (z.dead) { z.st = 'wreck'; return; }
   if (z.st === 'wind' && z.t >= .72) {
-    const yOffset = [-24, 0, 24][z.catapultIndex || 0];
-    const tx = Math.min(z.x - 70, Math.max(hero.x - 40, hero.x + rnd(-18, 18)));
-    const ty = Math.max(M.top + 5, Math.min(M.bot - 5, hero.y + yOffset));
+    // 用户定：投石车集中砸主角一带，但不是同一点——按主角移动方向提前量，各车错开一点
+    const lead = 1.15 * rnd(.6, 1.1), off = [[-22, -14], [0, 0], [22, 14], [-12, 16], [14, -16]][(z.catapultIndex || 0) % 5];
+    const tx = Math.min(z.x - 70, hero.x + (hero.mvx || 0) * lead + off[0] + rnd(-8, 8));
+    const ty = Math.max(M.top + 5, Math.min(M.bot - 5, hero.y + (hero.mvy || 0) * lead + off[1] + rnd(-5, 5)));
     eshots.push({ k: 'catapult', x0: z.x - 18, y0: z.y - 12, tx, ty, t: 0, T: 1.15, short: 3 });
     z.st = 'recoil'; z.t = 0; z.cd = 7; sfx('sling', z.x); return;   // 用户嫌弱：冷却 10→7
   }
@@ -2926,8 +2929,8 @@ function drawResult(HW, HH) {
   const frName = result.win ? (chapter2Run ? { n: 'zhang_jiao', f: 'defeat' } : { n: 'guanhai', f: 'kneel' }) : { n: 'hero', f: 'down' };   // 第二章通关画倒地的张角
   const fr = CH[frName.n] && CH[frName.n][frName.f];
   if (fr && fr.img.complete) {
-    const k = frName.n === 'zhang_jiao' ? Math.min(1, sh * .2 / fr.h) : Math.max(1, Math.min(Math.round(sh * .20 / fr.h), Math.max(1, Math.floor(pw * .34 / fr.w))));   // 张角原图细，按比例缩小
-    const dx = px0 + pw * .07, dy = sy + sh * .66;
+    const k = frName.n === 'zhang_jiao' ? Math.min(1, sh * .2 / fr.h) : Math.max(1, Math.min(Math.round(sh * .14 / fr.h), Math.max(1, Math.floor(pw * .15 / fr.w))));   // 张角原图细，按比例缩小
+    const dx = px0 + pw * .13, dy = sy + sh * .27;   // 用户截图：人挡住了复活按钮 → 缩小并挪到左上空白处
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = fade * .95;
     ctx.drawImage(fr.img, Math.round(dx - fr.ax * k), Math.round(dy - fr.ay * k), fr.w * k, fr.h * k);
     ctx.restore();

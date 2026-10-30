@@ -140,7 +140,9 @@
     if (L && !z.saidIntro) { z.saidIntro = true; say(L.intro[0], 3); vo(L.intro[1]); }
     if (!z.planted && !z.fled && (z.type === 'zhang_liang' || z.type === 'zhang_bao')) {   // 出场亲手插下自己的将旗：张梁「人」、张宝「地」
       z.planted = true; const g = z.type === 'zhang_liang' ? 'flag_ren' : 'flag_di', m = ASSETS.props[g];
-      if (m) props.push({ g, x: z.x + 22, y: z.y - 6, solid: false, broken: false, hp: 2, hitT: 0, sc: 1, w: m[1] * .75, h: m[2], chapter2: true, back: true });
+      let fx = z.x + 22; const fy = z.y - 6;   // 别插在粮袋/石堆这些道具上（用户截图：地字旗压在粮袋上）
+      for (let k = 0; k < 6 && props.some(p => !p.broken && p !== z && Math.abs(p.x - fx) < (p.w || 20) / 2 + 14 && Math.abs(p.y - fy) < 30); k++) fx += 26;
+      if (m) props.push({ g, x: fx, y: fy, solid: false, broken: false, hp: 2, hitT: 0, sc: 1, w: m[1] * .75, h: m[2], chapter2: true, back: true });
       shake = Math.max(shake, .2); sfx('land', z.x);
     }
     tickHz(dt);

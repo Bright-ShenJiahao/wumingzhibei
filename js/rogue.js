@@ -61,7 +61,7 @@
   function stat(name, dmg = 0, trig = 1, heal = 0) { const o = STATS[name] ||= { trig: 0, dmg: 0, heal: 0 }; o.trig += trig; o.dmg += dmg || 0; o.heal += heal; }
   let leechFxT = 0, qiFxT = 0, avoidGhost = null;
   let rallyT = 0, jiyu = 0, ghosts = [], huifengNext = false, gustT = 0;
-  let scarecrows = [], windT = 0, waters = [], spreadT = 0, ammoBackT = 0;
+  let windDir = 1, scarecrows = [], windT = 0, waters = [], spreadT = 0, ammoBackT = 0;
   const weaponNow = () => (typeof weapon !== 'undefined' ? weapon : '');
   const typeOf = traits => (traits && traits.gearToken && traits.gearToken.s && traits.gearToken.s.type) || weaponNow();
   const isBoss = z => !!(z && z.T && (z.T.boss || z.T.chapterBoss));
@@ -141,7 +141,7 @@
     if (bing === 'wanjian') { castRain(); return 'rain'; }
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();
-    else if (bing === 'xifeng') { windT = 8; gustT = 0; if (typeof say === 'function') say('借我东风！', 1.4); }
+    else if (bing === 'xifeng') { windT = 8; gustT = 0; windDir = hero.f || 1; if (typeof say === 'function') say('借我东风！', 1.4); }
     else if (bing === 'huoshao') castFire();
     else if (bing === 'shuiyan') castWater();
     return bing;
@@ -221,7 +221,7 @@
     ctx.save();
     for (const w of waters) for (const v of w.waves) { const p = Math.abs(v.x - v.x0) / 320; drawImg(p < .7 ? 'tip_wave1' : 'tip_wave2', v.x, v.y + 6, 64, Math.min(1, (1 - p) * 3), w.dir < 0); }   // 海浪：一道道往前冲
     for (const s of scarecrows) { const k = s.boom != null ? (s.boom < .25 ? 'tip_scare_break1' : 'tip_scare_break2') : s.hitT > 0 ? 'tip_scare_hit' : 'tip_scare'; if (!drawImg(k, s.x, s.y + 2, 30)) { ctx.fillStyle = '#c9a050'; ctx.fillRect(s.x - 2, s.y - 26, 4, 26); } }
-    if (windT > 0) { const a = Math.min(1, windT / .5) * .8; for (let i = 0; i < 4; i++) drawImg('tip_wind' + (1 + Math.floor(T * 6 + i) % 3), cam.x + ((T * 160 + i * 140) % (viewW() + 120)) - 60, M.top + 30 + i * 32, 90, a, hero.f < 0); }
+    if (windT > 0) { const a = Math.min(1, windT / .5) * .8; for (let i = 0; i < 4; i++) { const px = ((T * 160 + i * 140) % (viewW() + 120)) - 60; drawImg('tip_wind' + (1 + Math.floor(T * 6 + i) % 3), windDir > 0 ? cam.x + px : cam.x + viewW() - px, M.top + 30 + i * 32, 90, a, windDir < 0); } }
     if (guardShield > 0 || (S.shield && shieldReady)) drawImg('tip_shield', hero.x, hero.y + 4, 22, .55 + .15 * Math.sin(T * 4));
     for (const f of fx) {
       if (f.k === 'shieldBreak') drawImg(f.t < .15 ? 'tip_shield_break1' : 'tip_shield_break2', hero.x, hero.y + 4, 28, 1 - f.t / f.T);
@@ -450,11 +450,11 @@
       windT -= dt; gustT -= dt;
       const gust = gustT <= 0; if (gust) gustT = 2;
       for (const z of zs) if (!z.dead && !z.air && !isBoss(z)) {
-        const d = Math.sign(z.x - hero.x) || 1; moveEnt(z, d * 45 * dt, 0);
+        const d = windDir; moveEnt(z, d * 45 * dt, 0);   // 用户定：风往放技能时主角朝向吹
         if (gust) { z.vx = d * 60; hit(z, .5, 0, d, false, 0, .2, false, false, { secondary: true }); stat('借我东风', .5); }   // 强风推一下并带 0.5 伤害
       }
       if (gust && typeof sfx === 'function') sfx('roll', hero.x);
-      if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && (e.k === 'stone' || e.k === 'arrow')) {
+      if (typeof eshots !== 'undefined') for (const e of eshots) if (e.vx && !e.windBent && Math.sign(e.vx) === -windDir && (e.k === 'stone' || e.k === 'arrow')) {
         e.windBent = true; e.life = 0;   // 被风吹回：变成我方的箭石打向敌人
         shots.push({ x: e.x, y: e.y, z: 22, vx: -e.vx, life: .9, C: { dmg: 1, kb: 20 }, c: 0, hitSet: [], kind: e.k === 'arrow' ? 'arrow' : undefined, secondary: true });
       }

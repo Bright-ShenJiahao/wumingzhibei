@@ -200,12 +200,12 @@
       if (S.sumT > 0) { S.sumT -= dt; if (S.sumT <= 0) { monsters(S.summonRound); S.pose = 'float'; S.next = 0; } return; }
       S.pose = 'float';
       for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士必掉鸡腿
-      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
+      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; spawnDrop(S.fled.x - 10, S.fled.y, 'pig'); spawnDrop(S.fled.x + 12, S.fled.y, 'leg'); drops.slice(-2).forEach(d => d.life = 20); /* 用户定：助阵小首领死了也爆回血 */ say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
       const alive = zs.some(z => !z.dead && z.zjAdd);
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
       if (!alive && S.t > 2) {
-        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥，我来助你！」' : '张梁：「大哥，我来助你！」', 3); vo(fledType() === 'zhang_bao' ? 'zb_help' : 'zl_help'); }   // 语音文件 art/voice/zb_help.mp3 / zl_help.mp3（用户提供）
+        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; { const b = fledType() === 'zhang_bao'; say(b ? '张宝：「地公将军在此……你来送死吗？」' : '张梁：「人公将军张梁在此！谁敢上前！」', 2.6); vo(b ? 'zb_help' : 'zl_help'); setTimeout(() => say(b ? '张宝：「大哥，我来助你！」' : '张梁：「大哥，我来助你！」', 2.4), 2700); } }   // 用户定：直接用他们出场的原语音（zb_help/zl_help 是 intro 的副本）
         else descend();
       }
       return;
@@ -437,6 +437,15 @@
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + w / 2 - 1, y, 2, 10);
     ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd86e'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
     ctx.strokeText(label, HW / 2, y + 30); ctx.fillText(label, HW / 2, y + 30); ctx.textAlign = 'left';
+    // 祭台战里来助阵的张梁/张宝：在张角血条下面再画一条小的（用户定）
+    const f = chapter2Run.battle === 6 && S && S.fled && !S.fled.dead && S.fled.st !== 'gone' ? S.fled : null;
+    if (f) {
+      const w2 = w * .6, x2 = (HW - w2) / 2, y2 = y + 40, r2 = Math.max(0, f.hp / f.T.hp);
+      ctx.fillStyle = 'rgba(20,14,30,.8)'; ctx.fillRect(x2 - 2, y2 - 2, w2 + 4, 11);
+      ctx.fillStyle = r2 <= .25 ? '#ff3b1f' : '#c98a1c'; ctx.fillRect(x2, y2, w2 * r2, 7);
+      ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#f1d58f'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+      ctx.strokeText(f.T.name, HW / 2, y2 + 22); ctx.fillText(f.T.name, HW / 2, y2 + 22); ctx.textAlign = 'left';
+    }
   }
 
   window.ZJ = { start, update, draw, duel, hud, state: () => S };
