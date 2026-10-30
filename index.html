@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=0afc484a6f" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=0afc484a6f)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=3c761c38a2" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3c761c38a2)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='65b270a9c000',busy=false;
+var BUILD='339128f714e7',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -8329,7 +8329,7 @@ function resultKey(e) {
       .shopWallet{margin-top:auto;padding:9px;border-top:1px solid #655037;color:#e7c783;font:700 13px/1.8 "PingFang SC",sans-serif}
       .shopWallet b{color:#ffd96d;font-size:16px}.shopWallet.bump b{animation:shopBump .35s ease-out}@keyframes shopBump{0%{transform:scale(1)}45%{transform:scale(1.35);color:#fff1a8}100%{transform:scale(1)}}.shopRight{min-width:0;min-height:0;overflow:auto;padding:2px 4px 8px 2px}
       .shopOwn{margin-left:10px;color:#e8d3a6;font-weight:400;font-size:12px}.shopSellList{display:flex;flex-direction:column;gap:6px}.shopSellItem{border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17)}.shopSellItem summary{display:flex;align-items:center;gap:10px;padding:6px 10px;cursor:pointer;list-style:none}.shopSellItem summary::-webkit-details-marker{display:none}.shopSellItem summary::after{content:'▸ 详情';margin-left:8px;color:#a8906b;font-size:11px;white-space:nowrap}.shopSellItem[open] summary::after{content:'▾ 收起'}.shopSellIcon{flex:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:5px;background:linear-gradient(145deg,#453324,#261e18);box-sizing:border-box}.shopSellIcon img{max-width:38px;max-height:38px;image-rendering:pixelated}.shopSellName{flex:1;min-width:0;font:700 14px sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shopSellPrice{flex:none;color:#ffd96d;font:700 14px sans-serif}.shopSellBody{padding:0 10px 8px}.shopSellFoot{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:10px;padding:8px 0 2px;margin-top:6px;background:#221a14;box-shadow:0 -8px 10px #221a14}.shopSellFoot button{min-height:38px;min-width:96px;border:1px solid #a77e47;border-radius:5px;background:#593d27;color:#f5dfb2;font:700 15px sans-serif;cursor:pointer}.shopSellFoot .shopSellGo{background:linear-gradient(#8a5a1e,#5a3a14);color:#fff1c4}.shopSellItem .wd-muted{display:none}.shopGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
-      .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}
+      .shopCard{box-sizing:border-box;min-width:0;padding:10px;border:1px solid #7c603d;border-radius:7px;background:linear-gradient(145deg,#443122,#251d17);display:grid;grid-template-columns:48px minmax(0,1fr);gap:7px 9px;align-items:center}.shopCard{grid-template-rows:1fr auto auto;align-items:start}.shopCard>.shopCardIcon{align-self:start}
       .shopCardIcon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid #6d5336;border-radius:5px;background:#1c1511}
       .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
       .fruitIcon::after{content:"";position:absolute;left:15px;top:-4px;width:2px;height:9px;background:#6c8d3a;transform:rotate(18deg)}
