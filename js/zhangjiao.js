@@ -164,6 +164,7 @@
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
+      spawnDrop(ALTAR_C.x - 14, ALTAR_C.y + 30, 'pig'); spawnDrop(ALTAR_C.x + 14, ALTAR_C.y + 30, 'leg'); drops.slice(-2).forEach(d => d.life = 20);   // 破阵奖励：烤乳猪 + 鸡腿
       say('张角：「八卦……破了？！」', 3);
       S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
       if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：「黄巾力士，何在！」', time: 2.5 }); vo('zj_golem'); }
