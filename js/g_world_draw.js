@@ -289,6 +289,7 @@ function drawHero() {
   const drunk = window.SUPPLY && SUPPLY.drunk(), sway = drunk && h.st === 'idle' ? Math.sin(performance.now() / 300) * 1.5 : 0;   // 杜康酒：泛红、站着时轻轻摇晃
   if (drunk) { ctx.save(); ctx.filter = 'sepia(.35) saturate(1.8) hue-rotate(-20deg)'; }
   drawChar('hero', heroFrame(h), h.x + sway, h.y - (h.z || 0) - lift, h.f < 0);
+  if (h.dazeT > 0) { const t = performance.now() / 160; ctx.fillStyle = '#ffe36a'; for (let i = 0; i < 3; i++) { const a = t + i * 2.09; ctx.fillRect(h.x + Math.cos(a) * 8 - 1.5, h.y - 40 + Math.sin(a) * 2.5, 3, 3); } }   // 头上转星星
   if (drunk) ctx.restore();
 }
 function drawZ(z) {

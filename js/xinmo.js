@@ -55,14 +55,23 @@ window.XINMO = (() => {
   }
   const W = () => WEAP[m.weapon];
   // 1:1 复刻（用户定）：心魔的血量、出手倍率、暴击、受伤减免、移速、攻速、翻滚、起身、蓄力时间，全部读玩家自己的数值
-  function OUT() { let k = window.GEAR && GEAR.attackScale ? GEAR.attackScale(m) : 1; const tk = window.GEAR && GEAR.attackToken ? GEAR.attackToken() : null; if (tk && tk.crit) k *= 1.5; return k; }
+  function OUT(o) {   // 出手倍率 × 暴击（和玩家同一套：概率、暴击伤害、上限；暴击时头上飘「暴击！」）
+    let k = window.GEAR && GEAR.attackScale ? GEAR.attackScale(m) : 1;
+    const c = window.GEAR && GEAR.critRoll ? GEAR.critRoll(o || {}) : 1;
+    if (c > 1) floaters.push({ x: hero.x, y: hero.y - 34, t: 0, txt: '暴击！', big: true });
+    return k * c * (hero.dazeT > 0 ? 1.5 : 1);   // 被晕的目标吃 1.5 倍（和敌人被晕一样）
+  }
+  // 眩晕（用户定：只在心魔战）：和玩家打敌人同样的概率与时长；已经晕着的不续
+  function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && Math.random() < chance) { hero.dazeT = time; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
+  function hitH(n, kind, dz) { const hp0 = hero.hp; dmgHero(n, m, kind); if (dz && hero.hp < hp0) dazeHero(dz[0], dz[1]); }
+  const DZ = () => 1.5 * (typeof R_ === 'function' ? R_('daze') : 1);
   const MV = () => (typeof R_ === 'function' ? R_('move') : 1);
   const AS = () => (typeof R_ === 'function' ? R_('aspd') : 1) / (W().aspd || 1);
   const MX = (k, d) => window.MERIDIAN && MERIDIAN.x ? MERIDIAN.x(k, d) : d;
   // 玩家打心魔：和心魔打玩家完全对称——同样的减伤、0.7 秒受击无敌、重击击倒、经脉不屈
-  function takeHit(z, dmg, dir) {
+  function takeHit(z, dmg, dir, dz) {
     if (z !== m || m.dead || m.inv > 0) return;
-    let n = dmg * (typeof R_ === 'function' ? R_('take') : 1);
+    let n = (m.dazeT > 0 ? 1.5 : 1) * dmg * (typeof R_ === 'function' ? R_('take') : 1);
     if (window.GEAR && GEAR.incoming) n = GEAR.incoming(n, null, 'skill');
     if (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) n *= .8;
     const raw = n; if (n <= 0) return;
@@ -73,6 +82,7 @@ window.XINMO = (() => {
     if (m.hp <= 0) { m.dead = 1; kills++; m.st = 'bounce'; m.t = 0; return; }
     if (raw >= 2 * MX('knock', 1)) { m.st = 'bounce'; m.t = 0; m.vx = dir * 85; }   // 重击：和玩家一样倒地 → 起身
     else { m.st = 'hurt'; m.t = 0; m.vx = dir * 40; }
+    if (dz && dz[0] > 0 && !(m.dazeT > 0) && Math.random() < dz[0]) { m.dazeT = dz[1]; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
   }
   const reachOf = () => { const w = W(); return w.class === 'ranged' ? 150 : (w.reach || 28) + 8; };
   function snapshot() {
@@ -132,7 +142,7 @@ window.XINMO = (() => {
         for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: .5 * K }); }
         return;
       }
-      mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K });
+      mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K, dz: C.dazeChance ? [C.dazeChance, C.dazeTime] : null });
       if (m.weapon === 'stone' && fin) for (const a of [-.20944, .20944]) mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'stone', dmg: C.dmg * .3 * K });
       return;
     }
@@ -147,9 +157,9 @@ window.XINMO = (() => {
         const K = OUT(); let d = (C.dmg || 1) * K;
         if (fin) { d += hb.n * .3 * K; hb.n = 0; bleedFx.push({ kind: 'rip', x: hero.x, y: hero.y - 12, t: 0, T: .2 }); }
         bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 });
-        dmgHero(d, m, fin ? 'skill' : 'basic');
+        hitH(d, fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);
       }
-      else dmgHero((C.dmg || 1) * OUT() * (fin && m.weapon === 'blade' ? 1.5 : 1), m, fin ? 'skill' : 'basic');   // 大刀终段必暴击，和玩家一样
+      else hitH((C.dmg || 1) * OUT(fin && m.weapon === 'blade' ? { guaranteed: true, cap: 2 } : null), fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);   // 大刀终段必暴击（上限 200%）、棍的晕，和玩家一样
       sfx('hit_' + (w.snd || 'staff'), hero.x);
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
       m.hitC++;
@@ -193,8 +203,8 @@ window.XINMO = (() => {
       bowFx.push({ kind: 'sky', x: near ? hero.x : m.x + f * 150, y: near ? hero.y : m.y, t: 0, T: .6, dir: f, data, resolved: false, mirror: true }); return;
     }
     if (m.weapon === 'stone') {
-      const d = tier === 3 ? { n: 5, dmg: 1.6 } : tier === 2 ? { n: 4, dmg: 1.2 } : { n: 3, dmg: .8 };
-      for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; mshots.push({ x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, kind: 'stone', charged: true, dmg: d.dmg * K }); }
+      const d = tier === 3 ? { n: 5, dmg: 1.6, ch: 1, tm: 1 } : tier === 2 ? { n: 4, dmg: 1.2, ch: .7, tm: .8 } : { n: 3, dmg: .8, ch: .4, tm: .6 };
+      for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; mshots.push({ x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, kind: 'stone', charged: true, dmg: d.dmg * K, dz: [d.ch, d.tm], volleyId: m.volleyN = (m.volleyN || 0) + (i === 0 ? 1 : 0) }); }
       return;
     }
     if (m.weapon === 'halberd') {   // 回马突：往前冲，途中无敌
@@ -210,12 +220,12 @@ window.XINMO = (() => {
     if (m.weapon === 'blade') {   // 半月斩：前方上下各 45
       const d = tier === 3 ? { dmg: 2.6, c: .8 } : tier === 2 ? { dmg: 2.0, c: .6 } : { dmg: 1.4, c: .4 };
       bladeFx.push({ kind: 'crescent', x: m.x + f * 30, y: m.y - 16, t: 0, T: .3, dir: f });
-      if (dxh >= -12 && dxh <= 45 && Math.abs(dyh) <= 45) dmgHero(d.dmg * K * (Math.random() < d.c ? 1.5 : 1), m, 'skill');
+      if (dxh >= -12 && dxh <= 45 && Math.abs(dyh) <= 45) dmgHero(d.dmg * OUT({ chance: d.c, cap: 2, charged: true }), m, 'skill');
       return;
     }
     // 棍：蓄力横扫
     const force = .35 + .65 * power;
-    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) dmgHero(1.6 * force * K, m, 'skill');
+    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', [.5, DZ()]);
   }
   let marks = [], mshots = [], hb = { n: 0, t: 0 };
   // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------
@@ -237,7 +247,8 @@ window.XINMO = (() => {
       p.x += p.vx * dt; p.y += (p.vy || 0) * dt; p.life -= dt; p.traveled += Math.hypot(p.vx, p.vy || 0) * dt;
       if (p.life > 0 && Math.abs(hero.x - p.x) < 9 && Math.abs(hero.y - p.y) < 9 && heroOpen()) {
         const mult = p.kind === 'arrow' && !p.volley ? bowRangeMult(p.traveled) : 1;
-        sfx(p.kind === 'arrow' ? 'hurt' : 'hit_stone', p.x); dmgHero(p.dmg * mult, { x: p.x - p.vx, source: m }); p.life = 0;
+        sfx(p.kind === 'arrow' ? 'hurt' : 'hit_stone', p.x); const hp0 = hero.hp; const vh = p.volleyId && m.vHit === p.volleyId;   // 同一次蓄力打中你：第 2 颗起只吃 30%、不续晕（和玩家一样）
+        dmgHero(p.dmg * mult * (vh ? .3 : 1) * (hero.dazeT > 0 ? 1.5 : 1), { x: p.x - p.vx, source: m }); if (hero.hp < hp0) { if (p.volleyId) m.vHit = p.volleyId; if (p.dz && !vh) dazeHero(p.dz[0], p.dz[1]); } p.life = 0;
       }
     }
     mshots = mshots.filter(p => p.life > 0);
@@ -252,6 +263,7 @@ window.XINMO = (() => {
     // 挨打：和玩家完全一样——硬直 0.3 秒；重击倒地 0.3 秒 + 起身（经脉可加快），起身后 0.5 秒无敌
     if (m.air) { airStep(m, dt); return; }
     if (m.st === 'land' || m.st === 'air') { m.st = 'bounce'; m.t = 0; }
+    if (m.dazeT > 0) { m.dazeT -= dt; if (m.st !== 'bounce' && m.st !== 'getup') { if (m.st !== 'hurt') { m.st = 'hurt'; m.atk = null; m.ch = 0; m.plan = null; m.lock = false; } m.t = 0; return; } }
     if (m.st === 'hurt') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3) { m.st = 'idle'; m.t = 0; } return; }
     if (m.st === 'bounce') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3 && !m.dead) { m.st = 'getup'; m.t = 0; } return; }
     if (m.st === 'getup') { if (m.t > .35 * MX('getup', 1)) { m.st = 'idle'; m.t = 0; m.inv = .5; } return; }
@@ -436,6 +448,7 @@ window.XINMO = (() => {
     try { drawChar('hero', heroFrame(z), z.x, z.y - (z.z || 0), z.f < 0, z.dead ? Math.max(0, 1 - (z.deadT || 0)) : 1, z.flash > 0); } finally { weapon = keep; }
     ctx.restore();
     if (z.dead) { z.deadT = (z.deadT || 0) + 1 / 60; return; }
+    if (z.dazeT > 0) { const t = performance.now() / 160; ctx.fillStyle = '#ffe36a'; for (let i = 0; i < 3; i++) { const a = t + i * 2.09; ctx.fillRect(z.x + Math.cos(a) * 8 - 1.5, z.y - 50 + Math.sin(a) * 2.5, 3, 3); } }
     const w = 40, y = z.y - 44;
     ctx.fillStyle = '#211510'; ctx.fillRect(z.x - w / 2, y, w, 4);
     ctx.fillStyle = '#8a3ac9'; ctx.fillRect(z.x - w / 2 + 1, y + 1, (w - 2) * Math.max(0, z.hp / z.T.hp), 2);

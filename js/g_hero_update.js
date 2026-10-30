@@ -6,6 +6,8 @@ function heroUpdate(dt) {
   if (pendingWeapon && !h.air && !['hurt','down','bounce','getup'].includes(h.st)) { const requested=pendingWeapon; pendingWeapon=null; setW(requested); }
   h.inv = Math.max(0, h.inv - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.t += dt;
   if (h.st === 'down') return;
+  // 被晕（只有心魔战会出现）：站着转星星，不能动、不能出手
+  if (h.dazeT > 0) { h.dazeT -= dt; if (!h.air && !['bounce','getup','land'].includes(h.st)) { if (h.st !== 'hurt') { set(h, 'hurt'); h.atk = null; cancelCharge(); } h.t = 0; pressAtk = pressRoll = false; if (h.dazeT <= 0) set(h, 'idle'); return; } }
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
   if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); if (over) return; }   // 死了就躺下，不许再接管输入
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
