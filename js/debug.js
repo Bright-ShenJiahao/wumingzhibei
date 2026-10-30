@@ -216,6 +216,7 @@
         // 排查「人物不见」用：主角坐标/状态、镜头、第二章状态、最近的报错
         (typeof hero !== 'undefined' ? `主角 ${Math.round(hero.x)},${Math.round(hero.y)} ${hero.st}${hero.air ? ' 空中' : ''} 镜头 ${Math.round(cam.x)}` : '') +
         (typeof chapter2Run !== 'undefined' && chapter2Run ? ` · 战${chapter2Run.battle} ${chapter2Run.mode} 波${chapter2Run.wave}` : '') +
+        (window.__lastHit ? `\n最近一击：${window.__lastHit}` : '') +
         ((window.WZB_ERR || lastErr) ? `\n报错：${window.WZB_ERR || lastErr}` : '');
     }, 300);
   }

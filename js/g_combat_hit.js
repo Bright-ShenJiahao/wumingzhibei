@@ -12,8 +12,10 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   }
   if (ranged && !traits.skyArrow && !traits.secondary && window.BOWAMMO && z && !z.dead && (traits.gearToken?.s.type || weapon) === 'bow') BOWAMMO.onHit();   // 普通箭射中回蓄力箭
   const armor=z&&ch2Armored(z),old=armor?{st:z.st,t:z.t}:null;
+  const hp0=z&&z.hp;
   const outcome=window.GEAR ? GEAR.hit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits) : rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,traits);
   if(armor&&!z.dead){z.st=old.st;z.t=old.t;z.air=false;z.z=0;z.vz=0;z.vx=0;z.stun=0;z.daze=0;}
+  if (z && !traits.dot && !traits.secondary) window.__lastHit = `${z.type} 伤害${(+dmg).toFixed(2)} 血${(+hp0).toFixed(1)}→${(+z.hp).toFixed(1)} 击退${Math.round(kb)} ${outcome || ''}${z.air ? ' 空中' : ''}${z.hidden ? ' 隐身' : ''}${window.XIAOCHANG && XIAOCHANG.active() ? ' 校场' : ''}`;   // 排查「打了没伤害」
   return outcome;
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
