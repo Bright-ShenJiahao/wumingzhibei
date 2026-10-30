@@ -2061,6 +2061,7 @@ function siegeAlarm(z) {
   return z.alarmUntil > gameT;
 }
 function updateChapter2Catapult(z, dt) {
+  if (z.air || z.z || z.vz) { z.air = false; z.z = 0; z.vz = 0; z.vx = 0; if (z.st === 'air') z.st = 'idle'; }   // 根因：锤子终段会把投石车「击飞」，而投石车不走落地逻辑，卡在半空打不到、还继续开火
   if (!zs.some(c => c.T.siege && !c.dead) && !window.__siegeFreed) { window.__siegeFreed = true;   // 投石车全拆了：守卫/弓手解除站岗冲出来，防止卡关
     for (const o of zs) if (o.guard || o.siegeArcher) { o.guard = null; o.siegeArcher = false; o.alarmUntil = 0; } }
   if (z.lastHp != null && z.hp < z.lastHp) window.__cartHitAt = gameT; z.lastHp = z.hp;
