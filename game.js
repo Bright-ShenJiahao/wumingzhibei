@@ -242,6 +242,7 @@ function noviceMode() { if (window.XIAOCHANG && XIAOCHANG.active()) return false
 function hardMode() { return !!(window.TITLE && TITLE.hardMode && TITLE.hardMode()); }
 
 // ---------- 输入 ----------
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches;   // 手机：受伤 -20%、翻滚无敌 +0.05 秒、出招自动转向
 const key = {}; let joy = null, pressAtk = false, pressRoll = false;
 // 完美闪避 / 蓄力重击
 let slowT = 0, critT = 0, pdCd = 0;          // 慢动作剩余 / 暴击窗 / 完美闪避冷却
@@ -967,7 +968,7 @@ function heroUpdate(dt) {
   if (charging) { h.comboWin = 0; if (h.st === 'hurt' || h.st === 'down' || h.air) charging = false; }
   if (pressRoll && h.rollCd === 0 && h.st !== 'roll') {
     sfx('roll', h.x);
-    set(h, 'roll'); h.inv = .4; h.rollCd = .75; h.atk = null; h.q = 0; h.rollId = (h.rollId || 0) + 1;
+    set(h, 'roll'); h.inv = IS_TOUCH ? .45 : .4; h.rollCd = .75; h.atk = null; h.q = 0; h.rollId = (h.rollId || 0) + 1;
     if (!(charging && window.ROGUE && ROGUE.has('藏势'))) cancelCharge();   // 藏势：蓄力中翻滚，进度保留
     if (window.ROGUE && ROGUE.onRoll) ROGUE.onRoll(h.x, h.y);
     const d = Math.hypot(ix, iy) > 0.1 ? [ix, iy] : [h.f, 0]; const dl = Math.hypot(...d); h.rx = d[0] / dl; h.ry = d[1] / dl;
@@ -1511,6 +1512,11 @@ function chargedAttack(power, tier = 1) {
 }
 function startAtk() {
   const h = hero;
+  if (IS_TOUCH && !(joy && Math.abs(joy.dx) > .3)) {   // 手机：没在推摇杆左右时，自动面向身边最近的敌人
+    let best = null, bd = 1e9;
+    for (const z of zs) { if (z.dead || z.ally || z.decoy) continue; const dx = z.x - h.x, dy = Math.abs(z.y - h.y); if (Math.abs(dx) > 90 || dy > 30) continue; const d = Math.abs(dx) + dy * 2; if (d < bd) { bd = d; best = z; } }
+    if (best && Math.abs(best.x - h.x) > 4) h.f = Math.sign(best.x - h.x);
+  }
   // 上一下在连招窗口内打中了敌人 → 接下一下；否则从第一下开始
   const chain = h.comboWin > 0 && gameT - (h.lastHit || -9) < .7 && h.lastHitC === h.combo;
   const fin = window.ROGUE && ROGUE.takeFinisher && ROGUE.takeFinisher();   // 回锋 / 倒持：下一下直接是终段
@@ -1644,6 +1650,7 @@ function dmgHero(n, from, kind = 'basic') {
   if (window.GEAR) n = GEAR.incoming(n, from, kind);
   const raw = n;   // 保存减半前伤害，保持原有击倒判定。
   if (noviceMode()) n *= .5;
+  if (IS_TOUCH) n *= .8;
   if (n <= 0) return;
   n = Math.max(.01, n);
   const steadyHold = h.hp > n && charging && R_('steady', 0) > 0 && Math.random() < R_('steady', 0);
