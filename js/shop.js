@@ -173,12 +173,6 @@
       const row = card.querySelector('.shopBuyRow');
       if (item.kind === 'open') { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '去抽签'; b.onclick = () => item.open(); row.append(b); grid.append(card); continue; }
       if (item.soldOut && item.soldOut()) { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '已买满'; b.disabled = true; row.append(b); grid.append(card); continue; }
-      if (item.goods && window.GOODS) {   // 消耗品：下一局带不带 / 强化符选哪张 / 重铸石使用
-        const g = GOODS.store();
-        if (item.fu) { const on = g && g.fu === item.id; const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局带这张' : '下局带这张'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.fu = on ? '' : item.id; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
-        else if (GOODS.CONS[item.id]) { const on = !(g && g.off[item.id]); const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局自动带' : '下局不带'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.off[item.id] = on ? 1 : 0; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
-        if (item.useStone) { const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = '使用'; t.disabled = !item.own(); t.onclick = () => useStone(); row.append(t); }
-      }
       if (item.kind === 'stack') {
         for (const amount of item.amounts || [1]) {
           const total = item.price * amount;
@@ -193,18 +187,6 @@
       }
       grid.append(card);
     }
-  }
-  function useStone() {   // 选一把武器重铸一条词条
-    const p = window.ARMORY && ARMORY.state(); if (!p) return;
-    const grid = overlay && overlay.querySelector('.shopGrid'); if (!grid) return;
-    grid.innerHTML = '<p class="shopEmpty">选一把要重铸的武器（随机换掉其中一条词条）：</p>';
-    for (const it of p.items.filter(i => i.affixes && i.affixes.length)) {
-      const q = AFFIX_DATA.qualities[it.q] || {}, b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.style.cssText = 'display:block;width:100%;text-align:left;margin:3px 0;color:' + (q.color || '#eee');
-      b.textContent = AFFIX_DATA.label(it) + '　' + it.affixes.map(a => AFFIX_DATA.positive[a.id]?.name).join('、');
-      b.onclick = () => { const r = GOODS.reforgeOne(it.uid); line = r ? `「${r.from}」换成了「${r.to}」，客官看看满不满意。` : '这把没法重铸。'; mood = r ? 'happy' : 'annoyed'; render(); if (window.TITLE && TITLE.refreshPreparation) try { TITLE.refreshPreparation(); } catch (e) {} };
-      grid.append(b);
-    }
-    const back = document.createElement('button'); back.type = 'button'; back.className = 'shopBuy'; back.textContent = '返回'; back.onclick = () => render(); grid.append(back);
   }
   function buy(item, amount) {
     const n = item.kind === 'stack' ? amount : 1;

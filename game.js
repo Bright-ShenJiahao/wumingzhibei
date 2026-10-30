@@ -191,6 +191,8 @@ let hammerFx = [];
 let bladeFx = [];
 let bowFx = [];
 let chapter2Run = null;
+// 第二章兵种的专属行为（盾阵、技能、首领特效）：第二章战役或第二章校场都开
+function ch2Troops() { return !!chapter2Run || !!(window.XIAOCHANG && XIAOCHANG.active() && XIAOCHANG.state() && XIAOCHANG.state().chapter === 2); }
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, revives = 0;
@@ -434,7 +436,7 @@ function setRetreatLimit(anchorX) { arenaL = Math.max(0, anchorX - viewW() * RET
 function priestCast(z) {
   sfx('stamp', z.x); shake = Math.max(shake, .08);
   blessFx.push({ x: z.x, y: z.y, t: 0, T: .45 });
-  const priority=chapter2Run&&zs.filter(o=>!o.dead&&o.type==='yellow-heavy'&&o.hp<o.T.hp&&Math.abs(o.x-z.x)<=170&&Math.abs(o.y-z.y)<=80).sort((a,b)=>a.hp/a.T.hp-b.hp/b.T.hp)[0];
+  const priority=ch2Troops()&&zs.filter(o=>!o.dead&&o.type==='yellow-heavy'&&o.hp<o.T.hp&&Math.abs(o.x-z.x)<=170&&Math.abs(o.y-z.y)<=80).sort((a,b)=>a.hp/a.T.hp-b.hp/b.T.hp)[0];
   for (const o of priority?[priority]:zs) {
     if (o === z || o.dead || o.T.boss) continue;
     if (Math.abs(o.x - z.x) > 170 || Math.abs(o.y - z.y) > 80) continue;   // 回血范围加大（原 120×60）
@@ -991,7 +993,7 @@ function draw() {
   Boss.drawGround();
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
-  if (window.CH2B && chapter2Run) CH2B.draw();
+  if (window.CH2B && ch2Troops()) CH2B.draw();
   if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
   if (window.ARTIFACT) ARTIFACT.drawWorld();
   if (window.SUPPLY) SUPPLY.drawWorld();

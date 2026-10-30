@@ -441,6 +441,7 @@
       #tChapter .x-preparation #tPrepHeader{display:flex!important;min-height:26px}#tChapter .x-preparation #tPrepHeader h2,#tChapter .x-preparation #tPrepTarget{display:none}
       #tChapter .x-preparation #tPrepStatus{position:static;flex:1 1 auto;min-width:0;padding:0;background:none;color:#cdb78e;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
       #tChapter #tPrepGo{margin-left:auto}
+      #tPrepFooter{position:relative}#tPrepCarry{position:absolute;right:8px;top:-19px;z-index:2;max-width:60%;padding:2px 6px;background:#20170fe8;color:#cfe3a8;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;border-radius:3px}#tPrepCarry:empty{display:none}
       #tChapter #tPrepStatus:empty{display:none}
       #tChapter .tTrainingCard{background:url(art/ui/trial_card.webp) right center/auto 100% no-repeat,linear-gradient(135deg,#7a2418,#4e150e);overflow:hidden}#tChapter .tTrainingProgress[hidden]{display:none}
       #tChapter .tTrainingCopy{position:relative;z-index:1;text-shadow:0 1px 2px #2a0905}   /* 空提示条不再盖住最后一行武器卡 */
@@ -547,7 +548,7 @@
         <div id="tPrepBag"></div>
         <div id="aTools"></div>
        </div>
-       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><span id="tPrepCarry"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -887,6 +888,7 @@
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
+    { const cy = document.getElementById('tPrepCarry'); if (cy) { const l = window.GOODS && GOODS.carryList ? GOODS.carryList() : []; cy.textContent = l.length ? '携带：' + l.join('、') : ''; } }
     const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　乱世初鸣';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());

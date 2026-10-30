@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=69196956a5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=69196956a5)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=0afc484a6f" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=0afc484a6f)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='fb19a5cc2d51',busy=false;
+var BUILD='65b270a9c000',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -281,7 +281,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
   }
   function setupStyle(){if(document.getElementById('armoryStyle'))return;const style=document.createElement('style');style.id='armoryStyle';style.textContent=`
     #tChapterPanel{min-height:0;overflow:hidden!important}#tPrepScroll{min-height:0;flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 10px 72px 0;box-sizing:border-box}#tPrepMain,#tPrepFooter{flex-shrink:0}
-    .aTabs{display:flex;gap:2px}.aTabs button,.aFilters button,.aSortBtn{min-height:26px;padding:2px 10px;border:1px solid #7c5f3b;background:#2a2019;color:#cdb68b;font:700 12px sans-serif;cursor:pointer}.aTabs button{border-radius:6px 6px 0 0;font-size:13px}.aTabs button.on{background:#5a3d24;color:#ffe2a0;border-color:#c89a52}.aFilters{display:flex;gap:3px;margin-left:auto}.aFilters button{border-radius:12px}.aFilters button.on{background:#5a3d24;color:#ffe2a0;border-color:#c89a52}.aSortBtn{border-radius:12px}.aFruit{display:block;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524}.aGood{--quality:#d98a3a}.aGoodHint{grid-column:1/-1;margin:4px 0;color:#a89070;font-size:11px}@media (pointer:coarse){.aTabs button,.aFilters button,.aSortBtn{min-height:30px;padding:2px 8px;font-size:11px}}@media(max-height:430px){.aTabs button,.aFilters button,.aSortBtn{min-height:26px;padding:1px 6px;font-size:10px}}.aCard{position:relative;min-width:0;aspect-ratio:1;box-sizing:border-box;overflow:hidden;padding:5px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:5px;background:linear-gradient(145deg,#453324,#261e18);color:#e8d4ad;cursor:pointer;display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:center;justify-items:center;transition:box-shadow .12s,border-color .12s}
+    .aTabs{display:flex;gap:2px}.aTabs button,.aFilters button,.aSortBtn{min-height:26px;padding:2px 10px;border:1px solid #7c5f3b;background:#2a2019;color:#cdb68b;font:700 12px sans-serif;cursor:pointer}.aTabs button{border-radius:6px 6px 0 0;font-size:13px}.aTabs button.on{background:#5a3d24;color:#ffe2a0;border-color:#c89a52}.aFilters{display:flex;gap:3px;margin-left:auto}.aFilters button{border-radius:12px}.aFilters button.on{background:#5a3d24;color:#ffe2a0;border-color:#c89a52}.aSortBtn{border-radius:12px}.aFruit{display:block;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524}.aGood{--quality:#d98a3a}.aGood{position:relative}.aGoodBtn{min-height:24px;padding:1px 6px;border:1px solid #7c5f3b;border-radius:4px;background:#2a2019;color:#cdb68b;font:700 11px sans-serif;cursor:pointer}.aGood .aGoodBtn{position:absolute;left:3px;right:3px;bottom:3px}.aGoodBtn.on{background:#3a5a2a;color:#e6f5c6;border-color:#8fb862}.aGoodHint{grid-column:1/-1;margin:4px 0;color:#a89070;font-size:11px}@media (pointer:coarse){.aTabs button,.aFilters button,.aSortBtn{min-height:30px;padding:2px 8px;font-size:11px}}@media(max-height:430px){.aTabs button,.aFilters button,.aSortBtn{min-height:26px;padding:1px 6px;font-size:10px}}.aCard{position:relative;min-width:0;aspect-ratio:1;box-sizing:border-box;overflow:hidden;padding:5px;border:1px solid #78603e;border-top:3px solid var(--quality);border-radius:5px;background:linear-gradient(145deg,#453324,#261e18);color:#e8d4ad;cursor:pointer;display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:center;justify-items:center;transition:box-shadow .12s,border-color .12s}
     .aCard.selected{border-color:#edc465;box-shadow:0 0 9px #d3a95c88,inset 0 0 0 1px #edc465;background:#574124}.aCard .aSelect{position:absolute;left:4px;top:4px;z-index:1;width:14px;height:14px;margin:0;accent-color:#e5be68;cursor:pointer}.aCard .aLockMark{position:absolute;right:4px;top:3px;color:#f0d58f;font-size:12px;line-height:1}.aCardIcon{min-width:0;min-height:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}.aCardIcon img{display:block;max-width:78%;max-height:78%;width:auto;height:auto;object-fit:contain;image-rendering:pixelated}.aCardName{width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:11px;line-height:1.2;color:var(--quality)}
     .tPrepSlot[data-uid]{grid-template-columns:42px minmax(0,1fr);grid-template-rows:12px minmax(10px,1fr) auto}.tPrepSlot[data-uid] .tPrepName{grid-column:2;grid-row:2}.tPrepSlot[data-uid] .aUnequip,.tPrepSlot[data-uid] .aSlotLock{border:1px solid #80613c;border-radius:3px;background:#38291d;color:#dcc493;cursor:pointer}.tPrepSlot[data-uid] .aUnequip:disabled{opacity:.42;cursor:not-allowed;filter:grayscale(1)}
     .aSlotActions{grid-column:2;grid-row:3;display:flex;gap:4px;align-self:end}.aSlotActions button{max-width:50%;overflow:hidden;text-overflow:ellipsis}
@@ -291,7 +291,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
   `;document.head.append(style);}
   function ensureConfirm(){let overlay=document.getElementById('aConfirm');if(overlay)return overlay;overlay=document.createElement('div');overlay.id='aConfirm';overlay.hidden=true;overlay.innerHTML='<section class="a-confirm-paper"><h3></h3><p class="a-confirm-desc"></p><ul></ul><div class="a-confirm-summary"></div><div class="a-confirm-actions"><button type="button" data-confirm="yes">确定</button><button type="button" data-confirm="no">取消</button></div></section>';overlay.querySelector('.a-confirm-paper').style.backgroundImage=`url("${ASSETS.ui.scroll}")`;overlay.querySelectorAll('button').forEach(b=>b.style.backgroundImage=`url("${ASSETS.ui.btn}")`);document.body.append(overlay);overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('[data-confirm="no"]'))overlay.hidden=true;if(e.target.closest('[data-confirm="yes"]')){const action=overlay._action;overlay.hidden=true;action?.();}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)overlay.hidden=true;});return overlay;}
   function askConfirm({title,description='',items=[],summary='',action,warn=false}){const overlay=ensureConfirm();overlay._action=action;overlay.querySelector('h3').textContent=title;overlay.querySelector('.a-confirm-desc').textContent=description;const list=overlay.querySelector('ul');list.replaceChildren(...items.map(item=>{const li=document.createElement('li');li.textContent=D.label(item);li.style.color=D.qualities[item.q].color;return li;}));list.hidden=!items.length;const notes=overlay.querySelector('.a-confirm-summary');notes.textContent=summary;notes.hidden=!summary;notes.style.color=warn?'#9b1c12':'';notes.style.fontWeight=warn?'700':'';overlay.hidden=false;}
-  const bagView={tab:'w',filter:'all',sort:'q'};
+  const bagView={tab:'w',filter:'all',sort:'q',stone:false};
   function render(root,icon,preview){
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('.tBagCount');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.capacityOf(cache);countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
@@ -307,8 +307,25 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
     const toolsBox=root.querySelector('#aTools');if(toolsBox)toolsBox.hidden=bagView.tab!=='w';
     if(bagView.tab==='i'){
       const goods=[{name:'彩色果',n:window.WALLET?WALLET.fruits():0,icon:'<span class="aFruit"></span>',desc:'西域来的稀罕物。换一个部位的颜色需要 2 个，可在商店用金币购买。'}];
-      for(const g of goods){const c=document.createElement('div');c.className='aCard aGood';c.setAttribute('role','button');c.tabIndex=0;c.innerHTML=`<span class="aCardIcon">${g.icon}</span><span class="aCardName">${g.name} ×${g.n}</span>`;c.onclick=()=>showMessage(g.name+'：'+g.desc);bag.append(c);}
-      const empty=document.createElement('p');empty.className='aGoodHint';empty.textContent='点物品可查看说明。以后的消耗品也放在这里。';bag.append(empty);
+      // 消耗品（用户定）：商店只管买，这里开关「这局带不带」；强化符每局只能选 1 张；重铸石在这里使用
+      const G=window.GOODS,gs=G&&G.store();
+      if(G&&bagView.stone){
+        const tip=document.createElement('p');tip.className='aGoodHint';tip.textContent='选一把要重铸的武器（随机换掉其中一条词条，品级不变）：';bag.append(tip);
+        for(const it of p.items.filter(i=>i.affixes&&i.affixes.length)){const q=D.qualities[it.q]||{},b=document.createElement('button');b.type='button';b.className='aGoodBtn';b.style.cssText='display:block;width:100%;text-align:left;margin:3px 0;color:'+(q.color||'#eee');b.textContent=D.label(it)+'　'+it.affixes.map(x=>D.positive[x.id]?.name).join('、');
+          b.onclick=()=>{const r=G.reforgeOne(it.uid);bagView.stone=false;showMessage(r?`「${r.from}」换成了「${r.to}」`:'这把没法重铸。');window.TITLE.refreshPreparation();};bag.append(b);}
+        const back=document.createElement('button');back.type='button';back.className='aGoodBtn';back.textContent='返回';back.onclick=()=>{bagView.stone=false;window.TITLE.refreshPreparation();};bag.append(back);
+        updateFooter(root);return;
+      }
+      if(G&&gs){
+        const ic=id=>ASSETS.ui['gd_'+id]?`<img src="${ASSETS.ui['gd_'+id]}" alt="" style="width:100%;height:100%;object-fit:contain">`:'';
+        for(const id in G.CONS){const n=G.count(id);if(n>0)goods.push({id,name:G.CONS[id].name,n,icon:ic(id),desc:G.CONS[id].d,on:!gs.off[id],btn:!gs.off[id]?'✓ 带上':'不带'});}
+        for(const id in G.FU){const n=G.count(id);if(n>0)goods.push({id,name:G.FU[id].name,n,icon:ic(id),desc:'本局 '+G.FU[id].d+'（每局只能带 1 张）',on:gs.fu===id,btn:gs.fu===id?'✓ 带这张':'带这张'});}
+        const st=G.count('stone');if(st>0)goods.push({id:'stone',name:'重铸石',n:st,icon:ic('stone'),desc:'随机换掉一把武器的其中一条词条',btn:'使用',use:true});
+      }
+      for(const g of goods){const c=document.createElement('div');c.className='aCard aGood'+(g.on?' selected':'');c.setAttribute('role','button');c.tabIndex=0;c.innerHTML=`<span class="aCardIcon">${g.icon}</span><span class="aCardName">${g.name} ×${g.n}</span>`;c.onclick=()=>showMessage(g.name+'：'+g.desc);
+        if(g.btn){const b=document.createElement('button');b.type='button';b.className='aGoodBtn'+(g.on?' on':'');b.textContent=g.btn;b.onclick=e=>{e.stopPropagation();if(g.use){bagView.stone=true;}else G.toggle(g.id);window.TITLE.refreshPreparation();};c.append(b);}
+        bag.append(c);}
+      const empty=document.createElement('p');empty.className='aGoodHint';empty.textContent=goods.length>1?'点按钮切换这局带不带，出征时自动用掉。消耗品在商店购买。':'点物品可查看说明。消耗品在商店购买，买了会放在这里。';bag.append(empty);
       updateFooter(root);return;
     }
     const slotOf=t=>D.slots[t];
@@ -2027,7 +2044,7 @@ const Boss = (() => {
   }
   let lastT = performance.now();
   function draw() {
-    if (!chapter2Run) return;
+    if (!ch2Troops()) return;
     { const n = performance.now(); tickFx(Math.min(.05, (n - lastT) / 1000)); lastT = n; }
     // 喷火：前摇时地上的土红预警条，喷火时贴火焰图
     for (const z of zs) {
@@ -3558,7 +3575,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
-  if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
+  if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
     const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
@@ -3580,7 +3597,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   }
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
-  if (ranged && z.T.rangedResist && !(chapter2Run && z.type === 'yellow-shield')) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
+  if (ranged && z.T.rangedResist && !(ch2Troops() && z.type === 'yellow-shield')) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
   if (z.T.boss) {
     const hp0 = z.hp;
     if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);
@@ -3687,7 +3704,7 @@ function startEnemyCelebration() {
 // 依赖 game.js 的全局变量，只在运行时调用；本文件加载时不访问 game.js 的变量。
 let enemySkillFx = [];
 function ch2Armored(z) {
-  return !!(chapter2Run && z.enemySkill && (z.type === 'yellow-heavy' || (z.type === 'yellow-spear' && z.enemySkill.phase === 'dash')));
+  return !!(ch2Troops() && z.enemySkill && (z.type === 'yellow-heavy' || (z.type === 'yellow-spear' && z.enemySkill.phase === 'dash')));
 }
 function ch2NearestShield(z) {
   return zs.filter(o=>o!==z&&!o.dead&&o.st!=='gone'&&o.type==='yellow-shield').sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
@@ -3707,7 +3724,7 @@ function applyCh2Elites(battle, wave) {
   }
 }
 function ch2Formation(z) {
-  if(!chapter2Run)return null;
+  if(!ch2Troops())return null;
   const shield=ch2NearestShield(z);
   // 盾墙：盾兵自己照常往主角压上去（慢慢逼近），身后的枪兵、远程、方士跟着盾兵走。
   // （原来盾兵会退到后排兵前面守着，后排又跟着盾兵，两边互相等，结果整队停在远处不动）
@@ -3729,7 +3746,7 @@ function ch2BeginSkill(z) {
   z.skillCd=z.type==='yellow-heavy'?6:z.type==='yellow-shield'?7:5;sfx('bladeAlert',z.x);
 }
 function ch2Skill(z,dt) {
-  if(!chapter2Run)return false;
+  if(!ch2Troops())return false;
   z.skillCd=Math.max(0,(z.skillCd||0)-dt);
   let skill=z.enemySkill;
   if(skill&&(z.dead||z.air||(!ch2Armored(z)&&(z.stun>0||z.daze>0)))){z.enemySkill=null;return false;}
@@ -3807,7 +3824,7 @@ function drawEnemySheet(key,x,y,f,width,time,duration){
   ctx.save();ctx.translate(x,y);ctx.scale(f,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,frame*fw,0,fw,fh,-width/2,-height/2,width,height);ctx.restore();
 }
 function ch2Telegraph(z){
-  if(!chapter2Run||!z.enemySkill||z.enemySkill.phase!=='wind'||z.dead)return;
+  if(!ch2Troops()||!z.enemySkill||z.enemySkill.phase!=='wind'||z.dead)return;
   ctx.save();ctx.fillStyle='#b64c2b';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('!',z.x,z.y-42);
   if(z.type==='yellow-spear'){ctx.fillStyle='rgba(130,42,29,.3)';ctx.fillRect(z.f>0?z.x:z.x-90,z.y-5,90,10);}
   ctx.restore();
@@ -3989,8 +4006,8 @@ function zUpdate(z, dt) {
       if (T.ranged === 'stone') eshots.push({ source:z, k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
       else if (T.ranged === 'fire') {
         const dx=hero.x-z.x,dy=hero.y-z.y;
-        for(const angle of chapter2Run&&z.type==='archer'?[-Math.PI/15,0,Math.PI/15]:[0]){
-          eshots.push({k:'fire',enemyVolley:!!chapter2Run,x0:z.x+z.f*16,y0:z.y,tx:z.x+dx*Math.cos(angle)-dy*Math.sin(angle),ty:z.y+dx*Math.sin(angle)+dy*Math.cos(angle),t:0,T:.9});
+        for(const angle of ch2Troops()&&z.type==='archer'?[-Math.PI/15,0,Math.PI/15]:[0]){
+          eshots.push({k:'fire',enemyVolley:ch2Troops(),x0:z.x+z.f*16,y0:z.y,tx:z.x+dx*Math.cos(angle)-dy*Math.sin(angle),ty:z.y+dx*Math.sin(angle)+dy*Math.cos(angle),t:0,T:.9});
         }
       }
       else if (Math.abs(dx) < T.reach && Math.abs(hero.y - z.y) < 14 && Math.sign(dx) === z.f) dmgHero(T.dmg, z);   // 上下判定 9→14，和主角攻击范围对齐
@@ -4007,7 +4024,7 @@ function zUpdate(z, dt) {
     tx = Math.max(cam.x + 30, Math.min(tx, (lockR < Infinity ? lockR : cam.x + viewW()) - 30));
     if (z.siegeArcher && z.guard) { tx = z.guard.x; ty = z.guard.y; }   // 投石车弓手：站岗不动，远处也射（抛射）
     const ad = Math.abs(dx);
-    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < (z.siegeArcher ? 340 : T.range[1] * 1.2) && Math.abs(dy) < (z.siegeArcher ? 120 : T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = chapter2Run&&z.type==='archer'?4.5:T.cd; return; }
+    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < (z.siegeArcher ? 340 : T.range[1] * 1.2) && Math.abs(dy) < (z.siegeArcher ? 120 : T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = ch2Troops()&&z.type==='archer'?4.5:T.cd; return; }
   } else {          // 近战：最多 M.token 个同时贴身，其余在旁边游走
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < (window.XIAOCHANG && XIAOCHANG.tokenCap ? XIAOCHANG.tokenCap() : M.token) && Math.abs(dx) < 130) z.tok = true;
@@ -4016,7 +4033,7 @@ function zUpdate(z, dt) {
     if (T.elite && !z.qi && (z.qiCd || 0) <= 0 && Math.abs(dx) < 130 && Math.abs(dy) < 26) {
       set(z, 'wind'); z.qi = 0; z.qiCd = 6.5; sfx('bladeAlert', z.x); return;
     }
-    if (z.tok && !(chapter2Run && z.type==='yellow-heavy' && ch2Formation(z) && Math.abs(z.x-ch2Formation(z).x)>18) && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
+    if (z.tok && !(ch2Troops() && z.type==='yellow-heavy' && ch2Formation(z) && Math.abs(z.x-ch2Formation(z).x)>18) && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
   }
   const formation=ch2Formation(z);if(formation){tx=formation.x;ty=formation.y;}
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);
@@ -8362,12 +8379,6 @@ function resultKey(e) {
       const row = card.querySelector('.shopBuyRow');
       if (item.kind === 'open') { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '去抽签'; b.onclick = () => item.open(); row.append(b); grid.append(card); continue; }
       if (item.soldOut && item.soldOut()) { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '已买满'; b.disabled = true; row.append(b); grid.append(card); continue; }
-      if (item.goods && window.GOODS) {   // 消耗品：下一局带不带 / 强化符选哪张 / 重铸石使用
-        const g = GOODS.store();
-        if (item.fu) { const on = g && g.fu === item.id; const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局带这张' : '下局带这张'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.fu = on ? '' : item.id; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
-        else if (GOODS.CONS[item.id]) { const on = !(g && g.off[item.id]); const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局自动带' : '下局不带'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.off[item.id] = on ? 1 : 0; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
-        if (item.useStone) { const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = '使用'; t.disabled = !item.own(); t.onclick = () => useStone(); row.append(t); }
-      }
       if (item.kind === 'stack') {
         for (const amount of item.amounts || [1]) {
           const total = item.price * amount;
@@ -8382,18 +8393,6 @@ function resultKey(e) {
       }
       grid.append(card);
     }
-  }
-  function useStone() {   // 选一把武器重铸一条词条
-    const p = window.ARMORY && ARMORY.state(); if (!p) return;
-    const grid = overlay && overlay.querySelector('.shopGrid'); if (!grid) return;
-    grid.innerHTML = '<p class="shopEmpty">选一把要重铸的武器（随机换掉其中一条词条）：</p>';
-    for (const it of p.items.filter(i => i.affixes && i.affixes.length)) {
-      const q = AFFIX_DATA.qualities[it.q] || {}, b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.style.cssText = 'display:block;width:100%;text-align:left;margin:3px 0;color:' + (q.color || '#eee');
-      b.textContent = AFFIX_DATA.label(it) + '　' + it.affixes.map(a => AFFIX_DATA.positive[a.id]?.name).join('、');
-      b.onclick = () => { const r = GOODS.reforgeOne(it.uid); line = r ? `「${r.from}」换成了「${r.to}」，客官看看满不满意。` : '这把没法重铸。'; mood = r ? 'happy' : 'annoyed'; render(); if (window.TITLE && TITLE.refreshPreparation) try { TITLE.refreshPreparation(); } catch (e) {} };
-      grid.append(b);
-    }
-    const back = document.createElement('button'); back.type = 'button'; back.className = 'shopBuy'; back.textContent = '返回'; back.onclick = () => render(); grid.append(back);
   }
   function buy(item, amount) {
     const n = item.kind === 'stack' ? amount : 1;
@@ -8647,7 +8646,10 @@ function resultKey(e) {
     items.push({ id: 'lottery', name: '天命签', desc: '木制抽签机：拉一次 200，十连 1800（保底精致以上）', kind: 'open', price: 200, open: lottery });
   }
 
-  window.GOODS = { FU, CONS, count, add, take, store, reset, tick, eat, drink, useAmulet, stat, chargeMul, reforgeOne, lottery, dailyId, priceOf, run: () => R };
+  // 背包「物品」页用：这局会带哪些（开关存在 profile.goods.off / fu）
+  function carryList() { const g = store(); if (!g) return []; const out = []; for (const id in CONS) if (count(id) > 0 && !g.off[id]) out.push(CONS[id].name); if (g.fu && FU[g.fu] && count(g.fu) > 0) out.push(FU[g.fu].name); return out; }
+  function toggle(id) { const g = store(); if (!g) return; if (FU[id]) g.fu = g.fu === id ? '' : id; else g.off[id] = g.off[id] ? 0 : 1; g._at = Date.now(); save(); }
+  window.GOODS = { carryList, toggle, FU, CONS, count, add, take, store, reset, tick, eat, drink, useAmulet, stat, chargeMul, reforgeOne, lottery, dailyId, priceOf, run: () => R };
 })();
 
 // 第二章战场补给（用户定）：金创药 / 杜康酒 / 火油罐。金创药捡到先存 1 瓶、半血自动喝；其余拾取即生效。
@@ -9350,6 +9352,7 @@ function resultKey(e) {
       #tChapter .x-preparation #tPrepHeader{display:flex!important;min-height:26px}#tChapter .x-preparation #tPrepHeader h2,#tChapter .x-preparation #tPrepTarget{display:none}
       #tChapter .x-preparation #tPrepStatus{position:static;flex:1 1 auto;min-width:0;padding:0;background:none;color:#cdb78e;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
       #tChapter #tPrepGo{margin-left:auto}
+      #tPrepFooter{position:relative}#tPrepCarry{position:absolute;right:8px;top:-19px;z-index:2;max-width:60%;padding:2px 6px;background:#20170fe8;color:#cfe3a8;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;border-radius:3px}#tPrepCarry:empty{display:none}
       #tChapter #tPrepStatus:empty{display:none}
       #tChapter .tTrainingCard{background:url(pack/ui/trial_card.webp?v=33bd92b72e) right center/auto 100% no-repeat,linear-gradient(135deg,#7a2418,#4e150e);overflow:hidden}#tChapter .tTrainingProgress[hidden]{display:none}
       #tChapter .tTrainingCopy{position:relative;z-index:1;text-shadow:0 1px 2px #2a0905}   /* 空提示条不再盖住最后一行武器卡 */
@@ -9456,7 +9459,7 @@ function resultKey(e) {
         <div id="tPrepBag"></div>
         <div id="aTools"></div>
        </div>
-       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
+       <footer id="tPrepFooter"><div id="aFooterTools"><button class="aForgeButton" id="aForge" type="button"><span>⚒ 熔炼</span><small id="aForgeTag">已选 0/5 · 至少选3把</small></button><button id="aLock" type="button">锁定</button><button id="aDiscard" type="button">卖出</button></div><span id="tPrepStatus" role="status"></span><span id="tPrepCarry"></span><button class="tChapterButton" id="tPrepGo" type="button">出征</button></footer>
       </section></div>`;
     dom.pick = dom.chapter.querySelector('#tChapterPick');
     dom.prep = dom.chapter.querySelector('#tChapterPanel');
@@ -9796,6 +9799,7 @@ function resultKey(e) {
     if (window.WEAPON_TIP) WEAPON_TIP.hide();
     const p = playerLoadout();
     if (window.ARMORY) for (const slot of ['long','short','ranged']) p.equipped[slot] = ARMORY.equipped(slot)?.type || null;
+    { const cy = document.getElementById('tPrepCarry'); if (cy) { const l = window.GOODS && GOODS.carryList ? GOODS.carryList() : []; cy.textContent = l.length ? '携带：' + l.join('、') : ''; } }
     const chapterName = selectedChapter === 2 ? '第二章　黄巾决战' : '第一章　乱世初鸣';
     const c2 = dom.chapter.querySelector('[data-chapter="2"]');
     const canEnter2 = !!(window.CHAPTER2 && CHAPTER2.canEnter());
@@ -10195,7 +10199,31 @@ window.XIAOCHANG = (() => {
         grunt: [[95,5,0,0,0],[80,17,3,0,0],[68,24,7,1,0],[65,25,8,1.5,.5],[60,27,9,3,1],[45,30,15,6,4]],
       },
     },
+    // 第二章校场（用户定）：第二章黄巾兵；第 6 层随机张梁或张宝；只掉大刀、汉弓
+    2: {
+      name: '黄巾决战', pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer', 'slinger', 'priest', 'elite'],
+      boss: { person: '', start: () => {
+        const type = Math.random() < .5 ? 'zhang_liang' : 'zhang_bao';
+        spawn(type, 660, (M.top + M.bot) / 2);
+        const z = zs[zs.length - 1]; z.bossLabel = TYPES[type].name; CONFIG[2].boss.person = type === 'zhang_liang' ? '张梁' : '张宝';
+        return z;
+      } },
+      melee: ['yellow-shield', 'yellow-spear', 'yellow-heavy'], ranged: ['archer', 'slinger'],
+      elites: ['yellow-shield', 'yellow-spear', 'yellow-heavy'],
+      weapons: ['blade', 'bow'],
+      hp: [1.1, 1.3, 1.55, 1.85, 2.2, 3], damage: [1, 1.1, 1.2, 1.32, 1.45, 1.75],
+      waves: [
+        { budget: 3, pool: ['yellow-spear', 'yellow-heavy'] },
+        { budget: 4, pool: ['yellow-shield', 'yellow-spear'], ranged: true },
+        { budget: 3, pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer'], core: ['elite'], ranged: true },
+        { budget: 5, pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer', 'slinger', 'priest'], core: ['yellow-shield'], ranged: true },
+        { budget: 2, pool: ['yellow-spear', 'yellow-heavy'], eliteChoice: true },
+        { boss: true },
+      ],
+      drops: null,
+    },
   };
+  CONFIG[2].drops = CONFIG[1].drops;
   const debug = () => /[?&]debug(?:=|&|$)/.test(location.search);
   const config = () => CONFIG[run ? run.chapter : selection.chapter];
   const ranged = type => type === 'slinger' || type === 'archer';
@@ -10237,6 +10265,7 @@ window.XIAOCHANG = (() => {
     if (window.ROOM) ROOM.skip();
     reset();
     M.top = chapter === 2 ? 190 : 168;   // 第二章校场同样避开更低的栅栏
+    if (chapter === 2 && window.ensureAssets) ensureAssets('chapter2', { label: '正在载入黄巾兵马' });
     active = true;
     run = { chapter, floor, wish, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
     magicFx = []; ghostLinks = [];
@@ -10267,7 +10296,7 @@ window.XIAOCHANG = (() => {
     for (const k in key) delete key[k];
     // 保留未拾取装备；清掉上一波飞行物和火场，选卡期间不偷袭玩家。
     shots = []; eshots = []; fires = []; allyShots = []; allyFires = [];
-    catapults = []; if (typeof Boss !== 'undefined') Boss.reset();
+    catapults = []; if (typeof Boss !== 'undefined') Boss.reset(); if (window.CH2B) CH2B.reset(); enemySkillFx = [];
     zs = [];
     if (run.wave === 3 || run.wave === 5) refillXiaochangProps();
     setHeading(); ROGUE.offer();
@@ -10319,8 +10348,9 @@ window.XIAOCHANG = (() => {
     const left = hero.x > 540 || (hero.x >= 180 && index % 2 === 0);
     const x = left ? 18 + (index % 3) * 12 : 702 - (index % 3) * 12;
     let y = M.top + 12 + (index * 27) % 100;
-    spawn(type, x, y);
-    const z = zs[zs.length - 1]; decorate(z);
+    const elite2 = type === 'elite' && config().elites;
+    spawn(elite2 ? pick(config().elites) : type, x, y);
+    const z = zs[zs.length - 1]; if (elite2 && window.makeCh2Elite) makeCh2Elite(z); decorate(z);
     z.x = Math.max(12, Math.min(708, z.x));
     if (Math.abs(z.x - hero.x) < 90) z.x = hero.x < 360 ? 700 : 20;
     return z;
@@ -10349,7 +10379,7 @@ window.XIAOCHANG = (() => {
     const target = nearestLiving(z);
     if (target) ghostLinks.push({ x0: z.x, y0: z.y - 20, target, t: 0, T: .5 });
     if (z.xAffixes && z.xAffixes.includes('split') && !z.noSplit && !z.T.boss && !z.T.chapterBoss) {
-      spawn('grunt', z.x, z.y);
+      spawn(pick(config().melee), z.x, z.y);
       const child = zs[zs.length - 1];
       if (child) {
         child.xiaochang = true; child.dark = true; child.noSplit = true; child.ghost = 0; child.blinkT = 6;
@@ -10427,7 +10457,7 @@ window.XIAOCHANG = (() => {
     const alive = zs.filter(z => !z.dead), existing = alive.filter(z => ranged(z.type)).length;
     const count = Math.max(0, 2 - existing);
     const support = Math.max(0, (existing + count) * 3 - alive.length - count);
-    for (let i = 0; i < support; i++) spawnSide('grunt', i);
+    for (let i = 0; i < support; i++) spawnSide(pick(config().melee), i);
     for (let i = 0; i < count; i++) spawnSide('archer', i + support);
   }
   function finish(win) {
@@ -10466,7 +10496,7 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
     function update(){
@@ -11248,6 +11278,8 @@ let hammerFx = [];
 let bladeFx = [];
 let bowFx = [];
 let chapter2Run = null;
+// 第二章兵种的专属行为（盾阵、技能、首领特效）：第二章战役或第二章校场都开
+function ch2Troops() { return !!chapter2Run || !!(window.XIAOCHANG && XIAOCHANG.active() && XIAOCHANG.state() && XIAOCHANG.state().chapter === 2); }
 // 结算相关：本局用时、被打次数、通关后的结算数据、区域清空延迟、结算板按钮、提示条
 let runT = 0, hitsTaken = 0, endT = 0, result = null, clearAt = 0, uiBtns = [], toastMsg = '', toastT = 0;
 let drops = [], floaters = [], reviveUsed = false, revives = 0;
@@ -11491,7 +11523,7 @@ function setRetreatLimit(anchorX) { arenaL = Math.max(0, anchorX - viewW() * RET
 function priestCast(z) {
   sfx('stamp', z.x); shake = Math.max(shake, .08);
   blessFx.push({ x: z.x, y: z.y, t: 0, T: .45 });
-  const priority=chapter2Run&&zs.filter(o=>!o.dead&&o.type==='yellow-heavy'&&o.hp<o.T.hp&&Math.abs(o.x-z.x)<=170&&Math.abs(o.y-z.y)<=80).sort((a,b)=>a.hp/a.T.hp-b.hp/b.T.hp)[0];
+  const priority=ch2Troops()&&zs.filter(o=>!o.dead&&o.type==='yellow-heavy'&&o.hp<o.T.hp&&Math.abs(o.x-z.x)<=170&&Math.abs(o.y-z.y)<=80).sort((a,b)=>a.hp/a.T.hp-b.hp/b.T.hp)[0];
   for (const o of priority?[priority]:zs) {
     if (o === z || o.dead || o.T.boss) continue;
     if (Math.abs(o.x - z.x) > 170 || Math.abs(o.y - z.y) > 80) continue;   // 回血范围加大（原 120×60）
@@ -12048,7 +12080,7 @@ function draw() {
   Boss.drawGround();
   for (const p of props) if (p.back) drawProp(p);   // 旗帜画在人物后面
   if (window.ZJ && chapter2Run && chapter2Run.battle === 6) ZJ.draw();
-  if (window.CH2B && chapter2Run) CH2B.draw();
+  if (window.CH2B && ch2Troops()) CH2B.draw();
   if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
   if (window.ARTIFACT) ARTIFACT.drawWorld();
   if (window.SUPPLY) SUPPLY.drawWorld();

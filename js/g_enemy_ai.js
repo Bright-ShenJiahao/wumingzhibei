@@ -2,7 +2,7 @@
 // 依赖 game.js 的全局变量，只在运行时调用；本文件加载时不访问 game.js 的变量。
 let enemySkillFx = [];
 function ch2Armored(z) {
-  return !!(chapter2Run && z.enemySkill && (z.type === 'yellow-heavy' || (z.type === 'yellow-spear' && z.enemySkill.phase === 'dash')));
+  return !!(ch2Troops() && z.enemySkill && (z.type === 'yellow-heavy' || (z.type === 'yellow-spear' && z.enemySkill.phase === 'dash')));
 }
 function ch2NearestShield(z) {
   return zs.filter(o=>o!==z&&!o.dead&&o.st!=='gone'&&o.type==='yellow-shield').sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y))[0];
@@ -22,7 +22,7 @@ function applyCh2Elites(battle, wave) {
   }
 }
 function ch2Formation(z) {
-  if(!chapter2Run)return null;
+  if(!ch2Troops())return null;
   const shield=ch2NearestShield(z);
   // 盾墙：盾兵自己照常往主角压上去（慢慢逼近），身后的枪兵、远程、方士跟着盾兵走。
   // （原来盾兵会退到后排兵前面守着，后排又跟着盾兵，两边互相等，结果整队停在远处不动）
@@ -44,7 +44,7 @@ function ch2BeginSkill(z) {
   z.skillCd=z.type==='yellow-heavy'?6:z.type==='yellow-shield'?7:5;sfx('bladeAlert',z.x);
 }
 function ch2Skill(z,dt) {
-  if(!chapter2Run)return false;
+  if(!ch2Troops())return false;
   z.skillCd=Math.max(0,(z.skillCd||0)-dt);
   let skill=z.enemySkill;
   if(skill&&(z.dead||z.air||(!ch2Armored(z)&&(z.stun>0||z.daze>0)))){z.enemySkill=null;return false;}
@@ -122,7 +122,7 @@ function drawEnemySheet(key,x,y,f,width,time,duration){
   ctx.save();ctx.translate(x,y);ctx.scale(f,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,frame*fw,0,fw,fh,-width/2,-height/2,width,height);ctx.restore();
 }
 function ch2Telegraph(z){
-  if(!chapter2Run||!z.enemySkill||z.enemySkill.phase!=='wind'||z.dead)return;
+  if(!ch2Troops()||!z.enemySkill||z.enemySkill.phase!=='wind'||z.dead)return;
   ctx.save();ctx.fillStyle='#b64c2b';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('!',z.x,z.y-42);
   if(z.type==='yellow-spear'){ctx.fillStyle='rgba(130,42,29,.3)';ctx.fillRect(z.f>0?z.x:z.x-90,z.y-5,90,10);}
   ctx.restore();
@@ -304,8 +304,8 @@ function zUpdate(z, dt) {
       if (T.ranged === 'stone') eshots.push({ source:z, k: 'stone', x: z.x + z.f * 16, y: z.y, z: 24, vx: z.f * 190, life: .95 });   // 射程约 180，和玩家一致
       else if (T.ranged === 'fire') {
         const dx=hero.x-z.x,dy=hero.y-z.y;
-        for(const angle of chapter2Run&&z.type==='archer'?[-Math.PI/15,0,Math.PI/15]:[0]){
-          eshots.push({k:'fire',enemyVolley:!!chapter2Run,x0:z.x+z.f*16,y0:z.y,tx:z.x+dx*Math.cos(angle)-dy*Math.sin(angle),ty:z.y+dx*Math.sin(angle)+dy*Math.cos(angle),t:0,T:.9});
+        for(const angle of ch2Troops()&&z.type==='archer'?[-Math.PI/15,0,Math.PI/15]:[0]){
+          eshots.push({k:'fire',enemyVolley:ch2Troops(),x0:z.x+z.f*16,y0:z.y,tx:z.x+dx*Math.cos(angle)-dy*Math.sin(angle),ty:z.y+dx*Math.sin(angle)+dy*Math.cos(angle),t:0,T:.9});
         }
       }
       else if (Math.abs(dx) < T.reach && Math.abs(hero.y - z.y) < 14 && Math.sign(dx) === z.f) dmgHero(T.dmg, z);   // 上下判定 9→14，和主角攻击范围对齐
@@ -322,7 +322,7 @@ function zUpdate(z, dt) {
     tx = Math.max(cam.x + 30, Math.min(tx, (lockR < Infinity ? lockR : cam.x + viewW()) - 30));
     if (z.siegeArcher && z.guard) { tx = z.guard.x; ty = z.guard.y; }   // 投石车弓手：站岗不动，远处也射（抛射）
     const ad = Math.abs(dx);
-    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < (z.siegeArcher ? 340 : T.range[1] * 1.2) && Math.abs(dy) < (z.siegeArcher ? 120 : T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = chapter2Run&&z.type==='archer'?4.5:T.cd; return; }
+    if (z.cd <= 0 && ad > T.range[0] * .7 && ad < (z.siegeArcher ? 340 : T.range[1] * 1.2) && Math.abs(dy) < (z.siegeArcher ? 120 : T.ranged === 'stone' ? 14 : 60)) { set(z, 'wind'); z.cd = ch2Troops()&&z.type==='archer'?4.5:T.cd; return; }
   } else {          // 近战：最多 M.token 个同时贴身，其余在旁边游走
     const tokens = zs.filter(o => o.tok && !o.dead).length;
     if (!z.tok && tokens < (window.XIAOCHANG && XIAOCHANG.tokenCap ? XIAOCHANG.tokenCap() : M.token) && Math.abs(dx) < 130) z.tok = true;
@@ -331,7 +331,7 @@ function zUpdate(z, dt) {
     if (T.elite && !z.qi && (z.qiCd || 0) <= 0 && Math.abs(dx) < 130 && Math.abs(dy) < 26) {
       set(z, 'wind'); z.qi = 0; z.qiCd = 6.5; sfx('bladeAlert', z.x); return;
     }
-    if (z.tok && !(chapter2Run && z.type==='yellow-heavy' && ch2Formation(z) && Math.abs(z.x-ch2Formation(z).x)>18) && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
+    if (z.tok && !(ch2Troops() && z.type==='yellow-heavy' && ch2Formation(z) && Math.abs(z.x-ch2Formation(z).x)>18) && Math.abs(dx) < T.reach && Math.abs(dy) < 10) { set(z, 'wind'); if (T.heavy) sfx('bladeAlert', z.x); return; }
   }
   const formation=ch2Formation(z);if(formation){tx=formation.x;ty=formation.y;}
   const mx = tx - z.x, my = ty - z.y, l = Math.hypot(mx, my);

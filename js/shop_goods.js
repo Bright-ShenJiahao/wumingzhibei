@@ -149,5 +149,8 @@
     items.push({ id: 'lottery', name: '天命签', desc: '木制抽签机：拉一次 200，十连 1800（保底精致以上）', kind: 'open', price: 200, open: lottery });
   }
 
-  window.GOODS = { FU, CONS, count, add, take, store, reset, tick, eat, drink, useAmulet, stat, chargeMul, reforgeOne, lottery, dailyId, priceOf, run: () => R };
+  // 背包「物品」页用：这局会带哪些（开关存在 profile.goods.off / fu）
+  function carryList() { const g = store(); if (!g) return []; const out = []; for (const id in CONS) if (count(id) > 0 && !g.off[id]) out.push(CONS[id].name); if (g.fu && FU[g.fu] && count(g.fu) > 0) out.push(FU[g.fu].name); return out; }
+  function toggle(id) { const g = store(); if (!g) return; if (FU[id]) g.fu = g.fu === id ? '' : id; else g.off[id] = g.off[id] ? 0 : 1; g._at = Date.now(); save(); }
+  window.GOODS = { carryList, toggle, FU, CONS, count, add, take, store, reset, tick, eat, drink, useAmulet, stat, chargeMul, reforgeOne, lottery, dailyId, priceOf, run: () => R };
 })();

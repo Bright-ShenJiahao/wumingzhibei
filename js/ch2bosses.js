@@ -213,7 +213,7 @@
   }
   let lastT = performance.now();
   function draw() {
-    if (!chapter2Run) return;
+    if (!ch2Troops()) return;
     { const n = performance.now(); tickFx(Math.min(.05, (n - lastT) / 1000)); lastT = n; }
     // 喷火：前摇时地上的土红预警条，喷火时贴火焰图
     for (const z of zs) {

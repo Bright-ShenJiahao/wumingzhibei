@@ -24,7 +24,31 @@ window.XIAOCHANG = (() => {
         grunt: [[95,5,0,0,0],[80,17,3,0,0],[68,24,7,1,0],[65,25,8,1.5,.5],[60,27,9,3,1],[45,30,15,6,4]],
       },
     },
+    // 第二章校场（用户定）：第二章黄巾兵；第 6 层随机张梁或张宝；只掉大刀、汉弓
+    2: {
+      name: '黄巾决战', pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer', 'slinger', 'priest', 'elite'],
+      boss: { person: '', start: () => {
+        const type = Math.random() < .5 ? 'zhang_liang' : 'zhang_bao';
+        spawn(type, 660, (M.top + M.bot) / 2);
+        const z = zs[zs.length - 1]; z.bossLabel = TYPES[type].name; CONFIG[2].boss.person = type === 'zhang_liang' ? '张梁' : '张宝';
+        return z;
+      } },
+      melee: ['yellow-shield', 'yellow-spear', 'yellow-heavy'], ranged: ['archer', 'slinger'],
+      elites: ['yellow-shield', 'yellow-spear', 'yellow-heavy'],
+      weapons: ['blade', 'bow'],
+      hp: [1.1, 1.3, 1.55, 1.85, 2.2, 3], damage: [1, 1.1, 1.2, 1.32, 1.45, 1.75],
+      waves: [
+        { budget: 3, pool: ['yellow-spear', 'yellow-heavy'] },
+        { budget: 4, pool: ['yellow-shield', 'yellow-spear'], ranged: true },
+        { budget: 3, pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer'], core: ['elite'], ranged: true },
+        { budget: 5, pool: ['yellow-shield', 'yellow-spear', 'yellow-heavy', 'archer', 'slinger', 'priest'], core: ['yellow-shield'], ranged: true },
+        { budget: 2, pool: ['yellow-spear', 'yellow-heavy'], eliteChoice: true },
+        { boss: true },
+      ],
+      drops: null,
+    },
   };
+  CONFIG[2].drops = CONFIG[1].drops;
   const debug = () => /[?&]debug(?:=|&|$)/.test(location.search);
   const config = () => CONFIG[run ? run.chapter : selection.chapter];
   const ranged = type => type === 'slinger' || type === 'archer';
@@ -66,6 +90,7 @@ window.XIAOCHANG = (() => {
     if (window.ROOM) ROOM.skip();
     reset();
     M.top = chapter === 2 ? 190 : 168;   // 第二章校场同样避开更低的栅栏
+    if (chapter === 2 && window.ensureAssets) ensureAssets('chapter2', { label: '正在载入黄巾兵马' });
     active = true;
     run = { chapter, floor, wish, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
     magicFx = []; ghostLinks = [];
@@ -96,7 +121,7 @@ window.XIAOCHANG = (() => {
     for (const k in key) delete key[k];
     // 保留未拾取装备；清掉上一波飞行物和火场，选卡期间不偷袭玩家。
     shots = []; eshots = []; fires = []; allyShots = []; allyFires = [];
-    catapults = []; if (typeof Boss !== 'undefined') Boss.reset();
+    catapults = []; if (typeof Boss !== 'undefined') Boss.reset(); if (window.CH2B) CH2B.reset(); enemySkillFx = [];
     zs = [];
     if (run.wave === 3 || run.wave === 5) refillXiaochangProps();
     setHeading(); ROGUE.offer();
@@ -148,8 +173,9 @@ window.XIAOCHANG = (() => {
     const left = hero.x > 540 || (hero.x >= 180 && index % 2 === 0);
     const x = left ? 18 + (index % 3) * 12 : 702 - (index % 3) * 12;
     let y = M.top + 12 + (index * 27) % 100;
-    spawn(type, x, y);
-    const z = zs[zs.length - 1]; decorate(z);
+    const elite2 = type === 'elite' && config().elites;
+    spawn(elite2 ? pick(config().elites) : type, x, y);
+    const z = zs[zs.length - 1]; if (elite2 && window.makeCh2Elite) makeCh2Elite(z); decorate(z);
     z.x = Math.max(12, Math.min(708, z.x));
     if (Math.abs(z.x - hero.x) < 90) z.x = hero.x < 360 ? 700 : 20;
     return z;
@@ -178,7 +204,7 @@ window.XIAOCHANG = (() => {
     const target = nearestLiving(z);
     if (target) ghostLinks.push({ x0: z.x, y0: z.y - 20, target, t: 0, T: .5 });
     if (z.xAffixes && z.xAffixes.includes('split') && !z.noSplit && !z.T.boss && !z.T.chapterBoss) {
-      spawn('grunt', z.x, z.y);
+      spawn(pick(config().melee), z.x, z.y);
       const child = zs[zs.length - 1];
       if (child) {
         child.xiaochang = true; child.dark = true; child.noSplit = true; child.ghost = 0; child.blinkT = 6;
@@ -256,7 +282,7 @@ window.XIAOCHANG = (() => {
     const alive = zs.filter(z => !z.dead), existing = alive.filter(z => ranged(z.type)).length;
     const count = Math.max(0, 2 - existing);
     const support = Math.max(0, (existing + count) * 3 - alive.length - count);
-    for (let i = 0; i < support; i++) spawnSide('grunt', i);
+    for (let i = 0; i < support; i++) spawnSide(pick(config().melee), i);
     for (let i = 0; i < count; i++) spawnSide('archer', i + support);
   }
   function finish(win) {
@@ -295,7 +321,7 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}">${item.name}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
     function update(){
