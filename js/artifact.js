@@ -125,5 +125,5 @@
     c.fillStyle = '#c9a24a'; c.fillRect(-7, -2.6, 1.6, 5.2); c.fillStyle = '#6b3a22'; c.fillRect(-12, -1, 5, 2);
     c.restore();
   }
-  window.ARTIFACT = { LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, onHit, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
+  window.ARTIFACT = { off() { R.on = false; }, LIST, owned, equipped, grant, equip, label, open, startRun, moveMult, onKnock, onHit, tick, drawUnder, drawWorld, mounted, ground: () => R.ground, drops: () => R.drops };
 })();

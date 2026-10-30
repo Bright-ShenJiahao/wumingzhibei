@@ -109,7 +109,7 @@ window.XIAOCHANG = (() => {
     const chapterPanel = document.getElementById('tChapter'); if (chapterPanel) chapterPanel.classList.remove('open');
     // 心魔试炼（用户定）：你和心魔都用白板武器（普通、无词条），比纯手上功夫
     if (window.ARMORY && ARMORY.setTemp) ARMORY.setTemp(xin ? { uid: 'xinmo_' + xin, type: xin, q: 0, affixes: [] } : null);
-    if (xin) { weapon = xin; if (window.GEAR && GEAR.switch) GEAR.switch(); ui(); }
+    if (xin) { weapon = xin; if (window.GEAR && GEAR.switch) GEAR.switch(); ui(); if (window.ARTIFACT && ARTIFACT.off) ARTIFACT.off(); }   // 心魔试炼：不踩飞剑
     offerWave();
     return true;
   }

@@ -111,7 +111,7 @@
     if (!x('zhenguan') || typeof hero === 'undefined') return;
     if (++R.stack < 5) return; R.stack = 0;
     if (typeof shake !== 'undefined') shake = Math.max(shake, .35);
-    for (const z of zs) if (!z.dead && !z.air && Math.hypot(z.x - hero.x, (z.y - hero.y) * 2) < 70) hit(z, .5, 140, Math.sign(z.x - hero.x) || 1, true, 0, .4, true, false, { secondary: true });
+    for (const z of zs) if (!z.dead && !z.air && Math.hypot(z.x - hero.x, (z.y - hero.y) * 2) < 70) hit(z, .5, 140, Math.sign(z.x - hero.x) || 1, true, 0, .4, true, false, { secondary: true, zg: true });
     hero.hp = Math.min(typeof maxHeroHp === 'function' ? maxHeroHp() : 10, hero.hp + 1);
     if (typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt: '镇关！+1', big: true, color: '#e2b23c' });
   }

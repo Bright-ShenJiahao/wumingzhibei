@@ -41,6 +41,7 @@
   function tick() {   // game.js 每帧调用：真正开打的第一帧才消耗（不在标题页白扣）
     if (R.started || typeof hero === 'undefined' || (window.TITLE && TITLE.blocks && TITLE.blocks()) || (typeof result !== 'undefined' && result)) return;
     if (typeof zs === 'undefined' || !zs.some(z => !z.dead)) return;
+    if (window.XIAOCHANG && XIAOCHANG.lockedWeapon && XIAOCHANG.lockedWeapon()) return;   // 心魔试炼：1:1 对决，不带消耗品
     R.started = true; const got = [];
     for (const id of ['ration', 'dukang']) if (!off(id) && take(id)) { R[id] = 1; got.push(CONS[id].name); }
     if (!off('jinchuang') && take('jinchuang')) { R.jin = true; if (window.SUPPLY && SUPPLY.giveStash) SUPPLY.giveStash(); got.push('金创药'); }
