@@ -134,7 +134,9 @@
   function attackScale(z){const s=sync();return z&&s?primaryBonus(s,z,{},{charged:false}):1;}   // 长戟裂伤等按主攻击结算的伤害用
   // 心魔用：按玩家同一套暴击规则掷一次（概率、暴击伤害、上限）
   function critRoll(o={}){const t=attackToken(!!o.charged),s=t.s;const crit=o.guaranteed?true:o.chance!=null?chance(o.chance):t.crit;return crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,o.cap==null?2.5:o.cap):1;}
-  window.GEAR={critRoll,attackScale,snapshot,sync,attackToken,hit:hitPrimary,range,maxHp,speed,tick,draw,incoming,tryRevive,skillCd,refreshSkill,enemyTime,enemyMove,enemyAttack,projectile,projectileTraits,projectileDamage,collectDrops,
+  // 心魔快照用：玩家当前的暴击率/暴伤/闪避/减伤（不含完美闪避后的临时必暴击、锦囊）
+  function statCard(){const s=sync();return {crit:clamp(.01+stat(s,'critical')+stat(s,'inaccurate')+(D.qualities[s.q]?.crit||0),0,.35),critDmg:clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,2.5),dodge:clamp(stat(s,'dodge'),0,.2),reduce:clamp(stat(s,'guard')+stat(s,'fragile'),-1,.3)};}
+  window.GEAR={statCard,critRoll,attackScale,snapshot,sync,attackToken,hit:hitPrimary,range,maxHp,speed,tick,draw,incoming,tryRevive,skillCd,refreshSkill,enemyTime,enemyMove,enemyAttack,projectile,projectileTraits,projectileDamage,collectDrops,
     chargeScale:()=>1-reduction(sync()),
     reset(){current=null;currentUid='';cool={};pending=[];spirit=0;lastSpirit=-99;chain=0;chainTarget=null;victoryUntil=-1;soulUntil=-1;revived=false;healLog=[];fx=[];sync();},
     switch(){currentUid='';sync();victoryUntil=-1;soulUntil=-1;chain=0;chainTarget=null;},
