@@ -7,7 +7,7 @@
   const front = (z, r) => (hero.x - z.x) * z.f > -8 && Math.abs(hero.x - z.x) < r && Math.abs(hero.y - z.y) < 16;
   const face = z => { z.f = Math.sign(hero.x - z.x) || z.f; };
   const set = (z, k, fr, extra = {}) => { z.cb = { k, t: 0, ...extra }; z.cbFrame = fr; z.st = 'move'; };
-  const done = (z, cd) => { z.cb = null; z.cbFrame = null; z.cd = cd; z.st = 'move'; z.t = 0; };
+  const done = (z, cd) => { z.cb = null; z.cbFrame = null; z.cd = cd * .85;   /* 用户定：首领出手更频繁 */ z.st = 'move'; z.t = 0; };
   const tip = (z, txt) => floaters.push({ x: z.x, y: z.y - 62, t: 0, txt });
   const vo = n => { if (window.SFX && SFX.voice) SFX.voice(n); };
   const LINES = { zhang_liang: { intro: ['张梁：「人公将军张梁在此！谁敢上前！」', 'zl_intro'], die: ['张梁：「大哥……我……顶不住了……」', 'zl_die'] },

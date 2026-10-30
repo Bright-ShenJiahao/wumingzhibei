@@ -136,10 +136,10 @@ const TYPES = {
   'yellow-shield': { name: '黄巾盾兵', hp: 8, spd: 24, wind: .8, reach: 25, dmg: 1.5, heavy: true, shield: true, rangedResist: .7, blocksPierce: true, sprite: 'yellow_shield', scale: 1 },
   'yellow-spear': { name: '黄巾枪兵', hp: 5, spd: 31, wind: .7, reach: 37, dmg: 1.5, sprite: 'yellow_spear', scale: .98 },
   'yellow-catapult': { name: '投石车', hp: 9, spd: 0, siege: true, w: 28, sprite: 'yellow_catapult', scale: 1.05 },
-  zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
+  zhang_liang: { name: '人公将军·张梁', hp: 54, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
   'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, noLaunch: true, w: 14, sprite: 'yellow_golem', scale: 1 },
-  zhang_jiao: { name: '天公将军·张角', hp: 115, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
-  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.15 },
+  zhang_jiao: { name: '天公将军·张角', hp: 135, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
+  zhang_bao: { name: '地公将军·张宝', hp: 48, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.15 },
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
@@ -886,7 +886,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     if (z.hp <= 0) {
       z.dead = 1; kills++; set(z, 'land');
       if (z.villagerChaser) thankVillagers();
-      if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); }
+      if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); if (!chapter2Run) spawnDrop(z.x + 12, z.y); }
     }
     return;
   }
@@ -932,7 +932,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (z.hp <= 0) {
     z.dead = 1; kills++; knock = true;
     if (z.villagerChaser) thankVillagers();
-    if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
+    if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); if (!chapter2Run) spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); shake = .2; }   // 精英必掉：至少一个中等
     if (z.T.ch2Elite) { spawnDrop(z.x, z.y, Math.random() < .65 ? 'leg' : 'pig'); sfx('finisher', z.x); shake = .2; }   // 第二章精英：必掉鸡腿或烤乳猪
   }
   if (knock && !(z.T.boss || z.T.chapterBoss || z.T.noLaunch) && (traits.knockSiege || !z.T.siege)) launch(z, dir * (z.dead ? 110 : 80) * (z.T.heavy ? .7 : 1), z.dead ? 130 : 105);
@@ -1269,7 +1269,7 @@ function hitProp(p, dir) {
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }
-      } else if (p.chapter2) { if (Math.random() < .7) spawnDrop(p.x, p.y); }   // 第二章道具 70% 掉回血食物（用户定）
+      } else if (p.chapter2) { if (Math.random() < .4) spawnDrop(p.x, p.y); }   // 用户定：第二章道具掉回血 70%→40%   // 第二章道具 70% 掉回血食物（用户定）
       else if (Math.random() < .7) spawnDrop(p.x, p.y);                        // 第一章草垛/推车/石碾 70%（用户定）
     }
   }
@@ -1614,7 +1614,7 @@ function strike() {
         if (window.ROGUE && ROGUE.onExecute) ROGUE.onExecute();
         z.hp = 0; z.dead = 1; kills++; set(z, 'land');
         if (z.villagerChaser) thankVillagers();
-        if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); }
+        if (z.T.elite) { spawnDrop(z.x - 8, z.y, 'leg'); if (!chapter2Run) spawnDrop(z.x + 12, z.y); sfx('finisher', z.x); }
         floaters.push({ x: z.x, y: z.y - 40, t: 0, txt: '斩！', big: true, gold: true });
         sfx('finisher', z.x);
       }

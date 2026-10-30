@@ -2,7 +2,7 @@
 // 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
-    jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 4 血，之后 5 秒每秒再回 0.5', w: 40 },
+    jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 3 血，之后 4 秒每秒再回 0.5', w: 40 },
     jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 30 },
     huoyou: { name: '火油罐', icon: 'sup_huoyou', tip: '按攻击扔出：爆炸 1.5 伤害并留下大火场', w: 30 },
   };
@@ -30,7 +30,7 @@
     const K = KINDS[k];
     if (typeof sfx === 'function') sfx('food', hero.x);
     if (k === 'jinchuang' && !stash && !useNow) { stash = 1; pop('金创药收好了 · 半血自动服用', '#8fe08a', true); return; }   // 金创药先存着（最多 1 瓶），血掉到一半自动喝
-    if (k === 'jinchuang') { hero.hp = Math.min(maxHp(), hero.hp + 4); regenT = 5; pop('+4 金创药', '#8fe08a', true); for (let i = 0; i < 10; i++) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 18, y: hero.y - Math.random() * 20, t: -i * .03 }); }
+    if (k === 'jinchuang') { hero.hp = Math.min(maxHp(), hero.hp + 3); regenT = 4; pop('+3 金创药', '#8fe08a', true); for (let i = 0; i < 10; i++) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 18, y: hero.y - Math.random() * 20, t: -i * .03 }); }
     else if (k === 'jiu') { drunkT = 10; pop('痛快！', '#ff9a5a', true); fx.push({ k: 'drink', t: 0 }); }
     else if (k === 'huoyou') { jar = { t: 0 }; pop('按攻击扔出火油罐', '#ffb04a'); }
     if (typeof say === 'function') say(`${K.name}：${K.tip}`, 2.4);
