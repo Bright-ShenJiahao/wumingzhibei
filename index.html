@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=a49b842586" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a49b842586)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=b0299db694" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=b0299db694)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='d2ec58c7da87',busy=false;
+var BUILD='1fc0084ecb54',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2767,6 +2767,7 @@ const Boss = (() => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
     btn(heroGroup, '伤害测试场', '', () => { if (window.DMGTEST) DMGTEST.open(); });
+    btn(heroGroup, '心魔记忆', '', () => { if (window.XINMO) XINMO.memory(); });
     btn(heroGroup, '恢复存档', '', () => { if (!window.ARMORY || !ARMORY.backups) return; const l = ARMORY.backups(); if (!l.length) { tipLine('还没有备份（云端同步时才会自动备份）'); return; }
       const i = l.length > 1 ? Number(prompt(l.map((b, k) => `${k}：${new Date(b.at).toLocaleString()}`).join('\n') + '\n输入要恢复的编号', '0')) : 0;
       if (!Number.isInteger(i) || !l[i]) return; tipLine(ARMORY.restore(i) ? '已恢复 ' + new Date(l[i].at).toLocaleString() + ' 的存档，刷新后生效' : '恢复失败'); });
@@ -10274,7 +10275,8 @@ window.XIAOCHANG = (() => {
     if (!c || (!debug() && !(window.TITLE && TITLE.hasCleared(chapter)))) return false;
     if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或卖出，再出征'); return false; }
     // 心魔试炼：只带一把武器；不带 xinmo 参数的出征（整备页「出征」）就是普通校场，R 键重开沿用上一局
-    const xin = 'xinmo' in options ? (options.xinmo || '') : (Object.keys(options).length ? '' : selection.xinmo);
+    let xin = 'xinmo' in options ? (options.xinmo || '') : (Object.keys(options).length ? '' : selection.xinmo);
+    if (xin && !debug()) xin = '';   // 用户定：心魔试炼暂不对玩家开放，只有开发者（?debug）能进
     const floor = xin ? 1 : Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
     const wish = c.weapons.includes(options.wish ?? selection.wish) ? options.wish ?? selection.wish : '';
     Object.assign(selection, { chapter, floor: xin ? selection.floor : floor, wish, xinmo: xin });
@@ -10521,8 +10523,8 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small><h3>心魔试炼</h3><p class="x-xinmo-info"></p><div class="x-options" role="group" aria-label="心魔试炼">${['staff','hammer','stone','halberd','blade','bow'].map(t=>`<button type="button" data-x-xinmo="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><small>选一把武器：你和心魔都用白板（普通、无词条）。战胜必掉这类极品武器 + 500 金币。</small>`;
-    {const xs=window.XINMO?XINMO.stats():{wins:0,tries:0};box.querySelector('.x-xinmo-info').textContent=xs.tries?`已战胜心魔 ${xs.wins} 次 / 挑战 ${xs.tries} 次 · 你赢得越多，它越强`:'它会学你的打法，一次比一次难。';
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>${debug()?`<h3>心魔试炼（开发者）</h3><p class="x-xinmo-info"></p><div class="x-options" role="group" aria-label="心魔试炼">${['staff','hammer','stone','halberd','blade','bow'].map(t=>`<button type="button" data-x-xinmo="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><small>选一把武器：你和心魔都用白板（普通、无词条）。战胜必掉这类极品武器 + 500 金币。</small>`:''}`;
+    if(debug()){const xs=window.XINMO?XINMO.stats():{wins:0,tries:0};box.querySelector('.x-xinmo-info').textContent=xs.tries?`已战胜心魔 ${xs.wins} 次 / 挑战 ${xs.tries} 次 · 你赢得越多，它越强`:'它会学你的打法，一次比一次难。';
      box.querySelectorAll('[data-x-xinmo]').forEach(b=>b.onclick=()=>{if(start({chapter,xinmo:b.dataset.xXinmo}))document.getElementById('tChapter')?.classList.remove('open');});}
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
@@ -11231,7 +11233,31 @@ window.XINMO = (() => {
     drops.push({ k: 'weapon', weapon: type, item, x: z.x, y: z.y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
     if (window.WALLET && WALLET.bonus) WALLET.bonus(500);
   }
-  return { lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
+  // 开发者面板「心魔记忆」：列出每把武器它学到的东西
+  function memory() {
+    const d = data(), el = document.getElementById('xmMem') || document.createElement('div'); el.id = 'xmMem';
+    el.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(520px,92vw);overflow:auto;z-index:10040;background:#1d140ef4;border:1px solid #8a5ab0;border-radius:8px;padding:10px;font:12px/1.6 sans-serif;color:#ecdcbc';
+    const pct = v => Math.round(v * 100) + '%', NAMES = { staff: '棍', hammer: '锤', stone: '石子', halberd: '长戟', blade: '大刀', bow: '汉弓' };
+    let h = `<div style="display:flex;justify-content:space-between"><b style="color:#e2c4ff;font-size:15px">心魔记忆（${name()}）</b><span><button data-clr>清空记忆</button> <button data-x>关闭</button></span></div>`;
+    h += `<p>挑战 ${d.tries} 次 · 你赢 ${d.wins} 次 · 反应 ${(80 - Math.min(10, d.wins) * 2)} 毫秒</p>`;
+    const keep = L; for (const w in (d.lessons || {})) {
+      L = d.lessons[w]; const tt = Object.values(L.time).reduce((a, b) => a + b, 0), td = Object.values(L.dmg).reduce((a, b) => a + b, 0);
+      h += `<h4 style="color:#f1d58f;margin:8px 0 2px">${NAMES[w] || w} · ${L.fights} 局 · 共待 ${tt.toFixed(0)} 秒、挨 ${td.toFixed(1)} 伤害</h4><table style="width:100%;border-collapse:collapse"><tr style="color:#a89070"><td>情形</td><td>时间</td><td>挨打</td><td>挨打率</td></tr>`;
+      for (const k of Object.keys(MODES).filter(k => L.time[k]).sort((a, b) => risk(b) - risk(a))) { const r = risk(k); h += `<tr><td>${MODES[k]}</td><td>${L.time[k].toFixed(1)}s</td><td>${(L.dmg[k] || 0).toFixed(1)}</td><td style="color:${r > 1.2 ? '#e0533a' : r < .8 ? '#8fd16a' : '#ecdcbc'}">${r.toFixed(2)} 倍</td></tr>`; }
+      h += '</table>';
+      const bc = Object.entries(L.byC).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k === 'charge' ? '蓄力' : k === 'other' ? '其他' : '第' + (+k.slice(1) + 1) + '段'} ${v.toFixed(1)}`).join('、');
+      if (bc) h += `<div>你的招打它：${bc}${topC() ? ' → 重点防「' + (topC() === 'charge' ? '蓄力' : topC() === 'other' ? '其他' : '第' + (+topC().slice(1) + 1) + '段') + '」' : ''}</div>`;
+      const lt = lessonText(); if (lt.length) h += '<div style="color:#e2c4ff">' + lt.map(t => '· ' + t).join('<br>') + '</div>';
+    }
+    L = keep;
+    const hb2 = d.habit || {}, r2 = p => p && p[1] >= 1 ? pct(p[0] / p[1]) + `（${Math.round(p[1])} 次）` : '数据不够';
+    h += `<h4 style="color:#f1d58f;margin:8px 0 2px">你的习惯</h4>被打后马上翻滚 ${r2(hb2.hurtRoll)}<br>翻滚方向 ${hb2.roll ? Object.entries(hb2.roll).map(([k, v]) => ({ back: '后', fwd: '前', up: '上', down: '下' }[k]) + Math.round(v)).join(' / ') : '数据不够'}<br>平均出招段数 ${hb2.combo && hb2.combo[1] ? (hb2.combo[0] / hb2.combo[1]).toFixed(1) : '数据不够'} · 蓄力 ${r2(hb2.charge)} · 起身就出手 ${r2(hb2.attackOnWake)}<br>习惯距离 ${hb2.dist && hb2.dist[1] ? Math.round(hb2.dist[0] / hb2.dist[1]) : '数据不够'}`;
+    if (!Object.keys(d.lessons || {}).length) h += '<p style="color:#9b8a6c">还没有复盘记录：打完一局心魔再来看。</p>';
+    el.innerHTML = h; document.body.append(el);
+    el.querySelector('[data-x]').onclick = () => el.remove();
+    el.querySelector('[data-clr]').onclick = () => { const all = readAll(); delete all[name()]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} memory(); };
+  }
+  return { memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
 })();
 
 // 第二章战六「祭台决战」：张角。开场 → 阶段一（法台躲雷、打灯）→ 阶段二（召唤）→ 阶段三（下台决斗）

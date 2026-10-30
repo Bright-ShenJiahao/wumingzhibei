@@ -564,5 +564,29 @@ window.XINMO = (() => {
     drops.push({ k: 'weapon', weapon: type, item, x: z.x, y: z.y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
     if (window.WALLET && WALLET.bonus) WALLET.bonus(500);
   }
-  return { lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
+  // 开发者面板「心魔记忆」：列出每把武器它学到的东西
+  function memory() {
+    const d = data(), el = document.getElementById('xmMem') || document.createElement('div'); el.id = 'xmMem';
+    el.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(520px,92vw);overflow:auto;z-index:10040;background:#1d140ef4;border:1px solid #8a5ab0;border-radius:8px;padding:10px;font:12px/1.6 sans-serif;color:#ecdcbc';
+    const pct = v => Math.round(v * 100) + '%', NAMES = { staff: '棍', hammer: '锤', stone: '石子', halberd: '长戟', blade: '大刀', bow: '汉弓' };
+    let h = `<div style="display:flex;justify-content:space-between"><b style="color:#e2c4ff;font-size:15px">心魔记忆（${name()}）</b><span><button data-clr>清空记忆</button> <button data-x>关闭</button></span></div>`;
+    h += `<p>挑战 ${d.tries} 次 · 你赢 ${d.wins} 次 · 反应 ${(80 - Math.min(10, d.wins) * 2)} 毫秒</p>`;
+    const keep = L; for (const w in (d.lessons || {})) {
+      L = d.lessons[w]; const tt = Object.values(L.time).reduce((a, b) => a + b, 0), td = Object.values(L.dmg).reduce((a, b) => a + b, 0);
+      h += `<h4 style="color:#f1d58f;margin:8px 0 2px">${NAMES[w] || w} · ${L.fights} 局 · 共待 ${tt.toFixed(0)} 秒、挨 ${td.toFixed(1)} 伤害</h4><table style="width:100%;border-collapse:collapse"><tr style="color:#a89070"><td>情形</td><td>时间</td><td>挨打</td><td>挨打率</td></tr>`;
+      for (const k of Object.keys(MODES).filter(k => L.time[k]).sort((a, b) => risk(b) - risk(a))) { const r = risk(k); h += `<tr><td>${MODES[k]}</td><td>${L.time[k].toFixed(1)}s</td><td>${(L.dmg[k] || 0).toFixed(1)}</td><td style="color:${r > 1.2 ? '#e0533a' : r < .8 ? '#8fd16a' : '#ecdcbc'}">${r.toFixed(2)} 倍</td></tr>`; }
+      h += '</table>';
+      const bc = Object.entries(L.byC).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k === 'charge' ? '蓄力' : k === 'other' ? '其他' : '第' + (+k.slice(1) + 1) + '段'} ${v.toFixed(1)}`).join('、');
+      if (bc) h += `<div>你的招打它：${bc}${topC() ? ' → 重点防「' + (topC() === 'charge' ? '蓄力' : topC() === 'other' ? '其他' : '第' + (+topC().slice(1) + 1) + '段') + '」' : ''}</div>`;
+      const lt = lessonText(); if (lt.length) h += '<div style="color:#e2c4ff">' + lt.map(t => '· ' + t).join('<br>') + '</div>';
+    }
+    L = keep;
+    const hb2 = d.habit || {}, r2 = p => p && p[1] >= 1 ? pct(p[0] / p[1]) + `（${Math.round(p[1])} 次）` : '数据不够';
+    h += `<h4 style="color:#f1d58f;margin:8px 0 2px">你的习惯</h4>被打后马上翻滚 ${r2(hb2.hurtRoll)}<br>翻滚方向 ${hb2.roll ? Object.entries(hb2.roll).map(([k, v]) => ({ back: '后', fwd: '前', up: '上', down: '下' }[k]) + Math.round(v)).join(' / ') : '数据不够'}<br>平均出招段数 ${hb2.combo && hb2.combo[1] ? (hb2.combo[0] / hb2.combo[1]).toFixed(1) : '数据不够'} · 蓄力 ${r2(hb2.charge)} · 起身就出手 ${r2(hb2.attackOnWake)}<br>习惯距离 ${hb2.dist && hb2.dist[1] ? Math.round(hb2.dist[0] / hb2.dist[1]) : '数据不够'}`;
+    if (!Object.keys(d.lessons || {}).length) h += '<p style="color:#9b8a6c">还没有复盘记录：打完一局心魔再来看。</p>';
+    el.innerHTML = h; document.body.append(el);
+    el.querySelector('[data-x]').onclick = () => el.remove();
+    el.querySelector('[data-clr]').onclick = () => { const all = readAll(); delete all[name()]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} memory(); };
+  }
+  return { memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
 })();

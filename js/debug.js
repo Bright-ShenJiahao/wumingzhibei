@@ -101,6 +101,7 @@
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
     btn(heroGroup, '伤害测试场', '', () => { if (window.DMGTEST) DMGTEST.open(); });
+    btn(heroGroup, '心魔记忆', '', () => { if (window.XINMO) XINMO.memory(); });
     btn(heroGroup, '恢复存档', '', () => { if (!window.ARMORY || !ARMORY.backups) return; const l = ARMORY.backups(); if (!l.length) { tipLine('还没有备份（云端同步时才会自动备份）'); return; }
       const i = l.length > 1 ? Number(prompt(l.map((b, k) => `${k}：${new Date(b.at).toLocaleString()}`).join('\n') + '\n输入要恢复的编号', '0')) : 0;
       if (!Number.isInteger(i) || !l[i]) return; tipLine(ARMORY.restore(i) ? '已恢复 ' + new Date(l[i].at).toLocaleString() + ' 的存档，刷新后生效' : '恢复失败'); });
