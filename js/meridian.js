@@ -8,15 +8,15 @@
     { id: 'ji', name: '身法', color: '#3fb6c8' },
     { id: 'shou', name: '守', color: '#e2b23c' },
   ];
-  // 穴位：在人物剪影上的位置（相对剪影外框的比例），从上往下对应第 1–7 行
-  const POINTS = [
-    { name: '百会', note: '头顶正中，诸阳之会', x: .52, y: .06 },
-    { name: '膻中', note: '两乳之间，气之海', x: .5, y: .36 },
-    { name: '肩井', note: '肩上凹陷处', x: .7, y: .28 },
-    { name: '曲池', note: '屈肘横纹尽头', x: .78, y: .47 },
-    { name: '气海', note: '脐下一寸半，元气所聚', x: .5, y: .55 },
-    { name: '足三里', note: '膝下三寸，强健之穴', x: .42, y: .8 },
-    { name: '涌泉', note: '足底前部，肾经之始', x: .44, y: .97 },
+  // 穴位（用户定：像梦幻西游，点不同节点亮不同位置）：攻在两臂和拳、身法在腿脚、守在头和躯干。坐标是 mer_body 剪影外框的比例
+  const PTS = [
+    [{ name: '肩髃', note: '肩头前凹陷处', x: .74, y: .33 }, { name: '环跳', note: '臀外侧，髋关节处', x: .37, y: .6 }, { name: '百会', note: '头顶正中，诸阳之会', x: .51, y: .07 }],
+    [{ name: '臂臑', note: '上臂外侧，三角肌下', x: .8, y: .41 }, { name: '风市', note: '大腿外侧中部', x: .66, y: .66 }, { name: '大椎', note: '颈后第七颈椎下', x: .51, y: .29 }],
+    [{ name: '曲池', note: '屈肘横纹尽头', x: .85, y: .5 }, { name: '血海', note: '大腿内侧，膝上二寸', x: .36, y: .71 }, { name: '膻中', note: '两乳之间，气之海', x: .49, y: .38 }],
+    [{ name: '合谷', note: '虎口处，手阳明之原', x: .87, y: .63 }, { name: '足三里', note: '膝下三寸，强健之穴', x: .66, y: .79 }, { name: '中脘', note: '脐上四寸，胃之募穴', x: .49, y: .46 }],
+    [{ name: '肩井', note: '肩上凹陷处', x: .2, y: .34 }, { name: '阳陵泉', note: '膝外下方，筋之会', x: .32, y: .79 }, { name: '气海', note: '脐下一寸半，元气所聚', x: .49, y: .54 }],
+    [{ name: '手三里', note: '肘下二寸，前臂外侧', x: .05, y: .43 }, { name: '承山', note: '小腿后正中', x: .7, y: .88 }, { name: '关元', note: '脐下三寸，元阴元阳交关', x: .49, y: .6 }],
+    [{ name: '劳宫', note: '掌心，握拳中指尖处', x: .28, y: .51 }, { name: '涌泉', note: '足底前部，肾经之始', x: .2, y: .97 }, { name: '命门', note: '腰后正中，生命之门', x: .55, y: .51 }],
   ];
   // e：数值（gear_combat 的属性键：sharp 伤害、critical 暴击率、severity 暴击伤害、charge 蓄力伤害、swift 攻速、move 移速、
   //    health 血量（0.1=1 血）、guard 减伤、reach 攻击距离、dodge 闪避）；x：特殊效果
@@ -40,6 +40,8 @@
     ['xc1', '第一章校场演武第 5 层'], ['xc2', '第二章校场演武第 5 层'], ['xc3', '第三章校场演武第 5 层（未开放）'], ['mo', '任意一次魔化通关'],
   ];
   const RESET_COST = 200;
+  // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
+  { const st = document.createElement('style'); st.textContent = '.outfitSlot.outfitSlot.bnr{background:var(--bnr) right center/cover no-repeat,#5a1610!important;border:2px solid #d4a24c!important;box-shadow:inset 0 0 0 1px #2a0a06,0 3px 8px #120a08aa!important;min-height:58px}.outfitSlot.bnr .outfitIco{display:none}.outfitSlot.bnr .outfitCopy{left:14px;right:auto;text-align:left;text-shadow:0 1px 3px #000,0 0 6px #000}.outfitSlot.bnr .outfitCopy strong{font-family:MaShanZheng,"STKaiti",serif;font-size:clamp(16px,1.9vw,21px);color:#ffe2a0;letter-spacing:2px}.outfitSlot.bnr .outfitCopy small{color:#f1d9b0}.outfitSlot.bnr:hover{filter:brightness(1.12)}'; (document.head || document.documentElement).append(st); }
 
   const profile = () => window.ARMORY && ARMORY.state ? ARMORY.state() : null;
   function store() {
@@ -109,14 +111,15 @@
     R.alive = alive;
   }
 
-  // ---- 面板 ----
+  // ---- 面板（仿梦幻西游：亮色羊皮纸底、左边图标格+直角发光连线、右边主角剪影+穴位）----
+  const uiImg = k => (typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui[k]) || '';
   let sel = null, msg = '';
   function open() {
     let box = document.getElementById('meridianPanel');
     if (!box) {
       box = document.createElement('div'); box.id = 'meridianPanel';
       const css = document.createElement('style');
-      css.textContent = '#meridianPanel{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#meridianPanel[hidden]{display:none!important}#meridianPanel section{position:relative;box-sizing:border-box;width:min(760px,97vw);max-height:96dvh;overflow:auto;padding:clamp(10px,2.4vh,20px) clamp(10px,2.5vw,22px);background:linear-gradient(#3b2c20,#271c14);border:2px solid #9d7845;border-radius:10px;box-shadow:0 12px 40px #000a;color:#ecdcbc}#meridianPanel h3{margin:0 0 2px;text-align:center;font:700 22px MaShanZheng,"STKaiti",serif;color:#f1d58f}#meridianPanel .mx{position:absolute;right:12px;top:10px;border:1px solid #8a6538;background:#5a3923;color:#f5dfb2;border-radius:6px;min-height:32px;padding:2px 14px;cursor:pointer}#meridianPanel .mtop{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:12px;color:#cdb78e;margin:2px 0 8px}#meridianPanel .mtop b{color:#f1d58f}#meridianPanel .mrst{border:1px solid #8a6538;background:#4a3020;color:#f5dfb2;border-radius:5px;padding:0 10px;cursor:pointer;min-height:24px}#meridianPanel .mbody{display:flex;gap:12px;align-items:stretch}#meridianPanel .mgrid{position:relative;flex:0 0 auto;display:grid;grid-template-columns:repeat(3,46px);grid-auto-rows:46px;gap:8px 22px;padding:8px 10px;background:#2a1f17;border:1px solid #6e5232;border-radius:8px}#meridianPanel .mgrid svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}#meridianPanel .mn{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;border:2px solid #5b4630;border-radius:6px;background:#1c140e;color:var(--c);opacity:.5;font:700 20px MaShanZheng,"STKaiti",serif;cursor:pointer;padding:0}#meridianPanel .mn.can,#meridianPanel .mn.on{opacity:1}#meridianPanel .mn.can{border-color:var(--c);color:var(--c);box-shadow:0 0 8px var(--c);animation:mPulse 1.2s ease-in-out infinite}#meridianPanel .mn.on{background:var(--c);border-color:#fff3c4;color:#1c140e;box-shadow:0 0 10px var(--c)}#meridianPanel .mn.sel{outline:2px solid #fff3c4;outline-offset:2px}@keyframes mPulse{50%{box-shadow:0 0 2px var(--c)}}#meridianPanel .mfig{position:relative;flex:1;min-width:170px;min-height:260px;background:radial-gradient(circle at 50% 45%,#4a3626,#2a1f17 70%);border:1px solid #6e5232;border-radius:8px;overflow:hidden}#meridianPanel .mfig canvas{position:absolute;inset:0;width:100%;height:100%}#meridianPanel .mseal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-6deg);padding:6px 14px;border:3px solid #c0392b;color:#ffe2b8;background:#8e1f14d9;font:700 26px MaShanZheng,"STKaiti",serif;letter-spacing:4px;border-radius:6px;box-shadow:0 0 18px #000a;animation:mSeal .6s ease-out}@keyframes mSeal{from{transform:translate(-50%,-50%) rotate(-6deg) scale(2.2);opacity:0}}#meridianPanel .mdet{margin-top:8px;padding:8px 10px;background:#35271de8;border:1px solid #805d37;border-radius:6px;min-height:44px;font-size:13px}#meridianPanel .mdet b{color:#f1d58f;margin-right:8px}#meridianPanel .mdet i{font-style:normal;color:#8fb8c8;font-size:12px}#meridianPanel .mdet p{margin:3px 0 0;color:#d9c8a4}#meridianPanel details{margin-top:6px;font-size:12px;color:#cdb78e}#meridianPanel details li.ok{color:#8fe08a}@media(max-height:450px){#meridianPanel .mgrid{grid-template-columns:repeat(3,34px);grid-auto-rows:34px;gap:4px 16px}#meridianPanel .mn{font-size:15px}#meridianPanel .mfig{min-height:200px}}';
+      css.textContent = '#meridianPanel{position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;background:#100b08c9;font:14px/1.5 sans-serif}#meridianPanel[hidden]{display:none!important}#meridianPanel section{position:relative;box-sizing:border-box;width:min(820px,97vw);max-height:96dvh;overflow:auto;padding:clamp(8px,2vh,16px) clamp(10px,2.4vw,20px);background:linear-gradient(#f3e6c8,#e6d3aa);border:3px solid #b8863e;border-radius:12px;box-shadow:inset 0 0 0 2px #fff4d8,0 12px 40px #000a;color:#5a3c22}#meridianPanel h3{margin:-2px auto 6px;width:max-content;padding:2px 34px;text-align:center;font:700 20px MaShanZheng,"STKaiti",serif;color:#fff1cc;background:linear-gradient(#c79a4c,#9a6c2c);border-radius:0 0 14px 14px;text-shadow:0 1px 2px #5a3010}#meridianPanel .mx{position:absolute;right:10px;top:8px;width:34px;height:34px;border:2px solid #fff1cc;background:radial-gradient(#f08a3a,#c0501a);color:#fff;border-radius:50%;font-size:18px;line-height:28px;cursor:pointer;padding:0}#meridianPanel .mtop{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;font-size:12px;margin:0 0 8px}#meridianPanel .mtop span{padding:2px 10px;background:#fff6e0;border:1px solid #d2b27a;border-radius:6px}#meridianPanel .mtop b{color:#b4421c}#meridianPanel .mrst{border:1px solid #b8863e;background:linear-gradient(#fbe7b6,#e8c47e);color:#6a3f16;border-radius:6px;padding:2px 12px;cursor:pointer;font-weight:700}#meridianPanel .mbody{display:flex;gap:12px;align-items:stretch}#meridianPanel .mgrid{position:relative;flex:0 0 auto;display:grid;grid-template-columns:repeat(3,54px);grid-auto-rows:54px;gap:10px 24px;padding:10px 14px;background:#ead8b0;border:1px solid #c9a86e;border-radius:8px}#meridianPanel .mgrid svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}#meridianPanel .mn{position:relative;z-index:1;padding:0;border:3px solid #a99a83;border-radius:6px;background:#3a2c20 center/cover no-repeat;cursor:pointer;filter:grayscale(1) brightness(.85);box-shadow:0 2px 3px #0005}#meridianPanel .mn.can{filter:none;border-color:var(--c);animation:mPulse 1.1s ease-in-out infinite}#meridianPanel .mn.on{filter:none;border-color:#fff6d0;box-shadow:0 0 0 2px var(--c),0 0 14px 3px var(--c)}#meridianPanel .mn.sel{outline:2px dashed #7a4a1c;outline-offset:3px}@keyframes mPulse{50%{box-shadow:0 0 12px 2px var(--c)}}#meridianPanel .mfig{position:relative;flex:1;min-width:180px;min-height:300px;background:radial-gradient(circle at 50% 48%,#fbf1da 0,#f0e0bc 45%,#e6d3aa 75%);border:1px solid #c9a86e;border-radius:8px;overflow:hidden}#meridianPanel .mfig:before{content:"";position:absolute;left:50%;top:50%;width:78%;aspect-ratio:1;transform:translate(-50%,-50%);border:10px solid #e2cd9f;border-radius:50%;opacity:.7}#meridianPanel .mfig canvas{position:absolute;inset:0;width:100%;height:100%}#meridianPanel .mseal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-6deg);padding:6px 14px;border:3px solid #7a1a10;color:#ffe2b8;background:#a8261ae6;font:700 26px MaShanZheng,"STKaiti",serif;letter-spacing:4px;border-radius:6px;box-shadow:0 0 18px #0007;animation:mSeal .6s ease-out;white-space:nowrap}@keyframes mSeal{from{transform:translate(-50%,-50%) rotate(-6deg) scale(2.2);opacity:0}}#meridianPanel .mdet{margin-top:8px;padding:8px 10px;background:#fff6e0;border:1px solid #d2b27a;border-radius:6px;min-height:44px;font-size:13px}#meridianPanel .mdet b{color:#9a3a14;margin-right:8px}#meridianPanel .mdet i{font-style:normal;color:#5d7f8a;font-size:12px}#meridianPanel .mdet p{margin:3px 0 0}#meridianPanel details{margin-top:6px;font-size:12px}#meridianPanel details li.ok{color:#2f7a2a}@media(max-height:470px){#meridianPanel .mgrid{grid-template-columns:repeat(3,36px);grid-auto-rows:36px;gap:5px 16px;padding:6px 10px}#meridianPanel .mn{border-width:2px}#meridianPanel .mfig{min-height:230px}#meridianPanel h3{font-size:16px;margin-bottom:3px}}';
       document.head.append(css); document.body.append(box);
       box.addEventListener('click', e => {
         const n = e.target.closest('[data-r]');
@@ -129,6 +132,7 @@
         if (e.target.closest('.mrst')) { const res = reset(); msg = res === 'coins' ? `金币不够（重置要 ${RESET_COST}）` : res === 'ok' ? '经脉已重置，通脉丹全部返还' : ''; sel = null; render(box); refresh(); return; }
         if (e.target === box || e.target.closest('.mx')) box.hidden = true;
       });
+      addEventListener('resize', () => { if (!box.hidden) render(box); });
     }
     msg = ''; render(box); box.hidden = false;
   }
@@ -136,56 +140,48 @@
   function render(box) {
     const p = path(), tk = titleKey();
     const cells = T.map((row, r) => row.map((n, c) => {
-      const on = p[r] === c, can = canPick(r, c), isSel = sel && sel[0] === r && sel[1] === c;
-      return `<button type="button" class="mn${on ? ' on' : ''}${can ? ' can' : ''}${isSel ? ' sel' : ''}" style="--c:${COLS[c].color}" data-r="${r}" data-c="${c}" title="${n.n}：${n.d}">${n.s}</button>`;
+      const on = p[r] === c, can = canPick(r, c), isSel = sel && sel[0] === r && sel[1] === c, im = uiImg(`mer_${r}${c}`);
+      return `<button type="button" class="mn${on ? ' on' : ''}${can ? ' can' : ''}${isSel ? ' sel' : ''}" style="--c:${COLS[c].color};${im ? `background-image:url(${im})` : ''}" data-r="${r}" data-c="${c}" title="${n.n}：${n.d}" aria-label="${n.n}">${im ? '' : n.s}</button>`;
     }).join('')).join('');
-    const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? POINTS[sel[0]] : null;
-    const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>封 · ${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子之间要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
+    const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
+    const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>封 · ${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button">关闭</button><h3>经脉</h3><div class="mtop"><span>通脉丹：可用 <b>${free()}</b> · 已用 <b>${p.length}</b> · 共获得 <b>${total()}</b>/7</span><span>封号：<b>${tk ? TITLES[tk].name : '？？？（点满 7 层揭晓）'}</b></span><button type="button" class="mrst">重置（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">封 · ${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">封 · ${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
-  function drawLines(box) {   // 点亮的格子之间连发光的线
+  function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边
     const g = box.querySelector('.mgrid'), svg = g && g.querySelector('svg'); if (!svg) return;
     const gr = g.getBoundingClientRect(), p = path();
-    const ctr = (r, c) => { const b = g.querySelector(`[data-r="${r}"][data-c="${c}"]`).getBoundingClientRect(); return [b.left - gr.left + b.width / 2, b.top - gr.top + b.height / 2]; };
+    const rect = (r, c) => { const b = g.querySelector(`[data-r="${r}"][data-c="${c}"]`).getBoundingClientRect(); return { x: b.left - gr.left + b.width / 2, t: b.top - gr.top, b: b.bottom - gr.top }; };
     let h = '';
-    for (let r = 1; r < p.length; r++) { const [x1, y1] = ctr(r - 1, p[r - 1]), [x2, y2] = ctr(r, p[r]); h += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${COLS[p[r]].color}" stroke-width="5" stroke-linecap="round" opacity=".85"/>`; }
+    for (let r = 1; r < p.length; r++) {
+      const a = rect(r - 1, p[r - 1]), b = rect(r, p[r]), my = (a.b + b.t) / 2, col = COLS[p[r]].color;
+      const d = `M${a.x} ${a.b} V${my} H${b.x} V${b.t}`;
+      h += `<path d="${d}" stroke="${col}" stroke-width="8" fill="none" opacity=".75" stroke-linejoin="round"/><path d="${d}" stroke="#fffbe8" stroke-width="2.5" fill="none" stroke-linejoin="round"/>`;
+    }
     svg.setAttribute('viewBox', `0 0 ${gr.width} ${gr.height}`); svg.innerHTML = h;
   }
-  let sil = null;
-  function silhouette() {   // 用主角站立图生成纯色剪影
-    if (sil) return sil;
-    const fr = typeof CH !== 'undefined' && CH.hero && CH.hero.idle; if (!fr || !fr.img.complete || !fr.img.naturalWidth) return null;
-    const im = fr.img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
-    const x = c.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#7a5a3c'; x.fillRect(0, 0, c.width, c.height);
-    // 去掉透明边，得到人物外框
-    let d; try { d = x.getImageData(0, 0, c.width, c.height).data; } catch (e) { sil = { c, bx: 0, by: 0, bw: c.width, bh: c.height }; return sil; }
-    let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
-    for (let yy = 0; yy < c.height; yy++) for (let xx = 0; xx < c.width; xx++) if (d[(yy * c.width + xx) * 4 + 3] > 20) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
-    sil = { c, bx: x0, by: y0, bw: Math.max(1, x1 - x0 + 1), bh: Math.max(1, y1 - y0 + 1) }; return sil;
-  }
+  let bodyImg = null;
+  function body() { if (bodyImg) return bodyImg; const u = uiImg('mer_body'); if (!u) return null; bodyImg = new Image(); bodyImg.src = u; return bodyImg; }
   function drawFigure(box) {
     const cv = box.querySelector('.mfig canvas'); if (!cv) return;
     const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; cv.width = r.width * dpr; cv.height = r.height * dpr;
-    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
-    const s = silhouette(), p = path(), tk = titleKey();
-    const H = r.height * .86, W = s ? H * s.bw / s.bh : H * .45, ox = (r.width - W) / 2, oy = (r.height - H) / 2;
-    if (tk) { c.save(); c.shadowColor = tk === 'mix' ? '#f1d58f' : COLS[COLS.findIndex(q => q.id === tk)].color; c.shadowBlur = 24; }
-    if (s) c.drawImage(s.c, s.bx, s.by, s.bw, s.bh, ox, oy, W, H); else { c.fillStyle = '#7a5a3c'; c.fillRect(ox, oy, W, H); }
-    if (tk) c.restore();
-    const pos = i => [ox + POINTS[i].x * W, oy + POINTS[i].y * H];
-    // 经络连线：已点亮的穴位之间
-    c.lineWidth = 2; c.setLineDash([3, 4]);
-    for (let i = 1; i < p.length; i++) { const [a, b] = pos(i - 1), [e, f] = pos(i); c.strokeStyle = COLS[p[i]].color; c.globalAlpha = .7; c.beginPath(); c.moveTo(a, b); c.lineTo(e, f); c.stroke(); }
-    c.setLineDash([]); c.globalAlpha = 1;
-    POINTS.forEach((pt, i) => {
-      const [px, py] = pos(i), on = p[i] != null, col = on ? COLS[p[i]].color : '#3b2c20';
-      if (on) { c.fillStyle = col; c.globalAlpha = .3; c.beginPath(); c.arc(px, py, 11, 0, 7); c.fill(); c.globalAlpha = 1; }
-      c.fillStyle = on ? '#fff3c4' : '#2a1f17'; c.strokeStyle = on ? col : '#a68a62'; c.lineWidth = 2.5; c.beginPath(); c.arc(px, py, 5.5, 0, 7); c.fill(); c.stroke();
-      if (sel && sel[0] === i) { c.strokeStyle = '#fff3c4'; c.lineWidth = 1.5; c.beginPath(); c.arc(px, py, 10, 0, 7); c.stroke(); }
-    });
-    if (!s) setTimeout(() => { if (!box.hidden) drawFigure(box); }, 400);
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const im = body(), p = path(), tk = titleKey();
+    if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => drawFigure(box); return; }
+    const H = r.height * .9, W = H * im.naturalWidth / im.naturalHeight, ox = (r.width - W) / 2, oy = (r.height - H) / 2;
+    if (tk) { c.save(); c.shadowColor = tk === 'mix' ? '#f1c35a' : COLS[COLS.findIndex(q => q.id === tk)].color; c.shadowBlur = 30; c.drawImage(im, ox, oy, W, H); c.restore(); }
+    c.drawImage(im, ox, oy, W, H);
+    const T0 = performance.now() / 1000;
+    PTS.forEach((row, ri) => row.forEach((pt, ci) => {
+      const px = ox + pt.x * W, py = oy + pt.y * H, on = p[ri] === ci, col = COLS[ci].color;
+      if (on) {
+        const g = c.createRadialGradient(px, py, 0, px, py, 16); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = g; c.globalAlpha = .8; c.beginPath(); c.arc(px, py, 16, 0, 7); c.fill(); c.globalAlpha = 1;
+        c.fillStyle = '#fffbe8'; c.strokeStyle = col; c.lineWidth = 3; c.beginPath(); c.arc(px, py, 6, 0, 7); c.fill(); c.stroke();
+      } else { c.fillStyle = 'rgba(60,38,20,.55)'; c.beginPath(); c.arc(px, py, 3, 0, 7); c.fill(); }
+      if (sel && sel[0] === ri && sel[1] === ci) { c.strokeStyle = '#fffbe8'; c.lineWidth = 2; c.setLineDash([3, 3]); c.beginPath(); c.arc(px, py, 11, 0, 7); c.stroke(); c.setLineDash([]); }
+    }));
   }
 
   window.MERIDIAN = { COLS, T, TITLES, SOURCES, open, label, award, stat, x, startRun, tryUnyield, onHurt, tick, total, free, path, titleKey, pick, canPick };
