@@ -67,7 +67,8 @@
     }
     ground = ground.filter(g => !g.got && g.t < 30);
     if (regenT > 0) { const before = regenT; regenT = Math.max(0, regenT - dt); if (Math.floor(before) !== Math.floor(regenT)) { hero.hp = Math.min(maxHp(), hero.hp + .5); pop('+0.5', '#8fe08a'); } if (Math.random() < dt * 8) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 16, y: hero.y - Math.random() * 10, t: 0 }); }
-    if (drunkT > 0) { drunkT -= dt; if (drunkT <= 0) pop('酒醒了', '#ccc'); if (Math.random() < dt * 6) fx.push({ k: 'steam', x: hero.x + (Math.random() - .5) * 10, y: hero.y - 26, t: 0 }); }
+    if (drunkT > 0) { if (zs.some(z => !z.dead && !z.ally && !z.decoy)) drunkT -= dt;   // 用户定：没敌人时酒劲不掉（战后喝的留到下一波）
+       if (drunkT <= 0) pop('酒醒了', '#ccc'); if (Math.random() < dt * 6) fx.push({ k: 'steam', x: hero.x + (Math.random() - .5) * 10, y: hero.y - 26, t: 0 }); }
     if (jar) { jar.t += dt; if (jar.t > 20) { jar = null; explode(hero.x, hero.y); pop('火油罐掉了！', '#ff7a4a'); } }
     for (const f of flying) { f.t += dt; if (f.t >= f.T && !f.done) { f.done = true; explode(f.tx, f.ty); } }
     flying = flying.filter(f => !f.done);

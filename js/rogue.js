@@ -192,7 +192,8 @@
   }
   function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
     const c = cluster(60);
-    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [] });
+    const cnt = new Map();   // 用户定：主动技能是清场用的，同一个敌人这一招最多挨 2 下雷（单体最多 6）
+    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [], cnt });
     if (typeof say === 'function') say('雷霆万钧！', 1.4);
   }
   function updateThunder(dt) {
@@ -201,11 +202,11 @@
       if (b.t >= 0 && !b.hit) {
         b.hit = true; shake = Math.max(shake, .22);
         if (typeof sfx === 'function') sfx('finisher', b.x);
-        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 3, Math.sign(z.x - b.x) || 1); b.done.push(z); stat('雷霆万钧', 3, 0); }
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13 && (b.cnt.get(z) || 0) < 2) { b.cnt.set(z, (b.cnt.get(z) || 0) + 1); rogueHitFull(z, 3, Math.sign(z.x - b.x) || 1); b.done.push(z); stat('雷霆万钧', 3, 0); }
         // 跳到下一个目标：最近的、还没被这道雷劈过的敌人；没有就在附近乱劈
         if (--b.hops > 0) {
-          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
-          thunder.push({ x: n ? n.x : b.x + rnd(-50, 50), y: n ? n.y : b.y + rnd(-12, 12), t: -.28, hit: false, hops: b.hops, done: b.done, from: { x: b.x, y: b.y } });
+          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && (b.cnt.get(z) || 0) < 2 && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+          if (n) thunder.push({ x: n.x, y: n.y, t: -.28, hit: false, hops: b.hops, done: b.done, cnt: b.cnt, from: { x: b.x, y: b.y } });   // 没有新目标就不再乱劈
         }
       }
     }

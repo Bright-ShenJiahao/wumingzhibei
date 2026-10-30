@@ -134,7 +134,7 @@
     // 第一轮：黄巾力士 + 2 小兵；第二轮：另一路被曹军追败、逃回祭台的将军（半血、不再召兵）+ 1 枪兵
     const list = round === 0 ? ['yellow-golem', 'blade', 'yellow-spear'] : [fledType(), 'yellow-spear'];
     list.forEach((t, i) => { spawn(t, gx + (i - .5) * 30, gy + (i % 2) * 8); const z = zs[zs.length - 1]; z.zjAdd = true; z.st = 'move';
-      if (z.T.chapterBoss) { z.fled = true; z.hp = z.T.hp * .5; z.summonedHalf = true; z.saidIntro = true; S.fled = z; } });
+      if (z.T.chapterBoss) { z.x = cam.x + viewW() + 30; z.y = (M.top + M.bot) / 2; z.f = -1; z.fled = true; z.hp = z.T.hp * .5; z.summonedHalf = true; z.saidIntro = true; S.fled = z; } });
     sfx('bladeAlert', gx);
   }
   function descend() {
@@ -205,7 +205,7 @@
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
       if (!alive && S.t > 2) {
-        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥！曹贼追得紧……我来助你！」' : '张梁：「大哥！曹贼势大……我来助你！」', 3); }
+        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥，我来助你！」' : '张梁：「大哥，我来助你！」', 3); vo(fledType() === 'zhang_bao' ? 'zb_help' : 'zl_help'); }   // 语音文件 art/voice/zb_help.mp3 / zl_help.mp3（用户提供）
         else descend();
       }
       return;

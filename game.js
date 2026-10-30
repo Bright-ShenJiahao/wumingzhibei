@@ -762,7 +762,7 @@ function fitChapter2Wave() {
 function chapter2Waves() {
   if (!chapter2Run) return;
   // 清完一战：和第一章一样往右走，走过关口才开始下一战
-  if (chapter2Run.mode === 'walk') { if (hero.x >= chapter2Run.walkGate) startChapter2Battle(chapter2Run.nextBattle, true); return; }
+  if (chapter2Run.mode === 'walk') { if (hero.x >= chapter2Run.walkGate) { if (chapter2Run.nextBattle === 6) { chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT; } else startChapter2Battle(chapter2Run.nextBattle, true); } return; }
   if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
     // 战四/战五掉的大刀、汉弓：转场去祭台会换地图，没捡的自动收下，避免掉在够不着的地方
     for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
@@ -796,7 +796,7 @@ function chapter2Waves() {
     } else {
       walkToChapter2Battle(battle + 1); return;
     }
-    chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;   // 战四/战五之后去祭台，换地图
+    walkToChapter2Battle(6); return;   // 用户定：战四/战五打完先捡东西，往右走才去祭台
   }
   if (chapter2Run.mode !== 'fight') return;
   if (!zs.some(z => !z.dead)) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
@@ -2350,6 +2350,7 @@ function update(dt) {
     if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => { const d = window.ROGUE && ROGUE.decoyFor ? ROGUE.decoyFor(z) : null; if (!d) { zUpdate(z, dt); return; } const real = hero; hero = d; try { zUpdate(z, dt); } finally { hero = real; } }); separateEnemies(dt); }   // 草木皆兵：被吸引的敌人把稻草人当成主角
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
+    for (const z of zs) if (z.dead && !z.air && !z.T.boss && z.st !== 'land' && z.st !== 'gone') { z.st = 'land'; z.t = 0; }   // 不会被击飞的（首领、力士）死了也要倒地后消失
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   const bz = zs.find(z => z.T && z.T.boss);
@@ -3534,7 +3535,7 @@ function canPauseGame() {
   if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active && CHAPTER2_INTRO.active()) return false;
   if (window.ROGUE && ROGUE.blocks && ROGUE.blocks()) return false;
   if (window.XIAOCHANG && XIAOCHANG.blocks && XIAOCHANG.blocks()) return false;
-  if (chapter2Run && chapter2Run.mode !== 'fight') return false;
+  if (chapter2Run && chapter2Run.mode !== 'fight' && chapter2Run.mode !== 'zj') return false;   // zj = 张角祭台战
   return true;
 }
 function clearPauseInputs() {

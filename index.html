@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=aa96a441b5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=aa96a441b5)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=75c518ecc6" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=75c518ecc6)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='9bc81ae6281c',busy=false;
+var BUILD='da5717826225',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4436,7 +4436,8 @@ const Boss = (() => {
   }
   function castThunder() {   // 雷霆万钧：4 道雷，每道落地后连劈 3 下，每下跳到附近另一个敌人身上（每下 2 伤害）
     const c = cluster(60);
-    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [] });
+    const cnt = new Map();   // 用户定：主动技能是清场用的，同一个敌人这一招最多挨 2 下雷（单体最多 6）
+    for (let i = 0; i < 4; i++) thunder.push({ x: c.x + rnd(-30, 30), y: c.y + rnd(-10, 10), t: -i * .3 - .35, hit: false, hops: 4, done: [], cnt });
     if (typeof say === 'function') say('雷霆万钧！', 1.4);
   }
   function updateThunder(dt) {
@@ -4445,11 +4446,11 @@ const Boss = (() => {
       if (b.t >= 0 && !b.hit) {
         b.hit = true; shake = Math.max(shake, .22);
         if (typeof sfx === 'function') sfx('finisher', b.x);
-        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13) { rogueHitFull(z, 3, Math.sign(z.x - b.x) || 1); b.done.push(z); stat('雷霆万钧', 3, 0); }
+        for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - b.x) < 26 && Math.abs(z.y - b.y) < 13 && (b.cnt.get(z) || 0) < 2) { b.cnt.set(z, (b.cnt.get(z) || 0) + 1); rogueHitFull(z, 3, Math.sign(z.x - b.x) || 1); b.done.push(z); stat('雷霆万钧', 3, 0); }
         // 跳到下一个目标：最近的、还没被这道雷劈过的敌人；没有就在附近乱劈
         if (--b.hops > 0) {
-          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
-          thunder.push({ x: n ? n.x : b.x + rnd(-50, 50), y: n ? n.y : b.y + rnd(-12, 12), t: -.28, hit: false, hops: b.hops, done: b.done, from: { x: b.x, y: b.y } });
+          const n = zs.filter(z => !z.dead && !z.air && !b.done.includes(z) && (b.cnt.get(z) || 0) < 2 && Math.hypot(z.x - b.x, z.y - b.y) < 110).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+          if (n) thunder.push({ x: n.x, y: n.y, t: -.28, hit: false, hops: b.hops, done: b.done, cnt: b.cnt, from: { x: b.x, y: b.y } });   // 没有新目标就不再乱劈
         }
       }
     }
@@ -5995,7 +5996,8 @@ const Boss = (() => {
     }
     ground = ground.filter(g => !g.got && g.t < 30);
     if (regenT > 0) { const before = regenT; regenT = Math.max(0, regenT - dt); if (Math.floor(before) !== Math.floor(regenT)) { hero.hp = Math.min(maxHp(), hero.hp + .5); pop('+0.5', '#8fe08a'); } if (Math.random() < dt * 8) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 16, y: hero.y - Math.random() * 10, t: 0 }); }
-    if (drunkT > 0) { drunkT -= dt; if (drunkT <= 0) pop('酒醒了', '#ccc'); if (Math.random() < dt * 6) fx.push({ k: 'steam', x: hero.x + (Math.random() - .5) * 10, y: hero.y - 26, t: 0 }); }
+    if (drunkT > 0) { if (zs.some(z => !z.dead && !z.ally && !z.decoy)) drunkT -= dt;   // 用户定：没敌人时酒劲不掉（战后喝的留到下一波）
+       if (drunkT <= 0) pop('酒醒了', '#ccc'); if (Math.random() < dt * 6) fx.push({ k: 'steam', x: hero.x + (Math.random() - .5) * 10, y: hero.y - 26, t: 0 }); }
     if (jar) { jar.t += dt; if (jar.t > 20) { jar = null; explode(hero.x, hero.y); pop('火油罐掉了！', '#ff7a4a'); } }
     for (const f of flying) { f.t += dt; if (f.t >= f.T && !f.done) { f.done = true; explode(f.tx, f.ty); } }
     flying = flying.filter(f => !f.done);
@@ -8007,7 +8009,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     // 第一轮：黄巾力士 + 2 小兵；第二轮：另一路被曹军追败、逃回祭台的将军（半血、不再召兵）+ 1 枪兵
     const list = round === 0 ? ['yellow-golem', 'blade', 'yellow-spear'] : [fledType(), 'yellow-spear'];
     list.forEach((t, i) => { spawn(t, gx + (i - .5) * 30, gy + (i % 2) * 8); const z = zs[zs.length - 1]; z.zjAdd = true; z.st = 'move';
-      if (z.T.chapterBoss) { z.fled = true; z.hp = z.T.hp * .5; z.summonedHalf = true; z.saidIntro = true; S.fled = z; } });
+      if (z.T.chapterBoss) { z.x = cam.x + viewW() + 30; z.y = (M.top + M.bot) / 2; z.f = -1; z.fled = true; z.hp = z.T.hp * .5; z.summonedHalf = true; z.saidIntro = true; S.fled = z; } });
     sfx('bladeAlert', gx);
   }
   function descend() {
@@ -8078,7 +8080,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
       if (!alive && S.t > 2) {
-        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥！曹贼追得紧……我来助你！」' : '张梁：「大哥！曹贼势大……我来助你！」', 3); }
+        if (S.summonRound === 0) { S.summonRound = 1; S.sumT = 1.2; S.pose = 'summon'; S.t = 0; say(fledType() === 'zhang_bao' ? '张宝：「大哥，我来助你！」' : '张梁：「大哥，我来助你！」', 3); vo(fledType() === 'zhang_bao' ? 'zb_help' : 'zl_help'); }   // 语音文件 art/voice/zb_help.mp3 / zl_help.mp3（用户提供）
         else descend();
       }
       return;
@@ -9079,7 +9081,7 @@ function fitChapter2Wave() {
 function chapter2Waves() {
   if (!chapter2Run) return;
   // 清完一战：和第一章一样往右走，走过关口才开始下一战
-  if (chapter2Run.mode === 'walk') { if (hero.x >= chapter2Run.walkGate) startChapter2Battle(chapter2Run.nextBattle, true); return; }
+  if (chapter2Run.mode === 'walk') { if (hero.x >= chapter2Run.walkGate) { if (chapter2Run.nextBattle === 6) { chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT; } else startChapter2Battle(chapter2Run.nextBattle, true); } return; }
   if (chapter2Run.mode === 'transition' && gameT >= chapter2Run.nextAt) {
     // 战四/战五掉的大刀、汉弓：转场去祭台会换地图，没捡的自动收下，避免掉在够不着的地方
     for (const d of drops) if (d.k === 'weapon' && d.weapon && !d.item && !d.got && window.TITLE && TITLE.grantWeapon && TITLE.grantWeapon(d.weapon, false)) { d.got = 1; say(`已获得${d.weapon === 'blade' ? '大刀' : '汉弓'}，存入武器仓库。`, 3); }
@@ -9113,7 +9115,7 @@ function chapter2Waves() {
     } else {
       walkToChapter2Battle(battle + 1); return;
     }
-    chapter2Run.mode = 'transition'; chapter2Run.nextAt = gameT + .55; return;   // 战四/战五之后去祭台，换地图
+    walkToChapter2Battle(6); return;   // 用户定：战四/战五打完先捡东西，往右走才去祭台
   }
   if (chapter2Run.mode !== 'fight') return;
   if (!zs.some(z => !z.dead)) { chapter2Run.mode = 'clearing'; chapter2Run.nextAt = gameT + .72; }
@@ -10667,6 +10669,7 @@ function update(dt) {
     if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => { const d = window.ROGUE && ROGUE.decoyFor ? ROGUE.decoyFor(z) : null; if (!d) { zUpdate(z, dt); return; } const real = hero; hero = d; try { zUpdate(z, dt); } finally { hero = real; } }); separateEnemies(dt); }   // 草木皆兵：被吸引的敌人把稻草人当成主角
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
+    for (const z of zs) if (z.dead && !z.air && !z.T.boss && z.st !== 'land' && z.st !== 'gone') { z.st = 'land'; z.t = 0; }   // 不会被击飞的（首领、力士）死了也要倒地后消失
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   const bz = zs.find(z => z.T && z.T.boss);
@@ -11851,7 +11854,7 @@ function canPauseGame() {
   if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active && CHAPTER2_INTRO.active()) return false;
   if (window.ROGUE && ROGUE.blocks && ROGUE.blocks()) return false;
   if (window.XIAOCHANG && XIAOCHANG.blocks && XIAOCHANG.blocks()) return false;
-  if (chapter2Run && chapter2Run.mode !== 'fight') return false;
+  if (chapter2Run && chapter2Run.mode !== 'fight' && chapter2Run.mode !== 'zj') return false;   // zj = 张角祭台战
   return true;
 }
 function clearPauseInputs() {
