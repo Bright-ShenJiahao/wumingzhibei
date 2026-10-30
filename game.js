@@ -418,7 +418,7 @@ function moveEnt(e, dx, dy) {
     }
   } else e.avoidDir = null;
   e.y = Math.max(M.top, Math.min(M.bot, e.y)); e.x = Math.max(10, Math.min(M.W - 10, e.x));
-  if (lockR < Infinity) {
+  if (lockR < Infinity && !e.siegeArcher) {   // 投石车弓手守在屏幕外的岗位上，不拉进屏幕
     const lo = cam.x + (e === hero ? 12 : 10), hi = Math.min(lockR, cam.x + viewW()) - (e === hero ? 12 : 10);
     e.x = Math.max(lo, Math.min(e.x, Math.max(lo, hi)));   // 敌人也不许被打出场外（否则打不到、卡关）
   }
@@ -1856,6 +1856,7 @@ function zUpdate(z, dt) {
   // 守车兵：主角离岗位远时回岗位站定，不追出去（投石车阵的盾兵、大刀兵）
   if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && (z.siegeArcher ? Math.hypot(z.x - z.guard.x, z.y - z.guard.y) > 10 : Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115)) {   // 投石车弓手：一步不离岗，只站着射
     const dx = z.guard.x - z.x, dy = z.guard.y - z.y, d = Math.hypot(dx, dy);
+    if (z.siegeArcher && d > 40) { z.x = z.guard.x; z.y = z.guard.y; return; }   // 投石车弓手：出场就站在拒马墙后的岗位上（以前被锁屏边界推到墙前，卡在墙边走不过去）
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd = Math.max(z.cd, .4);
     if (d > 4) { z.moving = true; z.f = Math.sign(dx) || z.f; moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt); }
     else { z.moving = false; z.f = Math.sign(hero.x - z.x) || z.f; }
