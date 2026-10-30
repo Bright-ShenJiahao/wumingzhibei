@@ -303,7 +303,8 @@
     const fin = !!(traits && traits.finisher);
     const mul = (n, k) => { const b = dmg; dmg *= k; stat(n, dmg - b); };   // 加伤并记统计
     if (has['震慑'] && z.flawUntil > t) mul('震慑', 1.25);
-    if (windT > 0 && has['借我东风']) mul('借我东风', 1.2);   // 风中敌人受到的伤害 +20%
+    if (windT > 0 && has['借我东风']) mul('借我东风', 1.2);
+    if (window.SUPPLY && SUPPLY.drunk()) dmg *= SUPPLY.dmgMul();   // 烈酒坛：伤害 +30%   // 风中敌人受到的伤害 +20%
     if (vanguard && has['先声夺人']) { vanguard = false; mul('先声夺人', 3); z.vanguardKnock = true; pop(z.x, z.y - 44, '先声夺人！', null, true); shockwave(z.x, z.y, 45, .5, true, '先声夺人'); }
     if (rallyT > 0 && has['先声夺人']) mul('先声夺人', 1.4);   // 战意：每波开头 4 秒伤害 +40%
     // 直取要害（看破）：打正在蓄力出招的敌人必暴击并打断

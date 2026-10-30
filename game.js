@@ -195,7 +195,7 @@ let archerAddsDone = false;   // Boss 二阶段是否已经召过弓箭手（一
 let tutorialQueue = [];
 const rnd = (a, b) => a + Math.random() * (b - a);
 // 读锦囊数值（没抽卡时就是默认值）
-const R_ = (k, d = 1) => { let value = window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d; if (k === 'move' && window.ARTIFACT) value *= ARTIFACT.moveMult();   // 太平飞剑：踩剑时移速 +10%
+const R_ = (k, d = 1) => { let value = window.ROGUE && ROGUE.S[k] != null ? ROGUE.S[k] : d; if (k === 'move' && window.ARTIFACT) value *= ARTIFACT.moveMult(); if (k === 'aspd' && window.SUPPLY) value *= SUPPLY.aspdMul();   // 太平飞剑：踩剑时移速 +10%
   return window.GEAR && (k === 'move' || k === 'aspd') ? GEAR.speed(k, value) : value; };
 const maxHeroHp = () => window.GEAR ? GEAR.maxHp() : 10;
 // 播放音效，按世界坐标 x 计算左右声道
@@ -213,7 +213,8 @@ function reset() {
   weapon = (window.TITLE && TITLE.preparedWeapon && TITLE.preparedWeapon()) || 'hammer';
   ui();
   if (window.ROGUE) ROGUE.reset();
-  if (window.ARTIFACT) ARTIFACT.startRun();   // 神器：每局重新踩上飞剑、打落次数清零
+  if (window.ARTIFACT) ARTIFACT.startRun();
+  if (window.SUPPLY) SUPPLY.reset();   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -977,6 +978,7 @@ function heroUpdate(dt) {
   if (h.st === 'roll' && charging && atkHeldSince) atkHeldSince += dt * 1000;   // 藏势：翻滚时蓄力暂停
   if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd) ROGUE.onRollEnd(); } pressAtk = false; return; }   // 回马：滚完自动向身后打一下
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
+  if (pressAtk && window.SUPPLY && SUPPLY.throwJar()) pressAtk = false;   // 拿着火油罐：攻击键先扔罐子
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
   if (h.st === 'atk' && (!h.atk || !WEAP[weapon].combo[h.atk.c])) { h.atk = null; set(h, 'idle'); }   // 防卡死：出招状态和当前武器对不上就复位
   if (h.st === 'atk') {
@@ -1201,7 +1203,7 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 // 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
-const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng']);
+const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng', 'cao_crate']);   // cao_crate：第二章曹军补给箱（打碎变 'cao_crate_broken' 并掉补给，见 js/supply.js）
 const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
 function hitProp(p, dir) {
   if (!canHitProp(p)) return;
@@ -1225,6 +1227,8 @@ function hitProp(p, dir) {
       const meta = ASSETS.props.fudeng_off;
       p.g = 'fudeng_off'; p.solid = false; p.hp = 0;
       if (meta) { p.w = meta[1]; p.h = meta[2]; }
+    } else if (p.supply && window.SUPPLY) {   // 曹军补给箱：换成碎箱子，掉一个补给
+      SUPPLY.onCrateBreak(p);
     } else if (jumo) {
       const meta = ASSETS.props[p.g + '_broken'];   // 'jumo_broken' / 'jumo_v_broken' / 'jumo_vs_broken'
       p.g = p.g + '_broken'; p.solid = false; p.hp = 0; p.broken = true;   // 打碎就消失（碎屑已经飞出去了）
@@ -2318,6 +2322,7 @@ function update(dt) {
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   if (window.ARTIFACT && !over && !won) ARTIFACT.tick(dt);
+  if (window.SUPPLY && !over && !won) SUPPLY.tick(dt);
   if (volleyAgainAt && gameT >= volleyAgainAt) { volleyAgainAt = 0; summonArchersVolley(true); }
   gameT += dt;
   if (window.GEAR && !over && !won) GEAR.tick(dt);
@@ -2662,6 +2667,7 @@ function draw() {
   if (window.CH2B && chapter2Run) CH2B.draw();
   if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
   if (window.ARTIFACT) ARTIFACT.drawWorld();
+  if (window.SUPPLY) SUPPLY.drawWorld();
   if (window.BOWAMMO) BOWAMMO.draw();
   // 按 y 排序绘制
   const list = [];
@@ -2738,6 +2744,7 @@ function draw() {
     gr.addColorStop(0, 'rgba(10,6,4,.6)'); gr.addColorStop(1, 'rgba(10,6,4,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, gw, HH);
     ctx.save(); ctx.strokeStyle = 'rgba(200,60,40,.55)'; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(3, HH * .45); ctx.lineTo(3, HH); ctx.stroke(); ctx.restore();
   }
+  if (window.SUPPLY && !result) SUPPLY.hud(14, 140);   // 补给效果倒计时
   drawCombo(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
@@ -3420,7 +3427,10 @@ function drawHero() {
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   const lift = window.ARTIFACT ? ARTIFACT.drawUnder(h) : 0;   // 踩在飞剑上：剑画在脚下，人抬高一点
-  drawChar('hero', heroFrame(h), h.x, h.y - (h.z || 0) - lift, h.f < 0);
+  const drunk = window.SUPPLY && SUPPLY.drunk(), sway = drunk && h.st === 'idle' ? Math.sin(performance.now() / 300) * 1.5 : 0;   // 烈酒坛：泛红、站着时轻轻摇晃
+  if (drunk) { ctx.save(); ctx.filter = 'sepia(.35) saturate(1.8) hue-rotate(-20deg)'; }
+  drawChar('hero', heroFrame(h), h.x + sway, h.y - (h.z || 0) - lift, h.f < 0);
+  if (drunk) ctx.restore();
 }
 function drawZ(z) {
   ch2Telegraph(z);
