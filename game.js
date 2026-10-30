@@ -1469,7 +1469,7 @@ function chargedAttack(power, tier = 1) {
     return;
   }
   if (weapon === 'stone') {                        // 石子蓄力：按档位 3/4/5 颗，0.12 夹角
-    const volley = { hit: new Set() };   // 用户定：同一次蓄力打中同一个敌人，第 2 颗起只吃 30%、不续晕
+    const stoneVolley = { hit: new Set() };   // 用户定：同一次蓄力打中同一个敌人，第 2 颗起只吃 30%、不续晕
     const data = tier === 3 ? { n: 5, dmg: 1.6, chance: 1, time: 1 }
       : tier === 2 ? { n: 4, dmg: 1.2, chance: .7, time: .8 }
       : { n: 3, dmg: .8, chance: .4, time: .6 };
@@ -1477,7 +1477,7 @@ function chargedAttack(power, tier = 1) {
     for (let i = 0; i < data.n; i++) {
       const ang = (i - (data.n - 1) / 2) * .12;
       const C = Object.assign({}, W.combo[0], { dmg: data.dmg, spd: 310, life: .8, dazeChance: data.chance, dazeTime: data.time, daze: 1 });
-      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, chargeTier: tier, volley });
+      shots.push({ x: h.x + h.f * 16, y: h.y + (run2 ? rnd(-6, 6) : 0), z: 24, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C, c: 0, hitSet: [], gearToken:h.atk.gearToken, charged: true, chargeTier: tier, stoneVolley });
     }
     return;
   }
@@ -2158,7 +2158,7 @@ function updateShots(dt) {
       if (s.C.dazeChance != null) traits.dazeChance = s.C.dazeChance;
       if (s.C.dazeTime != null) traits.dazeTime = s.C.dazeTime;
       if ((z.T.boss || z.T.chapterBoss) && s.C.dazeChance) { traits.dazeChance = s.C.dazeChance * .5; traits.dazeTime = s.C.dazeTime; }
-      if (s.volley) { if (s.volley.hit.has(z)) { pdmg *= .3; traits.dazeChance = 0; } else s.volley.hit.add(z); }
+      if (s.stoneVolley) { if (s.stoneVolley.hit.has(z)) { pdmg *= .3; traits.dazeChance = 0; } else s.stoneVolley.hit.add(z); }
       if (s.summon) { z.wjHits = (z.wjHits || 0) + 1; if (window.ROGUE && ROGUE.stat) ROGUE.stat('万箭齐发', pdmg, 0); }
       const result = hit(z, pdmg, s.C.kb, Math.sign(s.vx), false, s.C.daze || 0, .15, false, true, traits);   // 最后 true = 远程，管亥可能拨开
       if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
