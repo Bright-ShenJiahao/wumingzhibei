@@ -4,6 +4,8 @@ const IMG = {};
 // 图片排队下载（用户定：别一打开就同时开几十个下载把网速占满）：同时最多 4 张，下完一张再开下一张
 const LOADQ = []; let loadingN = 0;
 function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LOADQ.shift(); if (i.src) continue; loadingN++; const done = () => { loadingN--; pumpLoad(); }; i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); i.src = src; } }
+function promoteLoad(img) { if (img.src) return; const i = LOADQ.findIndex(q => q[0] === img); if (i > 0) LOADQ.unshift(LOADQ.splice(i, 1)[0]); }   // 画面上要用到但还在排队的图：插到队首
+function flushLoads() { while (LOADQ.length) { const [i, src] = LOADQ.shift(); if (!i.src) i.src = src; } }   // 开打了：剩下的图全部开始下（不再限速）
 function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); pumpLoad(); return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
@@ -219,7 +221,8 @@ function reset() {
   if (window.ARTIFACT) ARTIFACT.startRun();
   if (window.SUPPLY) SUPPLY.reset();
   if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次
-  if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) SFX.preloadVoices(['intro', 'guanhai_']); }, 1500);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
+  if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) flushLoads();   // 进了战斗就不再限速下图
+  if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) { flushLoads(); SFX.preloadVoices(['intro', 'guanhai_']); } }, 300);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -719,6 +722,7 @@ function startChapter2Debug(battle) { loadChapter2(false, battle); }   // 开发
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number, walkIn = false) {
+  flushLoads();
   if (window.SFX && SFX.preloadVoices) SFX.preloadVoices(['caocao_', 'zl_', 'zb_', 'zj_']);   // 第二章语音进来才下
   if (window.GEAR) GEAR.collectDrops();
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
@@ -2454,7 +2458,7 @@ function safeArea() {   // 读 CSS 的 env(safe-area-inset-*)，每秒更新一�
   return _sa;
 }
 function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
-  const fr = CH[name] && CH[name][f]; if (!fr || !fr.img.complete) return;
+  const fr = CH[name] && CH[name][f]; if (!fr) return; if (!fr.img.src) { promoteLoad(fr.img); return; } if (!fr.img.complete) return;
   const sp = Math.max(.5, SC * PX) * sc;
   const sx = Math.round(x * SC + OXs), sy = Math.round(y * SC);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
