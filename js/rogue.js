@@ -320,8 +320,8 @@
     if (vanguard && has['先声夺人']) { vanguard = false; mul('先声夺人', 3); z.vanguardKnock = true; pop(z.x, z.y - 44, '先声夺人！', null, true); shockwave(z.x, z.y, 45, .5, true, '先声夺人'); }
     if (rallyT > 0 && has['先声夺人']) mul('先声夺人', 1.4);   // 战意：每波开头 4 秒伤害 +40%
     // 直取要害（看破）：打正在蓄力出招的敌人必暴击并打断
-    if (has['直取要害'] && (z.st === 'wind' || (z.enemySkill && z.enemySkill.phase === 'wind'))) {
-      mul('直取要害', 1.5); pop(z.x, z.y - 46, '看破！', '#ffd25a', true);
+    if (has['直取要害'] && z.seenWind !== z.windId && (z.st === 'wind' || (z.enemySkill && z.enemySkill.phase === 'wind'))) {   // 同一次蓄力只看破一次（用户定）
+      z.seenWind = z.windId; mul('直取要害', 1.3); pop(z.x, z.y - 46, '看破！', '#ffd25a', true);
       if (!isBoss(z)) { z.st = 'move'; z.tok = false; z.stun = Math.max(z.stun || 0, .5); if (z.enemySkill) z.enemySkill = null; }
     }
     if (has['一鼓作气']) { momentum = Math.min(10, momentum + 1); momentumIdle = 0; mul('一鼓作气', 1 + .015 * momentum); }
