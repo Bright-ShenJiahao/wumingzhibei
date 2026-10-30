@@ -715,6 +715,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
+  if (number === 6) { hero.hp = maxHeroHp(); floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt: '养精蓄锐 · 血已回满', big: true, color: '#8fe08a' }); }   // 用户定：张角战开打前回满血
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
