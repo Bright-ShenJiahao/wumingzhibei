@@ -142,7 +142,13 @@
   function updateFooter(root=document){const p=state(),items=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),equippedIds=new Set(Object.values(p.equipped)),invalidLocked=items.some(i=>i.locked),invalidEquipped=items.some(i=>equippedIds.has(i.uid)),plan=EQUIPMENT_RULES.forgePlan(items,state().pity),forge=root.querySelector('#aForge'),tag=root.querySelector('#aForgeTag'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');if(!forge||!tag||!lock||!discard)return;const valid=!!plan&&!invalidLocked&&!invalidEquipped;forge.disabled=!valid;const prefix=`已选 ${items.length}/5`;tag.textContent=invalidEquipped?`${prefix} · 含已装备`:invalidLocked?`${prefix} · 含已锁定`:!plan?`${prefix} · 至少选3把`: `${prefix} · 升阶 ${shortPercent(plan.upgradeChance)}${plan.pityBonus>0?'（含保底）':''}`;lock.disabled=!items.length;lock.textContent=items.length&&items.every(i=>i.locked)?'解锁':'锁定';discard.disabled=!items.length||invalidLocked||invalidEquipped;}
   function showMessage(text){const n=document.getElementById('aMessage')||document.getElementById('tPrepStatus');if(n)n.textContent=text;}
   function exportProfile(){const p=copy(state());p.campaign=CLOUD_MERGE.merge({campaign:p.campaign},{campaign:window.TITLE?TITLE.campaignProgress():{}}).campaign;return p;}
+  // 用户定：每次云端合并前自动备份本机存档（保留最近 3 份），开发者面板可一键恢复
+  const BK='wzb-profile-backup';
+  function backup(){try{const all=JSON.parse(localStorage.getItem(BK)||'{}');const list=(all[cacheName]||[]);const snap=JSON.stringify(state());if(list[0]&&list[0].d===snap)return;list.unshift({at:Date.now(),d:snap});all[cacheName]=list.slice(0,3);localStorage.setItem(BK,JSON.stringify(all));}catch(e){}}
+  function backups(){try{return (JSON.parse(localStorage.getItem(BK)||'{}')[cacheName]||[]).map(b=>({at:b.at}));}catch(e){return [];}}
+  function restore(i=0){try{const b=(JSON.parse(localStorage.getItem(BK)||'{}')[cacheName]||[])[i];if(!b)return false;const d=JSON.parse(b.d);for(const k of Object.keys(cache))delete cache[k];Object.assign(cache,d);const now=Date.now();for(const k of ['wallet','goods','meridian','artifacts','tipLocks'])if(cache[k]&&typeof cache[k]==='object'&&'_at' in cache[k])cache[k]._at=now;return save()!==false;}catch(e){return false;}}
   function mergeCloud(profile){
+    backup();
     const before=copy(state()),local=exportProfile();
     // 全新设备尚未出征时，默认赠送武器不重复塞进已有的云端仓库。
     if(freshLocal&&profile.items?.length){local.items=[];local.equipped={};local._equipAt={};}
@@ -164,7 +170,7 @@
     return true;
   }
   function setMastery(next){const p=state();p.mastery=next;save();}
-  window.ARMORY={setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={backup,backups,restore,setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();

@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=e69b73f5de" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=e69b73f5de)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4bcb08744d" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4bcb08744d)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='a0d5289e0afc',busy=false;
+var BUILD='031b08efaa72',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -348,7 +348,13 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
   function updateFooter(root=document){const p=state(),items=[...selection].map(id=>p.items.find(i=>i.uid===id)).filter(Boolean),equippedIds=new Set(Object.values(p.equipped)),invalidLocked=items.some(i=>i.locked),invalidEquipped=items.some(i=>equippedIds.has(i.uid)),plan=EQUIPMENT_RULES.forgePlan(items,state().pity),forge=root.querySelector('#aForge'),tag=root.querySelector('#aForgeTag'),lock=root.querySelector('#aLock'),discard=root.querySelector('#aDiscard');if(!forge||!tag||!lock||!discard)return;const valid=!!plan&&!invalidLocked&&!invalidEquipped;forge.disabled=!valid;const prefix=`已选 ${items.length}/5`;tag.textContent=invalidEquipped?`${prefix} · 含已装备`:invalidLocked?`${prefix} · 含已锁定`:!plan?`${prefix} · 至少选3把`: `${prefix} · 升阶 ${shortPercent(plan.upgradeChance)}${plan.pityBonus>0?'（含保底）':''}`;lock.disabled=!items.length;lock.textContent=items.length&&items.every(i=>i.locked)?'解锁':'锁定';discard.disabled=!items.length||invalidLocked||invalidEquipped;}
   function showMessage(text){const n=document.getElementById('aMessage')||document.getElementById('tPrepStatus');if(n)n.textContent=text;}
   function exportProfile(){const p=copy(state());p.campaign=CLOUD_MERGE.merge({campaign:p.campaign},{campaign:window.TITLE?TITLE.campaignProgress():{}}).campaign;return p;}
+  // 用户定：每次云端合并前自动备份本机存档（保留最近 3 份），开发者面板可一键恢复
+  const BK='wzb-profile-backup';
+  function backup(){try{const all=JSON.parse(localStorage.getItem(BK)||'{}');const list=(all[cacheName]||[]);const snap=JSON.stringify(state());if(list[0]&&list[0].d===snap)return;list.unshift({at:Date.now(),d:snap});all[cacheName]=list.slice(0,3);localStorage.setItem(BK,JSON.stringify(all));}catch(e){}}
+  function backups(){try{return (JSON.parse(localStorage.getItem(BK)||'{}')[cacheName]||[]).map(b=>({at:b.at}));}catch(e){return [];}}
+  function restore(i=0){try{const b=(JSON.parse(localStorage.getItem(BK)||'{}')[cacheName]||[])[i];if(!b)return false;const d=JSON.parse(b.d);for(const k of Object.keys(cache))delete cache[k];Object.assign(cache,d);const now=Date.now();for(const k of ['wallet','goods','meridian','artifacts','tipLocks'])if(cache[k]&&typeof cache[k]==='object'&&'_at' in cache[k])cache[k]._at=now;return save()!==false;}catch(e){return false;}}
   function mergeCloud(profile){
+    backup();
     const before=copy(state()),local=exportProfile();
     // 全新设备尚未出征时，默认赠送武器不重复塞进已有的云端仓库。
     if(freshLocal&&profile.items?.length){local.items=[];local.equipped={};local._equipAt={};}
@@ -370,7 +376,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
     return true;
   }
   function setMastery(next){const p=state();p.mastery=next;save();}
-  window.ARMORY={setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={backup,backups,restore,setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();
@@ -2742,6 +2748,10 @@ const Boss = (() => {
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
+    btn(heroGroup, '伤害测试场', '', () => { if (window.DMGTEST) DMGTEST.open(); });
+    btn(heroGroup, '恢复存档', '', () => { if (!window.ARMORY || !ARMORY.backups) return; const l = ARMORY.backups(); if (!l.length) { tipLine('还没有备份（云端同步时才会自动备份）'); return; }
+      const i = l.length > 1 ? Number(prompt(l.map((b, k) => `${k}：${new Date(b.at).toLocaleString()}`).join('\n') + '\n输入要恢复的编号', '0')) : 0;
+      if (!Number.isInteger(i) || !l[i]) return; tipLine(ARMORY.restore(i) ? '已恢复 ' + new Date(l[i].at).toLocaleString() + ' 的存档，刷新后生效' : '恢复失败'); });
     btn(heroGroup, '给 7 颗通脉丹', '', () => { if (window.MERIDIAN) { ['ch1','ch2','ch3','xc1','xc2','xc3','tg'].forEach(k => MERIDIAN.award(k)); tipLine('通脉丹 7/7：整军备战 → 经脉'); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
     btn(heroGroup, '给太平飞剑', '', () => { if (window.ARTIFACT) { ARTIFACT.grant('feijian'); ARTIFACT.equip('feijian'); ARTIFACT.startRun(); if (typeof say === 'function') say('已获得并装备太平飞剑', 2); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
     // 测评锦囊：直接挑任意一张拿到手（要在关卡里用）
@@ -2933,6 +2943,71 @@ const Boss = (() => {
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
+
+// 伤害测试场（用户定，仅开发者模式）：把游戏按 1/60 秒一帧快速空跑，让主角对木桩连按普攻，统计 10 秒伤害。
+// 三张表：① 6 种武器 单体/群体（5 个木桩）；② 每张锦囊相对「不带卡」的提升%（用当前武器）；③ 7 个将令对 6 个木桩 10 秒总伤。
+// 对比方式：每张表按数值排序 + 条形图；超过中位数 1.5 倍标红（偏强）、低于 0.6 倍标蓝（偏弱）。
+(() => {
+  const DT = 1 / 60, SECS = 10;
+  function dummies(n) {
+    zs.length = 0; shots.length = 0; eshots.length = 0; lockR = Infinity;
+    hero.x = cam.x + 120; hero.y = (M.top + M.bot) / 2; hero.f = 1; hero.inv = 9999; hero.hp = 999;
+    const out = [], pos = [[0, 0], [10, -12], [10, 12], [22, -6], [22, 6], [34, 0]];
+    for (let i = 0; i < n; i++) { spawn('grunt', hero.x + 34 + pos[i][0], hero.y + pos[i][1]); const z = zs[zs.length - 1]; z.T = { ...z.T, hp: 99999, elite: false }; z.hp = 99999; z.dummy = { x: z.x, y: z.y }; z.cd = 99; out.push(z); }
+    return out;
+  }
+  function sim(n, ranged, skill) {
+    const ds = dummies(n); if (ranged) { hero.x -= 90; }
+    if (skill && typeof useRogueSkill === 'function') useRogueSkill();
+    for (let f = 0; f < SECS * 60; f++) {
+      if (!skill) pressAtk = true;
+      try { update(DT); } catch (e) { break; }
+      for (const z of ds) { if (z.dead) { z.dead = 0; z.st = 'move'; } z.x = z.dummy.x; z.y = z.dummy.y; z.air = false; z.z = 0; z.vz = 0; z.vx = 0; z.cd = 99; z.st = z.st === 'wind' || z.st === 'strike' ? 'move' : z.st; }
+      hero.hp = 999; hero.inv = 9999;
+    }
+    pressAtk = false;
+    return ds.reduce((s, z) => s + (99999 - z.hp), 0);
+  }
+  function setW(w) { weapon = w; if (window.GEAR && GEAR.switch) GEAR.switch(); hero.atk = null; hero.st = 'idle'; hero.combo = 0; }
+  function table(title, rows, unit) {
+    const vals = rows.map(r => r[1]).sort((a, b) => a - b), med = vals[Math.floor(vals.length / 2)] || 1, max = Math.max(...vals, 1);
+    return `<h4 style="margin:10px 0 4px;color:#f1d58f">${title}</h4>` + rows.sort((a, b) => b[1] - a[1]).map(([n, v, note]) => {
+      const c = v > med * 1.5 ? '#e0533a' : v < med * .6 ? '#5aa0e0' : '#c9a24a';
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0"><span style="width:84px;flex:none">${n}</span><span style="flex:1;background:#2a1f17;height:12px;border-radius:2px"><span style="display:block;height:12px;width:${Math.max(1, v / max * 100)}%;background:${c};border-radius:2px"></span></span><b style="width:70px;text-align:right;color:${c}">${v.toFixed(unit === '%' ? 0 : 1)}${unit}</b>${note ? `<i style="font-style:normal;color:#9b8a6c;width:60px">${note}</i>` : ''}</div>`;
+    }).join('') + `<div style="font-size:11px;color:#9b8a6c">中位数 ${med.toFixed(1)}${unit} · 红=偏强（&gt;1.5 倍中位数）· 蓝=偏弱（&lt;0.6 倍）</div>`;
+  }
+  async function run(box) {
+    const W = ['staff', 'hammer', 'blade', 'stone', 'bow', 'halberd'].filter(w => WEAP[w]);
+    const keep = weapon, say0 = (t) => { box.querySelector('.dtMsg').textContent = t; return new Promise(r => setTimeout(r, 20)); };
+    if (window.ROGUE) ROGUE.reset();
+    const r1 = [], r1b = [];
+    for (const w of W) { await say0('测武器：' + WEAP[w].name); setW(w); const ranged = WEAP[w].class === 'ranged'; const v1 = sim(1, ranged) / SECS; if (!v1) { r1.push([WEAP[w].name + '（未拥有）', 0]); continue; } r1.push([WEAP[w].name, v1]); r1b.push([WEAP[w].name, sim(5, ranged) / SECS]); }
+    // 锦囊：当前武器（测试开始前拿着的那把）
+    setW(keep); const base = sim(3, WEAP[keep].class === 'ranged');
+    const r2 = [], cards = window.TIPBAG ? Object.entries(TIPBAG.CARDS).filter(([c]) => c !== 'bing').flatMap(([, l]) => l) : [];
+    for (const [name, , , wpn] of cards) {
+      if (wpn && wpn !== keep) continue;
+      await say0('测锦囊：' + name); ROGUE.reset(); ROGUE.grant(name); setW(keep);
+      const v = sim(3, WEAP[keep].class === 'ranged'); r2.push([name, (v / base - 1) * 100]);
+    }
+    // 将令
+    const r3 = [], bings = window.TIPBAG ? TIPBAG.CARDS.bing.map(c => c[0]) : [];
+    for (const name of bings) { await say0('测将令：' + name); ROGUE.reset(); ROGUE.grant(name); setW(keep); r3.push([name, sim(6, false, true)]); }
+    ROGUE.reset(); setW(keep); zs.length = 0;
+    box.querySelector('.dtOut').innerHTML = table('① 武器 单体 每秒伤害（连按普攻，含当前装备词条）', r1, '') + table('① 武器 群体 每秒伤害（5 个木桩）', r1b, '')
+      + table(`② 锦囊 伤害提升（武器：${WEAP[keep].name}，3 个木桩，对比不带卡；木桩不会死也不出招，击杀后/被打时/打蓄力触发的卡显示 0%）`, r2, '%') + table('③ 将令 10 秒总伤（6 个木桩，放一次）', r3, '');
+    await say0('完成。测试会打乱当前这一局，建议测完回整备重开。');
+  }
+  function open() {
+    let box = document.getElementById('dmgTest');
+    if (!box) { box = document.createElement('div'); box.id = 'dmgTest'; box.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(520px,92vw);overflow:auto;z-index:10040;background:#1d140ef4;border:1px solid #9d7845;border-radius:8px;padding:10px;font:13px sans-serif;color:#ecdcbc';
+      box.addEventListener('touchmove', e => e.stopPropagation(), { passive: true }); document.body.append(box); }
+    box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#f1d58f;font-size:16px">伤害测试场</b><span><button data-go style="min-height:30px">开始测试</button> <button data-x style="min-height:30px">关闭</button></span></div><div class="dtMsg" style="margin:6px 0;color:#9fd3ff">先进入任意一关，再点开始（约 10～30 秒）。</div><div class="dtOut"></div>';
+    box.querySelector('[data-x]').onclick = () => box.remove();
+    box.querySelector('[data-go]').onclick = () => { if (!hero || (window.TITLE && TITLE.blocks && TITLE.blocks())) { box.querySelector('.dtMsg').textContent = '请先进入一关。'; return; } run(box); };
+  }
+  window.DMGTEST = { open };
+})();
 
 // 桌面悬浮详情和手机点击详情共用同一份内容；只展示装备后的静态属性。
 (() => {
