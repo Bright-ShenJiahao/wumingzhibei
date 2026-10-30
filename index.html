@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=75c518ecc6" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=75c518ecc6)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=d7e71f3760" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d7e71f3760)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='da5717826225',busy=false;
+var BUILD='f718293868c6',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -9158,13 +9158,17 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
-    const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：近战时盾的挡/卸减半
-    const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb;   // 用户定：正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
-    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll>=fullP&&roll<fullP+.5*sb){
+    const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
+    const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
+    // 用户定：正面打盾兵按武器分——远程 ×0.5、长杆 ×0.75、短兵（大刀）×1.15 且格挡概率减半；锤子照旧无视盾；从背后打不受影响。
+    // 蓄力 / 终段（含弓的第三段）不再无视盾：不会被整下挡掉，但倍率照算。
+    if(front){const m=cls==='ranged'?.5:cls==='long'?.75:1.15;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
+    const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb*(cls==='short'?.5:1);   // 正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
+    if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb*(cls==='short'?.5:1)){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
       for(let i=0;i<4;i++)propFx.push({x:z.x+z.f*8,y:z.y-18+rnd(-6,6),vx:rnd(-40,40)+z.f*30,vy:rnd(-80,-20),w:1.5,h:1.5,life:.2,max:.2,c:'#d88a4a'});
     }
-    else if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll<fullP){
+    else if(!charged&&!traits.finisher&&front&&roll<fullP){
 
       const start=propFx.length, firstFloater=floaters.length;if(window.BOSS_BLOCK)BOSS_BLOCK.effect(z);
       for(let i=firstFloater;i<floaters.length;i++)floaters[i].color='#aa4c2c';
@@ -9174,7 +9178,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   }
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
-  if (ranged && z.T.rangedResist) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
+  if (ranged && z.T.rangedResist && !(chapter2Run && z.type === 'yellow-shield')) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
   if (z.T.boss) {
     const hp0 = z.hp;
     if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);
@@ -10476,7 +10480,9 @@ function updateShots(dt) {
 }
 
 // ---------- 投石车 ----------
+let volleyHits = new Map();   // 霹雳飞石：同一个敌人这一招最多挨 3 块石头（用户定：主动技能清场，不打单体爆发）
 function catapultVolley() {
+  volleyHits = new Map();
   for (const k in CH.yellow_catapult || {}) { const fr = CH.yellow_catapult[k], e = (LAZY.chapter2 || []).find(x => x[0] === fr.img); if (e && !e[0].src) e[0].src = e[1]; }   // 第一章也用正式投石车图：只单独下载这几帧
   // 霹雳飞石（加强）：投石车直接出现在主角身后，不再慢慢走进来；每台投两轮（共 6 块），砸向敌群
   for (let i = 0; i < 3; i++) {
@@ -10509,7 +10515,7 @@ function updateCatapults(dt) {
         }
         tx = Math.max(cam.x + 40, Math.min(cam.x + viewW() - 30, tx));
         ty = Math.max(M.top + 8, Math.min(M.bot - 4, ty));
-        allyShots.push({ sx: c.x, sy: c.y - 26, x: c.x, y: c.y - 26, tx, ty, t: 0, T: .75 });
+        allyShots.push({ sx: c.x, sy: c.y - 26, x: c.x, y: c.y - 26, tx, ty, t: 0, T: .75, rogue: true });
         sfx('sling', c.x);
       }
     } else if (c.phase === 'fire') {
@@ -10531,9 +10537,9 @@ function updateCatapults(dt) {
       sfx('land', s.tx);
       for (const z of zs) {
         if (z.dead || z.air) continue;
-        if (Math.abs(z.x - s.tx) < 40 && Math.abs(z.y - s.ty) < 24) (window.ROGUE && ROGUE.stat && ROGUE.stat('霹雳飞石', 1.5, 0)), hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
+        if (Math.abs(z.x - s.tx) < 40 && Math.abs(z.y - s.ty) < 24 && (!s.rogue || (volleyHits.get(z) || 0) < 3) && (!s.rogue || volleyHits.set(z, (volleyHits.get(z) || 0) + 1))) (window.ROGUE && ROGUE.stat && ROGUE.stat('霹雳飞石', 1.5, 0)), hit(z, 1.5, 40, Math.sign(z.x - s.tx) || 1, false, .3, .4, true, true, { scaled: true, siegeShot: true });
       }
-      allyFires.push({ x: s.tx, y: s.ty, t: R_('catapultFire', 4), r: 26, tick: 0, dmg: .2 });   // 霹雳飞石火场：3 秒、每 0.5 秒 0.2
+      if (!allyFires.some(f => f.cat && Math.hypot(f.x - s.tx, (f.y - s.ty) * 2) < 18)) allyFires.push({ x: s.tx, y: s.ty, t: R_('catapultFire', 4), r: 26, tick: 0, dmg: .2, cat: true });   // 火场不叠在同一处   // 霹雳飞石火场：3 秒、每 0.5 秒 0.2
       for (let i = 0; i < 10; i++) propFx.push({ x: s.tx + rnd(-16, 16), y: s.ty + rnd(-8, 4), vx: rnd(-60, 60), vy: rnd(-110, -30), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.3, .6), max: .6, c: '#ff9a2e' });
     }
   }
