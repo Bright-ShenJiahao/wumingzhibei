@@ -86,13 +86,13 @@
     for (const x of PRIZES) { if ((r -= x.w) < 0) { p = x; break; } }
     if (force) p = Math.random() < .85 ? PRIZES[4] : Math.random() < .9 ? PRIZES[6] : PRIZES[7];   // 十连保底：精致以上
     const D = window.AFFIX_DATA;
-    if (p.k === 'coin') { const n = 50 + Math.floor(Math.random() * 11) * 10; return { t: '金', name: n + ' 金币', give: () => WALLET.addCoins(n) }; }
-    if (p.k === 'fu') { const id = Object.keys(FU)[Math.floor(Math.random() * 6)]; return { t: '符', name: FU[id].name, give: () => add(id, 1) }; }
-    if (p.k === 'fruit') return { t: '果', name: '彩色果 ×2', give: () => WALLET.addFruits(2) };
-    if (p.k === 'stone') return { t: '石', name: '重铸石', give: () => add('stone', 1) };
+    if (p.k === 'coin') { const n = 50 + Math.floor(Math.random() * 11) * 10; return { t: '金', ic: 'coin', name: n + ' 金币', give: () => WALLET.addCoins(n) }; }
+    if (p.k === 'fu') { const id = Object.keys(FU)[Math.floor(Math.random() * 6)]; return { t: '符', ic: 'fu', name: FU[id].name, give: () => add(id, 1) }; }
+    if (p.k === 'fruit') return { t: '果', ic: 'fruit', name: '彩色果 ×2', give: () => WALLET.addFruits(2) };
+    if (p.k === 'stone') return { t: '石', ic: 'stone', name: '重铸石', give: () => add('stone', 1) };
     const q = p.q[Math.floor(Math.random() * p.q.length)], own = [...new Set((profile()?.items || []).map(i => i.type))], types = own.length ? own : ['staff', 'hammer', 'stone'];
     const it = D.generate(types[Math.floor(Math.random() * types.length)], 'boss', '', q); it.q = q;
-    return { t: '器', name: D.label(it), q, give: () => { if (!ARMORY.add(it)) { WALLET.addCoins(100); return 'full'; } return true; } };
+    return { t: '器', ic: 'w' + (q >= 4 ? 4 : q >= 3 ? 3 : q >= 2 ? 2 : 0), name: D.label(it), q, give: () => { if (!ARMORY.add(it)) { WALLET.addCoins(100); return 'full'; } return true; } };
   }
   function lottery() {
     let box = document.getElementById('lotteryPanel');
@@ -101,24 +101,41 @@
       const st = document.createElement('style');
       st.textContent = '#lotteryPanel{position:fixed;inset:0;z-index:10030;display:flex;align-items:center;justify-content:center;background:#0c0806cc;font:14px/1.5 sans-serif}#lotteryPanel[hidden]{display:none!important}#lotteryPanel .lm{position:relative;width:min(420px,94vw);max-height:94dvh;overflow:auto;padding:14px 16px 16px;box-sizing:border-box;background:repeating-linear-gradient(90deg,#6b4526 0 18px,#5d3b20 18px 36px);border:5px solid #3b2413;border-radius:10px;box-shadow:inset 0 0 0 3px #8a5d33,0 14px 50px #000c;color:#f3dfb5}#lotteryPanel .lt{margin:-4px auto 10px;width:max-content;padding:3px 26px;background:#2a170c;border:3px solid #c99a4a;border-radius:4px;color:#ffd77a;font:700 22px MaShanZheng,STKaiti,serif;letter-spacing:6px;box-shadow:0 0 12px #ffcf6a55}#lotteryPanel .lr{display:flex;gap:8px;justify-content:center;padding:10px;background:#2a170c;border:3px solid #c99a4a;border-radius:6px}#lotteryPanel .ls{width:72px;height:84px;display:flex;align-items:center;justify-content:center;background:linear-gradient(#e8d7b0,#fff4d8 45%,#e8d7b0);border:2px solid #3b2413;border-radius:4px;color:#5a2a10;font:700 40px MaShanZheng,STKaiti,serif;overflow:hidden}#lotteryPanel .ls.spin span{animation:lsp .09s linear infinite}@keyframes lsp{from{transform:translateY(-60%)}to{transform:translateY(60%)}}#lotteryPanel .lb{display:flex;gap:8px;justify-content:center;margin:12px 0 6px}#lotteryPanel .lb button,#lotteryPanel .lx{border:2px solid #c99a4a;border-radius:6px;background:linear-gradient(#8a3a20,#5a1e10);color:#ffe2a0;font:700 15px MaShanZheng,STKaiti,serif;padding:6px 14px;cursor:pointer}#lotteryPanel .lb button:disabled{opacity:.45}#lotteryPanel .lx{position:absolute;right:8px;top:8px;padding:2px 10px}#lotteryPanel .lo{min-height:46px;padding:6px 8px;background:#1d110acc;border-radius:5px;font-size:12px}#lotteryPanel .lo span{display:inline-block;margin:2px 4px;padding:1px 6px;border-radius:3px;background:#3a2414}#lotteryPanel .lp{margin-top:6px;font-size:11px;color:#cdb78e}#lotteryPanel .lw{text-align:center;font-size:12px;color:#ffd77a}';
       document.head.append(st); document.body.append(box);
-      box.addEventListener('click', e => { if (e.target === box || e.target.closest('.lx')) box.hidden = true; const b = e.target.closest('[data-n]'); if (b) pull(+b.dataset.n); });
+      
     }
     const qc = q => (window.AFFIX_DATA && AFFIX_DATA.qualities[q] || {}).color || '#ffe2a0';
-    const draw = (res, spinning) => {
-      box.innerHTML = `<div class="lm"><button class="lx" type="button">关闭</button><div class="lt">天 命 签</div><div class="lr">${[0, 1, 2].map(i => `<div class="ls${spinning ? ' spin' : ''}"><span>${spinning ? '？' : (res && res[0] ? res[Math.min(res.length - 1, i * Math.max(1, Math.floor(res.length / 3)))].t : '签')}</span></div>`).join('')}</div>
+    const U = k => (typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui['lot_' + k]) || '';
+    const IC = ['coin', 'fu', 'fruit', 'stone', 'w0', 'w2', 'w3', 'w4'];
+    let spinning = false, timer = null;
+    const draw = (res) => {
+      // 三个格子：十连时显示最好的三件；单抽三格都显示同一件
+      const best = res ? [...res].sort((a, b) => (b.q ?? -1) - (a.q ?? -1)) : null, show = best ? [best[0], best[Math.min(1, best.length - 1)], best[Math.min(2, best.length - 1)]] : null;
+      const hot = res && res.some(r => r.q >= 3);
+      box.innerHTML = `<div class="lm2"><button class="lx" type="button">关闭</button>
+        <div class="lmach" style="background-image:url(${U('machine')})">
+          <div class="lwin">${[0, 1, 2].map(i => `<div class="lcell"><img data-cell="${i}" src="${U(show ? show[i].ic : IC[i * 2])}"></div>`).join('')}</div>
+          <div class="lplaque">天命签</div><img class="llever${spinning ? ' dn' : ''}" data-lever src="${U(spinning ? 'lever_down' : 'lever_up')}" alt="拉杆">
+          ${hot && !spinning ? `<img class="lburst" src="${U('burst')}">` : ''}
+        </div>
         <div class="lb"><button type="button" data-n="1" ${WALLET.coins() < 200 || spinning ? 'disabled' : ''}>拉一次 · 200</button><button type="button" data-n="10" ${WALLET.coins() < 1800 || spinning ? 'disabled' : ''}>十连 · 1800</button></div>
-        <div class="lw">余额 ${WALLET.coins()} 金币</div><div class="lo">${res ? res.map(r => `<span style="color:${r.q != null ? qc(r.q) : '#ffe2a0'}">${r.name}${r.full ? '（仓库满，折 100 金币）' : ''}</span>`).join('') : '拉下拉杆，看看天命如何。'}</div>
+        <div class="lw">余额 ${WALLET.coins()} 金币 · 也可以直接点拉杆（拉一次）</div><div class="lo">${res && !spinning ? res.map(r => `<span style="color:${r.q != null ? qc(r.q) : '#ffe2a0'}">${r.name}${r.full ? '（仓库满，折 100 金币）' : ''}</span>`).join('') : spinning ? '签筒转动中……' : '拉下拉杆，看看天命如何。'}</div>
         <div class="lp">概率：金币 35% · 强化符 20% · 彩色果 15% · 普通/优良武器 15% · 精致 8% · 重铸石 4% · 极品 2.5% · 传说 0.5%。十连保底一把精致以上。</div></div>`;
     };
+    if (!document.getElementById('lotStyle2')) { const st = document.createElement('style'); st.id = 'lotStyle2';
+      st.textContent = '#lotteryPanel .lm2{position:relative;width:min(460px,94vw);max-height:96dvh;overflow:auto;padding:10px 12px 14px;box-sizing:border-box;background:#2a1a10f2;border:2px solid #9d7845;border-radius:10px;color:#f3dfb5}#lotteryPanel .lmach{position:relative;width:min(400px,78vw,calc(60dvh * 480 / 410));aspect-ratio:480/410;margin:0 auto;background:center/100% 100% no-repeat}#lotteryPanel .lwin{position:absolute;left:14%;top:38%;width:72%;height:24%;display:flex;gap:4%;justify-content:center;align-items:center}#lotteryPanel .lcell{height:100%;aspect-ratio:1;overflow:hidden}#lotteryPanel .lcell img{width:100%;height:100%;object-fit:contain}#lotteryPanel .llever{position:absolute;right:-9%;top:6%;width:16%;cursor:pointer}#lotteryPanel .llever.dn{right:-15%;top:27%;width:24%}#lotteryPanel .lplaque{position:absolute;left:30%;top:4.5%;width:40%;text-align:center;color:#ffd77a;font:700 clamp(14px,4.2vw,24px) MaShanZheng,STKaiti,serif;letter-spacing:.4em;text-shadow:0 2px 2px #2a140a}#lotteryPanel .lm2 .lx{right:auto;left:8px}#lotteryPanel .lburst{position:absolute;left:50%;top:50%;width:90%;transform:translate(-50%,-50%);pointer-events:none;animation:lbst 1.8s ease-out forwards}@keyframes lbst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-20deg)}25%{opacity:1}70%{opacity:1;transform:translate(-50%,-50%) scale(1.05) rotate(0)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}';
+      document.head.append(st); }
+    box.onclick = e => { if (e.target === box || e.target.closest('.lx')) { box.hidden = true; return; } if (spinning) return; const b = e.target.closest('[data-n]'); if (b) pull(+b.dataset.n); else if (e.target.closest('[data-lever]') && WALLET.coins() >= 200) pull(1); };
     function pull(n) {
       if (!WALLET.spendCoins(n === 10 ? 1800 : 200)) return;
       const res = []; for (let i = 0; i < n; i++) res.push(roll(false));
       if (n === 10 && !res.some(r => r.q != null && r.q >= 2)) res[9] = roll(true);
       for (const r of res) { const ok = r.give(); if (ok === 'full') r.full = true; }
-      if (typeof sfx === 'function') sfx('tick');
-      draw(null, true); setTimeout(() => { draw(res, false); if (typeof sfx === 'function') sfx(res.some(r => r.q >= 3) ? 'perfect' : 'pickup'); if (window.SHOP) SHOP.refresh(); }, 900);
+      spinning = true; draw(null); if (typeof sfx === 'function') sfx('tick');
+      let k = 0; clearInterval(timer);
+      timer = setInterval(() => { k++; box.querySelectorAll('[data-cell]').forEach((im, i) => { im.src = U(IC[(k + i * 3) % IC.length]); }); }, 70);
+      setTimeout(() => { clearInterval(timer); spinning = false; draw(res); if (typeof sfx === 'function') sfx(res.some(r => r.q >= 3) ? 'perfect' : 'pickup'); if (window.SHOP) SHOP.refresh(); }, 1100);
     }
-    draw(null, false); box.hidden = false;
+    draw(null); box.hidden = false;
   }
 
   // ---- 商店货架 ----
