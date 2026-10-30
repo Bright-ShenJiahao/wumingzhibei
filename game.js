@@ -602,8 +602,8 @@ function addChapter2Props(battle = 1) {
   const layouts = {
     1: [['jumo_v', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
     2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo_vs', 120, C - 30], ['flag_y', 240, T + 4]],
-    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
-    4: [['jumo_v', 130, C + 20], ['rack', 330, B - 14]],   // 「人」字旗改由张梁出场时亲手插下（CH2B）
+    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30]],
+    4: [['jumo_v', 130, C + 20], ['rack', 330, B - 14], ['flag_y', 230, T + 4]],   // 黄旗打落给锦囊； 「人」字旗改由张梁出场时亲手插下（CH2B）
     5: [['sacks', 300, T + 22], ['stones', 140, B - 14]],   // 「地」字旗改由张宝出场时亲手插下（CH2B）
   };
   if (battle === 6) { addAltarProps(); return; }
@@ -1238,8 +1238,8 @@ function hitProp(p, dir) {
       p.broken = true; p.solid = false;
       if (flag) {
         // 打倒旗子：每一战第一次打倒旗子给一次锦囊
-        if (chapter2Run && chapter2Run.battle === 1 && window.ROGUE && !chapter2Run.flagCard) {   // 只有战一的旗子给锦囊
-          chapter2Run.flagCard = true;
+        if (chapter2Run && [1, 2, 4].includes(chapter2Run.battle) && window.ROGUE && !chapter2Run['flagCard' + chapter2Run.battle]) {   // 战一、二、四的黄旗打落给锦囊
+          chapter2Run['flagCard' + chapter2Run.battle] = true;
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }

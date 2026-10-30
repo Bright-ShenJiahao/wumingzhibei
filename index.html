@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=17c3eeb567" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=17c3eeb567)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=efc5c5ff57" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=efc5c5ff57)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='8907373edbaa',busy=false;
+var BUILD='70feecf06435',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -8663,8 +8663,8 @@ function addChapter2Props(battle = 1) {
   const layouts = {
     1: [['jumo_v', 110, C + 30], ['sacks', 260, T + 20], ['crate', 380, B - 12], ['flag_y', 200, T + 4]],
     2: [['debris', 150, B - 15], ['rack', 300, T + 18], ['jumo_vs', 120, C - 30], ['flag_y', 240, T + 4]],
-    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30], ['flag_y', 220, T + 4]],
-    4: [['jumo_v', 130, C + 20], ['rack', 330, B - 14]],   // 「人」字旗改由张梁出场时亲手插下（CH2B）
+    3: [['stones', 140, T + 22], ['brazier', 300, B - 12], ['crate', 420, C + 30]],
+    4: [['jumo_v', 130, C + 20], ['rack', 330, B - 14], ['flag_y', 230, T + 4]],   // 黄旗打落给锦囊； 「人」字旗改由张梁出场时亲手插下（CH2B）
     5: [['sacks', 300, T + 22], ['stones', 140, B - 14]],   // 「地」字旗改由张宝出场时亲手插下（CH2B）
   };
   if (battle === 6) { addAltarProps(); return; }
@@ -9299,8 +9299,8 @@ function hitProp(p, dir) {
       p.broken = true; p.solid = false;
       if (flag) {
         // 打倒旗子：每一战第一次打倒旗子给一次锦囊
-        if (chapter2Run && chapter2Run.battle === 1 && window.ROGUE && !chapter2Run.flagCard) {   // 只有战一的旗子给锦囊
-          chapter2Run.flagCard = true;
+        if (chapter2Run && [1, 2, 4].includes(chapter2Run.battle) && window.ROGUE && !chapter2Run['flagCard' + chapter2Run.battle]) {   // 战一、二、四的黄旗打落给锦囊
+          chapter2Run['flagCard' + chapter2Run.battle] = true;
           floaters.push({ x: p.x, y: p.y - 40, t: 0, txt: '斩旗！', big: true, gold: true });
           sfx('finisher', p.x); ROGUE.offer();
         }
