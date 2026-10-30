@@ -82,6 +82,8 @@
     btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
     btn(heroGroup, '回到整军备战', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(false); else if (window.TITLE && TITLE.openPreparation) TITLE.openPreparation(1); });
     btn(heroGroup, '回满血', '', () => { if (typeof hero !== 'undefined') hero.hp = maxHeroHp(); });
+    // 面板底部临时提示（主界面、整备页时游戏内文字看不到）
+    const tipLine = msg => { let t = panel.querySelector('.dbgTip'); if (!t) { t = document.createElement('div'); t.className = 'dbgTip'; t.style.cssText = 'margin-top:4px;padding:3px 6px;background:#3a5a2a;color:#eaffd8;border-radius:4px;font-size:11px'; panel.appendChild(t); } t.textContent = msg; clearTimeout(t._h); t._h = setTimeout(() => t.remove(), 4000); };
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
@@ -124,10 +126,18 @@
       const top = MASTERY.NEED[MASTERY.NEED.length - 1], m = {};
       MASTERY.TYPES.forEach(t => { m[t] = top; });
       ARMORY.setMastery(m);
-      let n = 0;
-      for (const t of MASTERY.TYPES) { const item = AFFIX_DATA.generate(t, 'boss', '', 4); if (ARMORY.add(item)) n++; }
+      // 每种武器已经有传说的就不再给（以前每点一次塞 6 把，仓库很快满 50 把，之后再点就没反应）
+      let n = 0, full = false;
+      const items = (ARMORY.state().items || []);
+      for (const t of MASTERY.TYPES) {
+        if (items.some(i => i.type === t && i.q >= 4)) continue;
+        if (ARMORY.add(AFFIX_DATA.generate(t, 'boss', '', 4))) n++; else full = true;
+      }
       if (window.TITLE && TITLE.grantWeapon) for (const t of MASTERY.TYPES) TITLE.grantWeapon(t, false);
-      if (typeof say === 'function') say(`熟练度已满；获得传说武器 ${n} 把（仓库可装备）`, 3);
+      try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {}
+      const msg = full ? `仓库满了（${items.length}/50），先熔炼或卖掉一些武器` : n ? `熟练度已满；新给传说武器 ${n} 把` : '熟练度已满；每种武器都已经有传说了';
+      if (typeof say === 'function') say(msg, 3);
+      tipLine(msg);   // 在主界面/整备页 say 看不到，面板上也提示
     });
     revive.classList.add('dbgWide');
     const trial = document.createElement('div'); trial.className = 'dbgTrial';
