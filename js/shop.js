@@ -90,6 +90,8 @@
     spendCoins, addCoins, addFruits, useFruits,
   };
 
+  // 测试版（?debug，开发者存档）：进去自动补到 100000 金币（用户定）
+  if (/[?&]debug(?:=|&|$)/.test(location.search)) { let n = 0; const top = () => { try { const c = WALLET.coins(); if (c < 100000) addCoins(100000 - c); } catch (e) {} if (++n < 10) setTimeout(top, 1000); }; setTimeout(top, 500); }
   const OPEN_LINES = ['客官，看看？', '彩色果可是西域来的稀罕物！', '钱不够？去校场多练练。'];
   const EXPENSIVE_LINES = ['客官好眼力！这可是镇店之宝，配您正合适！', '哎哟贵客！小店今天沾了您的光！', '客官出手阔绰，将来必成大将军！'];
   const CHEAP_LINES = ['就买这点？行吧，蚊子腿也是肉。', '客官真会过日子，佩服佩服。', '小本买卖，谢客官赏口饭吃。'];
