@@ -172,11 +172,12 @@
     if (S.phase === 'open') {
       hero.inv = Math.max(hero.inv, .3);
       if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', ALTAR_COFFIN.x); S.hz.push({ k: 'thunder', x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y + 8, t: 0, r: 0, done: true }); }
-      if (t > 1.3 && !S.lid) { S.lid = { x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y - 14, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
+      if (t > 1.2 && !S.lid) { S.lid = { hidden: true, x: 0, y: 0, vx: 0, vy: 0, rot: 0, t: 0 }; sfx('land', 141); }   // 棺材画在背景里（开着），雷劈完张角直接从棺口跳出
       if (S.lid && !S.saidRise && t > 1.8) { S.saidRise = true; say('张角：「吾……未死！」', 1.6); }
       if (S.lid) { const l = S.lid; l.t += dt; l.vy += 380 * dt; l.x += l.vx * dt; l.y += l.vy * dt; l.rot += dt * 7; if (l.y > 150) { l.y = 150; l.vx = l.vy = 0; } }
-      if (t < 2.2) S.pose = 'situp';
-      else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = ALTAR_COFFIN.x + (ALTAR_STAGE.x - ALTAR_COFFIN.x) * u; S.zjY = ALTAR_COFFIN.y - 4 + (ALTAR_STAGE.y - ALTAR_COFFIN.y) * u - Math.sin(u * Math.PI) * 30; }
+      if (t < 1.2) S.pose = 'situp';
+      else if (t < 2.8) { const u = (t - 1.2) / 1.6, e = 1 - (1 - u) * (1 - u); S.pose = 'float'; S.zjX = ALTAR_COFFIN.x + (ALTAR_STAGE.x - ALTAR_COFFIN.x) * e; S.zjY = ALTAR_COFFIN.y - 26 + (ALTAR_STAGE.y - 4 - (ALTAR_COFFIN.y - 26)) * e - Math.sin(u * Math.PI) * 28; }
+      else if (t < 4.2) { S.pose = 'float'; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4 + Math.sin(t * 4) * 2; }
       else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; vo('zj_rise'); say('张角：「苍天已死，黄天当立！」', 3.2); shake = .3; S.flash = .3; }
       if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); S.needLeigong = true; }
       return;
@@ -390,16 +391,16 @@
     // 棺盖
     if (S.lid) {
       const m = ASSETS.props.coffin_lid, im = IMG.p_coffin_lid;
-      if (m && im && im.naturalWidth) { ctx.save(); ctx.translate(S.lid.x, S.lid.y); ctx.rotate(S.lid.rot * (S.lid.vx ? 1 : 0)); const w = m[1] || 40, h = m[2] || 16; ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); }
+      if (!S.lid.hidden && m && im && im.naturalWidth) { ctx.save(); ctx.translate(S.lid.x, S.lid.y); ctx.rotate(S.lid.rot * (S.lid.vx ? 1 : 0)); const w = m[1] || 40, h = m[2] || 16; ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); }
     }
     // 张角（开场 / 法台上）
     if (S.phase === 'open' || S.phase === 'p1' || S.phase === 'p2') {
       const open = S.phase === 'open';
       const x = open ? S.zjX : ALTAR_STAGE.x, y = open ? S.zjY : stageY();
-      if (!open || S.t > 2) {
+      if (!open || S.t > 1.2) {
         const sc = open && S.pose === 'situp' ? 1.12 / ZJ_HI : 1.12 / ZJ_HI;
         drawChar('zhang_jiao', S.pose, x, y, hero.x < x, 1, false, sc);
-      } else drawChar('zhang_jiao', 'lie', ALTAR_COFFIN.x, ALTAR_COFFIN.y - 2, false, 1, false, 1.12 / ZJ_HI);
+      }   // 雷劈之前张角躺在棺材里，看不见
     }
     // 追踪符
     for (const h of S.hz) {

@@ -624,13 +624,13 @@ function addChapter2Props(battle = 1) {
 
 // 祭台战（第六战）：背景图 2000×849 画成 300 高 → 宽 ALTAR_W；坐标都按这张图量
 const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };
-const ALTAR_COFFIN = { x: 124, y: 106 };   // 棺材放在祭台台面左半边、靠里一点（用户：别压在台阶口和台面前沿上）   // 圆形石坪中心
+const ALTAR_COFFIN = { x: 117, y: 100 };   // 背景图里画好的开口棺材（棺口约在 y-28）   // 棺材放在祭台台面左半边、靠里一点（用户：别压在台阶口和台面前沿上）   // 圆形石坪中心
 // 之后张角开场要用的：'coffin_open' 炸开的棺材、'coffin_lid' 飞出去的棺盖
 function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
-  P('coffin', ALTAR_COFFIN.x, ALTAR_COFFIN.y, { back: true });   // 正面棺材（用户补图），按 meta 尺寸画   // 底边落在祭台台面上（之前飘在台面后沿）
-  P('flag_huang', 255, 127, { back: true, flip: true });                // 「黄天当立」，和右边的苍天旗一左一右
+   // 正面棺材（用户补图），按 meta 尺寸画   // 底边落在祭台台面上（之前飘在台面后沿）
+  P('flag_huang', 276, 127, { back: true, flip: true });                // 「黄天当立」，和右边的苍天旗一左一右
   P('flag_cang', 478, 124, { back: true });                 // 「苍天已死」血字旗，插在法台右侧                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
   for (let k = 0; k < 8; k++) {
