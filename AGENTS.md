@@ -276,7 +276,7 @@
 - 挂钩：startChapter2Battle(6)→ZJ.start；update()→ZJ.update；draw()→ZJ.draw；updateChapter2Boss 对 zhang_jiao 先调 ZJ.duel。chapter2Run.mode 用 'zj'→'complete'。
 - 特效图 art/ui/zj_*.webp 经 build.py 放入 ASSETS.chapter2.zj（IMG.zj_*）。灯 hp=3。
 - 血条/台词/结算/语音已完成；待做：第二章解锁（全部做完后再解锁）。
-- 补帧（用户图 `张角_补帧.png` / `黄巾力士_补帧.png`，area 模式转）：张角 hurt(替换)/rest 喘息/throw 丢符/push 推开；力士 grab/hurl/pant（跺地后喘气 1.2 秒破绽）。棺材换成正面图 `第二章_棺材_正面.png`（coffin/coffin_open/coffin_lid，按 meta 尺寸画）。
+- 补帧（用户图 `张角_补帧.png` / `黄巾力士_补帧.png`，area 模式转）：张角 hurt(替换)/rest 喘息/throw 丢符/push 推开；力士 grab/hurl/pant（跺地后喘气 1.2 秒破绽）。棺材（用户定：角度要和祭台对上）：原图 `第二章_棺材_俯视.png`（GPT 斜 45° 版），由 `tools/warp_coffin.py` 按祭台视角重投影（正对镜头、顶面投影深度很浅，三个面分别透视变换），棺盖 coffin_lid 用原图第三格的碎木块。
 - 决斗（用户定）：远程丢符普攻；三套连招 雷符阵/闪雷连击/地火阵，每套结尾喘息破绽（不逃）；推开 0.3 秒前摇；半血飞回法台 3 波八卦雷阵（每波 2 个安全卦位）再跳下；乱序打灯立刻降雷、破阵不掉血；按序破阵落地掉 15%、无眩晕。力士：不被击飞、抓投。
 
 ## 张梁 / 张宝技能（js/ch2bosses.js，CH2B）
