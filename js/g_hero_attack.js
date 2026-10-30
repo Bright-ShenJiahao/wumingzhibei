@@ -30,6 +30,7 @@ function halberdStacks(z) { return z && z.halberdBleed > 0 && gameT < z.halberdB
 function bowRangeMult(d) { return d < 100 ? 1 : d < 200 ? 1.15 : 1.3; }   // 用户定：取消近距离减伤
 function resolveBowSky(f) {
   const d = f.data;
+  if (f.mirror) { if (Math.hypot(hero.x - f.x, (hero.y - f.y) * 2) <= d.radius + 6) dmgHero(d.dmg, { x: f.x, y: f.y }, 'skill'); sfx('finisher', f.x); return; }   // 心魔的穿云箭打你
   for (const z of zs) {
     if (z.dead || Math.hypot(z.x - f.x, (z.y - f.y) * 2) > d.radius + (z.T.w || 0)) continue;   // 地面是扁的：上下范围只有左右的一半，和冲击环形状一致
     const boss = z.T.boss || z.T.chapterBoss;

@@ -40,7 +40,7 @@ window.XINMO = (() => {
     const hp = Math.max(8, maxHeroHp());
     window.spawn('grunt', hero.x < 360 ? 600 : 120, (M.top + M.bot) / 2);
     m = zs[zs.length - 1];
-    marks = []; Object.assign(m, { ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
+    marks = []; mshots = []; hb = { n: 0, t: 0 }; Object.assign(m, { ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
     // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
     m.T.hp = Math.round(estHit(w) * 30); m.hp = m.T.hp; m.weapon = w;
@@ -103,20 +103,34 @@ window.XINMO = (() => {
   }
   function strike() {
     const w = W(), C = w.combo[m.atk.c], fin = m.atk.c === w.combo.length - 1, f = m.f;
-    if (w.proj) {
+    if (w.proj) {   // 远程：和玩家 strike() 一样的弹道、数量、速度、射程和特效
       sfx('swing_stone', m.x);
-      const dmg = (C.dmg || 1) * .75;
-      if (m.weapon === 'bow') {
-        const n = fin ? 3 : 1;
-        for (let i = 0; i < n; i++) eshots.push({ source: m, k: 'arrow', x: m.x + f * 16, y: m.y + (i - (n - 1) / 2) * 7, z: 22, vx: f * 300, life: 1, dmg: fin ? .6 : dmg });
-      } else eshots.push({ source: m, k: 'stone', x: m.x + f * 16, y: m.y, z: 24, vx: f * 230, life: .85, dmg });
+      const K = .9, base = { x: m.x + f * 16, y: m.y, z: 22, life: C.life || .8, traveled: 0 };
+      if (m.weapon === 'bow' && fin) {   // 连珠箭：3~5 支 ±8° 小扇形，每支 0.5
+        const n = 3 + Math.floor(Math.random() * 3), spread = 8 * Math.PI / 180;
+        bowFx.push({ kind: 'volley', x: m.x + f * 20, y: m.y - 22, t: 0, T: .2, dir: f });
+        for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: .5 * K }); }
+        return;
+      }
+      mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K });
+      if (m.weapon === 'stone' && fin) for (const a of [-.20944, .20944]) mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'stone', dmg: C.dmg * .3 * K });
       return;
     }
     sfx('swing', m.x);
+    if (fin && m.weapon === 'hammer') hammerFx.push({ kind: 'spin', x: m.x, y: m.y, t: 0, T: .3, size: 70 });   // 终段特效和玩家一样
+    if (fin && m.weapon === 'blade') bladeFx.push({ kind: 'slash', x: m.x + f * 30, y: m.y - 16, t: 0, T: .24, dir: f });
     const dx = hero.x - m.x, reach = (w.reach || 28) + 6;
     if ((C.multi || Math.sign(dx) === f) && Math.abs(dx) < reach && Math.abs(hero.y - m.y) < (w.dy || 14) + 1) {
       if (fin && m.weapon === 'blade' && hero.hp < maxHeroHp() * .15 && hero.inv <= 0 && hero.st !== 'roll') { dmgHero(hero.hp + 99, m, 'skill'); floaters.push({ x: hero.x, y: hero.y - 40, t: 0, txt: '斩！', big: true, gold: true }); }   // 和玩家一致：低于 15% 被举刀重劈斩杀
-      else dmgHero((C.dmg || 1) * (fin ? 1.1 : .9), m, fin ? 'skill' : 'basic');
+      else if (m.weapon === 'halberd') {   // 长戟裂伤：和玩家一样每下 +1 层（最多 5），终段撕开 = 层数 × 0.3
+        hb.n = Math.min(5, hb.n + 1); hb.t = 3;
+        let d = (C.dmg || 1) * .9;
+        if (fin) { d += hb.n * .3 * .9; hb.n = 0; bleedFx.push({ kind: 'rip', x: hero.x, y: hero.y - 12, t: 0, T: .2 }); }
+        bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 });
+        dmgHero(d, m, fin ? 'skill' : 'basic');
+      }
+      else dmgHero((C.dmg || 1) * .9, m, fin ? 'skill' : 'basic');
+      sfx('hit_' + (w.snd || 'staff'), hero.x);
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
       m.hitC++;
     }
@@ -149,15 +163,18 @@ window.XINMO = (() => {
     const w = W(), tier = tierOf(m.ch), power = Math.min(1, m.ch / fullT()), f = m.f = Math.sign(hero.x - m.x) || m.f;
     m.st = 'atk'; m.t = 0; m.atk = { c: w.combo.length - 1, fi: 0, t: 0, lg: 0, visual: true }; m.ch = 0;
     sfx('finisher', m.x); shake = Math.max(shake, .12 + .18 * power);
+    chargeFx.push({ x: m.x, y: m.y, t: 0, T: .45, w: m.weapon, f, power, tier });   // 蓄力重击的冲击特效和玩家共用
     const dxh = (hero.x - m.x) * f, dyh = hero.y - m.y, K = .9;   // 心魔伤害 = 玩家同一招 × 0.9
     if (m.weapon === 'bow') {
       if ((m.ammo ?? 5) < 1) return; m.ammo = (m.ammo ?? 5) - 1;
       const d = tier === 3 ? { r: 45, dmg: 2.4 } : tier === 2 ? { r: 36, dmg: 1.9 } : { r: 28, dmg: 1.4 };
-      marks.push({ x: hero.x, y: hero.y, t: 0, T: .55, r: d.r, dmg: d.dmg * K }); return;   // 穿云箭：落点就是出手时你站的地方
+      const data = tier === 3 ? { radius: 45, dmg: 2.4 * K, stun: 1 } : tier === 2 ? { radius: 36, dmg: 1.9 * K, stun: .8 } : { radius: 28, dmg: 1.4 * K, stun: .6 };
+      const near = Math.abs(hero.x - m.x) <= 250 && Math.sign(hero.x - m.x) === f;   // 和玩家一样：前方 250 内瞄人，否则落在前方 150
+      bowFx.push({ kind: 'sky', x: near ? hero.x : m.x + f * 150, y: near ? hero.y : m.y, t: 0, T: .6, dir: f, data, resolved: false, mirror: true }); return;
     }
     if (m.weapon === 'stone') {
       const d = tier === 3 ? { n: 5, dmg: 1.6 } : tier === 2 ? { n: 4, dmg: 1.2 } : { n: 3, dmg: .8 };
-      for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; eshots.push({ source: m, k: 'stone', x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, dmg: d.dmg * K }); }
+      for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; mshots.push({ x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, kind: 'stone', charged: true, dmg: d.dmg * K }); }
       return;
     }
     if (m.weapon === 'halberd') {   // 回马突：往前冲，途中无敌
@@ -180,7 +197,7 @@ window.XINMO = (() => {
     const force = .35 + .65 * power;
     if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) dmgHero(1.6 * force * K, m, 'skill');
   }
-  let marks = [];
+  let marks = [], mshots = [], hb = { n: 0, t: 0 };
   // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------
   function plan(steps, lock = false) { m.plan = steps; m.lock = lock; }
   function runPlan(dt) {
@@ -196,6 +213,15 @@ window.XINMO = (() => {
     if (z !== m || ended) return;
     for (const k of marks) { k.t += dt; if (!k.done && k.t >= k.T) { k.done = true; sfx('fireLand', k.x); if (Math.abs(hero.x - k.x) < k.r && Math.abs(hero.y - k.y) < k.r * .6) dmgHero(k.dmg, { x: k.x, y: k.y, source: m }, 'skill'); } }
     marks = marks.filter(k => k.t < k.T + .25);
+    for (const p of mshots) {   // 心魔的箭/石子：和玩家同样飞，汉弓按飞行距离 ×1 / 1.15 / 1.3（远射）
+      p.x += p.vx * dt; p.y += (p.vy || 0) * dt; p.life -= dt; p.traveled += Math.hypot(p.vx, p.vy || 0) * dt;
+      if (p.life > 0 && Math.abs(hero.x - p.x) < 9 && Math.abs(hero.y - p.y) < 9 && heroOpen()) {
+        const mult = p.kind === 'arrow' && !p.volley ? bowRangeMult(p.traveled) : 1;
+        sfx(p.kind === 'arrow' ? 'hurt' : 'hit_stone', p.x); dmgHero(p.dmg * mult, { x: p.x - p.vx, source: m }); p.life = 0;
+      }
+    }
+    mshots = mshots.filter(p => p.life > 0);
+    if (hb.n > 0) { hb.t -= dt; if (hb.t <= 0) hb.n = 0; else if (!over && hero.st !== 'down') hero.hp -= hb.n * .08 * .9 * dt; }   // 裂伤流血（不打断）
     if (m.weapon === 'bow') { m.ammoT = (m.ammoT || 0) + dt; if (m.ammoT >= 6) { m.ammoT = 0; m.ammo = Math.min(5, (m.ammo ?? 5) + 1); } }
     snapshot(); record(dt);
     m.inv = Math.max(0, m.inv - dt); m.rollCd = Math.max(0, m.rollCd - dt); m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt);
@@ -373,6 +399,8 @@ window.XINMO = (() => {
   }
   function onHurt() { if (m) m.lastHurtT = gameT; }
   function draw(z) {
+    for (const p of mshots) { shadow(p.x, p.y, 3); drawShot(p); }
+    if (hb.n > 0) for (let i = 0; i < hb.n; i++) { ctx.fillStyle = '#c0281e'; ctx.fillRect(hero.x - hb.n * 2 + i * 4, hero.y - 44, 3, 3); }
     for (const k of marks) {   // 穿云箭落点预警（和玩家的金圈一样，心魔的是紫色）
       ctx.save(); ctx.globalAlpha = k.done ? Math.max(0, 1 - (k.t - k.T) * 4) : .35 + .3 * Math.sin(k.t * 30) ** 2; ctx.strokeStyle = '#b06aff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(k.x, k.y, k.r, k.r * .45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
