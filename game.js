@@ -1862,7 +1862,7 @@ function zUpdate(z, dt) {
   if (T.siege) { updateChapter2Catapult(z, dt); return; }
   if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }
   // 守车兵：主角离岗位远时回岗位站定，不追出去（投石车阵的盾兵、大刀兵）
-  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && (z.siegeArcher ? Math.hypot(z.x - z.guard.x, z.y - z.guard.y) > 10 : Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115)) {   // 投石车弓手：一步不离岗，只站着射
+  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && !siegeAlarm(z) && (z.siegeArcher ? Math.hypot(z.x - z.guard.x, z.y - z.guard.y) > 10 : Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115)) {   // 投石车弓手：一步不离岗，只站着射
     const dx = z.guard.x - z.x, dy = z.guard.y - z.y, d = Math.hypot(dx, dy);
     if (z.siegeArcher && d > 40) { z.x = z.guard.x; z.y = z.guard.y; return; }   // 投石车弓手：出场就站在拒马墙后的岗位上（以前被锁屏边界推到墙前，卡在墙边走不过去）
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd = Math.max(z.cd, .4);
@@ -2051,7 +2051,16 @@ function zUpdate(z, dt) {
     if (z.bx && z.avoidDir == null) moveEnt(z, 0, (z.slot % 2 ? 1 : -1) * T.spd * dt);   // 被草垛等挡住时上下绕开（已在绕行时不再额外推）
   }
 }
+// 投石车守卫（用户定）：主角贴近投石车或刚打过投石车 → 守卫全部来打；离开后追一小段再回岗
+function siegeAlarm(z) {
+  if (!z.guard || z.siegeArcher) return false;
+  const carts = zs.filter(c => c.T.siege && !c.dead);
+  const near = carts.some(c => Math.abs(hero.x - c.x) < 60 && Math.abs(hero.y - c.y) < 40) || gameT - (window.__cartHitAt || -9) < 3;
+  if (near) z.alarmUntil = gameT + 2.5;
+  return z.alarmUntil > gameT;
+}
 function updateChapter2Catapult(z, dt) {
+  if (z.lastHp != null && z.hp < z.lastHp) window.__cartHitAt = gameT; z.lastHp = z.hp;
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
   if (z.dead) { z.st = 'wreck'; return; }
   if (z.st === 'wind' && z.t >= .72) {
@@ -3206,6 +3215,7 @@ function resultAct(act) {
           else toast('下一关还在做，敬请期待');
         }
         else if (act === 'prep') { if (window.TITLE) TITLE.openPreparation({ chapter: 2, view: 'campaign' }); }
+        else if (chapter2Run && window.CHAPTER2 && CHAPTER2.canEnter()) { reset(); startChapter2(); }   // 用户定：第二章「再来一局」= 重打第二章
         else reset();
   }, 140);
 }

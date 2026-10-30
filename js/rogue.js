@@ -251,7 +251,16 @@
     if (killCritUntil > now()) { ctx.globalAlpha = .6 + .4 * Math.sin(T * 14); ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 4; i++) ctx.fillRect(hero.x + hero.f * (10 + i * 3), hero.y - 20 - i * 2, 2, 2); ctx.globalAlpha = 1; }
     if (cunjin && has['寸劲'] && typeof charging !== 'undefined' && charging) { ctx.strokeStyle = '#ffd25a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(hero.x, hero.y, 15, 5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // 回马残影
-    for (const g of ghosts) { const W = WEAP[g.w]; const fr = W && W.combo[0].f[Math.min(W.combo[0].f.length - 1, Math.floor(g.t / .1))]; if (fr && typeof drawChar === 'function') { ctx.save(); ctx.globalAlpha = .55 * (1 - g.t / .45); ctx.filter = 'sepia(1) hue-rotate(150deg) saturate(3) brightness(1.2)'; drawChar('hero', fr, g.x, g.y, g.f < 0, 1); ctx.restore(); } }
+    for (const g of ghosts) {   // 回马：只画一道武器残影（淡青），朝身后扫过去
+      const W = WEAP[g.w] || {}, reach = (W.reach || 30) + 10, u = Math.min(1, g.t / .18), a = .7 * (1 - g.t / .45);
+      ctx.save(); ctx.globalAlpha = Math.max(0, a); ctx.strokeStyle = '#bff4ff'; ctx.shadowColor = '#6fe0ff'; ctx.shadowBlur = 8; ctx.lineCap = 'round';
+      const cx = g.x, cy = g.y - 18;
+      if (W.class === 'ranged') { const x = cx + g.f * reach * 2 * u; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - g.f * 14, cy); ctx.lineTo(x, cy); ctx.stroke(); }
+      else { const a0 = -1.1, a1 = 1.0, ang = a0 + (a1 - a0) * u; ctx.lineWidth = g.w === 'hammer' ? 5 : 3;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + g.f * Math.cos(ang) * reach, cy + Math.sin(ang) * reach * .55); ctx.stroke();
+        ctx.globalAlpha *= .45; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(cx, cy, reach, reach * .55, 0, g.f > 0 ? a0 : Math.PI - ang, g.f > 0 ? ang : Math.PI - a0); ctx.stroke(); }
+      ctx.restore();
+    }
     if (lowHp()) { for (let i = 0; i < 3; i++) { ctx.globalAlpha = .35; ctx.fillStyle = '#ff3a2a'; ctx.beginPath(); ctx.ellipse(hero.x + Math.sin(T * 5 + i * 2) * 7, hero.y - 10 - ((T * 30 + i * 11) % 30), 2.5, 5, 0, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; }
     ctx.restore();
     if (!thunder.length) return;
@@ -394,7 +403,7 @@
   function onRollEnd() {
     if (has['回马'] && backCd <= 0 && hero.rollFrom) {   // 回马：翻滚起点留下青色残影，向身后挥一次普攻（主角不受影响）
       backCd = 3; const f = -(Math.sign(hero.rx || hero.f) || 1);
-      ghosts.push({ x: hero.rollFrom.x, y: hero.rollFrom.y, f, t: 0, w: weaponNow(), hit: false }); stat('回马');
+      ghosts.push({ x: hero.x, y: hero.y, f, t: 0,   /* 用户定：残影在翻滚终点、人物身后 */ w: weaponNow(), hit: false }); stat('回马');
     }
     return false;
   }
