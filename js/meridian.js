@@ -37,7 +37,7 @@
   };
   const SOURCES = [
     ['ch1', '第一章困难模式首次通关'], ['ch2', '第二章困难模式首次通关'], ['ch3', '第三章困难模式首次通关（未开放）'],
-    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '上交一把天工武器兑换（面板下方按钮）'],
+    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '用 1 把天工武器兑换'],
   ];
   const RESET_COST = 200;
   // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
@@ -162,7 +162,7 @@
     const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
     const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">上交天工武器 → 通脉丹 ×1${tgArm ? '（确认）' : ''}</button>`}</div></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">${tgArm ? '确认兑换' : '天工武器换通脉丹'}</button>`}</div></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
   function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边

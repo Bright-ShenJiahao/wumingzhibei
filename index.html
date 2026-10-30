@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=b8b977c8ba" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=b8b977c8ba)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=2e88612014" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2e88612014)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='83159b07fa54',busy=false;
+var BUILD='4209481bc6c7',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -3728,7 +3728,7 @@ const Boss = (() => {
   };
   const SOURCES = [
     ['ch1', '第一章困难模式首次通关'], ['ch2', '第二章困难模式首次通关'], ['ch3', '第三章困难模式首次通关（未开放）'],
-    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '上交一把天工武器兑换（面板下方按钮）'],
+    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '用 1 把天工武器兑换'],
   ];
   const RESET_COST = 200;
   // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
@@ -3853,7 +3853,7 @@ const Boss = (() => {
     const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
     const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">上交天工武器 → 通脉丹 ×1${tgArm ? '（确认）' : ''}</button>`}</div></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">${tgArm ? '确认兑换' : '天工武器换通脉丹'}</button>`}</div></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
   function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边
@@ -8095,7 +8095,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
-      spawnDrop(ALTAR_C.x - 14, ALTAR_C.y + 30, 'pig'); spawnDrop(ALTAR_C.x + 14, ALTAR_C.y + 30, 'leg'); drops.slice(-2).forEach(d => d.life = 20);   // 破阵奖励：烤乳猪 + 鸡腿
+      spawnDrop(ALTAR_C.x, ALTAR_C.y + 30, 'leg'); drops.slice(-1).forEach(d => d.life = 20);   // 破阵奖励：烤乳猪 + 鸡腿
       say('张角：「八卦……破了？！」', 3);
       S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
       if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：「黄巾力士，何在！」', time: 2.5 }); vo('zj_golem'); }
@@ -8130,8 +8130,8 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     if (S.phase === 'p2') {
       if (S.sumT > 0) { S.sumT -= dt; if (S.sumT <= 0) { monsters(S.summonRound); S.pose = 'float'; S.next = 0; } return; }
       S.pose = 'float';
-      for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士必掉鸡腿
-      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; spawnDrop(S.fled.x - 10, S.fled.y, 'pig'); spawnDrop(S.fled.x + 12, S.fled.y, 'leg'); drops.slice(-2).forEach(d => d.life = 20); /* 用户定：助阵小首领死了也爆回血 */ say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
+      for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; if (Math.random() < .5) spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士 50% 掉鸡腿（用户定：回血太多）
+      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; spawnDrop(S.fled.x, S.fled.y, 'bun'); drops.slice(-1).forEach(d => d.life = 20); /* 用户定：助阵小首领死了也爆回血 */ say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
       const alive = zs.some(z => !z.dead && z.zjAdd);
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
@@ -9112,7 +9112,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
-  if (number === 6) { spawnDrop(hero.x + 40, hero.y - 8, 'pig'); spawnDrop(hero.x + 60, hero.y + 10, 'leg'); spawnDrop(hero.x + 80, hero.y - 2, 'bun'); drops.slice(-3).forEach(d => d.life = 60); }   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
+  if (number === 6) { spawnDrop(hero.x + 50, hero.y, 'leg'); drops.slice(-1).forEach(d => d.life = 60); }   // 用户定（难度评估后）：张角战开场只给一个鸡腿   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
@@ -9288,7 +9288,8 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (z.T.chapterBoss) {   // 用户定：第二章首领沿用管亥的「韧性」——挨打累积，满了才踉跄；出招中不被打断；平时只被推一点
     const POISE = { zhang_liang: 8, zhang_bao: 6, zhang_jiao: 10 }[z.type] || 8;
     z.poise = (z.poise || 0) + dmg; (z.hitLog ||= []).push(gameT); z.hitLog = z.hitLog.filter(t => gameT - t < 2);
-    if (z.poise >= POISE && !z.cb) { z.poise = 0; z.stun = .5; z.vx = dir * 70; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '踉跄！', color: '#ffd86e' }); }
+    const busy = z.cb || (z.combo && !z.combo.rest) || z.array || z.st === 'tele';   // 出招/施法中（张角的法术在 z.combo 里）：霸体不踉跄
+    if (z.poise >= POISE && !busy) { z.poise = 0; z.stun = .5; z.vx = dir * 70; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '踉跄！', color: '#ffd86e' }); }
     else { z.stun = 0; z.vx = dir * 18; }
   }
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
@@ -10811,8 +10812,8 @@ function update(dt) {
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
-    if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
-    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通：获得通脉丹 ×1（整军备战 → 经脉）';
+    if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
+    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通，获得通脉丹 ×1（经脉）。';
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
@@ -11359,19 +11360,23 @@ function drawResult(HW, HH) {
   // 台词：按卷轴内宽换行，标点不能单独落到下一行
   const line = result.line || '';
   if (line) {
-    const lfs = Math.max(11, Math.round(sh * .046));
-    ctx.font = lfs + 'px ' + BRUSH;
-    ctx.fillStyle = '#3a2410';
+    // 用户反馈：通关文字被截断 → 最多 3 行，放不下就自动缩小字号
+    let lfs = Math.max(11, Math.round(sh * .046)), rows = [];
     const maxW = pw * .78, cx = px0 + pw * .50, noStart = '，。！？、；：”’）》」』…';
-    const rows = []; let row = '';
-    for (const ch of line) {
-      if (row && ctx.measureText(row + ch).width > maxW) {
-        if (noStart.includes(ch)) { row += ch; rows.push(row); row = ''; }
-        else { rows.push(row); row = ch; }
-      } else row += ch;
+    for (let tries = 0; tries < 6; tries++) {
+      ctx.font = lfs + 'px ' + BRUSH; rows = []; let row = '';
+      for (const ch of line) {
+        if (row && ctx.measureText(row + ch).width > maxW) {
+          if (noStart.includes(ch)) { row += ch; rows.push(row); row = ''; }
+          else { rows.push(row); row = ch; }
+        } else row += ch;
+      }
+      if (row) rows.push(row);
+      if (rows.length <= 3 || lfs <= 10) break; lfs = Math.max(10, Math.round(lfs * .88));
     }
-    if (row) rows.push(row);
-    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.525 + i * .060)));
+    ctx.fillStyle = '#3a2410';
+    const lh = lfs * 1.3, top = sy + sh * .525 - (rows.length > 2 ? lh * .35 : 0);
+    rows.slice(0, 3).forEach((r2, i) => ctx.fillText(r2, cx, top + i * lh));
   }
   ctx.globalAlpha = 1;
 

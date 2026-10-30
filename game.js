@@ -728,7 +728,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
-  if (number === 6) { spawnDrop(hero.x + 40, hero.y - 8, 'pig'); spawnDrop(hero.x + 60, hero.y + 10, 'leg'); spawnDrop(hero.x + 80, hero.y - 2, 'bun'); drops.slice(-3).forEach(d => d.life = 60); }   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
+  if (number === 6) { spawnDrop(hero.x + 50, hero.y, 'leg'); drops.slice(-1).forEach(d => d.life = 60); }   // 用户定（难度评估后）：张角战开场只给一个鸡腿   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
@@ -904,7 +904,8 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (z.T.chapterBoss) {   // 用户定：第二章首领沿用管亥的「韧性」——挨打累积，满了才踉跄；出招中不被打断；平时只被推一点
     const POISE = { zhang_liang: 8, zhang_bao: 6, zhang_jiao: 10 }[z.type] || 8;
     z.poise = (z.poise || 0) + dmg; (z.hitLog ||= []).push(gameT); z.hitLog = z.hitLog.filter(t => gameT - t < 2);
-    if (z.poise >= POISE && !z.cb) { z.poise = 0; z.stun = .5; z.vx = dir * 70; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '踉跄！', color: '#ffd86e' }); }
+    const busy = z.cb || (z.combo && !z.combo.rest) || z.array || z.st === 'tele';   // 出招/施法中（张角的法术在 z.combo 里）：霸体不踉跄
+    if (z.poise >= POISE && !busy) { z.poise = 0; z.stun = .5; z.vx = dir * 70; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '踉跄！', color: '#ffd86e' }); }
     else { z.stun = 0; z.vx = dir * 18; }
   }
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
@@ -2427,8 +2428,8 @@ function update(dt) {
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
-    if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
-    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通：获得通脉丹 ×1（整军备战 → 经脉）';
+    if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
+    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通，获得通脉丹 ×1（经脉）。';
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
@@ -2975,19 +2976,23 @@ function drawResult(HW, HH) {
   // 台词：按卷轴内宽换行，标点不能单独落到下一行
   const line = result.line || '';
   if (line) {
-    const lfs = Math.max(11, Math.round(sh * .046));
-    ctx.font = lfs + 'px ' + BRUSH;
-    ctx.fillStyle = '#3a2410';
+    // 用户反馈：通关文字被截断 → 最多 3 行，放不下就自动缩小字号
+    let lfs = Math.max(11, Math.round(sh * .046)), rows = [];
     const maxW = pw * .78, cx = px0 + pw * .50, noStart = '，。！？、；：”’）》」』…';
-    const rows = []; let row = '';
-    for (const ch of line) {
-      if (row && ctx.measureText(row + ch).width > maxW) {
-        if (noStart.includes(ch)) { row += ch; rows.push(row); row = ''; }
-        else { rows.push(row); row = ch; }
-      } else row += ch;
+    for (let tries = 0; tries < 6; tries++) {
+      ctx.font = lfs + 'px ' + BRUSH; rows = []; let row = '';
+      for (const ch of line) {
+        if (row && ctx.measureText(row + ch).width > maxW) {
+          if (noStart.includes(ch)) { row += ch; rows.push(row); row = ''; }
+          else { rows.push(row); row = ch; }
+        } else row += ch;
+      }
+      if (row) rows.push(row);
+      if (rows.length <= 3 || lfs <= 10) break; lfs = Math.max(10, Math.round(lfs * .88));
     }
-    if (row) rows.push(row);
-    rows.slice(0, 2).forEach((r2, i) => ctx.fillText(r2, cx, sy + sh * (.525 + i * .060)));
+    ctx.fillStyle = '#3a2410';
+    const lh = lfs * 1.3, top = sy + sh * .525 - (rows.length > 2 ? lh * .35 : 0);
+    rows.slice(0, 3).forEach((r2, i) => ctx.fillText(r2, cx, top + i * lh));
   }
   ctx.globalAlpha = 1;
 

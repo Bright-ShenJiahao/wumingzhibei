@@ -164,7 +164,7 @@
     if (S.phase !== 'open' && !S.perfect && S.phase !== 'dead' && lamps().length && !lit().length) {   // 八盏全灭：阵破
       S.perfect = true; S.shatterT = 0; S.flash = .3; shake = .35; sfx('finisher', ALTAR_C.x);
       floaters.push({ x: ALTAR_C.x, y: ALTAR_C.y - 20, t: 0, txt: '八卦阵破！', big: true });
-      spawnDrop(ALTAR_C.x - 14, ALTAR_C.y + 30, 'pig'); spawnDrop(ALTAR_C.x + 14, ALTAR_C.y + 30, 'leg'); drops.slice(-2).forEach(d => d.life = 20);   // 破阵奖励：烤乳猪 + 鸡腿
+      spawnDrop(ALTAR_C.x, ALTAR_C.y + 30, 'leg'); drops.slice(-1).forEach(d => d.life = 20);   // 破阵奖励：烤乳猪 + 鸡腿
       say('张角：「八卦……破了？！」', 3);
       S.queue = []; S.hz = S.hz.filter(h => h.k === 'puff'); S.pose = 'float';
       if (S.phase === 'p1') { S.phase = 'p2'; S.t = 0; S.summonRound = 0; S.sumT = 2; S.pose = 'summon'; tutorialQueue.push({ text: '张角：「黄巾力士，何在！」', time: 2.5 }); vo('zj_golem'); }
@@ -199,8 +199,8 @@
     if (S.phase === 'p2') {
       if (S.sumT > 0) { S.sumT -= dt; if (S.sumT <= 0) { monsters(S.summonRound); S.pose = 'float'; S.next = 0; } return; }
       S.pose = 'float';
-      for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士必掉鸡腿
-      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; spawnDrop(S.fled.x - 10, S.fled.y, 'pig'); spawnDrop(S.fled.x + 12, S.fled.y, 'leg'); drops.slice(-2).forEach(d => d.life = 20); /* 用户定：助阵小首领死了也爆回血 */ say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
+      for (const g of zs) if (g.type === 'yellow-golem' && g.dead && !g.zjFood) { g.zjFood = true; if (Math.random() < .5) spawnDrop(g.x, g.y, 'leg'); }   // 黄巾力士 50% 掉鸡腿（用户定：回血太多）
+      if (S.fled && S.fled.dead && !S.angry) { S.angry = true; spawnDrop(S.fled.x, S.fled.y, 'bun'); drops.slice(-1).forEach(d => d.life = 20); /* 用户定：助阵小首领死了也爆回血 */ say(S.fled.type === 'zhang_bao' ? '张角：「三弟！——竖子，我必杀你！」' : '张角：「二弟！——竖子，我必杀你！」', 3); shake = .4; S.flash = .3; }
       const alive = zs.some(z => !z.dead && z.zjAdd);
       S.next = (S.next || 0) + dt;
       if (S.next > 6) { S.next = 0; thunderAt(hero.x, hero.y, 1.1); S.pose = 'thunder'; }
