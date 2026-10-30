@@ -61,6 +61,7 @@
   function stat(name, dmg = 0, trig = 1, heal = 0) { const o = STATS[name] ||= { trig: 0, dmg: 0, heal: 0 }; o.trig += trig; o.dmg += dmg || 0; o.heal += heal; }
   let leechFxT = 0, qiFxT = 0, avoidGhost = null;
   let rallyT = 0, jiyu = 0, ghosts = [], huifengNext = false, gustT = 0;
+  let critCard = '';   // 锦囊给的必暴：下一次命中把暴击多出的伤害记到这张卡上（统计用）
   let windDir = 1, scarecrows = [], windT = 0, waters = [], spreadT = 0, ammoBackT = 0;
   const weaponNow = () => (typeof weapon !== 'undefined' ? weapon : '');
   const typeOf = traits => (traits && traits.gearToken && traits.gearToken.s && traits.gearToken.s.type) || weaponNow();
@@ -295,10 +296,11 @@
   function takeFinisher() { if (swapPending) { swapPending = false; return 'swap'; } if (finisherUntil > now()) { finisherUntil = 0; return huifengNext ? (huifengNext = false, 'huifeng') : true; } return false; }
   function takeCrit() {
     if (avoidCrit && avoidUntil > now()) { avoidCrit = false; return true; }
-    if (killCritUntil > now()) { killCritUntil = 0; stat('乘胜追击'); pop(hero.x, hero.y - 52, '乘胜！', '#ffd25a', true); return true; }
+    if (killCritUntil > now()) { killCritUntil = 0; stat('乘胜追击'); critCard = '乘胜追击'; pop(hero.x, hero.y - 52, '乘胜！', '#ffd25a', true); return true; }
     return false;
   }
   function onHit(z, dmg, traits, ranged) {
+    if (critCard && !(traits && traits.dot)) { stat(critCard, dmg / 3, 0); critCard = ''; }   // 暴击约 ×1.5，多出的那部分算这张卡
     if (traits && (traits.dot || traits.secondary)) return dmg;
     const t = now(), type = typeOf(traits), charged = !!(traits && (traits.charged || traits.skyArrow || traits.halberdCharge || (traits.gearToken && traits.gearToken.charged)));
     const fin = !!(traits && traits.finisher);
@@ -344,7 +346,7 @@
       if (hero.hp < (window.GEAR ? GEAR.maxHp() : 10)) { hero.hp = Math.min(window.GEAR ? GEAR.maxHp() : 10, hero.hp + .5); floaters.push({ x: hero.x, y: hero.y - 46, t: 0, txt: '+0.5', color: '#8fe08a' }); }
     }
     // 饮血：吸血时红色光点飞回主角（gear_combat 里每 3 秒最多回一次血）
-    if (has['饮血'] && leechFxT <= t) { leechFxT = t + 3; stat('饮血', 0, 1, .5); for (let i = 0; i < 5; i++) fx.push({ k: 'leech', x: z.x + rnd(-6, 6), y: z.y - 16 + rnd(-6, 6), t: -i * .04, T: .45 }); }
+    if (has['饮血'] && leechFxT <= t) { leechFxT = t + 3; stat('饮血', 0, 1, 0);   /* 实际回血在 gear_combat 里按真回了多少记 */ for (let i = 0; i < 5; i++) fx.push({ k: 'leech', x: z.x + rnd(-6, 6), y: z.y - 16 + rnd(-6, 6), t: -i * .04, T: .45 }); }
     return dmg;
   }
   function afterHit(z, knocked, traits, dmg, ranged) {
@@ -363,7 +365,7 @@
       if (z.dead) { stat('破军'); shockwave(z.x, z.y, 60, 1, false, '破军'); }
       else if ((z.T.elite || z.T.ch2Elite || isBoss(z)) && Math.random() < .3) { stat('破军'); shockwave(z.x, z.y, 40, .5, false, '破军'); }
     }
-    if (has['明火'] && fin && !z.dead) { z.burnT = 3; z.burnTick = 0; stat('明火'); }
+    if (has['明火'] && fin && !z.dead) { z.burnT = 3; z.burnTick = 0; z.burnSrc = '明火'; stat('明火'); }
     if (has['定海'] && type === 'staff' && fin && z.daze > 0) for (const o of zs) if (o !== z && !o.dead && !o.air && !isBoss(o) && Math.hypot(o.x - z.x, (o.y - z.y) * 2) < 50) { o.daze = Math.max(o.daze || 0, .6); o.st = 'move'; o.tok = false; }
     if (has['崩山'] && type === 'hammer' && fin && hero.atk && !hero.atk.bengDone) { hero.atk.bengDone = true; beng.push({ x: hero.x, y: hero.y, t: -.3 }); stat('崩山'); }
     if (has['飞蝗'] && type === 'stone' && charged && !z.rogueBounce) {
@@ -379,9 +381,9 @@
   // ---- 其他挂钩 ----
   function onShoot(C, c, finisher, sOff) {
     const h = hero, w = weaponNow();
-    const extra = (k, mult) => { for (const ang of k) shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life || .8, C: { ...C, dmg: C.dmg * mult, noPierce: true, daze: 0, dazeChance: 0, dazeTime: 0 }, c, hitSet: [], secondary: true, kind: w === 'bow' ? 'arrow' : undefined }); };
-    if (has['飞蝗'] && w === 'stone' && !finisher && ++stoneShots % 3 === 0) { stat('飞蝗'); extra([-.16, .16], .5); }
-    if (has['矢如连珠'] && volleyNext) { volleyNext = false; extra([-.14, .14], .35); }
+    const extra = (k, mult, card) => { for (const ang of k) shots.push({ statCard: card, x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life || .8, C: { ...C, dmg: C.dmg * mult, noPierce: true, daze: 0, dazeChance: 0, dazeTime: 0 }, c, hitSet: [], secondary: true, kind: w === 'bow' ? 'arrow' : undefined }); };
+    if (has['飞蝗'] && w === 'stone' && !finisher && ++stoneShots % 3 === 0) { stat('飞蝗'); extra([-.16, .16], .5, '飞蝗'); }
+    if (has['矢如连珠'] && volleyNext) { volleyNext = false; extra([-.14, .14], .35, '矢如连珠'); }
   }
   function onSwap() {
     if (!has['倒持'] || !swapReady) return false;
@@ -486,7 +488,7 @@
     for (const z of zs) {
       if (z.dead || !(z.burnT > 0)) continue;
       z.burnT -= dt; z.burnTick = (z.burnTick || 0) - dt;
-      if (z.burnTick <= 0) { z.burnTick = 1; hit(z, .3, 0, 0, false, 0, 0, false, false, { dot: true }); if (z.dead && typeof allyFires !== 'undefined') allyFires.push({ x: z.x, y: z.y, t: 2, r: 20, tick: 0 }); }
+      if (z.burnTick <= 0) { z.burnTick = 1; hit(z, .3, 0, 0, false, 0, 0, false, false, { dot: true }); if (z.burnSrc) stat(z.burnSrc, .3, 0); if (z.dead && typeof allyFires !== 'undefined') allyFires.push({ x: z.x, y: z.y, t: 2, r: 20, tick: 0 }); }
       if (z.burnSpread && spreadT <= 0) for (const o of zs) if (o !== z && !o.dead && !(o.burnT > 0) && Math.hypot(o.x - z.x, o.y - z.y) < 26) { o.burnT = 3; o.burnSpread = true; }
     }
     if (spreadT <= 0) spreadT = 1;
@@ -577,7 +579,7 @@
       ctx.restore();
       // 稀有度（用户定：不用外框）：稀有木纹透青光 + 蓝印「稀」；传说四周飘金光点 + 朱印「传」；卡名颜色区分
       // 用户定：稀有不加蓝色滤镜，只靠名字颜色和角标区分
-      if (c.r === 'l') { ctx.save(); for (let k = 0; k < 10; k++) { const a = anim * .9 + k * .63, px = x + cw / 2 + Math.cos(a) * (cw / 2 + 4) * Math.sin(a * 1.3 + k), py = y + ch / 2 + Math.sin(a) * (ch / 2 + 4); ctx.globalAlpha = .4 + .4 * Math.sin(anim * 3 + k); ctx.fillStyle = '#ffd76a'; ctx.fillRect(px, py, 2.5, 2.5); } ctx.restore(); }
+      // 用户定：锦囊卡不加任何滤镜/光效，稀有度只看卡名颜色
       const seal = null;   // 用户定：不要角标，稀有度只看卡名颜色（稀=蓝、传=金）
       if (seal) { ctx.save(); ctx.fillStyle = seal[0]; ctx.globalAlpha = .92; const sx = x + 16, sy = y + 18; ctx.fillRect(sx, sy, 18, 18); ctx.strokeStyle = 'rgba(255,240,220,.7)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 2, sy + 2, 14, 14); ctx.fillStyle = '#fff4e0'; ctx.font = '700 12px "KaiTi","STKaiti",serif'; ctx.textAlign = 'center'; ctx.fillText(seal[1], sx + 9, sy + 13.5); ctx.restore(); }
       ctx.save(); ctx.beginPath(); ctx.rect(x + 18, y + 24, cw - 36, ch - 48); ctx.clip();
@@ -585,7 +587,6 @@
       ctx.font = '900 ' + Math.round(Math.min(20, cw / 7)) + 'px ' + F; ctx.shadowColor = 'rgba(24,12,6,.9)'; ctx.shadowBlur = 3;
       ctx.fillStyle = c.isBing ? '#f0c27a' : c.r === 'l' ? '#ffd24a' : c.r === 'r' ? '#8fd0ff' : '#f6ecd6';
       ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.shadowBlur = 0;
-      if (c.r === 'l') { const nw = ctx.measureText(c.name).width, sweep = ((anim * .8) % 1.6) - .3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55; const gx = x + cw / 2 - nw / 2 + nw * sweep; const gr = ctx.createLinearGradient(gx - 10, 0, gx + 10, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, 'rgba(255,250,220,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = gr; ctx.fillText(c.name, x + cw / 2, y + ch * .29, cw - 38); ctx.restore(); }   // 传说：名字上扫过一道光
       const fs = Math.max(9, Math.min(12, cw * .067)); const lh = fs * 1.42; let ly = y + ch * .39;
       if (c.trig) { ctx.font = '700 ' + fs + 'px ' + F; ctx.fillStyle = '#ffcf6a'; ctx.fillText('【' + c.trig + '】', x + cw / 2, ly, cw - 40); ly += lh * 1.2; }   // 触发条件
       ctx.font = '600 ' + fs + 'px ' + F; ctx.fillStyle = '#f2e6c9';

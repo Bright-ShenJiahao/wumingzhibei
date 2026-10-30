@@ -6,9 +6,9 @@ const LOADQ = []; let loadingN = 0;
 function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LOADQ.shift(); if (i.src) continue; loadingN++; const done = () => { loadingN--; pumpLoad(); }; i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); i.src = src; } }
 function promoteLoad(img) { if (img.src) return; const i = LOADQ.findIndex(q => q[0] === img); if (i > 0) LOADQ.unshift(LOADQ.splice(i, 1)[0]); }   // 画面上要用到但还在排队的图：插到队首
 function flushLoads() { while (LOADQ.length) { const [i, src] = LOADQ.shift(); if (!i.src) i.src = src; } }   // 开打了：剩下的图全部开始下（不再限速）
-function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); pumpLoad(); return i; }
+function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); LAZY.core.push([i, src]); pumpLoad(); return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
-const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
+const LAZY = { chapter2: [], xiaochang: [], core: [] }, LAZY_DONE = {};   // core：打开就要的图（第一章等），进战斗前必须全部下完
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };
 function lazyLoad(group, k, src) { const i = new Image(); IMG[k] = i; LAZY[group].push([i, src]); return i; }
 function ensureAssets(group, { silent = false, label = '' } = {}) {
@@ -716,7 +716,8 @@ function prepareChapter2Run(showOpening, battle = 1) {
 // 加载第二章素材期间 window.CHAPTER_LOADING=2，BGM 据此直接进第二章鼓乐，不会先响第一章的曲子。
 function loadChapter2(showOpening, battle) {
   window.CHAPTER_LOADING = 2;
-  ensureAssets('chapter2', { label: '正在加载第二章' }).then(() => { prepareChapter2Run(showOpening, battle); window.CHAPTER_LOADING = 0; });
+  flushLoads();
+  Promise.all([ensureAssets('core', { silent: true }), ensureAssets('chapter2', { label: '正在加载第二章' })]).then(() => { /* 共用的小兵图也要下完 */ prepareChapter2Run(showOpening, battle); window.CHAPTER_LOADING = 0; });
 }
 function startChapter2Debug(battle) { loadChapter2(false, battle); }   // 开发者直跳：素材加载完再进指定的那一战
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
@@ -2152,6 +2153,7 @@ function updateShots(dt) {
       if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
+      if (s.statCard && window.ROGUE && ROGUE.stat) ROGUE.stat(s.statCard, pdmg, 0);
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
       if (s.gearReturn && !s.spun) { s.spun = true; s.gearReturn = false; gearSpins.push({ x: z.x, y: z.y - 12, t: 0, T: .42, dmg: pdmg * .45, kind: s.kind, dir: Math.sign(s.vx) || 1, done: false }); }   // 回旋（用户定）：打中后绕着中箭处转一小圈，再扫到最多 2 人，每人 45%   // 标记已命中，避免同一颗石子反复打同一个敌人
       if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
@@ -2363,7 +2365,11 @@ function countComboHit() {
   comboNotices.push({ count: comboCount, born: gameT });
   if (comboNotices.length > 2) comboNotices.shift();   // 最多同时两条
 }
+let coreHold = false, coreAsked = false;
 function update(dt) {
+  // 用户定：别边玩边下图（会出现隐身敌人、卡顿）——离开标题后先把本章图片全部下完，显示加载进度，再开打
+  if (!coreAsked && !(window.TITLE && TITLE.blocks && TITLE.blocks())) { coreAsked = true; if (LAZY.core.some(([i]) => !(i.complete && i.naturalWidth))) { coreHold = true; flushLoads(); ensureAssets('core', { label: '正在载入战场' }).then(() => { coreHold = false; }); } }
+  if (coreHold) return;
   if (window.PAUSE && PAUSE.paused()) { PAUSE.update(dt); return; }
   if (window.CHAPTER2_INTRO && CHAPTER2_INTRO.active()) { CHAPTER2_INTRO.update(dt); return; }
   if (chargeTierFlash > 0) chargeTierFlash = Math.max(0, chargeTierFlash - dt);

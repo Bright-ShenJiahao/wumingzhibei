@@ -2,8 +2,8 @@
 // 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
-    jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 3 血，之后 4 秒每秒再回 0.5', w: 40 },
-    jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 30 },
+    jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 3 血，之后 4 秒每秒再回 0.5', w: 25 },
+    jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 20 },   // 用户定：金创药、酒再少一些（火油罐 30 不变）
     huoyou: { name: '火油罐', icon: 'sup_huoyou', tip: '按攻击扔出：爆炸 1.5 伤害并留下大火场', w: 30 },
   };
   let stash = 0, ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
@@ -24,6 +24,7 @@
     p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; p.fadeAt = gameT; if (m) { p.w = m[1]; p.h = m[2]; }
     // 火油罐只在第 2 波、场上敌人 4 个以上时才可能开出来；开局的箱子只出金创药/烈酒
     const foes = zs.filter(z => !z.dead && !z.ally).length;
+    if (p.wave === 0 && Math.random() < .5) { if (typeof floaters !== 'undefined') floaters.push({ x: p.x, y: p.y - 30, t: 0, txt: '空箱子' }); return; }   // 开局的箱子一半是空的
     drop(p.x, p.y, pick(!(p.wave === 1 && foes >= 4)));
   }
   function apply(k, useNow) {

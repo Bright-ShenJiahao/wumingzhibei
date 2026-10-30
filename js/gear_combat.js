@@ -53,7 +53,7 @@
     if(sync().uid!==s.uid)return result;
     if(!token.spiritCounted){token.spiritCounted=true;if(s.special==='spirit'&&sync().uid===s.uid){spirit=Math.min(10,spirit+1);lastSpirit=gameT;}}
     if(!token.chainHits.has(z)){token.chainHits.add(z);if(chainTarget!==z||gameT-chainAt>=2)chain=0;chainTarget=z;chainAt=gameT;chain=Math.min(3,chain+1);}
-    if(!token.leechChecked){token.leechChecked=true;if(rogue('lifesteal')&&ready('cardLeech',3))heal(rogue('lifesteal'));if(chance(stat(s,'leech'))&&ready('leech',2))heal(.25);}
+    if(!token.leechChecked){token.leechChecked=true;if(rogue('lifesteal')&&ready('cardLeech',3)){const h0=hero.hp;heal(rogue('lifesteal'));if(window.ROGUE&&ROGUE.stat)ROGUE.stat('饮血',0,0,hero.hp-h0);}if(chance(stat(s,'leech'))&&ready('leech',2))heal(.25);}
     if(!z.dead){
       applyStatuses(z,base,s);
     if(['chant','wind'].includes(z.st)&&!z.T.boss&&chance(stat(s,'interrupt'))&&ready('interrupt',3)){z.st=z.T.priest?'hurt':'move';z.t=0;z.tok=false;z.cd=Math.max(z.cd||0,.5);z.stun=Math.max(z.stun||0,.25);if(z.T.priest){z.chant=0;z.chantCd=8;}}

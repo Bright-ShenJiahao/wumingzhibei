@@ -327,7 +327,7 @@
     if (C.rest) {   // 喘息破绽：站着不动、不逃
       z.st = 'rest'; z.z = 0;
       if (!C.cough) { C.cough = true; floaters.push({ x: z.x, y: z.y - 58, t: 0, txt: '咳……咳咳……' }); }
-      if (C.t > C.rest) { z.combo = null; z.gap = (z.rage ? 1.6 : 2.6) * (z.angry ? .85 : 1); z.st = 'move'; }
+      if (C.t > C.rest) { z.combo = null; z.gap = (z.rage ? 1.6 : 2.6) * (z.angry ? .85 : 1) * .85;   /* 用户定：出手更频繁 */ z.st = 'move'; }
       return true;
     }
     const next = () => { C.step++; C.t = 0; };
