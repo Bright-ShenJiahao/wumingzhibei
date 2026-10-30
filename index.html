@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=efc5c5ff57" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=efc5c5ff57)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=026dcb2361" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=026dcb2361)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='70feecf06435',busy=false;
+var BUILD='caf304578b90',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -1930,7 +1930,7 @@ const Boss = (() => {
           const n = z.rage ? 7 : 5;
           for (let i = 0; i < n; i++) {
             const x = i === 0 ? hero.x : hero.x + rnd(-70, 70), y = i === 0 ? hero.y : Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + rnd(-26, 26)));
-            hz.push({ k: 'ball', x, y, t: -(1.1 + i * .18), r: 17 });
+            hz.push({ k: 'ball', x, y, t: -(1.1 + i * .18), r: 17, dir: z.x < x ? 1 : -1 });
           } }
         if (C.t > .9) done(z, .3);
         return true;
@@ -1977,14 +1977,36 @@ const Boss = (() => {
     for (let i = hz.length - 1; i >= 0; i--) if (hz[i].t > .5) hz.splice(i, 1);
   }
 
+  const sparks = [], scorch = [];
+  // 用张宝的火焰图画特效：anchor 'left' 火焰根部在 (x,y)，'right' 火头在 (x,y)；sx 负数朝左
+  function fxImg(x, y, ang, sx, sy, alpha, anchor) {
+    const fr = typeof CH !== 'undefined' && CH.zhang_bao && CH.zhang_bao.flame; if (!fr || !fr.img.complete) return;
+    const sp = Math.max(.5, SC * PX), w = fr.w * sp, hh = fr.h * sp;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, Math.round(x * SC + OXs), Math.round(y * SC)); ctx.rotate(ang); ctx.scale(sx, sy); ctx.globalAlpha = alpha;
+    ctx.drawImage(fr.img, anchor === 'left' ? 0 : -w, -hh / 2, w, hh); ctx.restore();
+  }
+  function tickFx(dt) {
+    for (const p of sparks) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.g) p.vy += p.g * dt; }
+    for (let i = sparks.length - 1; i >= 0; i--) if (sparks[i].t >= sparks[i].T) sparks.splice(i, 1);
+    for (const c of scorch) c.t += dt;
+    for (let i = scorch.length - 1; i >= 0; i--) if (scorch[i].t > 1.2) scorch.splice(i, 1);
+    if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+  }
+  let lastT = performance.now();
   function draw() {
     if (!chapter2Run) return;
+    { const n = performance.now(); tickFx(Math.min(.05, (n - lastT) / 1000)); lastT = n; }
     // 喷火：前摇时地上的土红预警条，喷火时贴火焰图
     for (const z of zs) {
       if (z.dead || !z.cb) continue;
       if (z.cb.k === 'breath') {
         if (z.cb.step === 0) { ctx.fillStyle = `rgba(150,60,30,${.2 + .25 * Math.sin(z.cb.t * 20) ** 2})`; ctx.fillRect(Math.min(z.x, z.x + z.f * 112), z.y - 6, 112, 12); }
-        else if (z.cb.step === 1) { const fl = Math.sin(z.cb.t * 30) * 2; drawChar('zhang_bao', 'flame', z.x + z.f * (58 + fl), z.y - 14, z.f < 0, .9, false, z.sc || 1); }
+        else if (z.cb.step === 1) {   // 火焰从嘴前伸出去 → 翻滚 → 往前收掉，边喷边甩火星
+          const t = z.cb.t, grow = Math.min(1, t / .15), shrink = t > .75 ? Math.max(0, 1 - (t - .75) / .15) : 1, L = grow * shrink;
+          const fy = 1 + Math.sin(t * 38) * .12 + Math.sin(t * 23) * .06;
+          fxImg(z.x + z.f * (14 + (1 - shrink) * 60), z.y - 18 + Math.sin(t * 17) * 1.5, 0, z.f * 1.05 * L * (z.sc || 1), fy * (z.sc || 1), 1, 'left');
+          if (Math.random() < .7) sparks.push({ x: z.x + z.f * (20 + Math.random() * 90 * L), y: z.y - 18 + rnd(-6, 6), vx: z.f * rnd(60, 140), vy: rnd(-40, 10), t: 0, T: rnd(.25, .5), c: Math.random() < .5 ? '#ffd27a' : '#ff7a2a' });
+        }
       }
       if (z.cb.k === 'charge' && z.cb.step === 0) { ctx.fillStyle = 'rgba(150,60,30,.28)'; ctx.fillRect(Math.min(z.x, z.x + z.f * 150), z.y - 4, 150, 8); }
       if (z.cb.k === 'spin' && z.cb.step === 0) { ctx.strokeStyle = 'rgba(160,70,35,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(z.x, z.y, 48, 18, 0, 0, 7); ctx.stroke(); }
@@ -2003,17 +2025,40 @@ const Boss = (() => {
     // 火球：落点暗橙预警圈 + 从天上掉下来的火球
     for (const h of hz) {
       if (h.k !== 'ball') continue;
+      const d = h.dir || 1;
       if (h.t < 0) {
         const u = Math.max(0, 1 + h.t / 1.1);
         ctx.strokeStyle = `rgba(170,76,44,${.35 + .5 * u})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * .42, 0, 0, 7); ctx.stroke();
-        if (h.t > -.45) { const fy = h.y - 140 * (-h.t / .45); ctx.fillStyle = '#b8481f'; ctx.beginPath(); ctx.arc(h.x, fy - 6, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#e07a3a'; ctx.beginPath(); ctx.arc(h.x, fy - 7, 2.5, 0, 7); ctx.fill(); }
-      } else { const u = h.t / .5; ctx.fillStyle = `rgba(160,60,25,${.5 * (1 - u)})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (1 + u * .4), h.r * .45 * (1 + u * .4), 0, 0, 7); ctx.fill(); }
+        ctx.fillStyle = `rgba(170,60,25,${.12 + .2 * u})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * u, h.r * .42 * u, 0, 0, 7); ctx.fill();
+        if (h.t > -.5) {   // 斜着砸下来：从张宝那一侧的高空飞向落点，拖火星
+          const k = -h.t / .5, bx = h.x - d * 110 * k, by = h.y - 8 - 160 * k, ang = Math.atan2(160, d * 110);
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(bx, by, 0, bx, by, 16); g.addColorStop(0, 'rgba(255,200,90,.7)'); g.addColorStop(1, 'rgba(255,90,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, 16, 0, 7); ctx.fill(); ctx.restore();
+          fxImg(bx, by, ang, .55, .55, 1, 'right');
+          if (Math.random() < .8) sparks.push({ x: bx + rnd(-3, 3), y: by + rnd(-3, 3), vx: rnd(-20, 20), vy: rnd(-30, 0), t: 0, T: rnd(.2, .4), c: Math.random() < .5 ? '#ffb347' : '#ff5a1a' });
+          if (!h.boomed && h.t > -.03) h.boomed = true;
+        }
+      } else {
+        if (!h.burst) { h.burst = true; for (let i = 0; i < 16; i++) { const a2 = Math.random() * Math.PI, sp = rnd(50, 130); sparks.push({ x: h.x, y: h.y - 4, vx: Math.cos(a2) * sp * (Math.random() < .5 ? 1 : -1), vy: -Math.sin(a2) * sp, g: 300, t: 0, T: rnd(.35, .6), c: i % 3 ? '#ffb347' : '#fff0b0' }); } }
+        const u = h.t / .5;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(h.x, h.y - 6, 0, h.x, h.y - 6, h.r * 1.6); g.addColorStop(0, `rgba(255,220,120,${.8 * (1 - u)})`); g.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(h.x, h.y - 6, h.r * 1.6 * (1 + u * .5), h.r * (1 + u * .5), 0, 0, 7); ctx.fill(); ctx.restore();
+        ctx.fillStyle = `rgba(160,60,25,${.45 * (1 - u)})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (1 + u * .4), h.r * .45 * (1 + u * .4), 0, 0, 7); ctx.fill();
+        if (h.t > .45 && !h.scorched) { h.scorched = true; scorch.push({ x: h.x, y: h.y, r: h.r, t: 0 }); }
+      }
     }
+    for (const c of scorch) { const a = Math.min(1, (1.2 - c.t) / .4) * .5; ctx.fillStyle = `rgba(30,18,12,${a})`; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r * .9, c.r * .38, 0, 0, 7); ctx.fill(); if (Math.random() < .15) sparks.push({ x: c.x + rnd(-c.r * .6, c.r * .6), y: c.y, vx: 0, vy: rnd(-30, -15), t: 0, T: .5, c: '#aa4a22' }); }
+    // 张宝身边慢慢上升的火星 + 脚下暗红光
+    for (const z of zs) if (z.type === 'zhang_bao' && !z.dead) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, 26); g.addColorStop(0, 'rgba(200,60,20,.35)'); g.addColorStop(1, 'rgba(200,60,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(z.x, z.y, 26, 9, 0, 0, 7); ctx.fill(); ctx.restore();
+      if (Math.random() < .25) sparks.push({ x: z.x + rnd(-14, 14), y: z.y - rnd(4, 40), vx: rnd(-6, 6), vy: rnd(-28, -14), t: 0, T: rnd(.6, 1.1), c: Math.random() < .5 ? '#ff9a3a' : '#ffd27a' });
+    }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const p of sparks) { const a = 1 - p.t / p.T; ctx.fillStyle = p.c; ctx.globalAlpha = a; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2); }
+    ctx.restore();
     if (sand.t > 0) { const a = Math.min(1, sand.t, (9 - sand.t) * 2) * .22; ctx.fillStyle = `rgba(170,130,60,${a})`; ctx.fillRect(cam.x - 4, 0, viewW() + 8, 600); }
     // 黄沙迷阵：横飞的沙粒（主角移速 -25%，在 game.js 里算）
     if (sand.t > 0) { const T = performance.now() / 1000, a = Math.min(1, sand.t, (9 - sand.t) * 2); ctx.fillStyle = `rgba(214,170,90,${.55 * a})`; for (let i = 0; i < 46; i++) { const x = cam.x + ((i * 97 + T * (160 + i % 5 * 30)) % (viewW() + 40)) - 20, y = M.top - 60 + (i * 53 % 200) + Math.sin(T * 3 + i) * 4; ctx.fillRect(x, y, 3 + i % 3, 1); } }
   }
-  function reset() { hz.length = 0; sand.t = 0; }
+  function reset() { hz.length = 0; sand.t = 0; sparks.length = 0; scorch.length = 0; }
 
   window.CH2B = { update, draw, reset, sandOn: () => sand.t > 0 };
 })();
@@ -8195,7 +8240,7 @@ const TYPES = {
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
   'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, noLaunch: true, w: 14, sprite: 'yellow_golem', scale: 1 },
   zhang_jiao: { name: '天公将军·张角', hp: 115, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
-  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: .95 },
+  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.1 },
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
