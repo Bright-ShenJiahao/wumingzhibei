@@ -37,7 +37,7 @@
   function positiveText(a){const v=a.value;const ordinary={sharp:'攻击伤害',swift:'攻击速度',reach:'攻击距离／射程',health:'最大生命',move:'移动速度',charge:'蓄力攻击伤害'};
     if(ordinary[a.id])return ordinary[a.id]+'＋'+v+'%';
     const text={
-      critical:`暴击率＋${v}个百分点`,severity:`暴击伤害＋${v}个百分点`,guard:`受到伤害减少${v}%`,dodge:`普攻闪避率＋${v}个百分点`,focus:`主动技能冷却与蓄力时间减少${v}%`,
+      critical:`暴击率＋${v}%`,severity:`暴击伤害＋${v}%`,guard:`受到伤害减少${v}%`,dodge:`普攻闪避率＋${v}%`,focus:`主动技能冷却与蓄力时间减少${v}%`,
       hunt:`对首领伤害＋${v}%`,troops:`对小兵、精英伤害＋${v}%`,exploit:`对异常状态敌人伤害＋${v}%`,victory:`击杀后伤害＋${v}%，持续4秒`,chain:`连续命中同一敌人，每层伤害＋${v}%，最多3层`,
       push:`命中有${v}%概率额外击退`,leech:`命中有${v}%概率回复0.25生命，冷却2秒`,survive:`击杀有${v}%概率回复0.5生命，冷却1秒`,interrupt:`命中有${v}%概率打断可打断施法，冷却3秒`,
       slow:`命中有20%概率使敌人减速${v}%，持续2秒`,numb:`命中有20%概率使敌人攻速降低${v}%，持续2秒`,blind:`命中有20%概率致盲2秒，敌方普攻有${v}%概率未命中`,
@@ -64,7 +64,7 @@
       const card=node('section',null,'wd-affix '+cls),head=node('div',null,'wd-affix-title');head.append(node('span',name),node('span',badge,'wd-badge'));card.append(head,node('div',text,'wd-effect'));affixes.append(card);return card;
     }
     for(const a of item.affixes){const valid=D.applicable(a,item.type);const card=affix('◆ '+D.positive[a.id].name,['初级','中级','高级'][a.tier],positiveText(a),valid?'':'wd-inactive');if(!valid)card.append(node('div','当前武器不生效','wd-muted'));}
-    if(item.negative){const a=item.negative,d=D.negative[a.id];const card=affix('▼ '+d.name,'负面',d.desc+(a.id==='fragile'?'＋':'－')+a.value+(d.unit==='pp'?'个百分点':'%'),'wd-negative');if(a.id==='inaccurate'&&st.crit===0)card.append(node('div','抵消基础暴击后，当前暴击率最低为0%。','wd-muted'));}
+    if(item.negative){const a=item.negative,d=D.negative[a.id];const card=affix('▼ '+d.name,'负面',d.desc+(a.id==='fragile'?'＋':'－')+a.value+(d.unit==='pp'?'%':'%'),'wd-negative');if(a.id==='inaccurate'&&st.crit===0)card.append(node('div','抵消基础暴击后，当前暴击率最低为0%。','wd-muted'));}
     if(item.special)affix('✦ '+D.special[item.special].name,'特殊',D.special[item.special].desc,'wd-special');
     if(!item.affixes.length&&!item.negative&&!item.special)affixes.append(node('div','无词条','wd-muted'));
     container.append(node('h4','装备后属性'));
