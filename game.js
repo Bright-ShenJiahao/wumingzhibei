@@ -1938,7 +1938,9 @@ function zUpdate(z, dt) {
       // 所有方士：有友军受伤先回血（念咒2秒），否则丢火球（念咒1秒）
       const hurtAlly = zs.some(o => o !== z && !o.dead && !o.T.boss && o.hp < o.T.hp * .7);
       const canFire = inChapter2Context();   // 第一章方士只回血，第二章起才丢火球
-      if (hurtAlly || canFire) { z.castKind = hurtAlly ? 'heal' : 'fire'; set(z, 'chant'); return; }
+      // 用户反馈：首领一掉血方士就一直回血、从不放火球 → 回血和火球轮流（刚回过血下一次必丢火球）
+      const heal = hurtAlly && (!canFire || z.lastCast !== 'heal');
+      if (heal || canFire) { z.castKind = heal ? 'heal' : 'fire'; z.lastCast = z.castKind; set(z, 'chant'); return; }
     }
     const pdx = hero.x - z.x, pad = Math.abs(pdx);
     if (pdx) z.f = Math.sign(pdx);
