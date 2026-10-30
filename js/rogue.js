@@ -20,7 +20,7 @@
     '焚身': () => { S.fireAura = 1; auraStacks = 1; auraHold = 0; auraIdle = 0; },
     '护体': () => { S.shield = 1; },
     '饮血': () => { S.lifesteal = .5; },
-    '避实': () => {}, '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
+    '燎步': () => {}, '震慑': () => {}, '硬撼': () => {},
     '万箭齐发': () => { bing = 'wanjian'; S.summon = 1; },
     '霹雳飞石': () => { bing = 'toushi'; S.catapult = 1; S.catapultFire = 3; },
     '雷霆万钧': () => { bing = 'leiting'; },

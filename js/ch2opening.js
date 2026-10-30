@@ -38,8 +38,8 @@
   function drawBark(HW, HH, dt) {
     if (!B.text) return;
     B.t += dt; if (B.t > B.T + .25) { B.text = ''; return; }
-    const a = Math.min(1, B.t / .18, (B.T + .25 - B.t) / .25), small = HH < 520 || HW < 760;
-    const pw = Math.min(HW - 18, small ? 420 : 560), ph = small ? 74 : 92, px = (HW - pw) / 2, py = 74 + (1 - Math.min(1, B.t / .2)) * -10;
+    const a = Math.min(1, B.t / .18, (B.T + .25 - B.t) / .25), small = HH < 520 || HW < 760, f = small ? Math.max(.7, Math.min(1, HH / 480)) : 1;   // 手机横屏：曹操喊话框也按屏高缩小
+    const pw = Math.min(HW - 18, small ? 420 : 560), ph = Math.round((small ? 74 : 92) * f), px = (HW - pw) / 2, py = 74 + (1 - Math.min(1, B.t / .2)) * -10;
     const av = ph - 16;
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = 'rgba(30,22,18,.91)'; rounded(px, py, pw, ph, 8); ctx.fill();
@@ -50,12 +50,12 @@
     ctx.fillStyle = '#241912'; rounded(ax, ay, av, av, 4); ctx.fill();
     if (im && im.complete && im.naturalWidth) { ctx.save(); rounded(ax, ay, av, av, 4); ctx.clip(); const sc = Math.max(av / im.width, av / im.height); ctx.drawImage(im, ax + (av - im.width * sc) / 2, ay + (av - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.restore(); }
     const left = ax + av + 14;
-    ctx.textAlign = 'left'; ctx.font = `700 ${small ? 14 : 17}px "PingFang SC","Microsoft YaHei",sans-serif`; ctx.fillStyle = '#f1cf75';
+    ctx.textAlign = 'left'; ctx.font = `700 ${Math.round((small ? 14 : 17) * f)}px "PingFang SC","Microsoft YaHei",sans-serif`; ctx.fillStyle = '#f1cf75';
     ctx.fillText('曹操', left, py + (small ? 24 : 30));
-    ctx.font = `700 ${small ? 15 : 19}px "PingFang SC","Microsoft YaHei",sans-serif`; ctx.fillStyle = '#f7f0df';
+    ctx.font = `700 ${Math.round((small ? 15 : 19) * f)}px "PingFang SC","Microsoft YaHei",sans-serif`; ctx.fillStyle = '#f7f0df';
     const shown = B.text.slice(0, Math.floor(B.t * 28) + 1), maxW = px + pw - 14 - left;
     let line = '', y = py + (small ? 48 : 60);
-    for (const ch of shown) { if (line && ctx.measureText(line + ch).width > maxW) { ctx.fillText(line, left, y); line = ch; y += small ? 19 : 24; } else line += ch; }
+    for (const ch of shown) { if (line && ctx.measureText(line + ch).width > maxW) { ctx.fillText(line, left, y); line = ch; y += Math.round((small ? 19 : 24) * f); } else line += ch; }
     if (line) ctx.fillText(line, left, y);
     ctx.restore();
   }
