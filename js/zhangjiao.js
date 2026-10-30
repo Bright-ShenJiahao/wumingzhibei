@@ -20,7 +20,7 @@
   const vo = n => { if (window.SFX && SFX.voice) SFX.voice(n); };   // 关键台词才有语音，其余只跳字
   function start() {
     S = { phase: 'open', t: 0, round: -1, rt: 0, queue: [], hz: [], perfect: false, shatterT: -1, lid: null, flash: 0, prevLeft: 0, batchDone: [],
-      zjX: 141, zjY: 112, face: 1, summonRound: 0, spawned: [], dueT: 0, boss: null, castT: 0, pose: 'situp', cheerDone: false };
+      zjX: ALTAR_COFFIN.x, zjY: ALTAR_COFFIN.y, face: 1, summonRound: 0, spawned: [], dueT: 0, boss: null, castT: 0, pose: 'situp', cheerDone: false };
     chapter2Run.mode = 'zj';
     props.forEach((p, i) => { if (p.lamp) p.lit = false; });
     say('追到祭坛——张角的棺椁就停在这里……', 3);
@@ -171,12 +171,12 @@
     const t = S.t;
     if (S.phase === 'open') {
       hero.inv = Math.max(hero.inv, .3);
-      if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', 141); S.hz.push({ k: 'thunder', x: 141, y: 120, t: 0, r: 0, done: true }); }
-      if (t > 1.3 && !S.lid) { S.lid = { x: 141, y: 98, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
+      if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', ALTAR_COFFIN.x); S.hz.push({ k: 'thunder', x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y + 8, t: 0, r: 0, done: true }); }
+      if (t > 1.3 && !S.lid) { S.lid = { x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y - 14, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
       if (S.lid && !S.saidRise && t > 1.8) { S.saidRise = true; say('张角：「吾……未死！」', 1.6); }
       if (S.lid) { const l = S.lid; l.t += dt; l.vy += 380 * dt; l.x += l.vx * dt; l.y += l.vy * dt; l.rot += dt * 7; if (l.y > 150) { l.y = 150; l.vx = l.vy = 0; } }
       if (t < 2.2) S.pose = 'situp';
-      else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = 141 + (ALTAR_STAGE.x - 141) * u; S.zjY = 108 + (ALTAR_STAGE.y - 4 - 108) * u - Math.sin(u * Math.PI) * 30; }
+      else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = ALTAR_COFFIN.x + (ALTAR_STAGE.x - ALTAR_COFFIN.x) * u; S.zjY = ALTAR_COFFIN.y - 4 + (ALTAR_STAGE.y - ALTAR_COFFIN.y) * u - Math.sin(u * Math.PI) * 30; }
       else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; vo('zj_rise'); say('张角：「苍天已死，黄天当立！」', 3.2); shake = .3; S.flash = .3; }
       if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); S.needLeigong = true; }
       return;
@@ -399,7 +399,7 @@
       if (!open || S.t > 2) {
         const sc = open && S.pose === 'situp' ? 1.12 / ZJ_HI : 1.12 / ZJ_HI;
         drawChar('zhang_jiao', S.pose, x, y, hero.x < x, 1, false, sc);
-      } else drawChar('zhang_jiao', 'lie', 141, 110, false, 1, false, 1.12 / ZJ_HI);
+      } else drawChar('zhang_jiao', 'lie', ALTAR_COFFIN.x, ALTAR_COFFIN.y - 2, false, 1, false, 1.12 / ZJ_HI);
     }
     // 追踪符
     for (const h of S.hz) {

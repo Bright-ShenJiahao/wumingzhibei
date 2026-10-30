@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=91ba8aa577" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=91ba8aa577)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=6203a3eede" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=6203a3eede)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='c6f9c325ec15',busy=false;
+var BUILD='19e2fb6ad15c',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -7520,7 +7520,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
   const vo = n => { if (window.SFX && SFX.voice) SFX.voice(n); };   // 关键台词才有语音，其余只跳字
   function start() {
     S = { phase: 'open', t: 0, round: -1, rt: 0, queue: [], hz: [], perfect: false, shatterT: -1, lid: null, flash: 0, prevLeft: 0, batchDone: [],
-      zjX: 141, zjY: 112, face: 1, summonRound: 0, spawned: [], dueT: 0, boss: null, castT: 0, pose: 'situp', cheerDone: false };
+      zjX: ALTAR_COFFIN.x, zjY: ALTAR_COFFIN.y, face: 1, summonRound: 0, spawned: [], dueT: 0, boss: null, castT: 0, pose: 'situp', cheerDone: false };
     chapter2Run.mode = 'zj';
     props.forEach((p, i) => { if (p.lamp) p.lit = false; });
     say('追到祭坛——张角的棺椁就停在这里……', 3);
@@ -7671,12 +7671,12 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
     const t = S.t;
     if (S.phase === 'open') {
       hero.inv = Math.max(hero.inv, .3);
-      if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', 141); S.hz.push({ k: 'thunder', x: 141, y: 120, t: 0, r: 0, done: true }); }
-      if (t > 1.3 && !S.lid) { S.lid = { x: 141, y: 98, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
+      if (t > .9 && !S.struck) { S.struck = true; S.flash = .5; shake = .5; sfx('crack', ALTAR_COFFIN.x); S.hz.push({ k: 'thunder', x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y + 8, t: 0, r: 0, done: true }); }
+      if (t > 1.3 && !S.lid) { S.lid = { x: ALTAR_COFFIN.x, y: ALTAR_COFFIN.y - 14, vx: 70, vy: -150, rot: 0, t: 0 }; const c = props.find(p => p.g === 'coffin'); if (c) { c.g = 'coffin_open'; const m = ASSETS.props.coffin_open; if (m) { c.dw = c.dw; } } sfx('land', 141); }
       if (S.lid && !S.saidRise && t > 1.8) { S.saidRise = true; say('张角：「吾……未死！」', 1.6); }
       if (S.lid) { const l = S.lid; l.t += dt; l.vy += 380 * dt; l.x += l.vx * dt; l.y += l.vy * dt; l.rot += dt * 7; if (l.y > 150) { l.y = 150; l.vx = l.vy = 0; } }
       if (t < 2.2) S.pose = 'situp';
-      else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = 141 + (ALTAR_STAGE.x - 141) * u; S.zjY = 108 + (ALTAR_STAGE.y - 4 - 108) * u - Math.sin(u * Math.PI) * 30; }
+      else if (t < 4.2) { const u = (t - 2.2) / 2; S.pose = 'float'; S.zjX = ALTAR_COFFIN.x + (ALTAR_STAGE.x - ALTAR_COFFIN.x) * u; S.zjY = ALTAR_COFFIN.y - 4 + (ALTAR_STAGE.y - ALTAR_COFFIN.y) * u - Math.sin(u * Math.PI) * 30; }
       else if (!S.shout) { S.shout = true; S.zjX = ALTAR_STAGE.x; S.zjY = ALTAR_STAGE.y - 4; S.pose = 'thunder'; vo('zj_rise'); say('张角：「苍天已死，黄天当立！」', 3.2); shake = .3; S.flash = .3; }
       if (t > 5.8) { S.phase = 'p1'; S.t = 0; S.round = 0; S.rt = 0; addRound(); S.needLeigong = true; }
       return;
@@ -7899,7 +7899,7 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
       if (!open || S.t > 2) {
         const sc = open && S.pose === 'situp' ? 1.12 / ZJ_HI : 1.12 / ZJ_HI;
         drawChar('zhang_jiao', S.pose, x, y, hero.x < x, 1, false, sc);
-      } else drawChar('zhang_jiao', 'lie', 141, 110, false, 1, false, 1.12 / ZJ_HI);
+      } else drawChar('zhang_jiao', 'lie', ALTAR_COFFIN.x, ALTAR_COFFIN.y - 2, false, 1, false, 1.12 / ZJ_HI);
     }
     // 追踪符
     for (const h of S.hz) {
@@ -8563,12 +8563,13 @@ function addChapter2Props(battle = 1) {
 }
 
 // 祭台战（第六战）：背景图 2000×849 画成 300 高 → 宽 ALTAR_W；坐标都按这张图量
-const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };   // 圆形石坪中心
+const ALTAR_W = Math.round(300 * 2000 / 849), ALTAR_C = { x: 353, y: 212 };
+const ALTAR_COFFIN = { x: 124, y: 106 };   // 棺材放在祭台台面左半边、靠里一点（用户：别压在台阶口和台面前沿上）   // 圆形石坪中心
 // 之后张角开场要用的：'coffin_open' 炸开的棺材、'coffin_lid' 飞出去的棺盖
 function addAltarProps() {
   const P = (g, x, y, o) => { const [, w, h] = ASSETS.props[g] || [0, 10, 10]; props.push(Object.assign({ g, x, y, w, h, sc: 1, hitT: 0, hp: 0, solid: false, broken: false, chapter2: true }, o)); };
   P('bagua', ALTAR_C.x, ALTAR_C.y + 40, { back: true, ground: true, dw: 300, dh: 82, alpha: .82 });   // 八卦阵：贴地，画在人物下面
-  P('coffin', 141, 112, { back: true });   // 正面棺材（用户补图），按 meta 尺寸画   // 底边落在祭台台面上（之前飘在台面后沿）
+  P('coffin', ALTAR_COFFIN.x, ALTAR_COFFIN.y, { back: true });   // 正面棺材（用户补图），按 meta 尺寸画   // 底边落在祭台台面上（之前飘在台面后沿）
   P('flag_huang', 255, 127, { back: true, flip: true });                // 「黄天当立」，和右边的苍天旗一左一右
   P('flag_cang', 478, 124, { back: true });                 // 「苍天已死」血字旗，插在法台右侧                                  // 棺材摆在左侧祭台台面上
   // 八盏符灯立在八个卦位上（椭圆），打灭一盏少一盏；全灭后张角的法术阶段直接结束（张角接入后用 altarLampsLeft()）
