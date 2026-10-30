@@ -23,7 +23,7 @@
     ['scatter','散星',3,[12,20,28],'概率随机侧射1支，35%伤害','%', 'ranged'],
     ['repeat','连珠',3,[10,15,20],'概率追加射击，50%伤害','%', 'ranged'],
     ['double','叠浪',3,[10,15,20],'概率追加近战，50%伤害','%', 'melee'],
-    ['return','回旋',3,[10,15,20],'概率弹回，返回35%伤害','%', 'ranged'],
+    ['return','回旋',3,[10,15,20],'打中后有概率绕着中箭处旋转一圈，扫到附近最多 2 人，每人 45% 伤害','%', 'ranged'],
   ];
   const positive = Object.fromEntries(rows.map(([id,name,weight,values,desc,unit='%',type]) => [id,{id,name,weight,values,desc,unit,type}]));
   const negative = Object.fromEntries([

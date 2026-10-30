@@ -222,7 +222,7 @@ function reset() {
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
   if (window.GEAR) { GEAR.reset(); hero.hp = maxHeroHp(); }
   if (window.BOWAMMO) BOWAMMO.reset();
-  enemySkillFx = []; zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
+  enemySkillFx = []; zs = []; shots = []; eshots = []; fires = []; props = []; propFx = []; drops = []; floaters = []; villagers = []; villagersStarted = false; villagersRewarded = false; villagersThanksT = -1; reviveUsed = false; revives = 0; extraDone = false; catapults = []; gearSpins = []; allyShots = []; allyFires = []; stoneHits = []; bluntHits = []; bleedFx = []; hammerFx = []; bladeFx = []; bowFx = []; cam = { x: 0, y: 0 }; gateI = 0; lockR = Infinity; kills = 0; freeze = 0; shake = 0; over = false; won = false; if (window.Boss) Boss.reset();
   archerAddsDone = false;
   gameT = 0; runT = 0; hitsTaken = 0; endT = 0; result = null; clearAt = 0; uiBtns = []; toastMsg = ''; toastT = 0;
   for (let x = 160; x < M.W - 100; x += rnd(200, 320)) {
@@ -843,7 +843,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
     // 用户定：正面打盾兵按武器分——远程 ×0.5、长杆 ×0.75、短兵（大刀）×1.15 且格挡概率减半；锤子照旧无视盾；从背后打不受影响。
     // 蓄力 / 终段（含弓的第三段）不再无视盾：不会被整下挡掉，但倍率照算。
-    if(front){const m=cls==='ranged'?.5:cls==='long'?.75:1.15;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
+    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='ranged'?.5:cls==='long'?.75:1.15;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
     const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb*(cls==='short'?.5:1);   // 正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
     if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb*(cls==='short'?.5:1)){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
@@ -2098,7 +2098,6 @@ function updateShots(dt) {
     if (window.GEAR && !s.gearInitialized) { s.gearInitialized=true; GEAR.projectile(s); }
     s.x += s.vx * dt; s.y += (s.vy || 0) * dt; s.life -= dt;
     if (s.kind === 'arrow' && !s.sky) s.traveled = (s.traveled || 0) + Math.hypot(s.vx, s.vy || 0) * dt;
-    if (s.life <= 0 && s.gearReturn && !s.returning) { s.returning=true; s.secondary=true; s.gearReturn=false; s.vx=-s.originalVx; s.vy=-s.originalVy; s.life=s.gearLife; s.hitSet=[]; s.C={...s.C,dmg:s.C.dmg*.35,pierce:true,pierceOff:1}; }
     // 石子碰到草垛/推车/石碾：扣 1 点耐久，石子消失（打中道具也算打中，可以接连招）
     if (s.life > 0) for (const p of props) {
       if (!canHitProp(p)) continue;
@@ -2126,11 +2125,20 @@ function updateShots(dt) {
       if (result === 'blocked') { s.life = 0; s.gearReturn = false; continue; }
       if (s.charged && s.kind !== 'arrow') addChargeHitFx('stone', s.x, s.y - 5);
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
-      if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);   // 标记已命中，避免同一颗石子反复打同一个敌人
+      if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      if (s.gearReturn && !s.spun) { s.spun = true; s.gearReturn = false; gearSpins.push({ x: z.x, y: z.y - 12, t: 0, T: .42, dmg: pdmg * .45, kind: s.kind, dir: Math.sign(s.vx) || 1, done: false }); }   // 回旋（用户定）：打中后绕着中箭处转一小圈，再扫到最多 2 人，每人 45%   // 标记已命中，避免同一颗石子反复打同一个敌人
       if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
     }
   }
   shots = shots.filter(s => s.life > 0);
+  for (const g of gearSpins) {
+    g.t += dt;
+    if (!g.done && g.t >= g.T * .55) { g.done = true;
+      const near = zs.filter(z => !z.dead && !z.air && Math.hypot(z.x - g.x, (z.y - g.y - 12) * 1.6) < 32).sort((a, b) => Math.hypot(a.x - g.x, a.y - g.y) - Math.hypot(b.x - g.x, b.y - g.y)).slice(0, 2);
+      for (const z of near) hit(z, g.dmg, 20, Math.sign(z.x - g.x) || g.dir, false, 0, .1, false, true, { secondary: true });
+    }
+  }
+  gearSpins = gearSpins.filter(g => g.t < g.T);
   for (const h of stoneHits) h.t += dt;
   stoneHits = stoneHits.filter(h => h.t < h.T);
   for (const s of eshots) {
@@ -2161,7 +2169,7 @@ function updateShots(dt) {
 }
 
 // ---------- 投石车 ----------
-let volleyHits = new Map();   // 霹雳飞石：同一个敌人这一招最多挨 3 块石头（用户定：主动技能清场，不打单体爆发）
+let volleyHits = new Map(), gearSpins = [];   // 霹雳飞石：同一个敌人这一招最多挨 3 块石头（用户定：主动技能清场，不打单体爆发）
 function catapultVolley() {
   volleyHits = new Map();
   for (const k in CH.yellow_catapult || {}) { const fr = CH.yellow_catapult[k], e = (LAZY.chapter2 || []).find(x => x[0] === fr.img); if (e && !e[0].src) e[0].src = e[1]; }   // 第一章也用正式投石车图：只单独下载这几帧
@@ -2702,6 +2710,17 @@ function draw() {
   for (const z of zs) list.push({ y: z.y, d: () => { if (window.XIAOCHANG) XIAOCHANG.drawAffix(z); drawZ(z); } });
   list.push({ y: hero.y, d: drawHero });
   for (const s of shots) list.push({ y: s.y + .1, d: () => drawShot(s) });
+  for (const g of gearSpins) list.push({ y: g.y + 12.2, d: () => {   // 回旋：绕一圈的淡青光箭/石子 + 拖尾
+    const u = g.t / g.T, a0 = -Math.PI / 2, R = 14;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 7; k++) { const uu = Math.max(0, u - k * .045), a = a0 + uu * Math.PI * 2 * g.dir; ctx.fillStyle = `rgba(140,230,255,${.5 * (1 - k / 7) * (1 - u * .5)})`; ctx.beginPath(); ctx.arc(g.x + Math.cos(a) * R, g.y + Math.sin(a) * R * .55, 2.4 - k * .25, 0, 7); ctx.fill(); }
+    ctx.restore();
+    const a = a0 + u * Math.PI * 2 * g.dir, x = g.x + Math.cos(a) * R, y = g.y + Math.sin(a) * R * .55;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a + Math.PI / 2 * g.dir);
+    if (g.kind === 'arrow') { ctx.strokeStyle = '#e8f8ff'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(5, 0); ctx.stroke(); ctx.fillStyle = '#bff0ff'; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(4, -2); ctx.lineTo(4, 2); ctx.fill(); }
+    else { ctx.fillStyle = '#cfe6f0'; ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, 7); ctx.fill(); }
+    ctx.restore();
+  } });
   for (const h of stoneHits) list.push({ y: h.y, d: () => drawStoneHit(h) });
   for (const h of bluntHits) list.push({ y: h.y, d: () => drawBluntHit(h) });
   for (const f of bleedFx) list.push({ y: f.y, d: () => drawBleedFx(f) });

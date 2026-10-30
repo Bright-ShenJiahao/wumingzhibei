@@ -307,3 +307,9 @@
 - 通脉丹 7 个来源（每个只给一次）：ch1/ch2/ch3 首通、xc1/xc2/xc3 校场第 5 层、mo 任意魔化通关。第三章没出前最多 5 颗，封号等第三章（用户选 A）。重置 200 金币。
 - 节点以数值为主，走 gear_combat 的 stat()（sharp/critical/severity/charge/swift/move/health/guard/reach/dodge）；特殊效果用 MERIDIAN.x(key)：chargeMul、skillCd、roll、getup、knock、elite、waveHeal、shield（破盾）、unyield（不屈，一局一次）、zhenguan（镇关）。
 - 存档字段 profile.meridian {got, path, _at}；cloud_merge 与 netlify profile.mjs 已加合并/校验。
+
+## 盾兵 / 主动技能 / 回旋（用户定）
+- 盾兵正面按武器分：远程 ×0.5、长杆 ×0.75、大刀 ×1.15 且格挡概率减半、锤子无视盾；蓄力和终段不会被整下挡掉但倍率照算；天上落下的穿云箭/投石只吃「举盾」规则，不再叠正面倍率；背后打不受影响。
+- 主动技能定位清场：雷霆万钧同一敌人一次最多 2 下、无目标不乱劈；霹雳飞石同一敌人最多 3 块、火场不叠。
+- 装备词条「回旋」：打中后绕中箭处转一圈，扫附近最多 2 人，每人 45%（gearSpins）。
+- 张梁/张宝在张角战助阵：从右侧跑入，台词「大哥，我来助你！」，语音 zl_help/zb_help 暂用 zl_roar/zb_fire 复制。
