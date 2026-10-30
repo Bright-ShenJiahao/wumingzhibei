@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=4692bd3168" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4692bd3168)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=3e63aeb488" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3e63aeb488)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='b813077539d0',busy=false;
+var BUILD='ec3d9165660f',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -3698,7 +3698,7 @@ const Boss = (() => {
   ];
   const RESET_COST = 200;
   // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
-  { const st = document.createElement('style'); st.textContent = '.outfitSlot.outfitSlot.bnr{background:var(--bnr) right center/cover no-repeat,#5a1610!important;border:2px solid #d4a24c!important;box-shadow:inset 0 0 0 1px #2a0a06,0 3px 8px #120a08aa!important;min-height:58px}.outfitSlot.bnr .outfitIco{display:none}.outfitSlot.bnr .outfitCopy{left:14px;right:auto;text-align:left;text-shadow:0 1px 3px #000,0 0 6px #000}.outfitSlot.bnr .outfitCopy strong{font-family:MaShanZheng,"STKaiti",serif;font-size:clamp(16px,1.9vw,21px);color:#ffe2a0;letter-spacing:2px}.outfitSlot.bnr .outfitCopy small{color:#f1d9b0}.outfitSlot.bnr:hover{filter:brightness(1.12)}'; (document.head || document.documentElement).append(st); }
+  { const st = document.createElement('style'); st.textContent = '.outfitSlot.outfitSlot.bnr{background:linear-gradient(90deg,rgba(46,10,6,.92) 0,rgba(46,10,6,.72) 45%,rgba(46,10,6,.5) 100%),var(--bnr) right center/cover no-repeat,#5a1610!important;border:2px solid #d4a24c!important;box-shadow:inset 0 0 0 1px #2a0a06,0 3px 8px #120a08aa!important;min-height:58px}.outfitSlot.bnr .outfitIco{display:none}.outfitSlot.bnr .outfitCopy{left:14px;right:auto;text-align:left;text-shadow:0 1px 3px #000,0 0 6px #000}.outfitSlot.bnr .outfitCopy strong{font-family:MaShanZheng,"STKaiti",serif;font-size:clamp(16px,1.9vw,21px);color:#ffe2a0;letter-spacing:2px}.outfitSlot.bnr .outfitCopy small{color:#f1d9b0}.outfitSlot.bnr:hover{filter:brightness(1.12)}'; (document.head || document.documentElement).append(st); }
 
   const profile = () => window.ARMORY && ARMORY.state ? ARMORY.state() : null;
   function store() {
@@ -3801,9 +3801,9 @@ const Boss = (() => {
       return `<button type="button" class="mn${on ? ' on' : ''}${can ? ' can' : ''}${isSel ? ' sel' : ''}" style="--c:${COLS[c].color};${im ? `background-image:url(${im})` : ''}" data-r="${r}" data-c="${c}" title="${n.n}：${n.d}" aria-label="${n.n}">${im ? '' : n.s}</button>`;
     }).join('')).join('');
     const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
-    const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>封 · ${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
+    const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">封 · ${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
   function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边
