@@ -61,7 +61,7 @@
     if(!ranged&&!token.dualChecked){token.dualChecked=true;if(chance(stat(s,'double')))pending.push({t:gameT+.1,uid:s.uid,run:()=>{if(Math.abs(z.x-hero.x)<WEAP[s.type].reach*range(s)+12&&Math.abs(z.y-hero.y)<WEAP[s.type].dy)extra(z,base*.5,token);}});}
     const splitProbability=clamp(stat(s,'split')+(rogue('split')?1:0),0,1);
     if(!ranged&&chance(splitProbability)){
-      const coeff=rogue('split')?.3:.25;
+      const coeff=rogue('split')?.2:.25;   // 横扫千军 30%→20%
       zs.filter(o=>o!==z&&!o.dead&&Math.hypot(o.x-z.x,(o.y-z.y)*2)<=45).sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y)).slice(0,3).forEach(o=>extra(o,base*coeff,token));
     }
     if(!token.thunderChecked){token.thunderChecked=true;if(s.special==='thunder'&&chance(.08)&&ready('thunder',2)){

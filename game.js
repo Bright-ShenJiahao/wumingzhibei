@@ -1588,6 +1588,7 @@ function strike() {
   const fin = 1;
   const hammerFinisher = weapon === 'hammer' && isFinisher;
   const bladeFinisher = weapon === 'blade' && isFinisher;
+  let spinHits = 0;
   if (hammerFinisher) hammerFx.push({ kind: 'spin', x: h.x, y: h.y, t: 0, T: .3, size: 70 });
   if (bladeFinisher) bladeFx.push({ kind: 'slash', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .24, dir: h.f });
   for (const z of zs) {
@@ -1606,6 +1607,7 @@ function strike() {
       if (downed) mult *= 2;
 
       if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
+      if (hammerFinisher && spinHits++ > 0) mult *= .6;   // 用户定（伤害测试场）：回旋锤第 2 个起每人 60%，群体伤害不再碾压
       let attackDmg = C.dmg * fin * mult;
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);

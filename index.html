@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=4bcb08744d" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4bcb08744d)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=3441db8938" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3441db8938)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='031b08efaa72',busy=false;
+var BUILD='902a99cf33bc',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -3368,7 +3368,7 @@ const Boss = (() => {
     if(!ranged&&!token.dualChecked){token.dualChecked=true;if(chance(stat(s,'double')))pending.push({t:gameT+.1,uid:s.uid,run:()=>{if(Math.abs(z.x-hero.x)<WEAP[s.type].reach*range(s)+12&&Math.abs(z.y-hero.y)<WEAP[s.type].dy)extra(z,base*.5,token);}});}
     const splitProbability=clamp(stat(s,'split')+(rogue('split')?1:0),0,1);
     if(!ranged&&chance(splitProbability)){
-      const coeff=rogue('split')?.3:.25;
+      const coeff=rogue('split')?.2:.25;   // 横扫千军 30%→20%
       zs.filter(o=>o!==z&&!o.dead&&Math.hypot(o.x-z.x,(o.y-z.y)*2)<=45).sort((a,b)=>Math.hypot(a.x-z.x,a.y-z.y)-Math.hypot(b.x-z.x,b.y-z.y)).slice(0,3).forEach(o=>extra(o,base*coeff,token));
     }
     if(!token.thunderChecked){token.thunderChecked=true;if(s.special==='thunder'&&chance(.08)&&ready('thunder',2)){
@@ -4803,11 +4803,11 @@ const Boss = (() => {
   }
   function castFire() {
     const c = cluster(70);   // 火铺在敌群那里：6 片，每秒 1 伤害，会在敌人之间传开
-    for (let i = 0; i < 6; i++) allyFires.push({ x: c.x + (i % 3 - 1) * 34 + rnd(-6, 6), y: c.y + (i < 3 ? -12 : 12), t: 5, r: 28, tick: 0, dmg: .5, ignite: true });
+    for (let i = 0; i < 6; i++) allyFires.push({ x: c.x + (i % 3 - 1) * 34 + rnd(-6, 6), y: c.y + (i < 3 ? -12 : 12), t: 5, r: 28, tick: 0, dmg: .35, ignite: true });   // 伤害测试场：火烧连营偏强 .5→.35
     // 打击感：轰燃一声、震屏、火星四溅，范围内敌人当场着火并被掀一下
     shake = Math.max(shake, .35); if (typeof sfx === 'function') { sfx('fireLand', c.x); sfx('finisher', c.x); }
     for (let i = 0; i < 40; i++) propFx.push({ x: c.x + rnd(-60, 60), y: c.y + rnd(-18, 18), vx: rnd(-90, 90), vy: rnd(-180, -60), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.4, .8), max: .8, c: ['#ff9a2e', '#ffd04a', '#ff5a1a'][i % 3] });
-    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 80 && Math.abs(z.y - c.y) < 26) { z.burnT = 3; z.burnSpread = true; hit(z, .5, 40, Math.sign(z.x - c.x) || 1, false, 0, .3, true, false, { secondary: true }); stat('火烧连营', .5); }
+    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 80 && Math.abs(z.y - c.y) < 26) { z.burnT = 3; z.burnSpread = true; hit(z, .2, 40, Math.sign(z.x - c.x) || 1, false, 0, .3, true, false, { secondary: true }); stat('火烧连营', .2); }
     if (typeof say === 'function') say('火烧连营！', 1.4);
   }
   function castWater() {
@@ -6364,7 +6364,7 @@ const Boss = (() => {
       ['先声夺人', 'n', '每波敌人出现后 4 秒「战意」：伤害 +40%、移速 +25%；第一下 3 倍伤害、击倒并震开周围'],
       ['直取要害', 'n', '暴击率 +5%；打正在蓄力出招（头顶冒!）的敌人必暴击并打断'],
       ['一鼓作气', 'n', '连续打中叠层，每层伤害 +1.5%，最多 10 层；2 秒没打中开始掉层'],
-      ['横扫千军', 'n', '近战打中时，溅射周围最多 3 人，每人 30% 伤害'],
+      ['横扫千军', 'n', '近战打中时，溅射周围最多 3 人，每人 20% 伤害'],
       ['积羽沉舟', 'r', '普攻不论打谁都累计，每第 3 下必暴击、击退并晕 0.5 秒'],
       ['乘胜追击', 'n', '击杀敌人后 3 秒内，下一击必暴击'],
       ['矢如连珠', 'n', '远程连续 3 发打中同一目标，第 4 发多射 2 支副弹'],
@@ -10220,6 +10220,7 @@ function strike() {
   const fin = 1;
   const hammerFinisher = weapon === 'hammer' && isFinisher;
   const bladeFinisher = weapon === 'blade' && isFinisher;
+  let spinHits = 0;
   if (hammerFinisher) hammerFx.push({ kind: 'spin', x: h.x, y: h.y, t: 0, T: .3, size: 70 });
   if (bladeFinisher) bladeFx.push({ kind: 'slash', x: h.x + h.f * 30, y: h.y - 16, t: 0, T: .24, dir: h.f });
   for (const z of zs) {
@@ -10238,6 +10239,7 @@ function strike() {
       if (downed) mult *= 2;
 
       if (behind || downed) floaters.push({ x: z.x, y: z.y - 26, t: 0, txt: downed ? '补刀！' : '背击！', big: true });
+      if (hammerFinisher && spinHits++ > 0) mult *= .6;   // 用户定（伤害测试场）：回旋锤第 2 个起每人 60%，群体伤害不再碾压
       let attackDmg = C.dmg * fin * mult;
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
