@@ -8,7 +8,7 @@ export const config={path:'/api/profile'};
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const TYPES=new Set(['staff','hammer','blade','stone','halberd','bow']);
 function validate(p){
-  if(!p||!Array.isArray(p.items)||p.items.length>globalThis.EQUIPMENT_RULES.CAPACITY)throw new Error('身上与仓库合计最多50把武器，请先熔炼或丢弃');
+  if(!p||!Array.isArray(p.items)||p.items.length>globalThis.EQUIPMENT_RULES.capacityOf(p))throw new Error('身上与仓库合计最多50把武器，请先熔炼或丢弃');
   const clean=JSON.parse(JSON.stringify(p));
   if(!clean.items.every(i=>i&&TYPES.has(i.type)&&typeof i.uid==='string'&&i.uid.length<=100&&Number.isInteger(i.q)&&i.q>=0&&i.q<=5&&Array.isArray(i.affixes)&&i.affixes.length<=2))throw new Error('装备数据不合法');
   for(const key of ['_removed','_equipAt','equipped','campaign'])if(!clean[key]||typeof clean[key]!=='object'||Array.isArray(clean[key]))clean[key]={};
@@ -27,6 +27,11 @@ function validate(p){
     const a=clean.artifacts;if(typeof a!=='object'||Array.isArray(a))throw new Error('神器数据不合法');
     const owned={};for(const k of ['feijian'])if(a.owned?.[k])owned[k]=1;
     const at=Number(a._at);clean.artifacts={owned,eq:typeof a.eq==='string'&&owned[a.eq]?a.eq:'',_at:Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0};
+  }
+  if(clean.goods!=null){   // 商店消耗品
+    const g=clean.goods;if(typeof g!=='object'||Array.isArray(g))throw new Error('商品数据不合法');
+    const ok=k=>/^[a-z_]{1,12}$/.test(k),c={},off={};for(const k in (g.c||{}))if(ok(k))c[k]=Math.min(999,int(g.c[k]));for(const k in (g.off||{}))if(ok(k))off[k]=g.off[k]?1:0;
+    const at=Number(g._at);clean.goods={c,off,bag:Math.min(3,int(g.bag)),fu:typeof g.fu==='string'&&ok(g.fu)?g.fu:'',_at:Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0};
   }
   if(clean.meridian!=null){
     const m=clean.meridian;if(typeof m!=='object'||Array.isArray(m))throw new Error('经脉数据不合法');
@@ -88,14 +93,14 @@ async function inner(req){
       // 按ETag条件更新整份存档，防止两台设备同时领取第50格而合并出第51把。
       for(let attempt=0;attempt<6;attempt++){
         const {entry,profile:existing}=await current(store,prefix),merged=globalThis.CLOUD_MERGE.merge(existing,profile);
-        if(merged.items.length>globalThis.EQUIPMENT_RULES.CAPACITY)return reply({ok:false,capacity:true,error:'云端合并后超过50把，请先在原设备熔炼或丢弃，再同步'},409);
+        if(merged.items.length>globalThis.EQUIPMENT_RULES.capacityOf(merged))return reply({ok:false,capacity:true,error:'云端合并后超过50把，请先在原设备熔炼或丢弃，再同步'},409);
         const condition=entry?{onlyIfMatch:entry.etag}:{onlyIfNew:true};
         const result=await store.set(prefix+'current',JSON.stringify(merged),condition);
         if(!result.modified)continue;
         // 既有历史快照保留，新的快照也继续备份；不删除原云档。
         await store.set(prefix+body.writer+'/'+String(body.sequence).padStart(16,'0'),JSON.stringify(merged)).catch(()=>{});
         const latest=await store.get(prefix+'current',{type:'json'});
-        return reply({ok:true,pinSet,limit:globalThis.EQUIPMENT_RULES.CAPACITY,profile:latest||merged});
+        return reply({ok:true,pinSet,limit:globalThis.EQUIPMENT_RULES.capacityOf(latest||merged),profile:latest||merged});
       }
       return reply({ok:false,error:'存档正在其他设备更新，请稍后重试'},409);
     }

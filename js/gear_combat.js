@@ -7,7 +7,7 @@
     if(item?.negative)v[item.negative.id]=-item.negative.value/100;
     return {uid:item?.uid||type,type,q:item?.q||0,v,special:item?.special||null,special2:item?.special2||null};}
   function sync(){const next=ARMORY.active(weapon),uid=next?.uid||weapon;if(uid!==currentUid){current=snapshot(weapon);currentUid=uid;spirit=0;chain=0;chainTarget=null;pending=[];if(hero){const max=maxHp();hero.hp=Math.min(hero.hp,max);}}return current;}
-  const stat=(s,k)=>(s.v[k]||0)+(window.MERIDIAN?MERIDIAN.stat(k):0);   // 经脉数值叠在装备词条上
+  const stat=(s,k)=>(s.v[k]||0)+(window.MERIDIAN?MERIDIAN.stat(k):0)+(window.GOODS?GOODS.stat(k):0);   // 经脉、强化符   // 经脉数值叠在装备词条上
   function reduction(s){return clamp(stat(s,'focus'),0,.3);}
   function maxHp(){const s=current||snapshot(typeof weapon==='undefined'?'hammer':weapon);return 10*(1+clamp(stat(s,'health')+stat(s,'frail'),-.8,1));}
   function lowHp(){return hero?clamp((.5-hero.hp/maxHp())/.3,0,1):0;}

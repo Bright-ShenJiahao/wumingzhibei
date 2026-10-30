@@ -221,6 +221,7 @@ function reset() {
   if (window.ARTIFACT) ARTIFACT.startRun();
   if (window.SUPPLY) SUPPLY.reset();
   if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次
+  if (window.GOODS) GOODS.reset();   // 商店带进来的消耗品：开打第一帧才扣
   if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) flushLoads();   // 进了战斗就不再限速下图
   if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) { flushLoads(); SFX.preloadVoices(['intro', 'guanhai_']); } }, 300);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
@@ -259,9 +260,9 @@ const CHARGE_MS = 400;
 let chargeTier = 0, chargeTierFlash = 0;
 function chargeMaxMs() {
   const base = WEAP[weapon] && WEAP[weapon].class === 'ranged' ? 1200 : 1600;
-  return base * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1);
+  return base * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1) * (window.GOODS ? GOODS.chargeMul() : 1);
 }
-function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1); }
+function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1) * (window.GOODS ? GOODS.chargeMul() : 1); }
 function chargeTierFor(held) {
   const max = chargeMaxMs();
   if (held >= max) return 3;
@@ -1696,7 +1697,7 @@ function dmgHero(n, from, kind = 'basic') {
   if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
-  else if (raw >= 2 * (window.MERIDIAN ? MERIDIAN.x('knock', 1) : 1) || h.hp <= 0) {
+  else if ((raw >= 2 * (window.MERIDIAN ? MERIDIAN.x('knock', 1) : 1) && !(h.hp > 0 && window.GOODS && GOODS.useAmulet())) || h.hp <= 0) {   // 护身符：第一次重击不倒地
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (window.ARTIFACT) ARTIFACT.onKnock(dir);   // 被击倒：从飞剑上摔下
     if (h.hp <= 0) h.deathArc = true;
@@ -2400,6 +2401,7 @@ function update(dt) {
   if (window.ARTIFACT && !over && !won) ARTIFACT.tick(dt);
   if (window.SUPPLY && !over && !won) SUPPLY.tick(dt);
   if (window.MERIDIAN && !over && !won) MERIDIAN.tick();   // 经脉·回气
+  if (window.GOODS && !over && !won) GOODS.tick();
   if (volleyAgainAt && gameT >= volleyAgainAt) { volleyAgainAt = 0; summonArchersVolley(true); }
   gameT += dt;
   if (window.GEAR && !over && !won) GEAR.tick(dt);
@@ -3523,7 +3525,7 @@ function drawHero() {
   if (charging) drawChargeAura(h);   // 蓄力聚气（白色气焰）
   if (h.inv > 0 && h.inv < 2 && h.st !== 'roll' && h.st !== 'down' && Math.floor(h.inv * 20) % 2) return;
   const lift = window.ARTIFACT ? ARTIFACT.drawUnder(h) : 0;   // 踩在飞剑上：剑画在脚下，人抬高一点
-  const drunk = window.SUPPLY && SUPPLY.drunk(), sway = drunk && h.st === 'idle' ? Math.sin(performance.now() / 300) * 1.5 : 0;   // 烈酒坛：泛红、站着时轻轻摇晃
+  const drunk = window.SUPPLY && SUPPLY.drunk(), sway = drunk && h.st === 'idle' ? Math.sin(performance.now() / 300) * 1.5 : 0;   // 杜康酒：泛红、站着时轻轻摇晃
   if (drunk) { ctx.save(); ctx.filter = 'sepia(.35) saturate(1.8) hue-rotate(-20deg)'; }
   drawChar('hero', heroFrame(h), h.x + sway, h.y - (h.z || 0) - lift, h.f < 0);
   if (drunk) ctx.restore();

@@ -128,7 +128,7 @@
       .fruitIcon{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff2bd 0 9%,#f3bb38 24%,#df6d32 58%,#8e2e32 100%);box-shadow:0 0 0 2px #4c2524,0 0 12px #d77b32aa;position:relative}
       .fruitIcon::after{content:"";position:absolute;left:15px;top:-4px;width:2px;height:9px;background:#6c8d3a;transform:rotate(18deg)}
       .shopName{color:#f4d98f;font:700 15px "PingFang SC",sans-serif}.shopDesc{color:#cbb58e;font:12px/1.45 "PingFang SC",sans-serif}
-      .shopPrice{color:#ffcf62;font:700 13px "PingFang SC",sans-serif}.shopBuyRow{grid-column:1/-1;display:flex;gap:5px;flex-wrap:wrap}
+      .shopPrice{grid-column:1/-1;white-space:nowrap;color:#ffcf62;font:700 13px "PingFang SC",sans-serif}.shopBuyRow{grid-column:1/-1;display:flex;gap:5px;flex-wrap:wrap}
       .shopBuy{border:1px solid #a77e47;border-radius:4px;background:#593d27;color:#ffe5b0;padding:5px 7px;font:700 12px "PingFang SC",sans-serif;cursor:pointer}.shopBuy:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1)}.shopBuy:active:not(:disabled){filter:brightness(1.2)}
       .shopEmpty{color:#c3aa83;font:13px "PingFang SC",sans-serif;padding:12px}
       @media(max-height:430px){#shopPanel{max-height:94dvh}.shopBody{grid-template-columns:26% minmax(0,1fr);gap:7px;padding:7px}.shopLeft{padding:6px;gap:5px}.shopPortrait{height:82px}.shopLine{font-size:10px;padding:5px;min-height:30px}.shopWallet{font-size:10px;padding:4px}.shopWallet b{font-size:13px}.shopGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.shopCard{grid-template-columns:34px minmax(0,1fr);padding:6px;gap:4px}.shopCardIcon{width:34px;height:34px}.shopName{font-size:12px}.shopDesc{font-size:10px}.shopPrice{font-size:11px}.shopBuy{font-size:10px;padding:4px 5px}.shopHead h2{font-size:17px}.shopHead{padding:6px 10px}}
@@ -166,9 +166,18 @@
     if (!SHOP_ITEMS.length) { grid.innerHTML = '<p class="shopEmpty">老板今天没进货。</p>'; return; }
     for (const item of SHOP_ITEMS) {
       const card = document.createElement('div'); card.className = 'shopCard';
-      const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : '<span aria-hidden="true">🎁</span>';
-      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币${item.id === 'fruit' ? `<span class="shopOwn">持有 ${fmt(fruits)} 个</span>` : ''}</div><div class="shopBuyRow"></div>`;
+      const ICON = { ration: '粮', jinchuang: '药', dukang: '酒', reroll: '签', amulet: '护', stone: '石', bag: '袋', lottery: '命' };
+      const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : `<span aria-hidden="true" style="font:700 24px MaShanZheng,STKaiti,serif;color:${item.fu ? '#ff9a5a' : '#ffd77a'}">${item.fu ? '符' : ICON[item.id] || '货'}</span>`;
+      card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}${item.daily && item.daily() ? ' <span style="color:#ff7a4a;font-size:12px">今日特价 7 折</span>' : ''}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币${item.id === 'fruit' ? `<span class="shopOwn">持有 ${fmt(fruits)} 个</span>` : item.own ? `<span class="shopOwn">持有 ${fmt(item.own())}</span>` : ''}</div><div class="shopBuyRow"></div>`;
       const row = card.querySelector('.shopBuyRow');
+      if (item.kind === 'open') { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '去抽签'; b.onclick = () => item.open(); row.append(b); grid.append(card); continue; }
+      if (item.soldOut && item.soldOut()) { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '已买满'; b.disabled = true; row.append(b); grid.append(card); continue; }
+      if (item.goods && window.GOODS) {   // 消耗品：下一局带不带 / 强化符选哪张 / 重铸石使用
+        const g = GOODS.store();
+        if (item.fu) { const on = g && g.fu === item.id; const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局带这张' : '下局带这张'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.fu = on ? '' : item.id; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
+        else if (GOODS.CONS[item.id]) { const on = !(g && g.off[item.id]); const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = on ? '✓ 下局自动带' : '下局不带'; t.style.background = on ? '#3a5a2a' : ''; t.onclick = () => { const g2 = GOODS.store(); g2.off[item.id] = on ? 1 : 0; g2._at = Date.now(); ARMORY.saveNow(); render(); }; row.append(t); }
+        if (item.useStone) { const t = document.createElement('button'); t.type = 'button'; t.className = 'shopBuy'; t.textContent = '使用'; t.disabled = !item.own(); t.onclick = () => useStone(); row.append(t); }
+      }
       if (item.kind === 'stack') {
         for (const amount of item.amounts || [1]) {
           const total = item.price * amount;
@@ -183,6 +192,18 @@
       }
       grid.append(card);
     }
+  }
+  function useStone() {   // 选一把武器重铸一条词条
+    const p = window.ARMORY && ARMORY.state(); if (!p) return;
+    const grid = overlay && overlay.querySelector('.shopGrid'); if (!grid) return;
+    grid.innerHTML = '<p class="shopEmpty">选一把要重铸的武器（随机换掉其中一条词条）：</p>';
+    for (const it of p.items.filter(i => i.affixes && i.affixes.length)) {
+      const q = AFFIX_DATA.qualities[it.q] || {}, b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.style.cssText = 'display:block;width:100%;text-align:left;margin:3px 0;color:' + (q.color || '#eee');
+      b.textContent = AFFIX_DATA.label(it) + '　' + it.affixes.map(a => AFFIX_DATA.positive[a.id]?.name).join('、');
+      b.onclick = () => { const r = GOODS.reforgeOne(it.uid); line = r ? `「${r.from}」换成了「${r.to}」，客官看看满不满意。` : '这把没法重铸。'; mood = r ? 'happy' : 'annoyed'; render(); if (window.TITLE && TITLE.refreshPreparation) try { TITLE.refreshPreparation(); } catch (e) {} };
+      grid.append(b);
+    }
+    const back = document.createElement('button'); back.type = 'button'; back.className = 'shopBuy'; back.textContent = '返回'; back.onclick = () => render(); grid.append(back);
   }
   function buy(item, amount) {
     const n = item.kind === 'stack' ? amount : 1;

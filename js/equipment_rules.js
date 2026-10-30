@@ -13,5 +13,7 @@
     for(const q of qualities){const chance=chanceOf(items.length,q,pity),weight=1/qualities.length;pityBonus+=weight*(chance-upgrades[items.length][q]);outcomes[q]=(outcomes[q]||0)+weight*(1-chance);if(chance)outcomes[q+1]=(outcomes[q+1]||0)+weight*chance;upgradeChance+=weight*chance;}
     return {count:items.length,types,qualities,outcomes,upgradeChance,pityBonus};
   }
-  root.EQUIPMENT_RULES={CAPACITY,upgrades,PITY_STEP,chanceOf,forgePlan};
+  // 商店「武器锁定袋」：每买一次仓库 +5，最多 3 次（profile.goods.bag）
+  const capacityOf=p=>CAPACITY+5*Math.min(3,Math.max(0,Math.floor(Number(p&&p.goods&&p.goods.bag)||0)));
+  root.EQUIPMENT_RULES={CAPACITY,capacityOf,upgrades,PITY_STEP,chanceOf,forgePlan};
 })(typeof window==='undefined'?globalThis:window);

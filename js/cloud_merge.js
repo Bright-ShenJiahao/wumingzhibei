@@ -10,6 +10,8 @@
       if(oa>outfitAt){outfitAt=oa;result.outfit={hair:part(p.outfit?.hair),shirt:part(p.outfit?.shirt),pants:part(p.outfit?.pants),_at:oa};}
       // 神器：拥有取并集（只增不减），装备哪件以最后改动的为准
       if(p.artifacts&&typeof p.artifacts==='object'){result.artifacts ||= {owned:{},eq:'',_at:-1};for(const k of ['feijian'])if(p.artifacts.owned?.[k])result.artifacts.owned[k]=1;const aa=Number(p.artifacts._at)||0;if(aa>result.artifacts._at){result.artifacts._at=aa;result.artifacts.eq=typeof p.artifacts.eq==='string'&&p.artifacts.eq.length<=12?p.artifacts.eq:'';}}
+      // 商店消耗品：以最后改动的那份为准；锁定袋取最大
+      if(p.goods&&typeof p.goods==='object'){const ga=Number(p.goods._at)||0,bag=Math.max(result.goods?.bag|0,p.goods.bag|0);if(!result.goods||ga>(Number(result.goods._at)||0))result.goods=JSON.parse(JSON.stringify(p.goods));result.goods.bag=Math.min(3,bag);}
       // 经脉：通脉丹来源取并集（只增不减），点的路线以最后改动的为准
       if(p.meridian&&typeof p.meridian==='object'){result.meridian ||= {got:{},path:[],_at:-1};for(const k of ['ch1','ch2','ch3','xc1','xc2','xc3','tg'])if(p.meridian.got?.[k])result.meridian.got[k]=1;const ma=Number(p.meridian._at)||0;if(ma>result.meridian._at){result.meridian._at=ma;result.meridian.path=Array.isArray(p.meridian.path)?p.meridian.path.filter(v=>v===0||v===1||v===2).slice(0,7):[];}}
       // 锦囊锁定（花金币买的，长期有效）：以最后改动的那份为准

@@ -1,9 +1,9 @@
-// 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。金创药捡到先存 1 瓶、半血自动喝；其余拾取即生效。
+// 第二章战场补给（用户定）：金创药 / 杜康酒 / 火油罐。金创药捡到先存 1 瓶、半血自动喝；其余拾取即生效。
 // 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
     jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 3 血，之后 4 秒每秒再回 0.5', w: 25 },
-    jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 20 },   // 用户定：金创药、酒再少一些（火油罐 30 不变）
+    jiu: { name: '杜康酒', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 20 },   // 用户定：金创药、酒再少一些（火油罐 30 不变）
     huoyou: { name: '火油罐', icon: 'sup_huoyou', tip: '按攻击扔出：爆炸 1.5 伤害并留下大火场', w: 30 },
   };
   let stash = 0, ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
@@ -115,5 +115,8 @@
     const list = []; if (drunkT > 0) list.push(['sup_jiu', drunkT]); if (regenT > 0) list.push(['sup_jinchuang', regenT]); if (jar) list.push(['sup_huoyou', 20 - jar.t]); if (stash) list.push(['sup_jinchuang', '存']);
     list.forEach(([k, t], i) => { const im = img(k); ctx.save(); ctx.imageSmoothingEnabled = false; ctx.fillStyle = 'rgba(20,14,10,.65)'; ctx.fillRect(x + i * 46, y, 42, 22); if (im) ctx.drawImage(im, x + i * 46 + 3, y + 2, 18 * im.width / im.height, 18); ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(typeof t === 'string' ? t : Math.ceil(t) + 's', x + i * 46 + 22, y + 16); ctx.restore(); });
   }
-  window.SUPPLY = { reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar, stashed: () => stash };
+  // 商店带进来的：开局存一瓶金创药 / 直接喝一坛杜康酒
+  function giveStash() { stash = 1; }
+  function drink() { apply('jiu', true); }
+  window.SUPPLY = { giveStash, drink, reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar, stashed: () => stash };
 })();
