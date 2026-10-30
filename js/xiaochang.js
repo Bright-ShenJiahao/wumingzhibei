@@ -296,7 +296,7 @@ window.XIAOCHANG = (() => {
   }
   function finish(win) {
     if (!run || run.status === 'result') return;
-    if (run.xinmo && window.XINMO) { run.insight = XINMO.insight(); run.xstats = XINMO.end(win); }
+    if (run.xinmo && window.XINMO) { run.insight = XINMO.insight(); run.xstats = XINMO.end(win); run.lessons = XINMO.lessons(); }
     if (win) {
       GEAR.collectDrops();
       if (run.xinmo) {} else if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
@@ -353,6 +353,7 @@ window.XIAOCHANG = (() => {
     const article=document.createElement('article');article.style.backgroundImage=`url("${ASSETS.ui.scroll}")`;
     const heading=document.createElement('h2');heading.textContent=run.xinmo?`心魔试炼 · ${run.win?'战胜心魔':'败给了自己'}`:`第${run.floor}层 · ${run.win?'通过':'败北'}`;article.appendChild(heading);
     if(run.xinmo){const st=document.createElement('p');st.textContent=`战胜心魔 ${run.xstats?run.xstats.wins:0} 次 / 挑战 ${run.xstats?run.xstats.tries:0} 次${run.win?' · 心魔记住了你这一局的打法，下次会更难':''}`;article.appendChild(st);
+      if(run.lessons&&run.lessons.length){const le=document.createElement('p');le.innerHTML='<b>心魔复盘（它学到了）：</b><br>'+run.lessons.map(t=>'· '+t).join('<br>');article.appendChild(le);}
       if(run.insight&&run.insight.length){const ins=document.createElement('p');ins.innerHTML='<b>心魔看穿了你：</b><br>'+run.insight.map(t=>'· '+t).join('<br>');article.appendChild(ins);}}
     const list=document.createElement('ul'), earned=ARMORY.state().items.filter(i=>!run.initial.has(i.uid));
     for(const item of earned){const li=document.createElement('li');li.style.color=AFFIX_DATA.qualities[item.q].color;li.textContent=AFFIX_DATA.label(item);list.appendChild(li);}
