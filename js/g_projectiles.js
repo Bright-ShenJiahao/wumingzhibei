@@ -55,7 +55,7 @@ function updateShots(dt) {
     if(s.k==='enemyWave'){const step=Math.min(s.left,Math.abs(s.vx)*dt);s.x+=Math.sign(s.vx)*step;s.left-=step;s.t+=dt;if(Math.abs(hero.x-s.x)<12&&Math.abs(hero.y-s.y)<12&&heroOpen()){dmgHero(1.5,s.source,'skill');s.left=0;}s.life=s.left>0?1:0;continue;}
     if (s.k === 'stone' || s.k === 'arrow') {
       s.x += s.vx * dt; s.life -= dt;
-      if (s.life > 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9 && heroOpen()) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
+      if (s.life > 0 && Math.abs(hero.x - s.x) < 9 && Math.abs(hero.y - s.y) < 9 && heroOpen()) { sfx(s.k === 'arrow' ? 'hurt' : 'hit_stone', s.x); dmgHero(s.dmg || 1, { x: s.x - s.vx, source:s.source }); s.life = 0; }
     } else {
       s.t += dt;
       if (s.t >= s.T) {

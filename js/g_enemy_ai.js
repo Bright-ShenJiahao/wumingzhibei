@@ -149,6 +149,7 @@ function separateEnemies(dt) {
 function zUpdate(z, dt) {
   if (window.GEAR && !z.dead) { dt = GEAR.enemyTime(z, dt); if (!dt) return; }
   if (z.T.boss) return Boss.update(z, dt);
+  if (z.T.mirror) { if (window.XINMO) XINMO.update(z, dt); return; }   // 心魔试炼
   const T = z.T;
   if (T.siege) { updateChapter2Catapult(z, dt); return; }
   if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }

@@ -353,6 +353,7 @@ let pendingWeapon = null;
 function setW(w) {
   if ((window.ARMORY && !ARMORY.active(w)) || !WEAP[w] || ((w === 'bow' || w === 'halberd' || w === 'blade') && window.TITLE && TITLE.ownsWeapon && !TITLE.ownsWeapon(w))) return;
   if (over || won || (window.TITLE && TITLE.blocks())) return;
+  if (window.XIAOCHANG && XIAOCHANG.lockedWeapon && XIAOCHANG.lockedWeapon() && w !== XIAOCHANG.lockedWeapon()) { toast('心魔试炼只能用一把武器'); return; }
   if (hero && (hero.air || ['hurt','down','bounce','getup'].includes(hero.st))) { pendingWeapon=w; ui(); return; }
   pendingWeapon=null;
   const changed = weapon !== w;
@@ -1269,7 +1270,7 @@ function clearPauseInputs() {
 }
 function restartPausedGame() {
   if (window.XIAOCHANG && XIAOCHANG.active()) {
-    const r = XIAOCHANG.state(); if (r) XIAOCHANG.start({ chapter: r.chapter, floor: r.floor, wish: r.wish });
+    const r = XIAOCHANG.state(); if (r) XIAOCHANG.start({ chapter: r.chapter, floor: r.floor, wish: r.wish, xinmo: r.xinmo || '' });
   } else if (chapter2Run) prepareChapter2Run(false);
   else reset();
 }

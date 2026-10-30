@@ -292,6 +292,7 @@ function drawHero() {
   if (drunk) ctx.restore();
 }
 function drawZ(z) {
+  if (z.T.mirror && window.XINMO) { XINMO.draw(z); return; }
   ch2Telegraph(z);
   if (z.T.boss) { Boss.draw(z); drawHalberdBleedDots(z, z.y - 68); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }

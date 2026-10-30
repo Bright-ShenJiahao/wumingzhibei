@@ -3,7 +3,7 @@ window.XIAOCHANG = (() => {
   let active = false;
   let run = null, panel = null;
   let magicFx = [], ghostLinks = [];
-  const selection = { chapter: 1, floor: 1, wish: '' };
+  const selection = { chapter: 1, floor: 1, wish: '', xinmo: '' };
   const CONFIG = {
     1: {
       name: '乱世初鸣', pool: ['grunt', 'blade', 'slinger', 'archer', 'priest', 'elite'], boss: { person: '管亥', start: () => Boss.start(660) },
@@ -83,16 +83,19 @@ window.XIAOCHANG = (() => {
     const chapter = options.chapter || selection.chapter, c = CONFIG[chapter];
     if (!c || (!debug() && !(window.TITLE && TITLE.hasCleared(chapter)))) return false;
     if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或卖出，再出征'); return false; }
-    const floor = Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
+    // 心魔试炼：只带一把武器；不带 xinmo 参数的出征（整备页「出征」）就是普通校场，R 键重开沿用上一局
+    const xin = 'xinmo' in options ? (options.xinmo || '') : (Object.keys(options).length ? '' : selection.xinmo);
+    if (xin && !(window.ARMORY && ARMORY.active(xin))) { toast('这把武器没有装备'); return false; }
+    const floor = xin ? 1 : Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
     const wish = c.weapons.includes(options.wish ?? selection.wish) ? options.wish ?? selection.wish : '';
-    Object.assign(selection, { chapter, floor, wish });
+    Object.assign(selection, { chapter, floor: xin ? selection.floor : floor, wish, xinmo: xin });
     if (window.TITLE) TITLE.skip();
     if (window.ROOM) ROOM.skip();
     reset();
     M.top = chapter === 2 ? 190 : 168;   // 第二章校场同样避开更低的栅栏
     if (chapter === 2 && window.ensureAssets) ensureAssets('chapter2', { label: '正在载入黄巾兵马' });
     active = true;
-    run = { chapter, floor, wish, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
+    run = { chapter, floor, wish, xinmo: xin, wave: 0, status: 'ready', nextAt: gameT, debug: debug(), initial: new Set(ARMORY.state().items.map(i => i.uid)) };
     magicFx = []; ghostLinks = [];
     M.W = 720;
     props = [];
@@ -105,12 +108,14 @@ window.XIAOCHANG = (() => {
     joy = null; pressAtk = false; pressRoll = false;
     for (const k in key) delete key[k];
     const chapterPanel = document.getElementById('tChapter'); if (chapterPanel) chapterPanel.classList.remove('open');
+    if (xin) { weapon = xin; if (window.GEAR && GEAR.switch) GEAR.switch(); ui(); }
     offerWave();
     return true;
   }
 
   function setHeading() {
     const title = document.querySelector('#top b');
+    if (title && run && run.xinmo) { title.textContent = `心魔试炼 · ${WEAP[run.xinmo].name}`; return; }
     if (title && run) title.textContent = run.floor >= 6
       ? `校场演武 · 魔化演武 · 第${run.wave}/6波`
       : `校场演武 · 第${run.floor}层 · 第${run.wave}/6波`;
@@ -124,7 +129,9 @@ window.XIAOCHANG = (() => {
     catapults = []; if (typeof Boss !== 'undefined') Boss.reset(); if (window.CH2B) CH2B.reset(); enemySkillFx = [];
     zs = [];
     if (run.wave === 3 || run.wave === 5) refillXiaochangProps();
-    setHeading(); ROGUE.offer();
+    setHeading();
+    if (run.xinmo && window.XINMO) { XINMO.spawn(run.xinmo); run.status = 'fight'; return; }
+    ROGUE.offer();
   }
   function waveTypes(wave = run.wave, floor = run.floor, chapter = run.chapter) {
     const c = CONFIG[chapter], spec = c.waves[wave - 1], melee = c.melee;
@@ -250,12 +257,13 @@ window.XIAOCHANG = (() => {
     if (run.status === 'cards') { if (!ROGUE.blocks()) spawnWave(); return; }
     if (run.status === 'fight' && !zs.some(z => !z.dead)) { run.status = 'rest'; run.nextAt = gameT + 1.5; }
     if (run.status === 'rest' && gameT >= run.nextAt) {
-      if (run.wave === 6) finish(true); else offerWave();
+      if (run.wave === 6 || run.xinmo) finish(true); else offerWave();
     }
   }
   function dropEnemy(z) {
     if (!run || z.gearDropped) return;
     z.gearDropped = true;
+    if (run.xinmo) { if (z.T.mirror && window.XINMO) XINMO.reward(z); return; }   // 心魔：必掉极品 + 金币
     magicDeath(z);
     const source = (z.T.boss || z.T.chapterBoss) ? 'boss' : z.T.elite ? 'elite' : 'grunt';
     const magicFloor = run.floor >= 6;
@@ -287,9 +295,10 @@ window.XIAOCHANG = (() => {
   }
   function finish(win) {
     if (!run || run.status === 'result') return;
+    if (run.xinmo && window.XINMO) { run.insight = XINMO.insight(); run.xstats = XINMO.end(win); }
     if (win) {
       GEAR.collectDrops();
-      if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
+      if (run.xinmo) {} else if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
       if (!run.debug && window.MERIDIAN && run.floor === 6) MERIDIAN.award('xc' + run.chapter);   // 通脉丹：各章校场魔化层首通
     }
     run.coins = window.WALLET ? WALLET.runCoins() : 0;
@@ -321,7 +330,9 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small><h3>心魔试炼</h3><p class="x-xinmo-info"></p><div class="x-options" role="group" aria-label="心魔试炼">${['long','short','ranged'].map(sl=>ARMORY.equipped(sl)).filter(Boolean).map(it=>`<button type="button" data-x-xinmo="${it.type}">挑战·${AFFIX_DATA.names[it.type]}</button>`).join('')}</div><small>只带一把武器，对面是和你一模一样的心魔。战胜必掉极品武器 + 500 金币。</small>`;
+    {const xs=window.XINMO?XINMO.stats():{wins:0,tries:0};box.querySelector('.x-xinmo-info').textContent=xs.tries?`已战胜心魔 ${xs.wins} 次 / 挑战 ${xs.tries} 次 · 你赢得越多，它越强`:'它会学你的打法，一次比一次难。';
+     box.querySelectorAll('[data-x-xinmo]').forEach(b=>b.onclick=()=>{if(start({chapter,xinmo:b.dataset.xXinmo}))document.getElementById('tChapter')?.classList.remove('open');});}
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
     box.querySelectorAll('[data-x-chapter]').forEach(b=>b.onclick=()=>TITLE.openPreparation({chapter:Number(b.dataset.xChapter),view:'xiaochang'}));
     function update(){
@@ -339,7 +350,9 @@ window.XIAOCHANG = (() => {
     ensureStyle(); if (panel) panel.remove();
     panel=document.createElement('section');panel.id='xResult';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');
     const article=document.createElement('article');article.style.backgroundImage=`url("${ASSETS.ui.scroll}")`;
-    const heading=document.createElement('h2');heading.textContent=`第${run.floor}层 · ${run.win?'通过':'败北'}`;article.appendChild(heading);
+    const heading=document.createElement('h2');heading.textContent=run.xinmo?`心魔试炼 · ${run.win?'战胜心魔':'败给了自己'}`:`第${run.floor}层 · ${run.win?'通过':'败北'}`;article.appendChild(heading);
+    if(run.xinmo){const st=document.createElement('p');st.textContent=`战胜心魔 ${run.xstats?run.xstats.wins:0} 次 / 挑战 ${run.xstats?run.xstats.tries:0} 次${run.win?' · 心魔记住了你这一局的打法，下次会更难':''}`;article.appendChild(st);
+      if(run.insight&&run.insight.length){const ins=document.createElement('p');ins.innerHTML='<b>心魔看穿了你：</b><br>'+run.insight.map(t=>'· '+t).join('<br>');article.appendChild(ins);}}
     const list=document.createElement('ul'), earned=ARMORY.state().items.filter(i=>!run.initial.has(i.uid));
     for(const item of earned){const li=document.createElement('li');li.style.color=AFFIX_DATA.qualities[item.q].color;li.textContent=AFFIX_DATA.label(item);list.appendChild(li);}
     if(!earned.length){const li=document.createElement('li');li.textContent='本局未拾取武器';list.appendChild(li);}article.appendChild(list);
@@ -347,12 +360,14 @@ window.XIAOCHANG = (() => {
     const space=document.createElement('p');space.textContent=`仓库格数 ${ARMORY.count()}/50 · ${ARMORY.count()>=50?'已满，请返回整备熔炼或丢弃':'已拾取装备全部保留'}`;article.appendChild(space);
     const nav=document.createElement('nav');
     const button=(text,action,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.style.backgroundImage=`url("${ASSETS.ui.btn}")`;b.onclick=action;nav.appendChild(b);};
+    if(run.xinmo){button('再战心魔',()=>start({chapter:run.chapter,xinmo:run.xinmo}),ARMORY.count()>=50);button('返回整备',()=>{const chapter=run.chapter;leave();ROGUE.reset();TITLE.openPreparation({chapter,view:'xiaochang'});});article.appendChild(nav);panel.appendChild(article);document.body.appendChild(panel);document.body.classList.add('wzb-xresult');return;}
     if(run.win&&run.floor<6&&(run.debug||highest(run.chapter)>=run.floor))button('下一层',()=>start({...selection,floor:run.floor+1}),ARMORY.count()>=50);
     button('再战本层',()=>start({...selection,floor:run.floor}),ARMORY.count()>=50);
     button('返回整备',()=>{const chapter=run.chapter;leave();ROGUE.reset();TITLE.openPreparation({chapter,view:'xiaochang'});});
     article.appendChild(nav);panel.appendChild(article);document.body.appendChild(panel);document.body.classList.add('wzb-xresult');
   }
   function leave() {
+    if(window.XINMO)XINMO.reset();
     active=false;run=null;magicFx=[];ghostLinks=[];M.top=168;
     if(panel){panel.remove();panel=null;}document.body.classList.remove('wzb-xresult');
   }
@@ -448,8 +463,9 @@ window.XIAOCHANG = (() => {
   return { CONFIG, active: () => active, state: () => run, tokenCap: () => active && run ? (run.floor >= 4 ? 3 : 2) : M.token, blocks: () => active && run?.status === 'result', leave, start, update, decorate, dropEnemy, summonArchers, affixText,
     renderPreparation, drawAffix, drawMagicFx, skipToSix, clampActors, drawBackground, refillXiaochangProps,
     cardAllowed: card => { if(!active)return true;const long=!!ARMORY.equipped('long'),short=!!ARMORY.equipped('short'),ranged=!!ARMORY.equipped('ranged');return card.school==='长武器'?long:card.school==='短武器'?short:card.school==='远程'?ranged:card.school==='近战'?(long||short):true; },
-    enemyDamage: (z,n) => active && run ? n/config().hp[run.floor-1]*(z.xAffixes && z.xAffixes.includes('armor') ? .75 : 1) : n,
-    heroDamage: (n,z) => active && run ? n*config().damage[run.floor-1]*(1+.1*(z?.ghost||0)) : n,
+    lockedWeapon: () => active && run && run.xinmo || '',
+    enemyDamage: (z,n) => active && run && run.xinmo ? n : active && run ? n/config().hp[run.floor-1]*(z.xAffixes && z.xAffixes.includes('armor') ? .75 : 1) : n,
+    heroDamage: (n,z) => active && run && run.xinmo ? n : active && run ? n*config().damage[run.floor-1]*(1+.1*(z?.ghost||0)) : n,
     onHitHero: z => { if (!magic() || !z || z.dead || !z.xAffixes || !z.xAffixes.includes('leech')) return; z.hp = Math.min(z.T.hp, z.hp + z.T.hp * .05); },
     actionScale: z => active && z.xAffixes && z.xAffixes.includes('rage') ? 1.2 : 1,
     moveScale: z => active ? (z.xAffixes && z.xAffixes.includes('rage') && !z.T.boss ? 1.2 : 1) * (1 + .1 * (z.ghost || 0)) : 1,
