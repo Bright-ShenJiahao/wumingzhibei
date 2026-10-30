@@ -426,6 +426,10 @@
   function castFire() {
     const c = cluster(70);   // 火铺在敌群那里：6 片，每秒 1 伤害，会在敌人之间传开
     for (let i = 0; i < 6; i++) allyFires.push({ x: c.x + (i % 3 - 1) * 34 + rnd(-6, 6), y: c.y + (i < 3 ? -12 : 12), t: 5, r: 28, tick: 0, dmg: .5, ignite: true });
+    // 打击感：轰燃一声、震屏、火星四溅，范围内敌人当场着火并被掀一下
+    shake = Math.max(shake, .35); if (typeof sfx === 'function') { sfx('fireLand', c.x); sfx('finisher', c.x); }
+    for (let i = 0; i < 40; i++) propFx.push({ x: c.x + rnd(-60, 60), y: c.y + rnd(-18, 18), vx: rnd(-90, 90), vy: rnd(-180, -60), w: rnd(2, 4), h: rnd(2, 4), life: rnd(.4, .8), max: .8, c: ['#ff9a2e', '#ffd04a', '#ff5a1a'][i % 3] });
+    for (const z of zs) if (!z.dead && !z.air && Math.abs(z.x - c.x) < 80 && Math.abs(z.y - c.y) < 26) { z.burnT = 3; z.burnSpread = true; hit(z, .5, 40, Math.sign(z.x - c.x) || 1, false, 0, .3, true, false, { secondary: true }); stat('火烧连营', .5); }
     if (typeof say === 'function') say('火烧连营！', 1.4);
   }
   function castWater() {

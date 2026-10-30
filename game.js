@@ -2314,8 +2314,9 @@ function allyFireFrame(k) {
 function drawAllyFire() {
   const now = performance.now() / 90;
   for (const f of allyFires) {
+    f.t0 ??= f.t;   // 用户反馈「火烧连营有延迟」：原来按 4 秒火场写死，5 秒的火前 1 秒是透明的 → 改按各自时长淡入淡出
     const fade = Math.min(1, f.t / .6);
-    const a = Math.min(1, (4 - f.t) / .25) * fade;
+    const a = Math.min(1, (f.t0 - f.t) / .15) * fade;
     if (a <= 0) continue;
     // 地面被烤红的一圈（和伤害范围一致）
     const gd = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, f.r);
