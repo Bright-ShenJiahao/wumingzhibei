@@ -70,7 +70,10 @@ window.XINMO = (() => {
   const MX = (k, d) => window.MERIDIAN && MERIDIAN.x ? MERIDIAN.x(k, d) : d;
   // 玩家打心魔：和心魔打玩家完全对称——同样的减伤、0.7 秒受击无敌、重击击倒、经脉不屈
   function takeHit(z, dmg, dir, dz) {
-    if (z !== m || m.dead || m.inv > 0) return;
+    if (z !== m || m.dead) return;
+    // 流血等持续伤害、撕开/溅射等附加伤害：只扣血，不硬直、不给无敌、不晕（和你身上的裂伤一样）
+    if (dz === 'extra') { m.hp -= dmg; if (m.hp <= 0) { if (!m.unyield && MX('unyield', 0)) { m.unyield = true; m.hp = 1; } else { m.dead = 1; kills++; m.st = 'bounce'; m.t = 0; } } return; }
+    if (m.inv > 0) return;
     let n = (m.dazeT > 0 ? 1.5 : 1) * dmg * (typeof R_ === 'function' ? R_('take') : 1);
     if (window.GEAR && GEAR.incoming) n = GEAR.incoming(n, null, 'skill');
     if (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) n *= .8;
