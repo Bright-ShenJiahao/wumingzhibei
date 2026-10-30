@@ -73,7 +73,7 @@
     if (z.stun > 0) return false;
     if (z.chargeCd <= 0 && dx > 110 && dy < 14) { z.chargeCd = z.rage ? 4.5 : 6.5; face(z); set(z, 'charge', 'wind', { step: 0 }); tip(z, '冲！'); if (!z.saidCharge || Math.random() < .35) { z.saidCharge = true; say('张梁：「给我——滚开！」', 1.8); vo('zl_charge'); } return true; }
     if (z.spinCd <= 0 && dx < 50 && dy < 16) { z.spinCd = z.rage ? 5 : 7; face(z); set(z, 'spin', 'wind', { step: 0 }); tip(z, '转！'); return true; }
-    if (z.cd <= 0 && dx <= z.T.reach && dy <= 10) { face(z); set(z, 'combo', 'wind', { step: 0 }); sfx('bladeAlert', z.x); return true; }
+    if (z.cd <= 0 && dx <= z.T.reach && dy <= 15) { face(z); set(z, 'combo', 'wind', { step: 0 }); sfx('bladeAlert', z.x); return true; }
     return false;
   }
 
@@ -98,6 +98,16 @@
         if (z.stun > 0) { done(z, .5); return false; }
         if (!C.hit && C.t > .4 * fast) { C.hit = true; z.cbFrame = 'strike'; sfx('enemySwing', z.x); if (front(z, 38)) dmgHero(1.2, z); }
         if (C.t > .4 * fast + .45) done(z, .7);
+        return true;
+      }
+      if (C.k === 'burrow') {   // 土遁：钻进地里（无敌、看不见），从远处冒出来，紧接一招地裂
+        if (C.t < .35) { z.cbFrame = 'stomp2'; if (Math.random() < .6) propFx.push({ x: z.x + rnd(-14, 14), y: z.y - rnd(0, 8), vx: rnd(-50, 50), vy: rnd(-90, -30), w: 3, h: 3, life: .5, max: .5, c: '#8a6238' }); }
+        else if (!C.under) { C.under = true; z.hidden = true; sfx('land', z.x); shake = Math.max(shake, .2);
+          const L = (arenaL != null ? arenaL : cam.x) + 40, R = Math.min(lockR, cam.x + viewW()) - 40, away = hero.x - L > R - hero.x ? -1 : 1;
+          C.tx = Math.max(L, Math.min(R, hero.x + away * 160)); C.ty = Math.max(M.top + 8, Math.min(M.bot - 8, hero.y + rnd(-20, 20))); }
+        else if (C.t > 1 && z.hidden) { z.hidden = false; z.x = C.tx; z.y = C.ty; face(z); z.cbFrame = 'raise'; sfx('land', z.x); shake = Math.max(shake, .25);
+          for (let i = 0; i < 14; i++) propFx.push({ x: z.x + rnd(-16, 16), y: z.y - rnd(0, 10), vx: rnd(-70, 70), vy: rnd(-140, -50), w: 3, h: 3, life: .55, max: .55, c: '#8a6238' }); }
+        else if (C.t > 1.35) { done(z, .2); z.crackCd = 0; }
         return true;
       }
       if (C.k === 'crack') {   // 地裂（用户定：张宝改土系）：法杖戳地，一道裂缝朝主角冲过去
@@ -127,6 +137,8 @@
         return true;
       }
     }
+    z.burrowCd = (z.burrowCd ?? 0) - dt;
+    if (z.burrowCd <= 0 && (z.hitLog || []).filter(t => gameT - t < 2).length >= 4 && Math.abs(hero.x - z.x) < 70) { z.burrowCd = 7; z.hitLog = []; set(z, 'burrow', 'stomp1'); say('张宝：「土遁！」', 1.2); return true; }   // 被贴身连打：土遁脱身
     z.crackCd = (z.crackCd ?? 2) - dt; z.rainCd = (z.rainCd ?? 4) - dt; z.wallCd = (z.wallCd ?? 7) - dt;
     if (z.stun > 0) return false;
     const ahead = (hero.x - z.x) * Math.sign(hero.x - z.x), dy = Math.abs(hero.y - z.y);
@@ -136,7 +148,7 @@
       set(z, 'wall', 'raise', { spots: lanes.filter((_, i) => i !== gap).map(y => ({ x: wx, y })) }); say('张宝：「土墙，起！」', 1.4); return true; }
     if (z.crackCd <= 0 && ahead > 40 && ahead < 200) { z.crackCd = z.rage ? 4 : 5.5; face(z); const dx = hero.x - z.x, ddy = hero.y - z.y, l = Math.hypot(dx, ddy) || 1;
       set(z, 'crack', 'stomp1', { step: 0, ux: dx / l, uy: ddy / l }); return true; }
-    if (z.cd <= 0 && ahead <= z.T.reach && dy <= 10) { face(z); set(z, 'slash', 'wind'); return true; }
+    if (z.cd <= 0 && ahead <= z.T.reach && dy <= 15) { face(z); set(z, 'slash', 'wind'); return true; }
     return false;
   }
 

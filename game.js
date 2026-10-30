@@ -80,7 +80,7 @@ const WEAP = {
   // 被打晕的敌人（头上转星星）吃 1.5 倍伤害 —— 所以「棍子打晕 → 换锤子收尾」是一套成立的打法。
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
-  staff: { name: '棍', class: 'long', reach: 40, dy: 16, move: .5, freeze: .062, aspd: 1.08, combo: [
+  staff: { name: '棍', class: 'long', reach: 40, dy: 12,   /* 用户定：长武器上下判定 16→12，不能斜站卡首领 */ move: .5, freeze: .062, aspd: 1.08, combo: [
     { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .4 },                   // 劈：举棍过顶 → 砸下
     { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .55 },                  // 扫：低身搂扫
     { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
@@ -845,7 +845,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   return outcome;
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
-  if (!z || z.dead || (z.air && !traits.dot)) return;
+  if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
@@ -901,6 +901,12 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);   // 震慑破绽加伤、避实眩晕回血
   z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
+  if (z.T.chapterBoss) {   // 用户定：第二章首领沿用管亥的「韧性」——挨打累积，满了才踉跄；出招中不被打断；平时只被推一点
+    const POISE = { zhang_liang: 8, zhang_bao: 6, zhang_jiao: 10 }[z.type] || 8;
+    z.poise = (z.poise || 0) + dmg; (z.hitLog ||= []).push(gameT); z.hitLog = z.hitLog.filter(t => gameT - t < 2);
+    if (z.poise >= POISE && !z.cb) { z.poise = 0; z.stun = .5; z.vx = dir * 70; floaters.push({ x: z.x, y: z.y - 50, t: 0, txt: '踉跄！', color: '#ffd86e' }); }
+    else { z.stun = 0; z.vx = dir * 18; }
+  }
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
   const dazeTime = traits.dazeTime != null ? traits.dazeTime : (z.T.heavy ? 1 : 1.5) * R_('daze');
@@ -3499,6 +3505,7 @@ function drawZ(z) {
   if (z.T.boss) { Boss.draw(z); drawHalberdBleedDots(z, z.y - 68); if (z.poisonT > 0) { ctx.fillStyle = '#8fd16a'; ctx.fillRect(z.x - 1, z.y - 64, 3, 3); }
     if (z.celebrating) drawCheer(z); return; }
   if (z.T.chapterBoss) {
+    if (z.hidden) { shadow(z.x, z.y, 6); return; }   // 张宝土遁：钻在地下
     shadow(z.x, z.y, 16);
     const recoil = 0;
     drawChar(z.sprite, zFrame(z), z.x + recoil, z.y - (z.z || 0), z.f < 0, 1, z.flash > 0, z.sc || 1, !!z.dark);

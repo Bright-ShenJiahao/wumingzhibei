@@ -576,9 +576,9 @@
       else { ctx.fillStyle = '#342117'; ctx.fillRect(x, y, cw, ch); }
       ctx.restore();
       // 稀有度（用户定：不用外框）：稀有木纹透青光 + 蓝印「稀」；传说四周飘金光点 + 朱印「传」；卡名颜色区分
-      if (c.r === 'r') { ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = '#6fc6ff'; ctx.fillRect(x + 16, y + 22, cw - 32, ch - 44); ctx.restore(); }
+      // 用户定：稀有不加蓝色滤镜，只靠名字颜色和角标区分
       if (c.r === 'l') { ctx.save(); for (let k = 0; k < 10; k++) { const a = anim * .9 + k * .63, px = x + cw / 2 + Math.cos(a) * (cw / 2 + 4) * Math.sin(a * 1.3 + k), py = y + ch / 2 + Math.sin(a) * (ch / 2 + 4); ctx.globalAlpha = .4 + .4 * Math.sin(anim * 3 + k); ctx.fillStyle = '#ffd76a'; ctx.fillRect(px, py, 2.5, 2.5); } ctx.restore(); }
-      const seal = c.isBing ? null : c.r === 'l' ? ['#b8321f', '传'] : c.r === 'r' ? ['#2f6fb0', '稀'] : null;
+      const seal = null;   // 用户定：不要角标，稀有度只看卡名颜色（稀=蓝、传=金）
       if (seal) { ctx.save(); ctx.fillStyle = seal[0]; ctx.globalAlpha = .92; const sx = x + 16, sy = y + 18; ctx.fillRect(sx, sy, 18, 18); ctx.strokeStyle = 'rgba(255,240,220,.7)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 2, sy + 2, 14, 14); ctx.fillStyle = '#fff4e0'; ctx.font = '700 12px "KaiTi","STKaiti",serif'; ctx.textAlign = 'center'; ctx.fillText(seal[1], sx + 9, sy + 13.5); ctx.restore(); }
       ctx.save(); ctx.beginPath(); ctx.rect(x + 18, y + 24, cw - 36, ch - 48); ctx.clip();
       ctx.font = '700 12px ' + F; ctx.fillStyle = c.color || '#d5b678'; ctx.fillText(c.catName, x + cw / 2, y + ch * .18, cw - 38);
