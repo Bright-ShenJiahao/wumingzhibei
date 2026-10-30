@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=568d5f8eb0" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=568d5f8eb0)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=51887740c1" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=51887740c1)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='cd20a62c7eb7',busy=false;
+var BUILD='d7f3f1b75669',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -10696,9 +10696,9 @@ window.XINMO = (() => {
     window.spawn('grunt', hero.x < 360 ? 600 : 120, (M.top + M.bot) / 2);
     m = zs[zs.length - 1];
     Object.assign(m, { type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
-    // 血量：按主角伤害来定，玩家大约要打中 22～26 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
+    // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
-    m.T.hp = Math.round(estHit(w) * 24); m.hp = m.T.hp; m.weapon = w;
+    m.T.hp = Math.round(estHit(w) * 30); m.hp = m.T.hp; m.weapon = w;
     m.bossLabel = '心魔'; m.xiaochang = true;
     say(d.tries && Math.random() < .6 ? pick(LINES.introAgain).replace('{n}', d.wins) : pick(LINES.intro), 3);
     return m;
@@ -10711,11 +10711,11 @@ window.XINMO = (() => {
   const W = () => WEAP[m.weapon];
   const reachOf = () => { const w = W(); return w.class === 'ranged' ? 150 : (w.reach || 28) + 8; };
   function snapshot() {
-    hist.push({ t: gameT, x: hero.x, y: hero.y, st: hero.st, f: hero.f, fi: hero.atk ? hero.atk.fi : -1, c: hero.atk ? hero.atk.c : -1, inv: hero.inv, charging: !!charging, aid: hero.atk || null });
+    hist.push({ t: gameT, x: hero.x, y: hero.y, st: hero.st, f: hero.f, fi: hero.atk ? hero.atk.fi : -1, c: hero.atk ? hero.atk.c : -1, inv: hero.inv, charging: !!charging, aid: hero.atk || null, at: hero.atk ? hero.atk.t : 0, ht: hero.t, hw: weapon });
     while (hist.length && gameT - hist[0].t > 1) hist.shift();
   }
-  function seen() {   // 反应延迟：0.09 秒，玩家每赢一次快 3 毫秒，最快 0.06 秒
-    const delay = .09 - lvl * .003;
+  function seen() {   // 反应延迟：0.08 秒，玩家每赢一次快 2 毫秒，最快 0.06 秒
+    const delay = .08 - lvl * .002;
     for (let i = hist.length - 1; i >= 0; i--) if (gameT - hist[i].t >= delay) return hist[i];
     return hist[0];
   }
@@ -10770,7 +10770,7 @@ window.XINMO = (() => {
     sfx('swing', m.x);
     const dx = hero.x - m.x, reach = (w.reach || 28) + 6;
     if ((C.multi || Math.sign(dx) === f) && Math.abs(dx) < reach && Math.abs(hero.y - m.y) < (w.dy || 14) + 1) {
-      dmgHero((C.dmg || 1) * (fin ? .85 : .7), m, fin ? 'skill' : 'basic');
+      dmgHero((C.dmg || 1) * (fin ? 1.1 : .9), m, fin ? 'skill' : 'basic');
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
       m.hitC++;
     }
@@ -10808,7 +10808,7 @@ window.XINMO = (() => {
       m.stun = Math.max(0, (m.stun || 0) - dt); m.daze = Math.max(0, (m.daze || 0) - dt);
       if (m.st !== 'hurt') { m.st = 'hurt'; m.t = 0; m.atk = null; m.q = 0; m.hurtN = (m.hurtN || 0) + 1; m.lastHurtT = gameT; }
       moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85;
-      if (m.t > .15 && m.rollCd === 0 && m.hurtN >= 2 && Math.random() < .5 + lvl * .05) { m.stun = 0; m.daze = 0; m.hurtN = 0; roll(Math.sign(m.x - hero.x) || 1, m.y < (M.top + M.bot) / 2 ? 1 : -1); }
+      if (m.t > .12 && m.rollCd === 0 && m.hurtN >= 2 && Math.random() < .6 + lvl * .04) { m.stun = 0; m.daze = 0; m.hurtN = 0; roll(Math.sign(m.x - hero.x) || 1, m.y < (M.top + M.bot) / 2 ? 1 : -1); }
       return;
     }
     if (m.st === 'hurt') { m.st = 'idle'; m.t = 0; }
@@ -10839,51 +10839,101 @@ window.XINMO = (() => {
       }
       return;
     }
-    // ---------- 思考（基于延迟后的观察）----------
-    const s = seen(), dx = s.x - m.x, dy = s.y - m.y, adx = Math.abs(dx), ady = Math.abs(dy);
-    const dodgeP = Math.min(.97, .82 + lvl * .015) * (lowHp ? 1.05 : 1);
-    // 每一下出招只判断一次躲不躲（高手也有失手的时候）
-    const th = threatened(s) && s.aid !== m.lastAid, sh = shotIncoming() && !m.shotSeen;
-    if (th) m.lastAid = s.aid; if (sh) m.shotSeen = .3; m.shotSeen = Math.max(0, (m.shotSeen || 0) - dt) || 0;
-    if (m.rollCd === 0 && (th || sh) && Math.random() < dodgeP) {
-      // 躲：近战往上下滚（躲开后正好在玩家身侧），远程武器往后滚拉开
-      const room = m.y < (M.top + M.bot) / 2 ? 1 : -1;
-      if (w.class === 'ranged' || shotIncoming()) roll(w.class === 'ranged' ? -Math.sign(dx) || 1 : 0, room);
-      else roll(-Math.sign(dx) * .35, ady > 4 ? -Math.sign(dy) || room : room);
-      return;
+    // ---------- 思考（参考 SmashBot 的决策顺序：保命 → 防飞行物 → 反打 → 防真会打中的招 → 随机突进 → 拉距离）----------
+    const s = seen(), dx = s.x - m.x, dy = s.y - m.y, adx = Math.abs(dx), ady = Math.abs(dy), sd = Math.sign(dx || 1);
+    const dodgeP = Math.min(.99, .93 + lvl * .006);
+    const heroRolling = hero.st === 'roll' && hero.inv > .05;
+    m.shotSeen = Math.max(0, (m.shotSeen || 0) - dt);
+    // 1) 飞行物：推算下一小段会不会打中自己，会才躲（SmashBot needsprojectiledefense）
+    if (m.rollCd === 0 && !m.shotSeen) {
+      for (const p of shots) {
+        if (Math.sign(p.vx) !== Math.sign(m.x - p.x)) continue;
+        const tt = Math.abs(m.x - p.x) / Math.max(60, Math.abs(p.vx)), py = p.y + (p.vy || 0) * tt;
+        if (tt < .22 && Math.abs(py - m.y) < 10) { m.shotSeen = .25; if (Math.random() < dodgeP) { roll(w.class === 'ranged' ? -sd : 0, m.y < (M.top + M.bot) / 2 ? 1 : -1); return; } }
+      }
     }
-    if (m.backOff > 0) { m.backOff -= dt; moveTo(m.x - Math.sign(dx) * 40, m.y, dt, .9); return; }
+    // 2) 反打（SmashBot Punish.framesleft）：算玩家还要多久才能动，我走过去 + 出手前摇来得及才打
+    const hw = WEAP[s.hw] || WEAP[weapon], my0 = w.combo[0].d[0] / (w.aspd || 1);
+    const reach = (w.reach || 28) + 4, edge = (hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 8) : reach) + 10;
+    const lag = heroLag(s, hw);
+    const walk = w.class === 'ranged' ? 0 : Math.max(0, adx - reach) / 70 + Math.max(0, ady - (w.dy || 14) + 4) / 52;
+    const canHit = w.class === 'ranged' ? ady < 9 && adx < 220 : true;
+    if (lag > 0 && canHit && walk + my0 < lag + .04 && !heroRolling) {
+      if (walk > 0) { moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return; }
+      m.think = .25 + Math.random() * .2; startAtk(0); return;
+    }
+    // 3) 防：玩家这一下站着不动会不会打中我（SmashBot Defend.in_range）——会打中才处理
+    const hitIn = willHit(s, hw);
+    if (hitIn != null && s.aid !== m.lastAid) {
+      m.lastAid = s.aid;
+      // 来得及走出范围就后撤（省下翻滚），否则翻滚；远程武器直接往后滚拉开
+      const needOut = (edge - adx) / 70;
+      if (w.class !== 'ranged' && needOut < hitIn - .02) { m.backOff = Math.max(m.backOff || 0, hitIn + .1); }
+      else if (m.rollCd === 0 && Math.random() < dodgeP) {
+        const room = m.y < (M.top + M.bot) / 2 ? 1 : -1;
+        if (w.class === 'ranged') roll(-sd, room * .4); else roll(-sd * .3, ady > 4 ? -Math.sign(dy) || room : room);
+        return;
+      }
+    }
+    if (m.backOff > 0) { m.backOff -= dt; moveTo(m.x - sd * 40, m.y, dt, 1); return; }
     m.think -= dt;
-    const heroOpen = s.st === 'hurt' || s.st === 'bounce' || s.st === 'getup' || (s.st === 'atk' && s.fi >= 1) || (s.st === 'roll' && gameT - s.t > 0 && hero.st === 'roll' && hero.t > .3);
-    const heroRolling = hero.st === 'roll' && hero.inv > .12;
+    // 远程：保持距离、对齐就射；被贴脸先滚开
     if (w.class === 'ranged') {
-      // 远程：保持 110～160 距离、对齐上下就射；玩家冲脸就后滚
-      if (adx < 55 && m.rollCd === 0 && Math.random() < .4) { roll(-Math.sign(dx) || 1, 0); return; }
-      const want = 135, tx = s.x - Math.sign(dx || 1) * want;
-      if (ady < 10 && adx < 200 && adx > 40 && !heroRolling && m.think <= 0) { m.f = Math.sign(dx) || m.f; startAtk(0); m.think = .05; return; }
-      moveTo(Math.max(20, Math.min(700, tx)), s.y, dt);
+      if (adx < 50 && m.rollCd === 0) { roll(-sd, 0); return; }
+      if (ady < 9 && adx < 210 && adx > 45 && !heroRolling && m.think <= 0) { m.f = sd; startAtk(0); m.think = .08; return; }
+      moveTo(Math.max(20, Math.min(700, s.x - sd * 140)), s.y, dt);
       return;
     }
-    const reach = (w.reach || 28) + 4, edge = reach + 12, sd = Math.sign(dx || 1);
-    const ready = !heroRolling && hero.inv < w.combo[0].d[0] + .03 && ady < (w.dy || 14) + 6;
-    // 1) 破绽：玩家收招/挨打/翻滚落地 → 踏进去打（出手前摇里会往前跟一步）
-    if (ready && (heroOpen || m.punish) && adx < edge + 6) { m.punish = false; m.think = .35 + Math.random() * .3; startAtk(0); return; }
-    m.punish = false;
-    // 2) 已经贴在够得着的距离、玩家没在出手 → 抢先出手
-    if (ready && adx < reach && s.st !== 'atk' && m.think <= 0) { m.think = .3 + Math.random() * .3; startAtk(0); return; }
-    // 3) 中立：站在玩家够不着的边缘（等他打空），时不时突然踏进去抢攻
-    if (ready && adx < edge + 4 && s.st !== 'atk' && m.think <= 0 && Math.random() < .5) { m.think = .45 + Math.random() * .4; startAtk(0); return; }
-    if (m.think <= 0) m.think = .25 + Math.random() * .3;
-    let tx = s.x - sd * edge, ty = s.y;
-    if (s.st === 'atk' && !heroOpen) tx = s.x - sd * (edge + 6);
+    const ready = !heroRolling && hero.inv < my0 + .03 && ady < (w.dy || 14) + 4;
+    // 4) 迎击（SmashBot Challenge）：玩家空手走进我的范围 → 我反应比人快，先出手
+    if (ready && adx < reach && s.st !== 'atk') { m.think = .2 + Math.random() * .2; startAtk(0); return; }
+    // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
+    if (!m.approachT && Math.random() < dt / 2) m.approachT = 1;
+    if (m.approachT) { m.approachT = Math.max(0, m.approachT - dt); if (s.st === 'atk' || hero.inv > 0) m.approachT = 0; }
+    if (m.approachT > 0 && ready) { if (adx < reach) { m.approachT = 0; startAtk(0); return; } moveTo(s.x - sd * (reach - 8), s.y, dt, 1); return; }
+    // 6) 拉距离（SmashBot KeepDistance）：站在玩家够不着的外缘来回小步晃，玩家出招/无敌时再退 20；偶尔站住不动
+    let buf = edge + (s.st === 'atk' ? 20 : 0) + (hero.inv > 0 ? 20 : 0);
+    if (gameT - (m.radT || 0) > 1) { m.radT = gameT; m.radius = Math.random() * 14; if (Math.random() < .12) m.menace = .6 + Math.random() * .6; }
+    if (m.menace > 0 && s.st !== 'atk' && adx > edge - 4) { m.menace -= dt; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return; }
+    const sway = Math.sin(gameT * 9) * (m.radius || 0);
+    let tx = s.x - sd * (buf + sway), ty = s.y;
     // 对手建模：玩家被打后爱往某个方向滚 → 提前站到那边
     const fav = favRoll();
     if (fav && (s.st === 'hurt' || gameT - rec.hurtAt < .5)) {
-      const dir = Math.sign(s.x - m.x) || 1;
-      if (fav === 'back') tx = s.x + dir * 55; else if (fav === 'fwd') tx = s.x - dir * 20; else ty = s.y + (fav === 'up' ? -35 : 35);
+      if (fav === 'back') tx = s.x + sd * 55; else if (fav === 'fwd') tx = s.x - sd * 20; else ty = s.y + (fav === 'up' ? -35 : 35);
     }
-    if (lowHp && s.st === 'atk') tx = s.x - sd * (edge + 24);
     moveTo(Math.max(14, Math.min(706, tx)), Math.max(M.top, Math.min(M.bot, ty)), dt);
+  }
+  // 玩家还要多久才能再动（只看「看得见」的状态：挨打、倒地、终段收招、翻滚尾巴）
+  function heroLag(s, hw) {
+    if (s.st === 'hurt') return Math.max(0, .3 - s.ht);
+    if (s.st === 'bounce') return Math.max(0, .65 - s.ht);
+    if (s.st === 'getup') return 0;   // 起身有无敌，不抢
+    if (s.st === 'roll') return s.ht > .25 ? Math.max(0, .4 - s.ht) + .05 : 0;
+    if (s.st === 'atk' && hw && s.c >= 0) {
+      const C = hw.combo[s.c]; if (!C) return 0;
+      const last = C.f.length - 1, sc = (typeof R_ === 'function' ? R_('aspd') : 1) / (hw.aspd || 1);
+      if (s.fi === last) {
+        const left = C.d[last] * sc - s.at;
+        // 不是终段：玩家可以马上接下一段，下一段前摇也算进来（但只给一半，接不接看人）
+        const nxt = hw.combo[s.c + 1];
+        return Math.max(0, left + (nxt ? nxt.d[0] * sc * .5 : .2));
+      }
+    }
+    return 0;
+  }
+  // 玩家这一下多久后会打中我（不会打中返回 null）
+  function willHit(s, hw) {
+    if (s.st !== 'atk' || !hw || s.c < 0) return null;
+    const C = hw.combo[s.c]; if (!C) return null;
+    const last = C.f.length - 1; if (s.fi >= last) return null;
+    const sc = (typeof R_ === 'function' ? R_('aspd') : 1) / (hw.aspd || 1);
+    let tt = C.d[s.fi] * sc - s.at; for (let i = s.fi + 1; i < last; i++) tt += C.d[i] * sc;
+    if (hw.proj) return Math.abs(s.y - m.y) < 12 && Math.sign(m.x - s.x) === s.f ? tt + Math.abs(m.x - s.x) / 300 : null;
+    const adx = Math.abs(m.x - s.x), ady = Math.abs(m.y - s.y);
+    const extra = (hw.lunge ? hw.lunge * (hw.lungeT || .1) : 0) + 70 * (hw.move || 0) * tt;
+    const facing = C.multi || Math.sign(m.x - s.x) === s.f;
+    return facing && adx < (hw.reach || 28) + 8 + extra && ady < (hw.dy || 14) + 2 ? Math.max(0, tt) : null;
   }
   function onHurt() { if (m) m.lastHurtT = gameT; }
   function draw(z) {
