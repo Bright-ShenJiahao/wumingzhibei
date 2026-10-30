@@ -19,6 +19,7 @@
       background:rgba(10,8,16,.9); border:1px solid rgba(255,216,110,.5); border-radius:8px;
       padding:6px; font:600 11px/1.35 "Consolas","PingFang SC",monospace; color:#ffd86e;
       box-shadow:0 6px 24px rgba(0,0,0,.5); max-height:calc(100vh - 80px); max-height:calc(100dvh - 72px); overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; }
+    #dbg button{touch-action:pan-y}
     #dbg>.dbgHead{display:block; cursor:pointer; user-select:none; color:#8ef07a; font-size:11px; margin:0 0 5px; }
     #dbg.collapsed>.dbgBody{display:none!important}
     #dbg .dbgGroup{border-top:1px solid rgba(255,216,110,.16); padding-top:4px; margin-top:4px}
@@ -64,7 +65,10 @@
   }
 
   function build() {
-    panel = document.createElement('div'); panel.id = 'dbg'; panel.addEventListener('touchmove', e => e.stopPropagation(), { passive: true });
+    panel = document.createElement('div'); panel.id = 'dbg'; { let sy = 0, st = 0, moved = false;
+      panel.addEventListener('touchstart', e => { sy = e.touches[0].clientY; st = panel.scrollTop; moved = false; }, { passive: true });
+      panel.addEventListener('touchmove', e => { e.stopPropagation(); e.preventDefault(); const d = sy - e.touches[0].clientY; if (Math.abs(d) > 6) moved = true; panel.scrollTop = st + d; }, { passive: false });
+      panel.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); }
     document.body.appendChild(panel);
     const head = document.createElement('b'); head.className = 'dbgHead';
     const body = document.createElement('div'); body.className = 'dbgBody';

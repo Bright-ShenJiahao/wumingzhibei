@@ -1,5 +1,5 @@
 // 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。拾取即生效，不占背包、不加按键。
-// 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）；第二章首领血量第一次降到一半时曹操从场边扔进来一个。
+// 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
     jinchuang: { name: '金创药', icon: 'sup_jinchuang', tip: '回 4 血，之后 5 秒每秒再回 0.5', w: 40 },
@@ -52,14 +52,10 @@
   }
   function tick(dt) {
     if (typeof hero === 'undefined') return;
-    // 第二章：每战开打、第 2 波各放一个补给箱（在主角前方）；首领半血时曹操扔一个进来
+    // 第二章：每战开打、第 2 波各放一个补给箱（在主角前方）
     if (typeof chapter2Run !== 'undefined' && chapter2Run && chapter2Run.mode === 'fight' && chapter2Run.battle <= 5) {
       const key = chapter2Run.battle + ':' + chapter2Run.wave;
       if (!placed[key] && (chapter2Run.wave === 0 || chapter2Run.wave === 1)) { placed[key] = true; placeCrate(hero.x + 170 + Math.random() * 60); }
-    }
-    for (const z of zs) if (z.T && z.T.chapterBoss && !z.dead && z.hp < z.T.hp * .5 && !bossDrop.has(z.type)) {
-      bossDrop.add(z.type); ground.push({ k: Math.random() < .5 ? 'jinchuang' : pick(), x: hero.x - hero.f * 30, y: hero.y, z: 120, vz: 0, t: 0, thrown: true });
-      if (window.CH2OPEN && CH2OPEN.bark) CH2OPEN.bark('接着！撑住——', 1.6);
     }
     for (const g of ground) {
       g.t += dt; if (g.z > 0 || g.vz) { g.vz -= 500 * dt; g.z = Math.max(0, g.z + g.vz * dt); if (g.z === 0) g.vz = 0; }
