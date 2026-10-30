@@ -167,7 +167,8 @@
     for (const item of SHOP_ITEMS) {
       const card = document.createElement('div'); card.className = 'shopCard';
       const ICON = { ration: '粮', jinchuang: '药', dukang: '酒', reroll: '签', amulet: '护', stone: '石', bag: '袋', lottery: '命' };
-      const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : `<span aria-hidden="true" style="font:700 24px MaShanZheng,STKaiti,serif;color:${item.fu ? '#ff9a5a' : '#ffd77a'}">${item.fu ? '符' : ICON[item.id] || '货'}</span>`;
+      const gimg = typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui['gd_' + item.id];   // 商店图标（用户出图）
+      const icon = item.id === 'fruit' ? '<span class="fruitIcon" aria-hidden="true"></span>' : gimg ? `<img src="${gimg}" alt="" style="width:44px;height:44px;object-fit:contain">` : `<span aria-hidden="true" style="font:700 24px MaShanZheng,STKaiti,serif;color:${item.fu ? '#ff9a5a' : '#ffd77a'}">${item.fu ? '符' : ICON[item.id] || '货'}</span>`;
       card.innerHTML = `<div class="shopCardIcon">${icon}</div><div><div class="shopName">${item.name}${item.daily && item.daily() ? ' <span style="color:#ff7a4a;font-size:12px">今日特价 7 折</span>' : ''}</div><div class="shopDesc">${item.desc}</div></div><div class="shopPrice">${fmt(item.price)} 金币${item.id === 'fruit' ? `<span class="shopOwn">持有 ${fmt(fruits)} 个</span>` : item.own ? `<span class="shopOwn">持有 ${fmt(item.own())}</span>` : ''}</div><div class="shopBuyRow"></div>`;
       const row = card.querySelector('.shopBuyRow');
       if (item.kind === 'open') { const b = document.createElement('button'); b.type = 'button'; b.className = 'shopBuy'; b.textContent = '去抽签'; b.onclick = () => item.open(); row.append(b); grid.append(card); continue; }
