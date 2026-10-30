@@ -15,10 +15,10 @@
 
   const css = document.createElement('style');
   css.textContent = `
-    #dbg { position:fixed; right:8px; top:64px; z-index:20; width:220px; box-sizing:border-box;
+    #dbg { position:fixed; right:8px; top:64px; z-index:10002; width:220px; box-sizing:border-box;
       background:rgba(10,8,16,.9); border:1px solid rgba(255,216,110,.5); border-radius:8px;
       padding:6px; font:600 11px/1.35 "Consolas","PingFang SC",monospace; color:#ffd86e;
-      box-shadow:0 6px 24px rgba(0,0,0,.5); max-height:calc(100vh - 80px); overflow-y:auto; }
+      box-shadow:0 6px 24px rgba(0,0,0,.5); max-height:calc(100vh - 80px); max-height:calc(100dvh - 72px); overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; }
     #dbg>.dbgHead{display:block; cursor:pointer; user-select:none; color:#8ef07a; font-size:11px; margin:0 0 5px; }
     #dbg.collapsed>.dbgBody{display:none!important}
     #dbg .dbgGroup{border-top:1px solid rgba(255,216,110,.16); padding-top:4px; margin-top:4px}
@@ -64,7 +64,7 @@
   }
 
   function build() {
-    panel = document.createElement('div'); panel.id = 'dbg';
+    panel = document.createElement('div'); panel.id = 'dbg'; panel.addEventListener('touchmove', e => e.stopPropagation(), { passive: true });
     document.body.appendChild(panel);
     const head = document.createElement('b'); head.className = 'dbgHead';
     const body = document.createElement('div'); body.className = 'dbgBody';
@@ -93,7 +93,7 @@
       let box = document.getElementById('dbgTips');
       if (!box) {
         box = document.createElement('div'); box.id = 'dbgTips';
-        box.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;width:min(420px,60vw);overflow:auto;z-index:10003;background:#1d140ef2;border:1px solid #9d7845;border-radius:8px;padding:8px;font:13px sans-serif;color:#ecdcbc';
+        box.addEventListener('touchmove', e => e.stopPropagation(), { passive: true }); box.style.cssText = 'position:fixed;left:8px;top:8px;bottom:8px;touch-action:pan-y;overscroll-behavior:contain;width:min(420px,60vw);overflow:auto;z-index:10003;background:#1d140ef2;border:1px solid #9d7845;border-radius:8px;padding:8px;font:13px sans-serif;color:#ecdcbc';
         document.body.append(box);
         box.addEventListener('click', e => {
           const b = e.target.closest('[data-tip]');
