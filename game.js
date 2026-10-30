@@ -105,9 +105,9 @@ const WEAP = {
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.24, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
-    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: .85, kb: 38, spd: 330, life: 1.05 },
-    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: .85, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .5, kb: 75, spd: 390, life: 1.15 },
+    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.0, kb: 38, spd: 330, life: 1.05 },
+    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: 1.0, kb: 38, spd: 340, life: 1.08 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .6, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
 // 长戟使用白衣专用帧。
@@ -848,7 +848,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
     // 用户定：正面打盾兵按武器分——远程 ×0.5、长杆 ×0.75、短兵（大刀）×1.15 且格挡概率减半；锤子照旧无视盾；从背后打不受影响。
     // 蓄力 / 终段（含弓的第三段）不再无视盾：不会被整下挡掉，但倍率照算。
-    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='ranged'?.5:cls==='long'?.75:1.15;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
+    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='ranged'?.5:cls==='long'?.75:1.05;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
     const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb*(cls==='short'?.5:1);   // 正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
     if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb*(cls==='short'?.5:1)){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
@@ -1594,7 +1594,10 @@ function strike() {
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
       hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0 || bladeFinisher, ...(bladeFinisher ? { critCap: 2 } : {}), ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
-      if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * (window.ROGUE && ROGUE.has('斩首') ? .35 : .25)) {
+      const execLine = window.ROGUE && ROGUE.has('斩首') ? .25 : .15;   // 用户定：斩杀线 25%→15%（斩首 35%→25%）
+      if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && (z.T.elite || z.T.ch2Elite) && z.hp > 0 && z.hp < z.T.hp * execLine) hit(z, .66, 0, h.f, false, 0, 0, false, false, { secondary: true });   // 精英不被斩杀，改为补 30% 伤害
+      else if (bladeFinisher && !h.atk?.execDone && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * execLine) {
+        if (h.atk) h.atk.execDone = true;   // 一刀最多斩 1 个
         if (window.ROGUE && ROGUE.onExecute) ROGUE.onExecute();
         z.hp = 0; z.dead = 1; kills++; set(z, 'land');
         if (z.villagerChaser) thankVillagers();
