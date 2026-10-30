@@ -40,7 +40,7 @@ window.XINMO = (() => {
     const hp = Math.max(8, maxHeroHp());
     window.spawn('grunt', hero.x < 360 ? 600 : 120, (M.top + M.bot) / 2);
     m = zs[zs.length - 1];
-    Object.assign(m, { type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
+    marks = []; Object.assign(m, { ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
     // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
     m.T.hp = Math.round(estHit(w) * 30); m.hp = m.T.hp; m.weapon = w;
@@ -115,7 +115,8 @@ window.XINMO = (() => {
     sfx('swing', m.x);
     const dx = hero.x - m.x, reach = (w.reach || 28) + 6;
     if ((C.multi || Math.sign(dx) === f) && Math.abs(dx) < reach && Math.abs(hero.y - m.y) < (w.dy || 14) + 1) {
-      dmgHero((C.dmg || 1) * (fin ? 1.1 : .9), m, fin ? 'skill' : 'basic');
+      if (fin && m.weapon === 'blade' && hero.hp < maxHeroHp() * .15 && hero.inv <= 0 && hero.st !== 'roll') { dmgHero(hero.hp + 99, m, 'skill'); floaters.push({ x: hero.x, y: hero.y - 40, t: 0, txt: '斩！', big: true, gold: true }); }   // 和玩家一致：低于 15% 被举刀重劈斩杀
+      else dmgHero((C.dmg || 1) * (fin ? 1.1 : .9), m, fin ? 'skill' : 'basic');
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
       m.hitC++;
     }
@@ -140,8 +141,62 @@ window.XINMO = (() => {
   function shotIncoming() {
     return shots.some(s => Math.sign(s.vx) === Math.sign(m.x - s.x) && Math.abs(s.x - m.x) < 90 && Math.abs(s.y - m.y) < 14);
   }
+  // ---------- 蓄力（和玩家同一套规则：0.4 秒起蓄，近战 1.6 秒 / 远程 1.2 秒蓄满，三档）----------
+  const fullT = () => W().class === 'ranged' ? 1.2 : 1.6;
+  const tierOf = t => t >= fullT() ? 3 : t >= fullT() / 2 ? 2 : t >= .4 ? 1 : 0;
+  function startCharge(target) { m.st = 'charge'; m.t = 0; m.ch = 0; m.chTarget = Math.max(.42, Math.min(fullT(), target)); m.atk = null; sfx('charge', m.x); }
+  function release() {
+    const w = W(), tier = tierOf(m.ch), power = Math.min(1, m.ch / fullT()), f = m.f = Math.sign(hero.x - m.x) || m.f;
+    m.st = 'atk'; m.t = 0; m.atk = { c: w.combo.length - 1, fi: 0, t: 0, lg: 0, visual: true }; m.ch = 0;
+    sfx('finisher', m.x); shake = Math.max(shake, .12 + .18 * power);
+    const dxh = (hero.x - m.x) * f, dyh = hero.y - m.y, K = .9;   // 心魔伤害 = 玩家同一招 × 0.9
+    if (m.weapon === 'bow') {
+      if ((m.ammo ?? 5) < 1) return; m.ammo = (m.ammo ?? 5) - 1;
+      const d = tier === 3 ? { r: 45, dmg: 2.4 } : tier === 2 ? { r: 36, dmg: 1.9 } : { r: 28, dmg: 1.4 };
+      marks.push({ x: hero.x, y: hero.y, t: 0, T: .55, r: d.r, dmg: d.dmg * K }); return;   // 穿云箭：落点就是出手时你站的地方
+    }
+    if (m.weapon === 'stone') {
+      const d = tier === 3 ? { n: 5, dmg: 1.6 } : tier === 2 ? { n: 4, dmg: 1.2 } : { n: 3, dmg: .8 };
+      for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; eshots.push({ source: m, k: 'stone', x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, dmg: d.dmg * K }); }
+      return;
+    }
+    if (m.weapon === 'halberd') {   // 回马突：往前冲，途中无敌
+      const d = tier === 3 ? { dist: 80, dmg: 2.8 } : tier === 2 ? { dist: 60, dmg: 2.2 } : { dist: 40, dmg: 1.6 };
+      m.dash = { left: d.dist, dmg: d.dmg * K, hit: false }; m.inv = Math.max(m.inv, d.dist / 260 + .05); return;
+    }
+    if (m.weapon === 'hammer') {   // 千斤坠
+      const d = tier === 3 ? { range: 80, dmg: 3.6, size: 90 } : tier === 2 ? { range: 65, dmg: 2.8, size: 75 } : { range: 50, dmg: 2.0, size: 60 };
+      hammerFx.push({ kind: 'slam', x: m.x + f * 30, y: m.y, t: 0, T: .28, size: d.size });
+      if (dxh >= -12 && dxh <= d.range && Math.abs(dyh) <= Math.max(24, dxh * .7 + 14)) dmgHero(d.dmg * K, m, 'skill');
+      return;
+    }
+    if (m.weapon === 'blade') {   // 半月斩：前方上下各 45
+      const d = tier === 3 ? { dmg: 2.6, c: .8 } : tier === 2 ? { dmg: 2.0, c: .6 } : { dmg: 1.4, c: .4 };
+      bladeFx.push({ kind: 'crescent', x: m.x + f * 30, y: m.y - 16, t: 0, T: .3, dir: f });
+      if (dxh >= -12 && dxh <= 45 && Math.abs(dyh) <= 45) dmgHero(d.dmg * K * (Math.random() < d.c ? 1.5 : 1), m, 'skill');
+      return;
+    }
+    // 棍：蓄力横扫
+    const force = .35 + .65 * power;
+    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) dmgHero(1.6 * force * K, m, 'skill');
+  }
+  let marks = [];
+  // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------
+  function plan(steps, lock = false) { m.plan = steps; m.lock = lock; }
+  function runPlan(dt) {
+    const p = m.plan && m.plan[0]; if (!p) { m.plan = null; m.lock = false; return false; }
+    p.t = (p.t || 0) + dt;
+    if (p.k === 'charge') { m.plan.shift(); startCharge(p.time); return true; }
+    if (p.k === 'atk') { m.plan.shift(); m.forceN = p.n || 0; startAtk(0); return true; }
+    if (p.k === 'roll') { m.plan.shift(); if (m.rollCd === 0) roll(p.dir === 'back' ? -(Math.sign(hero.x - m.x) || 1) : 0, p.dir === 'back' ? (Math.random() - .5) * .6 : (m.y < (M.top + M.bot) / 2 ? 1 : -1)); return true; }
+    if (p.k === 'step') { const sd = Math.sign(hero.x - m.x) || 1; moveTo(m.x + sd * p.dx, hero.y, dt, 1); if (p.t >= p.dur) m.plan.shift(); return true; }
+    m.plan.shift(); return false;
+  }
   function update(z, dt) {
     if (z !== m || ended) return;
+    for (const k of marks) { k.t += dt; if (!k.done && k.t >= k.T) { k.done = true; sfx('fireLand', k.x); if (Math.abs(hero.x - k.x) < k.r && Math.abs(hero.y - k.y) < k.r * .6) dmgHero(k.dmg, { x: k.x, y: k.y, source: m }, 'skill'); } }
+    marks = marks.filter(k => k.t < k.T + .25);
+    if (m.weapon === 'bow') { m.ammoT = (m.ammoT || 0) + dt; if (m.ammoT >= 6) { m.ammoT = 0; m.ammo = Math.min(5, (m.ammo ?? 5) + 1); } }
     snapshot(); record(dt);
     m.inv = Math.max(0, m.inv - dt); m.rollCd = Math.max(0, m.rollCd - dt); m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt);
     m.y = Math.max(M.top, Math.min(M.bot, m.y));
@@ -151,7 +206,7 @@ window.XINMO = (() => {
     // 挨打：和玩家一样会硬直；但被连续压着打时（0.15 秒后）会翻滚破招——玩家赢得越多，破招越果断
     if (m.stun > 0 || m.daze > 0) {
       m.stun = Math.max(0, (m.stun || 0) - dt); m.daze = Math.max(0, (m.daze || 0) - dt);
-      if (m.st !== 'hurt') { m.st = 'hurt'; m.t = 0; m.atk = null; m.q = 0; m.hurtN = (m.hurtN || 0) + 1; m.lastHurtT = gameT; }
+      if (m.st !== 'hurt') { m.st = 'hurt'; m.t = 0; m.atk = null; m.q = 0; m.ch = 0; m.plan = null; m.lock = false; m.dash = null; m.hurtN = (m.hurtN || 0) + 1; m.lastHurtT = gameT; }
       moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85;
       if (m.t > .12 && m.rollCd === 0 && m.hurtN >= 2 && Math.random() < .6 + lvl * .04) { m.stun = 0; m.daze = 0; m.hurtN = 0; roll(Math.sign(m.x - hero.x) || 1, m.y < (M.top + M.bot) / 2 ? 1 : -1); }
       return;
@@ -161,6 +216,21 @@ window.XINMO = (() => {
     if (m.st === 'roll') {
       moveEnt(m, m.rx * 150 * dt, m.ry * 105 * dt);
       if (m.t > .4) { m.st = 'idle'; m.t = 0; m.punish = true; }
+      return;
+    }
+    if (m.dash) {   // 回马突冲刺
+      const step = Math.min(m.dash.left, 260 * dt); moveEnt(m, m.f * step, 0); m.dash.left -= step;
+      if (!m.dash.hit && Math.abs(hero.x - m.x) < 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 8) { m.dash.hit = true; dmgHero(m.dash.dmg, m, 'skill'); }
+      if (m.dash.left <= 0) { m.dash = null; m.st = 'idle'; m.t = 0; }
+      return;
+    }
+    if (m.st === 'charge') {
+      m.ch += dt; m.f = Math.sign(hero.x - m.x) || m.f;
+      const s0 = seen(), hit0 = willHit(s0, WEAP[s0.hw] || WEAP[weapon]);
+      // 蓄力中被威胁：和玩家一样可以翻滚取消
+      if (hit0 != null && hit0 < .2 && m.rollCd === 0 && s0.aid !== m.lastAid) { m.lastAid = s0.aid; m.ch = 0; m.plan = null; m.lock = false; roll(-(Math.sign(hero.x - m.x) || 1) * .3, m.y < (M.top + M.bot) / 2 ? 1 : -1); return; }
+      const ty = hero.y; if (Math.abs(ty - m.y) > 3) moveEnt(m, 0, Math.sign(ty - m.y) * 52 * .2 * dt);
+      if (m.ch >= m.chTarget) release();
       return;
     }
     if (m.st === 'atk') {
@@ -173,17 +243,21 @@ window.XINMO = (() => {
           const next = a.c + 1 < w.combo.length ? a.c + 1 : -1;
           // 连招：打中了、玩家还在范围里、没在翻滚 → 接下一段；否则收手（高手不会打满空招）
           const inRange = Math.abs(hero.x - m.x) < reachOf() + 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 4;
-          if (next >= 0 && (m.hitC > 0 || w.proj) && inRange && hero.st !== 'roll' && hero.inv < .25) { m.hitC = 0; startAtk(next); return; }
+          if (next >= 0 && !a.visual && ((m.hitC > 0 || w.proj) && inRange && hero.st !== 'roll' && hero.inv < .25 || m.forceN > 0)) { m.hitC = 0; m.forceN = Math.max(0, (m.forceN || 0) - 1); startAtk(next); return; }
           m.atk = null; m.st = 'idle'; m.t = 0; m.hitC = 0;
-          m.backOff = a.c === w.combo.length - 1 ? .35 : .15;   // 打完一轮后撤半步，不给玩家反打
+          m.forceN = 0;
+          // 打一套就跑（SmashBot 的 hit-and-run）：终段打完一半概率翻滚撤走，否则后撤半步
+          if (a.c === w.combo.length - 1 && !m.plan && m.rollCd === 0 && Math.random() < .5) roll(-(Math.sign(hero.x - m.x) || 1), (Math.random() - .5) * .8);
+          else m.backOff = a.c === w.combo.length - 1 ? .35 : .15;
         }
       }
-      if (a.fi === 0) {   // 出手前摇：边转向边往前跟一步（像玩家按着方向键出招）
+      if (a.fi === 0 && !a.visual) {   // 出手前摇：边转向边往前跟一步（像玩家按着方向键出招）
         m.f = Math.sign(hero.x - m.x) || m.f;
         if (!w.proj && Math.abs(hero.x - m.x) > (w.reach || 28)) moveEnt(m, m.f * 70 * Math.max(.3, w.move || 0) * dt, Math.sign(hero.y - m.y) * 30 * dt);
       }
       return;
     }
+    if (m.lock && m.plan && m.plan.length && runPlan(dt)) return;
     // ---------- 思考（参考 SmashBot 的决策顺序：保命 → 防飞行物 → 反打 → 防真会打中的招 → 随机突进 → 拉距离）----------
     const s = seen(), dx = s.x - m.x, dy = s.y - m.y, adx = Math.abs(dx), ady = Math.abs(dy), sd = Math.sign(dx || 1);
     const dodgeP = Math.min(.99, .93 + lvl * .006);
@@ -201,10 +275,17 @@ window.XINMO = (() => {
     const hw = WEAP[s.hw] || WEAP[weapon], my0 = w.combo[0].d[0] / (w.aspd || 1);
     const reach = (w.reach || 28) + 4, edge = (hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 8) : reach) + 10;
     const lag = heroLag(s, hw);
+    if (s.st === 'roll' && hero.st === 'roll' && w.class !== 'ranged') {   // 追翻滚：跑到你翻滚的落点等你（SmashBot roll_end_position）
+      const left = Math.max(0, .4 - hero.t), ex = hero.x + (hero.rx || 0) * 150 * left, ey = hero.y + (hero.ry || 0) * 105 * left;
+      if (Math.abs(ex - m.x) > reach - 4 || Math.abs(ey - m.y) > 6) { moveTo(Math.max(14, Math.min(706, ex - sd * (reach - 8))), Math.max(M.top, Math.min(M.bot, ey)), dt, 1); return; }
+    }
     const walk = w.class === 'ranged' ? 0 : Math.max(0, adx - reach) / 70 + Math.max(0, ady - (w.dy || 14) + 4) / 52;
     const canHit = w.class === 'ranged' ? ady < 9 && adx < 220 : true;
     if (lag > 0 && canHit && walk + my0 < lag + .04 && !heroRolling) {
       if (walk > 0) { moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return; }
+      // SmashBot：破绽剩多少就蓄多久，正好在你能动之前放出（够蓄一档才蓄）
+      const spare = lag - my0 - .05;
+      if (spare >= .42 && m.weapon !== 'halberd') { startCharge(spare); return; }
       m.think = .25 + Math.random() * .2; startAtk(0); return;
     }
     // 3) 防：玩家这一下站着不动会不会打中我（SmashBot Defend.in_range）——会打中才处理
@@ -220,11 +301,14 @@ window.XINMO = (() => {
         return;
       }
     }
+    if (m.plan && runPlan(dt)) return;
     if (m.backOff > 0) { m.backOff -= dt; moveTo(m.x - sd * 40, m.y, dt, 1); return; }
     m.think -= dt;
     // 远程：保持距离、对齐就射；被贴脸先滚开
     if (w.class === 'ranged') {
       if (adx < 50 && m.rollCd === 0) { roll(-sd, 0); return; }
+      // 远处、你没在出招：蓄满放（汉弓穿云箭从天落下 / 石子散射）
+      if (m.think <= 0 && s.st !== 'atk' && adx > (m.weapon === 'bow' ? 140 : 90) && Math.random() < dt * (m.weapon === 'bow' && (m.ammo ?? 5) > 0 ? .9 : m.weapon === 'stone' ? .6 : 0)) { m.f = sd; startCharge(m.weapon === 'bow' ? 1.2 : .6 + Math.random() * .6); m.think = .6; return; }
       if (ady < 9 && adx < 210 && adx > 45 && !heroRolling && m.think <= 0) { m.f = sd; startAtk(0); m.think = .08; return; }
       moveTo(Math.max(20, Math.min(700, s.x - sd * 140)), s.y, dt);
       return;
@@ -232,6 +316,13 @@ window.XINMO = (() => {
     const ready = !heroRolling && hero.inv < my0 + .03 && ady < (w.dy || 14) + 4;
     // 4) 迎击（SmashBot Challenge）：玩家空手走进我的范围 → 我反应比人快，先出手
     if (ready && adx < reach && s.st !== 'atk') { m.think = .2 + Math.random() * .2; startAtk(0); return; }
+    // 长戟：中距离蓄力回马突冲过去，冲完一半概率翻滚撤走（不可打断的连招链）
+    if (m.weapon === 'halberd' && !heroRolling && ady < (w.dy || 14) + 4 && s.st !== 'atk' && adx > 50 && adx < 125 && Math.random() < dt * 3) {
+      const need = adx - 30, t = need <= 40 ? .45 : need <= 60 ? .85 : 1.6;
+      plan(Math.random() < .5 ? [{ k: 'charge', time: t }, { k: 'roll', dir: 'back' }] : [{ k: 'charge', time: t }, { k: 'atk', n: 1 }], true); m.think = .8; runPlan(dt); return;
+    }
+    // 骗招：往前踏一小步马上退，引你出手打空，再由「反打」接上
+    if (ready && s.st !== 'atk' && adx > reach && adx < edge + 20 && m.think <= 0 && Math.random() < dt * .5) { plan([{ k: 'step', dx: 30, dur: .14 }, { k: 'step', dx: -40, dur: .22 }]); m.think = .5; runPlan(dt); return; }
     // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
     if (!m.approachT && Math.random() < dt / 2) m.approachT = 1;
     if (m.approachT) { m.approachT = Math.max(0, m.approachT - dt); if (s.st === 'atk' || hero.inv > 0) m.approachT = 0; }
@@ -282,7 +373,16 @@ window.XINMO = (() => {
   }
   function onHurt() { if (m) m.lastHurtT = gameT; }
   function draw(z) {
+    for (const k of marks) {   // 穿云箭落点预警（和玩家的金圈一样，心魔的是紫色）
+      ctx.save(); ctx.globalAlpha = k.done ? Math.max(0, 1 - (k.t - k.T) * 4) : .35 + .3 * Math.sin(k.t * 30) ** 2; ctx.strokeStyle = '#b06aff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(k.x, k.y, k.r, k.r * .45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
     shadow(z.x, z.y, 10);
+    if (z.st === 'charge') {   // 蓄力光：和玩家一样按档位 白→黄→橙
+      const tr = tierOf(z.ch), p = Math.min(1, z.ch / fullT()), col = tr === 3 ? '#ff9a3d' : tr === 2 ? '#ffd84a' : '#ffffff';
+      ctx.save(); ctx.globalAlpha = .18 + .25 * p; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 6 + 8 * p;
+      ctx.beginPath(); ctx.ellipse(z.x, z.y - 16 - 8 * p, 10 + 6 * p, 18 + 18 * p, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
     if (z.inv > 0 && z.st !== 'roll' && Math.floor(z.inv * 20) % 2) return;
     // 心魔：和主角同一套动作帧，压暗 + 紫黑描影
     ctx.save(); ctx.filter = 'brightness(.45) saturate(.6) hue-rotate(220deg) drop-shadow(0 0 3px #6a2a9a)';

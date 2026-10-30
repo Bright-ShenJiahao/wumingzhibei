@@ -53,7 +53,8 @@
     cache.migrated=true;save({remote:true});return cache;
   }
   function equipped(slot){const p=state();return p.items.find(i=>i.uid===p.equipped[slot])||null;}
-  function active(type){const item=equipped(D.slots[type]);return item&&item.type===type?item:null;}
+  let tempActive=null;   // 心魔试炼：临时换成白板武器（不进存档）
+  function active(type){if(tempActive)return tempActive.type===type?tempActive:null;const item=equipped(D.slots[type]);return item&&item.type===type?item:null;}
   let nextFullNotice=0;
   function fullNotice(){if(Date.now()<nextFullNotice)return;nextFullNotice=Date.now()+4000;if(typeof toast==='function')toast('武器已满50把，不能拾取；未拾取武器离场不会带回');}
   function add(item){const p=state();if(p.items.some(i=>i.uid===item.uid))return true;if(p.items.length>=EQUIPMENT_RULES.capacityOf(cache)){fullNotice();return false;}p.items.push(item);if(!save()){p.items.pop();return false;}return true;}
@@ -187,7 +188,7 @@
     return true;
   }
   function setMastery(next){const p=state();p.mastery=next;save();}
-  window.ARMORY={backup,backups,restore,setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
+  window.ARMORY={setTemp(it){tempActive=it||null;},backup,backups,restore,setMastery,saveNow:save,toggleLock(uid){const i=state().items.find(x=>x.uid===uid);if(i){i.locked=!i.locked;save();}},count:()=>state().items.length,capacity:()=>EQUIPMENT_RULES.capacityOf(cache),state,equipped,active,add,grant,equip,unequip,reforge,render,exportProfile,mergeCloud,lastMergeChanged:()=>lastChanged,byId:uid=>state().items.find(i=>i.uid===uid),
     played:()=>!!state().played,markPlayed(){state().played=true;save();},
     owns:type=>state().items.some(i=>i.type===type),prepared:()=>['long','short','ranged'].map(equipped).find(Boolean)?.type||null};
 })();

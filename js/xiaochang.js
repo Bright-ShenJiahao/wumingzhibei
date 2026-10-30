@@ -85,7 +85,6 @@ window.XIAOCHANG = (() => {
     if (ARMORY.count() >= ARMORY.capacity()) { toast('已满50把，请先熔炼或卖出，再出征'); return false; }
     // 心魔试炼：只带一把武器；不带 xinmo 参数的出征（整备页「出征」）就是普通校场，R 键重开沿用上一局
     const xin = 'xinmo' in options ? (options.xinmo || '') : (Object.keys(options).length ? '' : selection.xinmo);
-    if (xin && !(window.ARMORY && ARMORY.active(xin))) { toast('这把武器没有装备'); return false; }
     const floor = xin ? 1 : Math.max(1, Math.min(maxFloor(chapter), Math.floor(options.floor || selection.floor)));
     const wish = c.weapons.includes(options.wish ?? selection.wish) ? options.wish ?? selection.wish : '';
     Object.assign(selection, { chapter, floor: xin ? selection.floor : floor, wish, xinmo: xin });
@@ -108,6 +107,8 @@ window.XIAOCHANG = (() => {
     joy = null; pressAtk = false; pressRoll = false;
     for (const k in key) delete key[k];
     const chapterPanel = document.getElementById('tChapter'); if (chapterPanel) chapterPanel.classList.remove('open');
+    // 心魔试炼（用户定）：你和心魔都用白板武器（普通、无词条），比纯手上功夫
+    if (window.ARMORY && ARMORY.setTemp) ARMORY.setTemp(xin ? { uid: 'xinmo_' + xin, type: xin, q: 0, affixes: [] } : null);
     if (xin) { weapon = xin; if (window.GEAR && GEAR.switch) GEAR.switch(); ui(); }
     offerWave();
     return true;
@@ -330,7 +331,7 @@ window.XIAOCHANG = (() => {
     const full=ARMORY.count()>=ARMORY.capacity(),go=root.querySelector('#tPrepGo');
     go.disabled=go.disabled||full||(!debug()&&!TITLE.hasCleared(chapter));
     root.querySelector('#tPrepStatus').textContent=full?'已满50把，请先熔炼或卖出，再出征':'锦囊仅本局有效 · 已拾取装备永久保留';
-    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small><h3>心魔试炼</h3><p class="x-xinmo-info"></p><div class="x-options" role="group" aria-label="心魔试炼">${['long','short','ranged'].map(sl=>ARMORY.equipped(sl)).filter(Boolean).map(it=>`<button type="button" data-x-xinmo="${it.type}">挑战·${AFFIX_DATA.names[it.type]}</button>`).join('')}</div><small>只带一把武器，对面是和你一模一样的心魔。战胜必掉极品武器 + 500 金币。</small>`;
+    const completed=highest(chapter);box.innerHTML=`<button type="button" class="x-back">← 返回整备</button><h2>校场演武</h2><p class="x-progress">已通过第${completed}层</p><div class="x-chapters" role="group" aria-label="校场章节"><span>章节</span>${Object.entries(CONFIG).map(([id,item])=>`<button type="button" data-x-chapter="${id}" class="${Number(id)===chapter?'selected':''}" ${debug()||TITLE.hasCleared(Number(id))?'':'disabled title="通关该章后开放"'}>${item.name}${debug()||TITLE.hasCleared(Number(id))?'':'🔒'}</button>`).join('')}</div><h3>选择层数</h3><div class="x-options" role="group" aria-label="层数">${Array.from({length:maxFloor(chapter)},(_,i)=>`<button type="button" data-x-floor="${i+1}">${i+1===6?'第6层·魔化':'第'+(i+1)+'层'}</button>`).join('')}</div><h3>许愿武器</h3><div class="x-options" role="group" aria-label="许愿"><button type="button" data-x-wish="">不许愿</button>${c.weapons.map(t=>`<button type="button" data-x-wish="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><p id="xStrength"></p><small>许愿：每次掉落50%固定为所选类型，另外50%从本章武器池随机。</small><h3>心魔试炼</h3><p class="x-xinmo-info"></p><div class="x-options" role="group" aria-label="心魔试炼">${['staff','hammer','stone','halberd','blade','bow'].map(t=>`<button type="button" data-x-xinmo="${t}">${AFFIX_DATA.names[t]}</button>`).join('')}</div><small>选一把武器：你和心魔都用白板（普通、无词条）。战胜必掉这类极品武器 + 500 金币。</small>`;
     {const xs=window.XINMO?XINMO.stats():{wins:0,tries:0};box.querySelector('.x-xinmo-info').textContent=xs.tries?`已战胜心魔 ${xs.wins} 次 / 挑战 ${xs.tries} 次 · 你赢得越多，它越强`:'它会学你的打法，一次比一次难。';
      box.querySelectorAll('[data-x-xinmo]').forEach(b=>b.onclick=()=>{if(start({chapter,xinmo:b.dataset.xXinmo}))document.getElementById('tChapter')?.classList.remove('open');});}
     box.querySelector('.x-back').onclick=()=>TITLE.openPreparation({chapter,view:'campaign'});
@@ -367,7 +368,7 @@ window.XIAOCHANG = (() => {
     article.appendChild(nav);panel.appendChild(article);document.body.appendChild(panel);document.body.classList.add('wzb-xresult');
   }
   function leave() {
-    if(window.XINMO)XINMO.reset();
+    if(window.XINMO)XINMO.reset();if(window.ARMORY&&ARMORY.setTemp)ARMORY.setTemp(null);
     active=false;run=null;magicFx=[];ghostLinks=[];M.top=168;
     if(panel){panel.remove();panel=null;}document.body.classList.remove('wzb-xresult');
   }
