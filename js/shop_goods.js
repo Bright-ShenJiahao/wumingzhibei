@@ -13,11 +13,11 @@
     fu_ju: { name: '聚气符', d: '蓄力时间 -15%', k: 'chargeMul', v: .85 },
   };
   const CONS = {
-    ration: { name: '行军干粮', d: '开局带 1 个鸡腿，按 H（手机点图标）随时吃，回 2 血', price: 80, icon: '粮' },
-    jinchuang: { name: '金创药', d: '开局药格里存 1 瓶，血量掉到一半自动喝', price: 120, icon: '药' },
-    dukang: { name: '杜康酒', d: '开局带 1 坛，按 Y（手机点图标）随时喝：10 秒伤害 +30%、攻速 +15%', price: 120, icon: '酒' },
-    reroll: { name: '锦囊重抽符', d: '本局第一次选锦囊时可以重抽一次', price: 150, icon: '签' },
-    amulet: { name: '护身符', d: '本局第一次被重击不会倒地', price: 300, icon: '护' },
+    ration: { name: '行军干粮', d: '开局带 1 个鸡腿，按 H（手机点图标）随时吃，回 2 血', price: 40, icon: '粮' },
+    jinchuang: { name: '金创药', d: '开局药格里存 1 瓶，血量掉到一半自动喝', price: 60, icon: '药' },
+    dukang: { name: '杜康酒', d: '开局带 1 坛，按 Y（手机点图标）随时喝：10 秒伤害 +30%、攻速 +15%', price: 60, icon: '酒' },
+    reroll: { name: '锦囊重抽符', d: '本局第一次选锦囊时可以重抽一次', price: 80, icon: '签' },
+    amulet: { name: '护身符', d: '本局第一次被重击不会倒地', price: 120, icon: '护' },
   };
   function store() {
     const p = profile(); if (!p) return null;
@@ -31,7 +31,7 @@
   // ---- 每日特价：按本地日期挑一件，7 折 ----
   const ids = () => [...Object.keys(CONS), ...Object.keys(FU), 'stone'];
   function dailyId() { const d = new Date(), k = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); const a = ids(); return a[(k * 2654435761 >>> 0) % a.length]; }
-  const BASE = id => CONS[id] ? CONS[id].price : FU[id] ? 100 : id === 'stone' ? 300 : 0;
+  const BASE = id => CONS[id] ? CONS[id].price : FU[id] ? 60 : id === 'stone' ? 300 : 0;
   const priceOf = id => Math.round(BASE(id) * (id === dailyId() ? .7 : 1));
 
   // ---- 局内 ----

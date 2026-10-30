@@ -2369,6 +2369,7 @@ function drawAllyFire() {
 let gameT = 0;
 let arenaL = null;
 let boardSent = false;   // 本局成绩是否已提交到英雄榜
+const debugRun0 = () => /[?&]debug(?:=|&|$)/.test(location.search);
 let runBonus = 0;        // 满血吃补血道具等额外积分
 // 投石车（锦囊·主动）：从左边进场、各投一块燃烧石，然后退出
 let catapults = [];      // { x, y, tx, t, fired, phase }
@@ -2448,6 +2449,7 @@ function update(dt) {
       rank: won ? rankOf(endT) : '', sel: won ? 'restart' : 'revive', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
+    if (won && !debugRun0() && window.WALLET && WALLET.bonus) { const first = !(window.TITLE && TITLE.hasCleared && TITLE.hasCleared(chapter2Run ? 2 : 1)); WALLET.bonus((chapter2Run ? 120 : 60) + (first ? 300 : 0)); }   // 通关奖励（用户定金币经济）：每次通关 +60/+120，首通再 +300
     if (window.WALLET) WALLET.flush();
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
@@ -3599,7 +3601,7 @@ function drawCheer(z) {
 let DPR = 1;
 function fit() {
   const vv = window.visualViewport, w = vv ? vv.width : innerWidth, h = vv ? vv.height : innerHeight;
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(window.LOWFX ? 1 : 2, window.devicePixelRatio || 1);   // 低配模式：不再按 2 倍清晰度画
   cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
 }
@@ -3654,6 +3656,16 @@ window.GAME_PAUSE = {
 };
 // 主循环：某一帧出错也不让整个游戏卡死（以前一处报错就会冻住画面、人物消失）；错误记下来给调试面板看
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
-function loop(t) { if (t - last < 1000 / 62) { requestAnimationFrame(loop); return; }   // 60 帧上限：高刷屏不多算，省电
+// 用户定：手机跑不动就自动转低配——战斗中统计 150 帧，平均低于约 40 帧就降到 30 帧、1 倍清晰度、减少粒子
+let perfN = 0, perfSum = 0;
+try { if (localStorage.getItem('wzb-lowfx') === '1') window.LOWFX = true; } catch (e) {}
+function perfCheck(gap) {
+  if (window.LOWFX || perfN >= 150 || !hero || (window.TITLE && TITLE.blocks && TITLE.blocks()) || result || gap > 250) return;
+  perfN++; perfSum += gap;
+  if (perfN === 150 && perfSum / 150 > 25) { window.LOWFX = true; try { localStorage.setItem('wzb-lowfx', '1'); } catch (e) {} fit(); toastMsg = '已自动切换到流畅模式'; toastT = 3; }
+}
+function loop(t) { if (t - last < 1000 / (window.LOWFX ? 31 : 62)) { requestAnimationFrame(loop); return; }   // 60 帧上限（低配 30）：高刷屏不多算，省电
+  perfCheck(t - last);
+  if (window.LOWFX && propFx.length > 120) propFx.splice(0, propFx.length - 120);
   const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);

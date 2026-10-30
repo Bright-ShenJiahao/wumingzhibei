@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=e48fe8bc16" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=e48fe8bc16)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=e69b73f5de" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=e69b73f5de)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='97c053f69c04',busy=false;
+var BUILD='a0d5289e0afc',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -296,7 +296,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
     setupStyle();const p=state(),bag=root.querySelector('#tPrepBag');if(!bag)return;
     const countLabel=root.querySelector('.tBagCount');if(countLabel){countLabel.textContent='武器 '+p.items.length+'/'+EQUIPMENT_RULES.capacityOf(cache);countLabel.style.color=p.items.length>=50?'#efa18e':p.items.length>=40?'#edce83':'';}
     const equippedIds=new Set(Object.values(p.equipped).filter(Boolean));
-    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{if(node.hasAttribute('data-outfit-slot')||node.hasAttribute('data-artifact-slot')||node.hasAttribute('data-meridian-slot'))return;const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.names[item.type];label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
+    const slots=root.querySelectorAll('.tPrepSlot');slots.forEach(node=>{if(node.hasAttribute('data-outfit-slot')||node.hasAttribute('data-artifact-slot')||node.hasAttribute('data-meridian-slot')||node.hasAttribute('data-locked-slot'))return;const item=equipped(node.dataset.slot),iconBox=node.querySelector('.tPrepIcon'),label=node.querySelector('.tPrepName');node.querySelector('.aSlotActions')?.remove();node.removeAttribute('data-uid');node.removeAttribute('data-weapon');if(!item){label.textContent='空';label.style.color='';iconBox.innerHTML='<span aria-hidden="true">—</span>';return;}node.dataset.uid=item.uid;node.dataset.weapon=item.type;label.textContent=D.names[item.type];label.style.color=D.qualities[item.q].color;iconBox.innerHTML=icon(item.type);const actions=document.createElement('div');actions.className='aSlotActions';const remove=document.createElement('button');remove.type='button';remove.className='aUnequip';remove.textContent='卸下';remove.onclick=e=>{e.stopPropagation();if(unequip(node.dataset.slot))window.TITLE.refreshPreparation();};remove.disabled=!!item.locked;const lock=document.createElement('button');lock.type='button';lock.className='aSlotLock';lock.textContent=item.locked?'🔒 已锁':'锁定';lock.onclick=e=>{e.stopPropagation();item.locked=!item.locked;save();window.TITLE.refreshPreparation();};actions.append(remove,lock);node.append(actions);});
     for(const uid of [...selection])if(!p.items.some(i=>i.uid===uid)||equippedIds.has(uid))selection.delete(uid);
     bag.replaceChildren();
     // 物品栏标签：武器 / 物品；武器页可筛选（全部/长/短/远程）和排序（品级/获得时间）
@@ -2017,7 +2017,7 @@ const Boss = (() => {
     for (let i = sparks.length - 1; i >= 0; i--) if (sparks[i].t >= sparks[i].T) sparks.splice(i, 1);
     for (const c of scorch) c.t += dt;
     for (let i = scorch.length - 1; i >= 0; i--) if (scorch[i].t > 1.2) scorch.splice(i, 1);
-    if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+    { const cap = window.LOWFX ? 100 : 400; if (sparks.length > cap) sparks.splice(0, sparks.length - cap); }
   }
   let lastT = performance.now();
   function draw() {
@@ -5792,7 +5792,7 @@ const Boss = (() => {
     fruits: fruitCount,
     runCoins: () => runEarned,
     pendingCoins: () => pending,
-    awardKill, startRun, flush,
+    awardKill, startRun, flush, bonus: n => { n = Math.max(0, Math.floor(n)); pending += n; runEarned += n; return n; },
     spendCoins, addCoins, addFruits, useFruits,
   };
 
@@ -6027,11 +6027,11 @@ const Boss = (() => {
     fu_ju: { name: '聚气符', d: '蓄力时间 -15%', k: 'chargeMul', v: .85 },
   };
   const CONS = {
-    ration: { name: '行军干粮', d: '开局带 1 个鸡腿，按 H（手机点图标）随时吃，回 2 血', price: 80, icon: '粮' },
-    jinchuang: { name: '金创药', d: '开局药格里存 1 瓶，血量掉到一半自动喝', price: 120, icon: '药' },
-    dukang: { name: '杜康酒', d: '开局带 1 坛，按 Y（手机点图标）随时喝：10 秒伤害 +30%、攻速 +15%', price: 120, icon: '酒' },
-    reroll: { name: '锦囊重抽符', d: '本局第一次选锦囊时可以重抽一次', price: 150, icon: '签' },
-    amulet: { name: '护身符', d: '本局第一次被重击不会倒地', price: 300, icon: '护' },
+    ration: { name: '行军干粮', d: '开局带 1 个鸡腿，按 H（手机点图标）随时吃，回 2 血', price: 40, icon: '粮' },
+    jinchuang: { name: '金创药', d: '开局药格里存 1 瓶，血量掉到一半自动喝', price: 60, icon: '药' },
+    dukang: { name: '杜康酒', d: '开局带 1 坛，按 Y（手机点图标）随时喝：10 秒伤害 +30%、攻速 +15%', price: 60, icon: '酒' },
+    reroll: { name: '锦囊重抽符', d: '本局第一次选锦囊时可以重抽一次', price: 80, icon: '签' },
+    amulet: { name: '护身符', d: '本局第一次被重击不会倒地', price: 120, icon: '护' },
   };
   function store() {
     const p = profile(); if (!p) return null;
@@ -6045,7 +6045,7 @@ const Boss = (() => {
   // ---- 每日特价：按本地日期挑一件，7 折 ----
   const ids = () => [...Object.keys(CONS), ...Object.keys(FU), 'stone'];
   function dailyId() { const d = new Date(), k = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); const a = ids(); return a[(k * 2654435761 >>> 0) % a.length]; }
-  const BASE = id => CONS[id] ? CONS[id].price : FU[id] ? 100 : id === 'stone' ? 300 : 0;
+  const BASE = id => CONS[id] ? CONS[id].price : FU[id] ? 60 : id === 'stone' ? 300 : 0;
   const priceOf = id => Math.round(BASE(id) * (id === dailyId() ? .7 : 1));
 
   // ---- 局内 ----
@@ -7317,9 +7317,12 @@ const Boss = (() => {
     const chapterNote = dom.chapter.querySelector('#tChapterNote');
     if (chapterNote) chapterNote.textContent = `玩家：${S.name || '未命名'}`;
     const target = dom.chapter.querySelector('#tPrepTarget');
-    if (target) { target.innerHTML = `${window.SHOP ? SHOP.entryMarkup() : ''}<button type="button" id="tMastery">⚔ 武器熟练度</button><button type="button" id="tTipBag">🎴 锦囊</button>`; if (window.SHOP) SHOP.bind(target); target.querySelector('#tMastery').onclick = () => window.MASTERY && MASTERY.open(); target.querySelector('#tTipBag').onclick = () => window.TIPBAG && TIPBAG.open(); }
+    if (target) { const c1 = /[?&]debug(?:=|&|$)/.test(location.search) || hasCleared(S.name, 1);   // 商店、熟练度：通关第一章后开放（锦囊一直有）
+      target.innerHTML = `${c1 && window.SHOP ? SHOP.entryMarkup() : ''}${c1 ? '<button type="button" id="tMastery">⚔ 武器熟练度</button>' : ''}<button type="button" id="tTipBag">🎴 锦囊</button>`; if (c1 && window.SHOP) SHOP.bind(target); const tm = target.querySelector('#tMastery'); if (tm) tm.onclick = () => window.MASTERY && MASTERY.open(); target.querySelector('#tTipBag').onclick = () => window.TIPBAG && TIPBAG.open(); }
 
-    const slotMarkup=slot=>{if(slot.id==='talisman'){const display=window.MERIDIAN?MERIDIAN.label():'未通';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_meridian)||''})" data-meridian-slot role="button" aria-label="经脉：${display}"><span class="outfitIco" aria-hidden="true">☯️</span><span class="outfitCopy"><strong>经脉</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}if(slot.id==='artifact'){const display=window.ARTIFACT?ARTIFACT.label():'未装备';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_artifact)||''})" data-artifact-slot role="button" aria-label="神器：${display}"><span class="outfitIco" aria-hidden="true">🗡️</span><span class="outfitCopy"><strong>神器</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}if(slot.id==='fashion'){const display=window.OUTFIT?OUTFIT.label():'默认';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_outfit)||''})" data-outfit-slot role="button" aria-label="时装：${display}"><span class="outfitIco" aria-hidden="true">🎨</span><span class="outfitCopy"><strong>时装</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
+    const DBG=/[?&]debug(?:=|&|$)/.test(location.search),ch1Done=DBG||hasCleared(S.name,1),hasArt=DBG||(window.ARTIFACT&&ARTIFACT.owned('feijian'));   // 用户定：系统按进度逐步开放
+    const lockedSlot=(name,why)=>`<div class="tPrepSlot outfitSlot" data-locked-slot style="opacity:.45;cursor:default;filter:grayscale(.6)"><span class="outfitCopy"><strong>🔒 ${name}</strong><small>${why}</small></span></div>`;
+    const slotMarkup=slot=>{if(slot.id==='talisman'&&!ch1Done)return lockedSlot('经脉','通关第一章后开放');if(slot.id==='artifact'&&!hasArt)return lockedSlot('神器','击败张角后开放');if(slot.id==='talisman'){const display=window.MERIDIAN?MERIDIAN.label():'未通';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_meridian)||''})" data-meridian-slot role="button" aria-label="经脉：${display}"><span class="outfitIco" aria-hidden="true">☯️</span><span class="outfitCopy"><strong>经脉</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}if(slot.id==='artifact'){const display=window.ARTIFACT?ARTIFACT.label():'未装备';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_artifact)||''})" data-artifact-slot role="button" aria-label="神器：${display}"><span class="outfitIco" aria-hidden="true">🗡️</span><span class="outfitCopy"><strong>神器</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}if(slot.id==='fashion'){const display=window.OUTFIT?OUTFIT.label():'默认';return `<button type="button" class="tPrepSlot outfitSlot bnr" style="--bnr:url(${(typeof ASSETS!=='undefined'&&ASSETS.ui&&ASSETS.ui.banner_outfit)||''})" data-outfit-slot role="button" aria-label="时装：${display}"><span class="outfitIco" aria-hidden="true">🎨</span><span class="outfitCopy"><strong>时装</strong><small>当前：<span class="outfitName">${display}</span></small></span></button>`;}const id=p.equipped[slot.id],item=ITEMS[id],display=item?item.name:'空',icon=item?itemIcon(id):'<span aria-hidden="true">—</span>';return `<div class="tPrepSlot" data-slot="${slot.id}" ${item?`data-weapon="${id}"`:''} data-inventory-drop="slot" role="button" tabindex="0" aria-label="${slot.name}：${display}"><b>${slot.name}</b><span class="tPrepIcon">${icon}</span><span class="tPrepName">${display}</span></div>`;};
     dom.chapter.querySelector('#tPrepSlotsLeft').innerHTML=EQUIPMENT_SLOTS.slice(0,3).map(slotMarkup).join('');
     dom.chapter.querySelector('#tPrepSlotsRight').innerHTML=EQUIPMENT_SLOTS.slice(3,6).map(slotMarkup).join('');
     const outfitSlot=dom.chapter.querySelector('[data-outfit-slot]');
@@ -10923,6 +10926,7 @@ function drawAllyFire() {
 let gameT = 0;
 let arenaL = null;
 let boardSent = false;   // 本局成绩是否已提交到英雄榜
+const debugRun0 = () => /[?&]debug(?:=|&|$)/.test(location.search);
 let runBonus = 0;        // 满血吃补血道具等额外积分
 // 投石车（锦囊·主动）：从左边进场、各投一块燃烧石，然后退出
 let catapults = [];      // { x, y, tx, t, fired, phase }
@@ -11002,6 +11006,7 @@ function update(dt) {
       rank: won ? rankOf(endT) : '', sel: won ? 'restart' : 'revive', born: gameT + (won ? 1.2 : .45),
       needRevive: !won,   // 死了就能分享复活（无限次；第 2 次复活起评分减半）
       line: won ? (chapter2Run ? '黄巾决战告捷，战利品已收入整备仓库。' : '获得管亥的长戟，可在整备界面选择装备。') : deathLine(), s1: 0, s2: 0 };
+    if (won && !debugRun0() && window.WALLET && WALLET.bonus) { const first = !(window.TITLE && TITLE.hasCleared && TITLE.hasCleared(chapter2Run ? 2 : 1)); WALLET.bonus((chapter2Run ? 120 : 60) + (first ? 300 : 0)); }   // 通关奖励（用户定金币经济）：每次通关 +60/+120，首通再 +300
     if (window.WALLET) WALLET.flush();
     const debugRun = /[?&]debug(?:=|&|$)/.test(location.search);   // 开发者模式：不记录成绩
     if (window.ARMORY) ARMORY.markPlayed();
@@ -12153,7 +12158,7 @@ function drawCheer(z) {
 let DPR = 1;
 function fit() {
   const vv = window.visualViewport, w = vv ? vv.width : innerWidth, h = vv ? vv.height : innerHeight;
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(window.LOWFX ? 1 : 2, window.devicePixelRatio || 1);   // 低配模式：不再按 2 倍清晰度画
   cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
 }
@@ -12208,7 +12213,17 @@ window.GAME_PAUSE = {
 };
 // 主循环：某一帧出错也不让整个游戏卡死（以前一处报错就会冻住画面、人物消失）；错误记下来给调试面板看
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
-function loop(t) { if (t - last < 1000 / 62) { requestAnimationFrame(loop); return; }   // 60 帧上限：高刷屏不多算，省电
+// 用户定：手机跑不动就自动转低配——战斗中统计 150 帧，平均低于约 40 帧就降到 30 帧、1 倍清晰度、减少粒子
+let perfN = 0, perfSum = 0;
+try { if (localStorage.getItem('wzb-lowfx') === '1') window.LOWFX = true; } catch (e) {}
+function perfCheck(gap) {
+  if (window.LOWFX || perfN >= 150 || !hero || (window.TITLE && TITLE.blocks && TITLE.blocks()) || result || gap > 250) return;
+  perfN++; perfSum += gap;
+  if (perfN === 150 && perfSum / 150 > 25) { window.LOWFX = true; try { localStorage.setItem('wzb-lowfx', '1'); } catch (e) {} fit(); toastMsg = '已自动切换到流畅模式'; toastT = 3; }
+}
+function loop(t) { if (t - last < 1000 / (window.LOWFX ? 31 : 62)) { requestAnimationFrame(loop); return; }   // 60 帧上限（低配 30）：高刷屏不多算，省电
+  perfCheck(t - last);
+  if (window.LOWFX && propFx.length > 120) propFx.splice(0, propFx.length - 120);
   const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);
 </script></body></html>

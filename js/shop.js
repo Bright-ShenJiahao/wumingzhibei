@@ -86,7 +86,7 @@
     fruits: fruitCount,
     runCoins: () => runEarned,
     pendingCoins: () => pending,
-    awardKill, startRun, flush,
+    awardKill, startRun, flush, bonus: n => { n = Math.max(0, Math.floor(n)); pending += n; runEarned += n; return n; },
     spendCoins, addCoins, addFruits, useFruits,
   };
 

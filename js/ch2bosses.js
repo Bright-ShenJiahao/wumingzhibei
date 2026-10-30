@@ -209,7 +209,7 @@
     for (let i = sparks.length - 1; i >= 0; i--) if (sparks[i].t >= sparks[i].T) sparks.splice(i, 1);
     for (const c of scorch) c.t += dt;
     for (let i = scorch.length - 1; i >= 0; i--) if (scorch[i].t > 1.2) scorch.splice(i, 1);
-    if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+    { const cap = window.LOWFX ? 100 : 400; if (sparks.length > cap) sparks.splice(0, sparks.length - cap); }
   }
   let lastT = performance.now();
   function draw() {
