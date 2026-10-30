@@ -117,7 +117,7 @@ assets['heroMask'] = {f: sprite_uri(P('art', 'sprites', 'hero_mask', f + '.png')
                       for f in atlas.get('hero', {})
                       if os.path.isfile(P('art', 'sprites', 'hero_mask', f + '.png'))}
 pm = json.load(open(P('art', 'props', 'meta.json')))
-_src = open(P('game.js'), encoding='utf-8').read()
+_src = open(P('game.js'), encoding='utf-8').read() + ''.join(open(f, encoding='utf-8').read() for f in sorted(__import__('glob').glob(P('js', '*.js'))))   # 道具名可能写在拆出去的 js 里
 # 只打包 game.js 里实际用到的道具（按名字出现与否判断），减小网页体积
 assets['props'] = {k: [uri(P('art', 'props', k + '.png'))] + v for k, v in pm.items() if f"'{k}'" in _src}
 # 配音：art/voice/*.mp3 → ASSETS.voice[名字]

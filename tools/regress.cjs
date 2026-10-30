@@ -27,6 +27,6 @@ const BASE = path.join(__dirname, 'regress-baseline.json'), mode = process.argv[
   console.log(errs.length ? '报错：\n' + errs.join('\n') : '冒烟：没有报错');
   if (mode === 'save') { fs.writeFileSync(BASE, JSON.stringify(nums, null, 1)); console.log('已保存基线', Object.keys(nums).length, '项'); return; }
   const base = JSON.parse(fs.readFileSync(BASE, 'utf8')); let bad = 0;
-  for (const k in base) { const a = base[k], v = nums[k]; if (v == null) { console.log('缺少', k); bad++; continue; } const tol = Math.max(k.includes('锦囊') ? 6 : 3, Math.abs(a) * .15);   // 锦囊提升% 在 0 附近随机抖动 if (Math.abs(v - a) > tol) { console.log('变化', k, a, '→', v); bad++; } }
+  for (const k in base) { const a = base[k], v = nums[k]; if (v == null) { console.log('缺少', k); bad++; continue; } const tol = Math.max(k.includes('锦囊') ? 6 : 3, Math.abs(a) * .15); /* 锦囊提升% 在 0 附近随机抖动 */ if (Math.abs(v - a) > tol) { console.log('变化', k, a, '→', v); bad++; } }
   console.log(bad ? `数值有 ${bad} 项超出浮动` : '数值：和基线一致'); process.exit(errs.length || bad ? 1 : 0);
 })();

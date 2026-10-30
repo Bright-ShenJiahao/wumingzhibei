@@ -323,5 +323,5 @@
 
 ## 拆代码前的准备（2026-10-31）
 - 回归测试：`python3 -m http.server 8765` 后 `NODE_PATH=$(npm root -g) node tools/regress.cjs check`（冒烟 + 伤害测试场数值对比 tools/regress-baseline.json，±15%）。改平衡后用 `save` 重存基线。
-- 拆分前打 git 标签 `before-split`，出问题可整体回退。
+- 拆分前打 git 标签 `before-split`（只在本地）。game.js 已拆出 js/g_*.js（第二章流程、受击、主角更新/攻击、掉落道具、敌人 AI、投射物、世界绘制）和 js/result_screen.js；build.py 打包道具时扫描 game.js + 全部 js。
 - 平衡（伤害测试场）：回旋锤第 2 个目标起 60%；横扫千军溅射 20%；火烧连营火场 0.35、点燃 0.2。
