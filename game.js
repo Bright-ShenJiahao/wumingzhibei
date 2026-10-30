@@ -2730,6 +2730,12 @@ function draw() {
     ctx.save(); ctx.font = 'bold 46px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#34231b'; ctx.fillStyle = '#ffd23f';
     ctx.strokeText('GO →', HW - 28, HH / 2); ctx.fillText('GO →', HW - 28, HH / 2); ctx.restore();
   }
+  // 左侧后退边界：镜头贴到边界时，屏幕左缘压暗并画一道红色虚线，一看就知道到头了
+  if (arenaL != null && !result && cam.x <= arenaL + 2) {
+    const gw = Math.min(70, HW * .08), gr = ctx.createLinearGradient(0, 0, gw, 0);
+    gr.addColorStop(0, 'rgba(10,6,4,.6)'); gr.addColorStop(1, 'rgba(10,6,4,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, gw, HH);
+    ctx.save(); ctx.strokeStyle = 'rgba(200,60,40,.55)'; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(3, HH * .45); ctx.lineTo(3, HH); ctx.stroke(); ctx.restore();
+  }
   drawCombo(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';

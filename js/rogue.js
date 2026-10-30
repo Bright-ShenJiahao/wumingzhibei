@@ -607,7 +607,7 @@
     for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) { e.preventDefault(); e.stopPropagation(); choose(r.i); return; }
   }, { capture: true });
   addEventListener('pointermove', e => { if (!open) return; hoverI = -1; for (const r of rects) if (e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h) hoverI = r.i; });
-  addEventListener('keydown', e => { if (!open) return; if (window.XIAOCHANG && XIAOCHANG.active()) { e.preventDefault(); e.stopImmediatePropagation(); } const k = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (k >= 0) choose(k); }, true);
+  addEventListener('keydown', e => { if (!open) return; e.preventDefault(); e.stopImmediatePropagation(); const k = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (k >= 0) choose(k); }, true);   // 选锦囊时按键只给锦囊用（以前按 1~3 选卡会顺带换武器）
   window.ROGUE = {
     S, offer: offerCards, blocks: () => open, draw, drawWorld, update, tick, choose, useSkill, useSummon, useCatapult, absorbHit,
     onRoll, onDodge, takeFinisher, takeCrit, onHit, afterHit, hardClash, has: name => !!has[name],
