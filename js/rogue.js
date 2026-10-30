@@ -137,7 +137,7 @@
   }
   function useSkill() {
     if (!bing || skillCd > 0) return '';
-    skillCd = window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30; updateSkillButton(); stat(SKILL_NAME[bing], 0, 1);
+    skillCd = (window.GEAR ? (GEAR.refreshSkill() ? 0 : GEAR.skillCd()) : 30) * (window.MERIDIAN ? MERIDIAN.x('skillCd', 1) : 1); updateSkillButton(); stat(SKILL_NAME[bing], 0, 1);
     if (bing === 'wanjian') { castRain(); return 'rain'; }
     if (bing === 'leiting') castThunder();
     else if (bing === 'caomu') castScarecrows();

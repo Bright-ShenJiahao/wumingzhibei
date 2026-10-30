@@ -28,6 +28,12 @@ function validate(p){
     const owned={};for(const k of ['feijian'])if(a.owned?.[k])owned[k]=1;
     const at=Number(a._at);clean.artifacts={owned,eq:typeof a.eq==='string'&&owned[a.eq]?a.eq:'',_at:Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0};
   }
+  if(clean.meridian!=null){
+    const m=clean.meridian;if(typeof m!=='object'||Array.isArray(m))throw new Error('经脉数据不合法');
+    const got={};for(const k of ['ch1','ch2','ch3','xc1','xc2','xc3','mo'])if(m.got?.[k])got[k]=1;
+    const path=[];if(Array.isArray(m.path))for(const v of m.path.slice(0,7)){if(v!==0&&v!==1&&v!==2)break;if(path.length&&Math.abs(v-path[path.length-1])>1)break;path.push(v);}
+    const at=Number(m._at);clean.meridian={got,path:path.slice(0,Object.keys(got).length),_at:Number.isInteger(at)&&at>=0&&at<=Number.MAX_SAFE_INTEGER?at:0};
+  }
   if(clean.tipLocks!=null){
     const t=clean.tipLocks,out={};
     if(typeof t!=='object'||Array.isArray(t))throw new Error('锦囊锁定数据不合法');

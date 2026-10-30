@@ -264,6 +264,7 @@ window.XIAOCHANG = (() => {
     if (win) {
       GEAR.collectDrops();
       if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
+      if (!run.debug && window.MERIDIAN) { if (run.floor === 5) MERIDIAN.award('xc' + run.chapter); if (run.floor === 6) MERIDIAN.award('mo'); }   // 通脉丹
     }
     run.coins = window.WALLET ? WALLET.runCoins() : 0;
     if (window.WALLET) WALLET.flush();

@@ -7,7 +7,7 @@
     if(item?.negative)v[item.negative.id]=-item.negative.value/100;
     return {uid:item?.uid||type,type,q:item?.q||0,v,special:item?.special||null,special2:item?.special2||null};}
   function sync(){const next=ARMORY.active(weapon),uid=next?.uid||weapon;if(uid!==currentUid){current=snapshot(weapon);currentUid=uid;spirit=0;chain=0;chainTarget=null;pending=[];if(hero){const max=maxHp();hero.hp=Math.min(hero.hp,max);}}return current;}
-  const stat=(s,k)=>s.v[k]||0;
+  const stat=(s,k)=>(s.v[k]||0)+(window.MERIDIAN?MERIDIAN.stat(k):0);   // 经脉数值叠在装备词条上
   function reduction(s){return clamp(stat(s,'focus'),0,.3);}
   function maxHp(){const s=current||snapshot(typeof weapon==='undefined'?'hammer':weapon);return 10*(1+clamp(stat(s,'health')+stat(s,'frail'),-.8,1));}
   function lowHp(){return hero?clamp((.5-hero.hp/maxHp())/.3,0,1):0;}
@@ -24,7 +24,7 @@
   function primaryBonus(s,z,traits,token){
     let add=stat(s,'sharp')+stat(s,'blunt')+rogue(traits.ranged?'rangedDmg':'meleeDmg',1)-1+(window.MASTERY?MASTERY.bonus(s.type).dmg:0);
     const boss=z.T.boss||z.T.chapterBoss;
-    add+=stat(s,boss?'hunt':'troops');if(abnormal(z))add+=stat(s,'exploit');
+    add+=stat(s,boss?'hunt':'troops');if(window.MERIDIAN&&(boss||z.T.elite||z.T.ch2Elite))add+=MERIDIAN.x('elite');if(abnormal(z))add+=stat(s,'exploit');
     if(victoryUntil>gameT)add+=stat(s,'victory');
     if(chainTarget===z&&gameT-chainAt<2)add+=chain*stat(s,'chain');
     if(s.special==='spirit')add+=spirit*.01;if(s.special==='berserk')add+=.2*lowHp();

@@ -214,7 +214,8 @@ function reset() {
   ui();
   if (window.ROGUE) ROGUE.reset();
   if (window.ARTIFACT) ARTIFACT.startRun();
-  if (window.SUPPLY) SUPPLY.reset();   // 神器：每局重新踩上飞剑、打落次数清零
+  if (window.SUPPLY) SUPPLY.reset();
+  if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -251,9 +252,9 @@ const CHARGE_MS = 400;
 let chargeTier = 0, chargeTierFlash = 0;
 function chargeMaxMs() {
   const base = WEAP[weapon] && WEAP[weapon].class === 'ranged' ? 1200 : 1600;
-  return base * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1);
+  return base * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1);
 }
-function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1); }
+function chargeGateMs() { return CHARGE_MS * (window.GEAR ? GEAR.chargeScale() : 1) * (window.ROGUE && ROGUE.chargeScale ? ROGUE.chargeScale() : 1) * (window.MERIDIAN ? MERIDIAN.x('chargeMul', 1) : 1); }
 function chargeTierFor(held) {
   const max = chargeMaxMs();
   if (held >= max) return 3;
@@ -837,8 +838,9 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if (!z || z.dead || (z.air && !traits.dot)) return;
   if(chapter2Run&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
-    const roll=Math.random(),fullP=z.T.ch2Elite?.2:.1;   // 用户定：正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
-    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll>=fullP&&roll<fullP+.5){
+    const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：近战时盾的挡/卸减半
+    const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb;   // 用户定：正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
+    if(!charged&&!traits.finisher&&type!=='hammer'&&dir*z.f<0&&roll>=fullP&&roll<fullP+.5*sb){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
       for(let i=0;i<4;i++)propFx.push({x:z.x+z.f*8,y:z.y-18+rnd(-6,6),vx:rnd(-40,40)+z.f*30,vy:rnd(-80,-20),w:1.5,h:1.5,life:.2,max:.2,c:'#d88a4a'});
     }
@@ -852,7 +854,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   }
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
   if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
-  if (ranged && z.T.rangedResist) dmg *= z.T.rangedResist;
+  if (ranged && z.T.rangedResist) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
   if (z.T.boss) {
     const hp0 = z.hp;
     if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);
@@ -955,7 +957,7 @@ function heroUpdate(dt) {
   if (h.air) { airStep(h, dt); pressAtk = pressRoll = false; return; }
   if (h.st === 'land') { set(h, over ? 'down' : 'bounce'); if (over) return; }   // 死了就躺下，不许再接管输入
   if (h.st === 'bounce') { if (h.t > .3) set(h, 'getup'); pressAtk = pressRoll = false; return; }
-  if (h.st === 'getup') { if (h.t > .35) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
+  if (h.st === 'getup') { if (h.t > .35 * (window.MERIDIAN ? MERIDIAN.x('getup', 1) : 1)) { set(h, 'idle'); h.inv = .5; } pressAtk = pressRoll = false; return; }
   let ix = (key.KeyD || key.ArrowRight ? 1 : 0) - (key.KeyA || key.ArrowLeft ? 1 : 0), iy = (key.KeyS || key.ArrowDown ? 1 : 0) - (key.KeyW || key.ArrowUp ? 1 : 0);
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
@@ -977,7 +979,7 @@ function heroUpdate(dt) {
   updateHalberdDash(h, dt);
   pressRoll = false;
   if (h.st === 'roll' && charging && atkHeldSince) atkHeldSince += dt * 1000;   // 藏势：翻滚时蓄力暂停
-  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; moveEnt(h, h.rx * 150 * rs * dt, h.ry * 105 * rs * dt); if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd) ROGUE.onRollEnd(); } pressAtk = false; return; }   // 回马：滚完自动向身后打一下
+  if (h.st === 'roll') { const rs = (window.Boss && Boss.wx && Boss.wx() === 'rain') ? 1.25 : 1; { const mr = window.MERIDIAN ? MERIDIAN.x('roll', 1) : 1; moveEnt(h, h.rx * 150 * rs * mr * dt, h.ry * 105 * rs * mr * dt); } if (h.t > .4) { set(h, 'idle'); if (window.ROGUE && ROGUE.onRollEnd) ROGUE.onRollEnd(); } pressAtk = false; return; }   // 回马：滚完自动向身后打一下
   h.comboWin = Math.max(0, (h.comboWin || 0) - dt);
   if (pressAtk && window.SUPPLY && SUPPLY.throwJar()) pressAtk = false;   // 拿着火油罐：攻击键先扔罐子
   if (pressAtk) { if (h.st === 'atk') h.q = 1; else startAtk(); pressAtk = false; }
@@ -1658,12 +1660,14 @@ function dmgHero(n, from, kind = 'basic') {
   comboCount = 0; comboExpireAt = 0;   // 主角实际受击，连击立即结束
   sfx('hurt', h.x);
   h.hp -= n; h.inv = .7; shake = .2;
+  if (h.hp <= 0 && window.MERIDIAN && MERIDIAN.tryUnyield()) return;   // 经脉·不屈：一局挡一次致命伤
+  if (window.MERIDIAN) MERIDIAN.onHurt();   // 经脉·镇关
   if (window.ROGUE && ROGUE.onHurt) ROGUE.onHurt();   // 解围
   if (window.XIAOCHANG) XIAOCHANG.onHitHero(from);
   if (!steadyHold) { h.atk = null; cancelCharge(); }
   const dir = from ? Math.sign(h.x - from.x) || -h.f : -h.f;
   if (steadyHold) { /* 蓄力韧性：照常受伤，但这次受击不中断蓄力 */ }
-  else if (raw >= 2 || h.hp <= 0) {
+  else if (raw >= 2 * (window.MERIDIAN ? MERIDIAN.x('knock', 1) : 1) || h.hp <= 0) {
     launch(h, h.hp <= 0 ? dir * 48 : dir * 85, h.hp <= 0 ? 145 : 120); h.f = -dir; h.inv = 9;
     if (window.ARTIFACT) ARTIFACT.onKnock(dir);   // 被击倒：从飞剑上摔下
     if (h.hp <= 0) h.deathArc = true;
@@ -2330,6 +2334,7 @@ function update(dt) {
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   if (window.ARTIFACT && !over && !won) ARTIFACT.tick(dt);
   if (window.SUPPLY && !over && !won) SUPPLY.tick(dt);
+  if (window.MERIDIAN && !over && !won) MERIDIAN.tick();   // 经脉·回气
   if (volleyAgainAt && gameT >= volleyAgainAt) { volleyAgainAt = 0; summonArchersVolley(true); }
   gameT += dt;
   if (window.GEAR && !over && !won) GEAR.tick(dt);
@@ -2380,6 +2385,7 @@ function update(dt) {
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
     if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
+    if (won && !debugRun && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 获得通脉丹 ×1（整军备战 → 经脉）';
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
