@@ -137,7 +137,7 @@ const TYPES = {
   zhang_liang: { name: '人公将军·张梁', hp: 48, spd: 24, wind: .78, reach: 34, dmg: 2.5, heavy: true, chapterBoss: true, sprite: 'zhang_liang', scale: .95 },
   'yellow-golem': { name: '黄巾力士', hp: 16, spd: 22, wind: 1, reach: 34, dmg: 3, heavy: true, noLaunch: true, w: 14, sprite: 'yellow_golem', scale: 1 },
   zhang_jiao: { name: '天公将军·张角', hp: 115, spd: 42, wind: .5, reach: 34, dmg: 3, chapterBoss: true, sprite: 'zhang_jiao', scale: 0.7105 },
-  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.1 },
+  zhang_bao: { name: '地公将军·张宝', hp: 42, spd: 28, wind: .68, reach: 31, dmg: 2, chapterBoss: true, sprite: 'zhang_bao', scale: 1.15 },
 };
 const WAVES = [
   // 区域 1：纯教学，不随机
