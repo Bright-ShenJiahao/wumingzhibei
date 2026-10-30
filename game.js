@@ -1217,7 +1217,7 @@ function drawFloaters() {
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
 }
 // 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
-const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng', 'cao_crate']);   // cao_crate：第二章曹军补给箱（打碎变 'cao_crate_broken' 并掉补给，见 js/supply.js）
+const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng', 'cao_crate', 'zb_wall']);   // cao_crate：第二章曹军补给箱（打碎变 'cao_crate_broken' 并掉补给，见 js/supply.js）
 const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
 function hitProp(p, dir) {
   if (!canHitProp(p)) return;
@@ -1241,6 +1241,8 @@ function hitProp(p, dir) {
       const meta = ASSETS.props.fudeng_off;
       p.g = 'fudeng_off'; p.solid = false; p.hp = 0;
       if (meta) { p.w = meta[1]; p.h = meta[2]; }
+    } else if (p.zbWall) {   // 张宝的土墙被打碎：换成碎墙，淡出
+      const meta = ASSETS.props.zb_wall_broken; p.g = 'zb_wall_broken'; p.solid = false; p.hp = 0; p.fadeAt = gameT; if (meta) { p.w = meta[1]; p.h = meta[2]; }
     } else if (p.supply && window.SUPPLY) {   // 曹军补给箱：换成碎箱子，掉一个补给
       SUPPLY.onCrateBreak(p);
     } else if (jumo) {

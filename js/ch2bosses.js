@@ -2,7 +2,7 @@
 // 挂在 updateChapter2Boss 里：CH2B.update(z, dt) 返回 true 表示这一帧由技能接管。
 // 敌方特效一律暗橙土红，不加白色金色高光。
 (() => {
-  const hz = [];   // 地面危险物：火球落点等
+  const hz = [], walls = [];   // 地面危险物：落石、地裂；walls：张宝的土墙
   const near = (z, rx, ry) => Math.abs(hero.x - z.x) < rx && Math.abs(hero.y - z.y) < ry;
   const front = (z, r) => (hero.x - z.x) * z.f > -8 && Math.abs(hero.x - z.x) < r && Math.abs(hero.y - z.y) < 16;
   const face = z => { z.f = Math.sign(hero.x - z.x) || z.f; };
@@ -100,19 +100,24 @@
         if (C.t > .4 * fast + .45) done(z, .7);
         return true;
       }
-      if (C.k === 'breath') {   // 往前喷火：0.5 秒前摇（地上土红预警条），喷 0.9 秒
-        if (C.step === 0) { if (C.t > .5) { C.step = 1; C.t = 0; sfx('sling', z.x); } }
-        else if (C.step === 1) {
-          armor(z); C.tick = (C.tick || 0) - dt;
-          const ahead = (hero.x - z.x) * z.f;
-          if (C.tick <= 0 && ahead > 6 && ahead < 115 && Math.abs(hero.y - z.y) < 13) { C.tick = .35; dmgHero(1.5, z, 'skill'); }
-          if (C.t > .9) { done(z, .3); return true; }
-        } else if (C.t > .8) done(z, .8);
+      if (C.k === 'crack') {   // 地裂（用户定：张宝改土系）：法杖戳地，一道裂缝朝主角冲过去
+        if (C.step === 0) { if (C.t > .55 * fast) { C.step = 1; C.t = 0; z.cbFrame = 'stomp2'; shake = Math.max(shake, .25); sfx('land', z.x);
+          hz.push({ k: 'crack', x0: z.x, y0: z.y, ux: C.ux, uy: C.uy, len: 0, max: 190, t: 0 }); } }
+        else if (C.t > .5) done(z, .5);
+        return true;
+      }
+      if (C.k === 'wall') {   // 土墙：在主角身后升起两道土墙堵退路（留一个缺口），5 秒后崩塌
+        armor(z);
+        if (!C.cast && C.t > .65 * fast) { C.cast = true; shake = Math.max(shake, .3); sfx('land', hero.x);
+          const m = ASSETS.props.zb_wall;
+          for (const w of C.spots) { const p = { g: 'zb_wall', x: w.x, y: w.y, w: m ? m[1] : 56, h: m ? m[2] : 19, sc: 1, hitT: 0, hp: 3, solid: true, broken: false, chapter2: true, zbWall: true }; props.push(p); walls.push({ p, at: gameT });
+            for (let i = 0; i < 8; i++) propFx.push({ x: w.x + rnd(-24, 24), y: w.y - rnd(0, 6), vx: rnd(-40, 40), vy: rnd(-90, -30), w: 3, h: 3, life: .45, max: .45, c: '#8a6238' }); } }
+        if (C.t > 1.1) done(z, .4);
         return true;
       }
       if (C.k === 'rain') {   // 召火球：举手 0.8 秒，主角周围砸下一片火球
         armor(z);
-        if (!C.cast && C.t > .5) { C.cast = true;
+        if (!C.cast && C.t > .5) { C.cast = true; z.cbFrame = 'fireball';   // 铜铃发光那一帧
           const n = z.rage ? 7 : 5;
           for (let i = 0; i < n; i++) {
             const x = i === 0 ? hero.x : hero.x + rnd(-70, 70), y = i === 0 ? hero.y : Math.max(M.top + 6, Math.min(M.bot - 4, hero.y + rnd(-26, 26)));
@@ -122,11 +127,15 @@
         return true;
       }
     }
-    z.breathCd = (z.breathCd ?? 2) - dt; z.rainCd = (z.rainCd ?? 4) - dt;
+    z.crackCd = (z.crackCd ?? 2) - dt; z.rainCd = (z.rainCd ?? 4) - dt; z.wallCd = (z.wallCd ?? 7) - dt;
     if (z.stun > 0) return false;
     const ahead = (hero.x - z.x) * Math.sign(hero.x - z.x), dy = Math.abs(hero.y - z.y);
-    if (z.rainCd <= 0) { z.rainCd = z.rage ? 6 : 8.5; face(z); set(z, 'rain', 'fireball'); say('张宝：「天火，降！」', 1.4); if (!z.saidFire || Math.random() < .35) { z.saidFire = true; vo('zb_fire'); } return true; }
-    if (z.breathCd <= 0 && ahead > 36 && ahead < 105 && dy < 18) { z.breathCd = z.rage ? 4 : 5.5; face(z); set(z, 'breath', 'breath', { step: 0 }); return true; }
+    if (z.rainCd <= 0) { z.rainCd = z.rage ? 6 : 8.5; face(z); set(z, 'rain', 'chant'); say('张宝：「山石，落！」', 1.4); return true; }
+    if (z.wallCd <= 0 && ahead < 170) { z.wallCd = z.rage ? 8 : 11; face(z);
+      const side = Math.sign(hero.x - z.x) || 1, wx = Math.max(arenaL != null ? arenaL + 30 : -1e9, Math.min(lockR - 30, hero.x + side * 48)), gap = Math.floor(Math.random() * 3), lanes = [M.top + 10, (M.top + M.bot) / 2, M.bot - 6];
+      set(z, 'wall', 'raise', { spots: lanes.filter((_, i) => i !== gap).map(y => ({ x: wx, y })) }); say('张宝：「土墙，起！」', 1.4); return true; }
+    if (z.crackCd <= 0 && ahead > 40 && ahead < 200) { z.crackCd = z.rage ? 4 : 5.5; face(z); const dx = hero.x - z.x, ddy = hero.y - z.y, l = Math.hypot(dx, ddy) || 1;
+      set(z, 'crack', 'stomp1', { step: 0, ux: dx / l, uy: ddy / l }); return true; }
     if (z.cd <= 0 && ahead <= z.T.reach && dy <= 10) { face(z); set(z, 'slash', 'wind'); return true; }
     return false;
   }
@@ -162,16 +171,26 @@
         for (let i = 0; i < 8; i++) propFx.push({ x: h.x + rnd(-6, 6), y: h.y - 4, vx: rnd(-70, 70), vy: rnd(-120, -40), w: 2, h: 2, life: .4, max: .4, c: Math.random() < .5 ? '#c4532a' : '#7a3a1e' });
       }
     }
-    for (let i = hz.length - 1; i >= 0; i--) if (hz[i].t > .5) hz.splice(i, 1);
+    for (const h of hz) if (h.k === 'crack') {
+      if (h.len < h.max) h.len = Math.min(h.max, h.len + 330 * dt);
+      if (!h.hit) {   // 主角离裂缝已长出的那段足够近就挨打（只打一次）
+        const px = hero.x - h.x0, py = (hero.y - h.y0), along = Math.max(0, Math.min(h.len + 14, px * h.ux + py * h.uy)), ex = h.x0 + h.ux * along, ey = h.y0 + h.uy * along;
+        if (along > 8 && Math.abs(hero.x - ex) < 12 && Math.abs(hero.y - ey) < 9 && heroOpen()) { h.hit = true; dmgHero(2, { x: h.x0, y: h.y0 }, 'skill'); }
+      }
+      if (Math.random() < .5) propFx.push({ x: h.x0 + h.ux * (14 + h.len), y: h.y0 + h.uy * (14 + h.len) - 3, vx: rnd(-40, 40), vy: rnd(-110, -40), w: 2, h: 2, life: .4, max: .4, c: Math.random() < .5 ? '#8a6238' : '#5a4028' });
+    }
+    for (const w of walls) if (!w.p.broken && gameT - w.at > 5 && w.p.g === 'zb_wall') { const m = ASSETS.props.zb_wall_broken; w.p.g = 'zb_wall_broken'; w.p.solid = false; w.p.fadeAt = gameT; if (m) { w.p.w = m[1]; w.p.h = m[2]; } sfx('land', w.p.x); for (let i = 0; i < 10; i++) propFx.push({ x: w.p.x + rnd(-20, 20), y: w.p.y - rnd(2, 14), vx: rnd(-50, 50), vy: rnd(-90, -30), w: 3, h: 3, life: .5, max: .5, c: '#8a6238' }); }   // 土墙 5 秒后崩塌
+    for (let i = walls.length - 1; i >= 0; i--) if (walls[i].p.broken) walls.splice(i, 1);
+    for (let i = hz.length - 1; i >= 0; i--) if (hz[i].t > (hz[i].k === 'crack' ? 1.3 : .5)) hz.splice(i, 1);
   }
 
   const sparks = [], scorch = [];
   // 用张宝的火焰图画特效：anchor 'left' 火焰根部在 (x,y)，'right' 火头在 (x,y)；sx 负数朝左
-  function fxImg(x, y, ang, sx, sy, alpha, anchor) {
-    const fr = typeof CH !== 'undefined' && CH.zhang_bao && CH.zhang_bao.flame; if (!fr || !fr.img.complete) return;
+  function fxImg(name, x, y, ang, sx, sy, alpha, anchor) {
+    const fr = typeof CH !== 'undefined' && CH.zhang_bao && CH.zhang_bao[name]; if (!fr || !fr.img.complete) return;
     const sp = Math.max(.5, SC * PX), w = fr.w * sp, hh = fr.h * sp;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, Math.round(x * SC + OXs), Math.round(y * SC)); ctx.rotate(ang); ctx.scale(sx, sy); ctx.globalAlpha = alpha;
-    ctx.drawImage(fr.img, anchor === 'left' ? 0 : -w, -hh / 2, w, hh); ctx.restore();
+    ctx.drawImage(fr.img, anchor === 'left' ? 0 : anchor === 'center' ? -w / 2 : -w, anchor === 'bottom' ? -hh : -hh / 2, w, hh); ctx.restore();
   }
   function tickFx(dt) {
     for (const p of sparks) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.g) p.vy += p.g * dt; }
@@ -187,15 +206,11 @@
     // 喷火：前摇时地上的土红预警条，喷火时贴火焰图
     for (const z of zs) {
       if (z.dead || !z.cb) continue;
-      if (z.cb.k === 'breath') {
-        if (z.cb.step === 0) { ctx.fillStyle = `rgba(150,60,30,${.2 + .25 * Math.sin(z.cb.t * 20) ** 2})`; ctx.fillRect(Math.min(z.x, z.x + z.f * 112), z.y - 6, 112, 12); }
-        else if (z.cb.step === 1) {   // 火焰从嘴前伸出去 → 翻滚 → 往前收掉，边喷边甩火星
-          const t = z.cb.t, grow = Math.min(1, t / .15), shrink = t > .75 ? Math.max(0, 1 - (t - .75) / .15) : 1, L = grow * shrink;
-          const fy = 1 + Math.sin(t * 38) * .12 + Math.sin(t * 23) * .06;
-          fxImg(z.x + z.f * (14 + (1 - shrink) * 60), z.y - 18 + Math.sin(t * 17) * 1.5, 0, z.f * 1.05 * L * (z.sc || 1), fy * (z.sc || 1), 1, 'left');
-          if (Math.random() < .7) sparks.push({ x: z.x + z.f * (20 + Math.random() * 90 * L), y: z.y - 18 + rnd(-6, 6), vx: z.f * rnd(60, 140), vy: rnd(-40, 10), t: 0, T: rnd(.25, .5), c: Math.random() < .5 ? '#ffd27a' : '#ff7a2a' });
-        }
+      if (z.cb.k === 'crack' && z.cb.step === 0) {   // 地裂前摇：地上一条闪烁的土黄预警线，指向放招时主角的位置
+        const C = z.cb, a = .25 + .3 * Math.sin(C.t * 22) ** 2; ctx.strokeStyle = `rgba(150,105,50,${a})`; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(z.x + C.ux * 14, z.y + C.uy * 14); ctx.lineTo(z.x + C.ux * 200, z.y + C.uy * 200); ctx.stroke(); ctx.lineCap = 'butt';
       }
+      if (z.cb.k === 'wall' && !z.cb.cast) { const a = .3 + .3 * Math.sin(z.cb.t * 20) ** 2; ctx.fillStyle = `rgba(150,105,50,${a})`; for (const w of z.cb.spots || []) ctx.fillRect(w.x - 26, w.y - 3, 52, 6); }
       if (z.cb.k === 'charge' && z.cb.step === 0) { ctx.fillStyle = 'rgba(150,60,30,.28)'; ctx.fillRect(Math.min(z.x, z.x + z.f * 150), z.y - 4, 150, 8); }
       if (z.cb.k === 'spin' && z.cb.step === 0) { ctx.strokeStyle = 'rgba(160,70,35,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(z.x, z.y, 48, 18, 0, 0, 7); ctx.stroke(); }
     }
@@ -211,36 +226,41 @@
       { const r = sh.T.ch2Elite ? 65 : 45; ctx.beginPath(); ctx.ellipse(sh.x, sh.y, r, r * .49, 0, 0, 7); ctx.fill(); ctx.stroke(); }
     }
     // 火球：落点暗橙预警圈 + 从天上掉下来的火球
+    for (const h of hz) {   // 地裂：裂缝沿方向一段段冒出来（土块图），之后慢慢淡掉
+      if (h.k !== 'crack') continue;
+      const step = 30, n = Math.floor(h.len / step), fade = h.t > .9 ? Math.max(0, 1 - (h.t - .9) / .4) : 1;
+      for (let i = 0; i <= n; i++) { const dd = 14 + i * step, x = h.x0 + h.ux * dd, y = h.y0 + h.uy * dd, age = h.len - i * step, fr = age < 30 ? 'fx_crack1' : age < 70 ? 'fx_crack2' : 'fx_crack3';
+        fxImg(fr, x, y + 3, 0, (h.ux >= 0 ? 1 : -1) * .75, 1.1, fade, 'bottom'); }
+    }
     for (const h of hz) {
       if (h.k !== 'ball') continue;
       const d = h.dir || 1;
       if (h.t < 0) {
         const u = Math.max(0, 1 + h.t / 1.1);
-        ctx.strokeStyle = `rgba(170,76,44,${.35 + .5 * u})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * .42, 0, 0, 7); ctx.stroke();
-        ctx.fillStyle = `rgba(170,60,25,${.12 + .2 * u})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * u, h.r * .42 * u, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = `rgba(140,98,48,${.35 + .5 * u})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * .42, 0, 0, 7); ctx.stroke();
+        ctx.fillStyle = `rgba(120,80,40,${.12 + .2 * u})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * u, h.r * .42 * u, 0, 0, 7); ctx.fill();
         if (h.t > -.5) {   // 斜着砸下来：从张宝那一侧的高空飞向落点，拖火星
           const k = -h.t / .5, bx = h.x - d * 110 * k, by = h.y - 8 - 160 * k, ang = Math.atan2(160, d * 110);
-          ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(bx, by, 0, bx, by, 16); g.addColorStop(0, 'rgba(255,200,90,.7)'); g.addColorStop(1, 'rgba(255,90,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, 16, 0, 7); ctx.fill(); ctx.restore();
-          fxImg(bx, by, ang, .55, .55, 1, 'right');
-          if (Math.random() < .8) sparks.push({ x: bx + rnd(-3, 3), y: by + rnd(-3, 3), vx: rnd(-20, 20), vy: rnd(-30, 0), t: 0, T: rnd(.2, .4), c: Math.random() < .5 ? '#ffb347' : '#ff5a1a' });
+          fxImg('fx_rock', bx, by, 0, d > 0 ? 1 : -1, 1, 1, 'center');   // 带尘土拖尾的落石（图的拖尾朝左上，往右砸时翻转）
+          if (Math.random() < .6) sparks.push({ x: bx + rnd(-4, 4), y: by + rnd(-4, 4), vx: rnd(-20, 20), vy: rnd(-30, 0), t: 0, T: rnd(.25, .45), c: Math.random() < .5 ? '#b88a5a' : '#7a5a3a', dust: true });
           if (!h.boomed && h.t > -.03) h.boomed = true;
         }
       } else {
-        if (!h.burst) { h.burst = true; for (let i = 0; i < 16; i++) { const a2 = Math.random() * Math.PI, sp = rnd(50, 130); sparks.push({ x: h.x, y: h.y - 4, vx: Math.cos(a2) * sp * (Math.random() < .5 ? 1 : -1), vy: -Math.sin(a2) * sp, g: 300, t: 0, T: rnd(.35, .6), c: i % 3 ? '#ffb347' : '#fff0b0' }); } }
+        if (!h.burst) { h.burst = true; for (let i = 0; i < 16; i++) { const a2 = Math.random() * Math.PI, sp = rnd(50, 130); sparks.push({ x: h.x, y: h.y - 4, vx: Math.cos(a2) * sp * (Math.random() < .5 ? 1 : -1), vy: -Math.sin(a2) * sp, g: 300, t: 0, T: rnd(.35, .6), c: i % 3 ? '#b88a5a' : '#d8c098', dust: true }); } }
         const u = h.t / .5;
-        ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(h.x, h.y - 6, 0, h.x, h.y - 6, h.r * 1.6); g.addColorStop(0, `rgba(255,220,120,${.8 * (1 - u)})`); g.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(h.x, h.y - 6, h.r * 1.6 * (1 + u * .5), h.r * (1 + u * .5), 0, 0, 7); ctx.fill(); ctx.restore();
-        ctx.fillStyle = `rgba(160,60,25,${.45 * (1 - u)})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (1 + u * .4), h.r * .45 * (1 + u * .4), 0, 0, 7); ctx.fill();
+        ctx.save(); const g = ctx.createRadialGradient(h.x, h.y - 6, 0, h.x, h.y - 6, h.r * 1.6); g.addColorStop(0, `rgba(200,170,120,${.7 * (1 - u)})`); g.addColorStop(1, 'rgba(150,110,60,0)');   // 落地扬尘 ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(h.x, h.y - 6, h.r * 1.6 * (1 + u * .5), h.r * (1 + u * .5), 0, 0, 7); ctx.fill(); ctx.restore();
+        ctx.fillStyle = `rgba(110,80,45,${.45 * (1 - u)})`; ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * (1 + u * .4), h.r * .45 * (1 + u * .4), 0, 0, 7); ctx.fill();
         if (h.t > .45 && !h.scorched) { h.scorched = true; scorch.push({ x: h.x, y: h.y, r: h.r, t: 0 }); }
       }
     }
     for (const c of scorch) { const a = Math.min(1, (1.2 - c.t) / .4) * .5; ctx.fillStyle = `rgba(30,18,12,${a})`; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r * .9, c.r * .38, 0, 0, 7); ctx.fill(); if (Math.random() < .15) sparks.push({ x: c.x + rnd(-c.r * .6, c.r * .6), y: c.y, vx: 0, vy: rnd(-30, -15), t: 0, T: .5, c: '#aa4a22' }); }
     // 张宝身边慢慢上升的火星 + 脚下暗红光
     for (const z of zs) if (z.type === 'zhang_bao' && !z.dead) {
-      ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, 26); g.addColorStop(0, 'rgba(200,60,20,.35)'); g.addColorStop(1, 'rgba(200,60,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(z.x, z.y, 26, 9, 0, 0, 7); ctx.fill(); ctx.restore();
-      if (Math.random() < .25) sparks.push({ x: z.x + rnd(-14, 14), y: z.y - rnd(4, 40), vx: rnd(-6, 6), vy: rnd(-28, -14), t: 0, T: rnd(.6, 1.1), c: Math.random() < .5 ? '#ff9a3a' : '#ffd27a' });
+      ctx.save(); const g = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, 26); g.addColorStop(0, 'rgba(120,85,45,.35)'); g.addColorStop(1, 'rgba(120,85,45,0)');   // 地公将军：脚下土色 ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(z.x, z.y, 26, 9, 0, 0, 7); ctx.fill(); ctx.restore();
+      if (Math.random() < .2) sparks.push({ x: z.x + rnd(-16, 16), y: z.y - rnd(0, 6), vx: rnd(-10, 10), vy: rnd(-14, -6), t: 0, T: rnd(.6, 1.1), c: Math.random() < .5 ? '#a07848' : '#c8a878', dust: true });   // 脚边浮起的尘土
     }
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const p of sparks) { const a = 1 - p.t / p.T; ctx.fillStyle = p.c; ctx.globalAlpha = a; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2); }
+    ctx.save();
+    for (const p of sparks) { ctx.globalCompositeOperation = p.dust ? 'source-over' : 'lighter'; const a = 1 - p.t / p.T; ctx.fillStyle = p.c; ctx.globalAlpha = a; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2); }
     ctx.restore();
     if (sand.t > 0) { const a = Math.min(1, sand.t, (9 - sand.t) * 2) * .22; ctx.fillStyle = `rgba(170,130,60,${a})`; ctx.fillRect(cam.x - 4, 0, viewW() + 8, 600); }
     // 黄沙迷阵：横飞的沙粒（主角移速 -25%，在 game.js 里算）
