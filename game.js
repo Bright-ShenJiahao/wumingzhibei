@@ -1,7 +1,10 @@
 // 无名之辈·序章 幻想三国录 —— 宽地面清版
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const IMG = {};
-function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
+// 图片排队下载（用户定：别一打开就同时开几十个下载把网速占满）：同时最多 4 张，下完一张再开下一张
+const LOADQ = []; let loadingN = 0;
+function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LOADQ.shift(); if (i.src) continue; loadingN++; const done = () => { loadingN--; pumpLoad(); }; i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); i.src = src; } }
+function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); pumpLoad(); return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };
@@ -215,7 +218,8 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   if (window.ARTIFACT) ARTIFACT.startRun();
   if (window.SUPPLY) SUPPLY.reset();
-  if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次   // 神器：每局重新踩上飞剑、打落次数清零
+  if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次
+  if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) SFX.preloadVoices(['intro', 'guanhai_']); }, 1500);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -715,6 +719,7 @@ function startChapter2Debug(battle) { loadChapter2(false, battle); }   // 开发
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number, walkIn = false) {
+  if (window.SFX && SFX.preloadVoices) SFX.preloadVoices(['caocao_', 'zl_', 'zb_', 'zj_']);   // 第二章语音进来才下
   if (window.GEAR) GEAR.collectDrops();
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
@@ -1839,7 +1844,7 @@ function zUpdate(z, dt) {
   if (T.siege) { updateChapter2Catapult(z, dt); return; }
   if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }
   // 守车兵：主角离岗位远时回岗位站定，不追出去（投石车阵的盾兵、大刀兵）
-  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115) {
+  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && (z.siegeArcher ? Math.hypot(z.x - z.guard.x, z.y - z.guard.y) > 10 : Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115)) {   // 投石车弓手：一步不离岗，只站着射
     const dx = z.guard.x - z.x, dy = z.guard.y - z.y, d = Math.hypot(dx, dy);
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd = Math.max(z.cd, .4);
     if (d > 4) { z.moving = true; z.f = Math.sign(dx) || z.f; moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt); }
@@ -2305,15 +2310,15 @@ function drawAllyFire() {
     ctx.fillStyle = gd;
     ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .45, 0, 0, 7); ctx.fill();
     // 三簇火苗，错开相位和高度
-    const seeds = [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];
+    const seeds = (f.scale || 1) < .6 ? [[0, 1, .4]] : [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];   // 小火（燎步）只画一簇
     for (let i = 0; i < seeds.length; i++) {
       const [ox, sc, ph] = seeds[i];
       const im = allyFireFrame(Math.floor(now + ph * 4) % 4);
       if (!im) continue;
-      const FH = 32 * sc, FW = FH * im.width / im.height;
+      const FH = 32 * sc * (f.scale || 1), FW = FH * im.width / im.height;
       ctx.globalAlpha = a * (.86 + .14 * Math.sin(now * .6 + i));
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6), FW, FH);
+      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6 * (f.scale || 1)), FW, FH);
       ctx.globalAlpha = 1;
     }
   }
@@ -2401,7 +2406,7 @@ function update(dt) {
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
     if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
-    if (won && !debugRun && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 获得通脉丹 ×1（整军备战 → 经脉）';
+    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通：获得通脉丹 ×1（整军备战 → 经脉）';
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {

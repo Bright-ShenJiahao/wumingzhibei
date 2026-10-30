@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=68829dd71b" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=68829dd71b)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=014e5667bd" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=014e5667bd)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='7ee15127a45e',busy=false;
+var BUILD='75e9822d4fc9',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2386,7 +2386,7 @@ const Boss = (() => {
       // 神器：拥有取并集（只增不减），装备哪件以最后改动的为准
       if(p.artifacts&&typeof p.artifacts==='object'){result.artifacts ||= {owned:{},eq:'',_at:-1};for(const k of ['feijian'])if(p.artifacts.owned?.[k])result.artifacts.owned[k]=1;const aa=Number(p.artifacts._at)||0;if(aa>result.artifacts._at){result.artifacts._at=aa;result.artifacts.eq=typeof p.artifacts.eq==='string'&&p.artifacts.eq.length<=12?p.artifacts.eq:'';}}
       // 经脉：通脉丹来源取并集（只增不减），点的路线以最后改动的为准
-      if(p.meridian&&typeof p.meridian==='object'){result.meridian ||= {got:{},path:[],_at:-1};for(const k of ['ch1','ch2','ch3','xc1','xc2','xc3','mo'])if(p.meridian.got?.[k])result.meridian.got[k]=1;const ma=Number(p.meridian._at)||0;if(ma>result.meridian._at){result.meridian._at=ma;result.meridian.path=Array.isArray(p.meridian.path)?p.meridian.path.filter(v=>v===0||v===1||v===2).slice(0,7):[];}}
+      if(p.meridian&&typeof p.meridian==='object'){result.meridian ||= {got:{},path:[],_at:-1};for(const k of ['ch1','ch2','ch3','xc1','xc2','xc3','tg'])if(p.meridian.got?.[k])result.meridian.got[k]=1;const ma=Number(p.meridian._at)||0;if(ma>result.meridian._at){result.meridian._at=ma;result.meridian.path=Array.isArray(p.meridian.path)?p.meridian.path.filter(v=>v===0||v===1||v===2).slice(0,7):[];}}
       // 锦囊锁定（花金币买的，长期有效）：以最后改动的那份为准
       const ta=Number(p.tipLocks?._at)||0;
       if(p.tipLocks&&typeof p.tipLocks==='object'&&ta>tipAt){tipAt=ta;result.tipLocks={_at:ta};for(const k of ['gong','ji','shu','shou','zhuan'])if(typeof p.tipLocks[k]==='string'&&p.tipLocks[k].length<=12)result.tipLocks[k]=p.tipLocks[k];}
@@ -2712,7 +2712,7 @@ const Boss = (() => {
     const godBtn = btn(heroGroup, god ? '无敌：开' : '无敌：关', 'off', () => {
       god = !god; godBtn.textContent = god ? '无敌：开' : '无敌：关'; godBtn.className = god ? 'alt' : 'off';
     });
-    btn(heroGroup, '给 7 颗通脉丹', '', () => { if (window.MERIDIAN) { ['ch1','ch2','ch3','xc1','xc2','xc3','mo'].forEach(k => MERIDIAN.award(k)); tipLine('通脉丹 7/7：整军备战 → 经脉'); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
+    btn(heroGroup, '给 7 颗通脉丹', '', () => { if (window.MERIDIAN) { ['ch1','ch2','ch3','xc1','xc2','xc3','tg'].forEach(k => MERIDIAN.award(k)); tipLine('通脉丹 7/7：整军备战 → 经脉'); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
     btn(heroGroup, '给太平飞剑', '', () => { if (window.ARTIFACT) { ARTIFACT.grant('feijian'); ARTIFACT.equip('feijian'); ARTIFACT.startRun(); if (typeof say === 'function') say('已获得并装备太平飞剑', 2); try { if (window.TITLE && TITLE.refreshPreparation) TITLE.refreshPreparation(); } catch (e) {} } });
     // 测评锦囊：直接挑任意一张拿到手（要在关卡里用）
     btn(heroGroup, '选锦囊', '', () => {
@@ -3657,7 +3657,7 @@ const Boss = (() => {
 
 // 经脉（用户定，仿梦幻西游奇经八脉）：整军备战「经脉」栏点开。一棵 3 列 × 7 行的树：左攻、中身法、右守。
 // 每行点 1 格、只能点在上一格的正下方或斜下方，每格花 1 颗通脉丹。点满 7 格才揭晓封号（某列 ≥4 格封那一列，否则安邦上将）。
-// 通脉丹：第一/二/三章首通各 1、各章校场第 5 层各 1、任意魔化通关 1，共 7 颗。重置 200 金币，全部返还。
+// 通脉丹（用户定）：第一/二/三章困难模式首通各 1、各章校场魔化层各 1、上交一把天工武器 1，共 7 颗。重置 200 金币，全部返还。
 // 节点以数值为主（不和锦囊撞机制）；数值走 gear_combat 的 stat()，少数特殊效果在 game.js 里按 MERIDIAN.x(key) 读取。
 (() => {
   const COLS = [
@@ -3693,8 +3693,8 @@ const Boss = (() => {
     mix: { name: '安邦上将', eff: '安邦：伤害、移速、减伤各 +6%', e: { sharp: .06, move: .06, guard: .06 } },
   };
   const SOURCES = [
-    ['ch1', '第一章首次通关'], ['ch2', '第二章首次通关'], ['ch3', '第三章首次通关（未开放）'],
-    ['xc1', '第一章校场演武第 5 层'], ['xc2', '第二章校场演武第 5 层'], ['xc3', '第三章校场演武第 5 层（未开放）'], ['mo', '任意一次魔化通关'],
+    ['ch1', '第一章困难模式首次通关'], ['ch2', '第二章困难模式首次通关'], ['ch3', '第三章困难模式首次通关（未开放）'],
+    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '上交一把天工武器兑换（面板下方按钮）'],
   ];
   const RESET_COST = 200;
   // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
@@ -3721,6 +3721,17 @@ const Boss = (() => {
   function award(key) {   // 拿到一颗通脉丹（每个来源只给一次）；返回 true 表示这次是新给的
     const s = store(); if (s.got[key]) return false;
     s.got[key] = 1; s._at = Date.now(); save(); return true;
+  }
+  // 上交天工武器换通脉丹（只换一次）：不能是锁定的、正在装备的
+  const tgIndex = () => (window.AFFIX_DATA ? AFFIX_DATA.qualities.findIndex(q => q.name === '天工') : -1);
+  function tgItem() {
+    const st = profile(); if (!st || !Array.isArray(st.items)) return null; const q = tgIndex(); if (q < 0) return null;
+    const eq = new Set(['long', 'short', 'ranged'].map(k => window.ARMORY && ARMORY.equipped ? ARMORY.equipped(k)?.uid : null));
+    return st.items.find(i => i.q === q && !i.locked && !eq.has(i.uid)) || null;
+  }
+  function exchange() {
+    if (store().got.tg) return 'done'; const it = tgItem(); if (!it) return 'none';
+    const st = profile(); st.items.splice(st.items.indexOf(it), 1); award('tg'); return 'ok';
   }
   const canPick = (row, col) => { const p = path(); return row === p.length && free() > 0 && (row === 0 || Math.abs(col - p[row - 1]) <= 1); };
   function pick(row, col) { if (!canPick(row, col)) return false; const s = store(); s.path = path().concat(col); s._at = Date.now(); save(); return true; }
@@ -3770,7 +3781,7 @@ const Boss = (() => {
 
   // ---- 面板（仿梦幻西游：亮色羊皮纸底、左边图标格+直角发光连线、右边主角剪影+穴位）----
   const uiImg = k => (typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui[k]) || '';
-  let sel = null, msg = '';
+  let sel = null, msg = '', tgArm = false;
   function open() {
     let box = document.getElementById('meridianPanel');
     if (!box) {
@@ -3786,6 +3797,11 @@ const Boss = (() => {
           else if (path()[r] !== c && r === path().length && !free()) msg = '通脉丹不够了';
           render(box); return;
         }
+        if (e.target.closest('.mtg')) {
+          if (!tgArm) { const it = tgItem(); msg = it ? `再点一次确认上交「天工·${(window.AFFIX_DATA && AFFIX_DATA.names[it.type]) || '武器'}」` : '仓库里没有可上交的天工武器（锁定的、正在装备的不算）'; tgArm = !!it; render(box); return; }
+          tgArm = false; const r = exchange(); msg = r === 'ok' ? '已上交天工武器，获得通脉丹 ×1' : '仓库里没有可上交的天工武器'; render(box); refresh(); return;
+        }
+        tgArm = false;
         if (e.target.closest('.mrst')) { const res = reset(); msg = res === 'coins' ? `金币不够（重置要 ${RESET_COST}）` : res === 'ok' ? '经脉已重置，通脉丹全部返还' : ''; sel = null; render(box); refresh(); return; }
         if (e.target === box || e.target.closest('.mx')) box.hidden = true;
       });
@@ -3803,7 +3819,7 @@ const Boss = (() => {
     const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
     const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">上交天工武器 → 通脉丹 ×1${tgArm ? '（确认）' : ''}</button>`}</div></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
   function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边
@@ -4520,7 +4536,7 @@ const Boss = (() => {
   function onRoll(x, y) {
     if (typeof hero !== 'undefined') hero.rollFrom = { x, y };
     if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; stat('解围'); shockwave(x, y, 55, .5, true, '解围'); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
-    if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
+    if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 10, tick: 0, once: new Set(), dmg: .5, scale: .4 });   // 用户定：燎步的火要小
   }
   function onDodge(from, n, kind) {
     if (typeof hero === 'undefined' || hero.st !== 'roll') return;
@@ -5545,7 +5561,6 @@ const Boss = (() => {
     if (muted || !init()) return;
     if (ac.state !== 'running') ac.resume();
     try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {}
-    preloadVoices();
   }
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
@@ -5563,7 +5578,10 @@ const Boss = (() => {
     return vcache[name];
   }
   let preloaded = false;
-  function preloadVoices() { if (preloaded || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice) return; preloaded = true; for (const n in ASSETS.voice) decode(n).catch(() => {}); }
+  // 用户定：语音不再一打开就全下；进到哪一章才按顺序（一条一条）预取那一章的语音
+  const vqueue = []; let vbusy = false;
+  function pumpVoice() { if (vbusy || !vqueue.length || !init()) return; vbusy = true; decode(vqueue.shift()).catch(() => {}).finally(() => { vbusy = false; setTimeout(pumpVoice, 150); }); }
+  function preloadVoices(prefixes) { if (!(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice) return; for (const n in ASSETS.voice) if (!vcache[n] && !vqueue.includes(n) && (!prefixes || prefixes.some(p => n.startsWith(p)))) vqueue.push(n); pumpVoice(); }
   async function voice(name, pan = 0) {
     if (muted || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
     try {
@@ -5577,7 +5595,7 @@ const Boss = (() => {
     }
   }
   window.SFX = {
-    voice,
+    voice, preloadVoices,
     // 只读：当前是否静音（js/bgm.js 用它同步背景音乐）
     isMuted: () => muted,
     toggleMute,
@@ -7706,7 +7724,7 @@ window.XIAOCHANG = (() => {
     if (win) {
       GEAR.collectDrops();
       if (!run.debug) TITLE.markXiaochang(run.chapter, run.floor);
-      if (!run.debug && window.MERIDIAN) { if (run.floor === 5) MERIDIAN.award('xc' + run.chapter); if (run.floor === 6) MERIDIAN.award('mo'); }   // 通脉丹
+      if (!run.debug && window.MERIDIAN && run.floor === 6) MERIDIAN.award('xc' + run.chapter);   // 通脉丹：各章校场魔化层首通
     }
     run.coins = window.WALLET ? WALLET.runCoins() : 0;
     if (window.WALLET) WALLET.flush();
@@ -8320,7 +8338,10 @@ function refillXiaochangProps() { XIAOCHANG.refillXiaochangProps(); }
 // 无名之辈·序章 幻想三国录 —— 宽地面清版
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const IMG = {};
-function load(k, src) { const i = new Image(); i.src = src; IMG[k] = i; return i; }
+// 图片排队下载（用户定：别一打开就同时开几十个下载把网速占满）：同时最多 4 张，下完一张再开下一张
+const LOADQ = []; let loadingN = 0;
+function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LOADQ.shift(); if (i.src) continue; loadingN++; const done = () => { loadingN--; pumpLoad(); }; i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); i.src = src; } }
+function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); pumpLoad(); return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [] }, LAZY_DONE = {};
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };
@@ -8534,7 +8555,8 @@ function reset() {
   if (window.ROGUE) ROGUE.reset();
   if (window.ARTIFACT) ARTIFACT.startRun();
   if (window.SUPPLY) SUPPLY.reset();
-  if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次   // 神器：每局重新踩上飞剑、打落次数清零
+  if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次
+  if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) SFX.preloadVoices(['intro', 'guanhai_']); }, 1500);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
   atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
@@ -9034,6 +9056,7 @@ function startChapter2Debug(battle) { loadChapter2(false, battle); }   // 开发
 // 正式入口：播放第二章开场对白后开始第一战；开发者直跳仍可跳过开场。
 function startChapter2() { loadChapter2(true); }
 function startChapter2Battle(number, walkIn = false) {
+  if (window.SFX && SFX.preloadVoices) SFX.preloadVoices(['caocao_', 'zl_', 'zb_', 'zj_']);   // 第二章语音进来才下
   if (window.GEAR) GEAR.collectDrops();
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
@@ -10158,7 +10181,7 @@ function zUpdate(z, dt) {
   if (T.siege) { updateChapter2Catapult(z, dt); return; }
   if (T.chapterBoss) { updateChapter2Boss(z, dt); return; }
   // 守车兵：主角离岗位远时回岗位站定，不追出去（投石车阵的盾兵、大刀兵）
-  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115) {
+  if (z.guard && !z.dead && !z.air && !(z.stun > 0) && (z.st === 'move' || z.st === 'idle') && (z.siegeArcher ? Math.hypot(z.x - z.guard.x, z.y - z.guard.y) > 10 : Math.hypot(hero.x - z.guard.x, (hero.y - z.guard.y) * 1.5) > 115)) {   // 投石车弓手：一步不离岗，只站着射
     const dx = z.guard.x - z.x, dy = z.guard.y - z.y, d = Math.hypot(dx, dy);
     z.t += dt; z.flash = Math.max(0, z.flash - dt); z.cd = Math.max(z.cd, .4);
     if (d > 4) { z.moving = true; z.f = Math.sign(dx) || z.f; moveEnt(z, dx / d * T.spd * dt, dy / d * T.spd * .7 * dt); }
@@ -10624,15 +10647,15 @@ function drawAllyFire() {
     ctx.fillStyle = gd;
     ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * .45, 0, 0, 7); ctx.fill();
     // 三簇火苗，错开相位和高度
-    const seeds = [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];
+    const seeds = (f.scale || 1) < .6 ? [[0, 1, .4]] : [[-.52, .92, 0], [0, 1.22, .4], [.52, .98, .75]];   // 小火（燎步）只画一簇
     for (let i = 0; i < seeds.length; i++) {
       const [ox, sc, ph] = seeds[i];
       const im = allyFireFrame(Math.floor(now + ph * 4) % 4);
       if (!im) continue;
-      const FH = 32 * sc, FW = FH * im.width / im.height;
+      const FH = 32 * sc * (f.scale || 1), FW = FH * im.width / im.height;
       ctx.globalAlpha = a * (.86 + .14 * Math.sin(now * .6 + i));
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6), FW, FH);
+      ctx.drawImage(im, Math.round(f.x + ox * f.r - FW / 2), Math.round(f.y - FH + 6 * (f.scale || 1)), FW, FH);
       ctx.globalAlpha = 1;
     }
   }
@@ -10720,7 +10743,7 @@ function update(dt) {
     if (window.ARMORY) ARMORY.markPlayed();
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
     if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入整军备战的神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
-    if (won && !debugRun && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 获得通脉丹 ×1（整军备战 → 经脉）';
+    if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通：获得通脉丹 ×1（整军备战 → 经脉）';
     if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {

@@ -304,7 +304,7 @@
 ## 经脉（js/meridian.js，用户定）
 - 整军备战原「法器」栏改成「经脉」按钮（title.js 的 talisman 槽位渲染成 data-meridian-slot）。
 - 3 列 × 7 行：左攻、中身法、右守；每行点 1 格，只能接上一格正下方/斜下方；每格 1 颗通脉丹。点满 7 层才揭晓封号：某列 ≥4 → 陷阵虎将/破虏飞将/镇关宿将，否则安邦上将。流派名揭晓前显示「？？？」。
-- 通脉丹 7 个来源（每个只给一次）：ch1/ch2/ch3 首通、xc1/xc2/xc3 校场第 5 层、mo 任意魔化通关。第三章没出前最多 5 颗，封号等第三章（用户选 A）。重置 200 金币。
+- 通脉丹 7 个来源（每个只给一次）：ch1/ch2/ch3 困难模式首通、xc1/xc2/xc3 各章校场魔化层、tg 上交一把天工武器（面板按钮）。第三章没出前最多 5 颗，封号等第三章（用户选 A）。重置 200 金币。
 - 节点以数值为主，走 gear_combat 的 stat()（sharp/critical/severity/charge/swift/move/health/guard/reach/dodge）；特殊效果用 MERIDIAN.x(key)：chargeMul、skillCd、roll、getup、knock、elite、waveHeal、shield（破盾）、unyield（不屈，一局一次）、zhenguan（镇关）。
 - 存档字段 profile.meridian {got, path, _at}；cloud_merge 与 netlify profile.mjs 已加合并/校验。
 

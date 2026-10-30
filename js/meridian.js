@@ -1,6 +1,6 @@
 // 经脉（用户定，仿梦幻西游奇经八脉）：整军备战「经脉」栏点开。一棵 3 列 × 7 行的树：左攻、中身法、右守。
 // 每行点 1 格、只能点在上一格的正下方或斜下方，每格花 1 颗通脉丹。点满 7 格才揭晓封号（某列 ≥4 格封那一列，否则安邦上将）。
-// 通脉丹：第一/二/三章首通各 1、各章校场第 5 层各 1、任意魔化通关 1，共 7 颗。重置 200 金币，全部返还。
+// 通脉丹（用户定）：第一/二/三章困难模式首通各 1、各章校场魔化层各 1、上交一把天工武器 1，共 7 颗。重置 200 金币，全部返还。
 // 节点以数值为主（不和锦囊撞机制）；数值走 gear_combat 的 stat()，少数特殊效果在 game.js 里按 MERIDIAN.x(key) 读取。
 (() => {
   const COLS = [
@@ -36,8 +36,8 @@
     mix: { name: '安邦上将', eff: '安邦：伤害、移速、减伤各 +6%', e: { sharp: .06, move: .06, guard: .06 } },
   };
   const SOURCES = [
-    ['ch1', '第一章首次通关'], ['ch2', '第二章首次通关'], ['ch3', '第三章首次通关（未开放）'],
-    ['xc1', '第一章校场演武第 5 层'], ['xc2', '第二章校场演武第 5 层'], ['xc3', '第三章校场演武第 5 层（未开放）'], ['mo', '任意一次魔化通关'],
+    ['ch1', '第一章困难模式首次通关'], ['ch2', '第二章困难模式首次通关'], ['ch3', '第三章困难模式首次通关（未开放）'],
+    ['xc1', '第一章校场演武·魔化层'], ['xc2', '第二章校场演武·魔化层'], ['xc3', '第三章校场演武·魔化层（未开放）'], ['tg', '上交一把天工武器兑换（面板下方按钮）'],
   ];
   const RESET_COST = 200;
   // 整军备战里 经脉/神器/时装 三个按钮：换成和「校场演武」同款的横幅（暗红底+右侧插画，文字靠左）
@@ -64,6 +64,17 @@
   function award(key) {   // 拿到一颗通脉丹（每个来源只给一次）；返回 true 表示这次是新给的
     const s = store(); if (s.got[key]) return false;
     s.got[key] = 1; s._at = Date.now(); save(); return true;
+  }
+  // 上交天工武器换通脉丹（只换一次）：不能是锁定的、正在装备的
+  const tgIndex = () => (window.AFFIX_DATA ? AFFIX_DATA.qualities.findIndex(q => q.name === '天工') : -1);
+  function tgItem() {
+    const st = profile(); if (!st || !Array.isArray(st.items)) return null; const q = tgIndex(); if (q < 0) return null;
+    const eq = new Set(['long', 'short', 'ranged'].map(k => window.ARMORY && ARMORY.equipped ? ARMORY.equipped(k)?.uid : null));
+    return st.items.find(i => i.q === q && !i.locked && !eq.has(i.uid)) || null;
+  }
+  function exchange() {
+    if (store().got.tg) return 'done'; const it = tgItem(); if (!it) return 'none';
+    const st = profile(); st.items.splice(st.items.indexOf(it), 1); award('tg'); return 'ok';
   }
   const canPick = (row, col) => { const p = path(); return row === p.length && free() > 0 && (row === 0 || Math.abs(col - p[row - 1]) <= 1); };
   function pick(row, col) { if (!canPick(row, col)) return false; const s = store(); s.path = path().concat(col); s._at = Date.now(); save(); return true; }
@@ -113,7 +124,7 @@
 
   // ---- 面板（仿梦幻西游：亮色羊皮纸底、左边图标格+直角发光连线、右边主角剪影+穴位）----
   const uiImg = k => (typeof ASSETS !== 'undefined' && ASSETS.ui && ASSETS.ui[k]) || '';
-  let sel = null, msg = '';
+  let sel = null, msg = '', tgArm = false;
   function open() {
     let box = document.getElementById('meridianPanel');
     if (!box) {
@@ -129,6 +140,11 @@
           else if (path()[r] !== c && r === path().length && !free()) msg = '通脉丹不够了';
           render(box); return;
         }
+        if (e.target.closest('.mtg')) {
+          if (!tgArm) { const it = tgItem(); msg = it ? `再点一次确认上交「天工·${(window.AFFIX_DATA && AFFIX_DATA.names[it.type]) || '武器'}」` : '仓库里没有可上交的天工武器（锁定的、正在装备的不算）'; tgArm = !!it; render(box); return; }
+          tgArm = false; const r = exchange(); msg = r === 'ok' ? '已上交天工武器，获得通脉丹 ×1' : '仓库里没有可上交的天工武器'; render(box); refresh(); return;
+        }
+        tgArm = false;
         if (e.target.closest('.mrst')) { const res = reset(); msg = res === 'coins' ? `金币不够（重置要 ${RESET_COST}）` : res === 'ok' ? '经脉已重置，通脉丹全部返还' : ''; sel = null; render(box); refresh(); return; }
         if (e.target === box || e.target.closest('.mx')) box.hidden = true;
       });
@@ -146,7 +162,7 @@
     const sn = sel ? T[sel[0]][sel[1]] : null, pt = sel ? PTS[sel[0]][sel[1]] : null;
     const det = msg && msg !== 'seal' ? `<b>${msg}</b>` : sn ? `<b>${sn.n}</b><i>第 ${sel[0] + 1} 层 · ${pt.name}穴（${pt.note}）</i><p>${sn.d}</p>` : tk ? `<b>${TITLES[tk].name}</b><p>${TITLES[tk].eff}</p>` : '<p>点亮的格子要相连：下一格只能在上一格的正下方或斜下方。点满 7 层揭晓封号。</p>';
     const srcs = SOURCES.map(([k, t]) => `<li class="${store().got[k] ? 'ok' : ''}">${store().got[k] ? '✓ ' : ''}${t}</li>`).join('');
-    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><details><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details></section>`;
+    box.innerHTML = `<section><button class="mx" type="button" aria-label="关闭">✕</button><h3>经 脉</h3><div class="mtop"><span>可用通脉丹 <b>${free()}</b></span><span>已用 <b>${p.length}</b></span><span>共获得 <b>${total()}</b>/7</span><span>封号 <b>${tk ? TITLES[tk].name : '？？？'}</b></span><button type="button" class="mrst">重置经脉（${RESET_COST} 金币）</button></div><div class="mbody"><div class="mgrid"><svg></svg>${cells}</div><div class="mfig"><canvas></canvas>${tk && msg === 'seal' ? `<div class="mseal">${TITLES[tk].name}</div>` : ''}</div></div><div class="mdet">${det}</div><div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><details style="flex:1"><summary>通脉丹从哪里来</summary><ul>${srcs}</ul></details>${store().got.tg ? '' : `<button type="button" class="mrst mtg" style="margin-top:6px">上交天工武器 → 通脉丹 ×1${tgArm ? '（确认）' : ''}</button>`}</div></section>`;
     requestAnimationFrame(() => { drawLines(box); drawFigure(box); });
   }
   function drawLines(box) {   // 直角折线：上一格底边 → 两行之间 → 横到下一格上方 → 下一格顶边

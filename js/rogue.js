@@ -276,7 +276,7 @@
   function onRoll(x, y) {
     if (typeof hero !== 'undefined') hero.rollFrom = { x, y };
     if (has['解围'] && now() - hurtAt < 2) { hurtAt = -9; stat('解围'); shockwave(x, y, 55, .5, true, '解围'); guardShield = 1; guardShieldT = 3; pop(x, y - 48, '解围！', null, true); }
-    if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 18, tick: 0, once: new Set(), dmg: .5 });
+    if (has['燎步'] && typeof allyFires !== 'undefined') allyFires.push({ x, y, t: 2, r: 10, tick: 0, once: new Set(), dmg: .5, scale: .4 });   // 用户定：燎步的火要小
   }
   function onDodge(from, n, kind) {
     if (typeof hero === 'undefined' || hero.st !== 'roll') return;

@@ -234,7 +234,6 @@
     if (muted || !init()) return;
     if (ac.state !== 'running') ac.resume();
     try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {}
-    preloadVoices();
   }
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
 
@@ -252,7 +251,10 @@
     return vcache[name];
   }
   let preloaded = false;
-  function preloadVoices() { if (preloaded || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice) return; preloaded = true; for (const n in ASSETS.voice) decode(n).catch(() => {}); }
+  // 用户定：语音不再一打开就全下；进到哪一章才按顺序（一条一条）预取那一章的语音
+  const vqueue = []; let vbusy = false;
+  function pumpVoice() { if (vbusy || !vqueue.length || !init()) return; vbusy = true; decode(vqueue.shift()).catch(() => {}).finally(() => { vbusy = false; setTimeout(pumpVoice, 150); }); }
+  function preloadVoices(prefixes) { if (!(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice) return; for (const n in ASSETS.voice) if (!vcache[n] && !vqueue.includes(n) && (!prefixes || prefixes.some(p => n.startsWith(p)))) vqueue.push(n); pumpVoice(); }
   async function voice(name, pan = 0) {
     if (muted || !(typeof ASSETS !== "undefined" && ASSETS) || !ASSETS.voice || !ASSETS.voice[name] || !init()) return;
     try {
@@ -266,7 +268,7 @@
     }
   }
   window.SFX = {
-    voice,
+    voice, preloadVoices,
     // 只读：当前是否静音（js/bgm.js 用它同步背景音乐）
     isMuted: () => muted,
     toggleMute,
