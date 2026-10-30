@@ -718,7 +718,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
-  if (number === 6) { hero.hp = maxHeroHp(); floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt: '养精蓄锐 · 血已回满', big: true, color: '#8fe08a' }); }   // 用户定：张角战开打前回满血
+  if (number === 6) { spawnDrop(hero.x + 40, hero.y - 8, 'pig'); spawnDrop(hero.x + 60, hero.y + 10, 'leg'); spawnDrop(hero.x + 80, hero.y - 2, 'bun'); drops.slice(-3).forEach(d => d.life = 60); }   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
@@ -3562,5 +3562,6 @@ window.GAME_PAUSE = {
 };
 // 主循环：某一帧出错也不让整个游戏卡死（以前一处报错就会冻住画面、人物消失）；错误记下来给调试面板看
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
-function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
+function loop(t) { if (t - last < 1000 / 62) { requestAnimationFrame(loop); return; }   // 60 帧上限：高刷屏不多算，省电
+  const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);

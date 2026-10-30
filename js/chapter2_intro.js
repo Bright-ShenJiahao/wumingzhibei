@@ -87,16 +87,17 @@
     const W = cv.width / DPR, H = cv.height / DPR;
     const line = LINES[S.index];
     const small = H < 520 || W < 760;
+    const f = small ? Math.max(.62, Math.min(1, H / 480)) : 1;   // 手机横屏：整个对话框按屏幕高度再缩一档
     const panelW = Math.min(W - (small ? 18 : 36), 1240);
-    const panelH = small ? 130 : 176;
+    const panelH = Math.round((small ? 130 : 176) * f);
     const px = (W - panelW) / 2;
-    const py = Math.max(14, Math.min(H * .075, H - panelH - 70)) + (1 - Math.min(1, S.t / .22)) * -12;
-    const avatar = line.portrait ? (small ? 88 : 142) : 0;
-    const left = px + (line.portrait ? avatar + (small ? 24 : 34) : (small ? 20 : 34));
+    const py = Math.max(10, Math.min(H * .05, H - panelH - 70)) + (1 - Math.min(1, S.t / .22)) * -12;
+    const avatar = line.portrait ? Math.round((small ? 88 : 142) * f) : 0;
+    const left = px + (line.portrait ? avatar + (small ? 24 : 34) * f : (small ? 20 : 34));
     const rightPad = small ? 16 : 28;
-    const nameY = py + (small ? 28 : 38);
-    const bodyY = py + (small ? 61 : 82);
-    const fontSize = small ? 17 : 22;
+    const nameY = py + (small ? 28 : 38) * f;
+    const bodyY = py + (small ? 61 : 82) * f;
+    const fontSize = Math.round((small ? 17 : 22) * f);
     const maxLines = small ? 3 : 2;
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -118,14 +119,14 @@
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,238,194,.38)'; rounded(ctx, px + 6, py + 6, panelW - 12, panelH - 12, 5); ctx.stroke();
 
     if (line.portrait) {
-      const ax = px + (small ? 10 : 12), ay = py + (small ? 10 : 12);
+      const ax = px + (small ? 10 : 12) * f, ay = py + (small ? 10 : 12) * f;
       ctx.fillStyle = '#b78b4d'; rounded(ctx, ax - 3, ay - 3, avatar + 6, avatar + 6, 6); ctx.fill();
       ctx.fillStyle = '#241912'; rounded(ctx, ax, ay, avatar, avatar, 4); ctx.fill();
       drawPortrait(ctx, line, ax, ay, avatar);
     }
 
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.font = `700 ${small ? 17 : 24}px "PingFang SC","Microsoft YaHei",sans-serif`;
+    ctx.font = `700 ${Math.round((small ? 17 : 24) * f)}px "PingFang SC","Microsoft YaHei",sans-serif`;
     ctx.fillStyle = '#f1cf75'; ctx.fillText(line.speaker, left, nameY);
     const nameW = ctx.measureText(line.speaker).width;
     ctx.fillStyle = 'rgba(211,165,83,.8)'; ctx.fillRect(left, nameY + 6, Math.min(nameW + 14, panelW * .26), 1.5);
@@ -134,7 +135,7 @@
     ctx.fillStyle = '#f7f0df';
     const shown = line.text.slice(0, S.chars);
     const lines = wrapText(ctx, shown, Math.max(80, panelW - (left - px) - rightPad)).slice(0, maxLines);
-    lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * (small ? 23 : 31)));
+    lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * Math.round((small ? 23 : 31) * f)));
 
     // 右下角两块并排的小圆牌：J/攻击快进，K/翻滚整段跳过。
     const labels = small ? ['攻击 快进', '翻滚 跳过'] : ['J 快进', 'K 跳过'];

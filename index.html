@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=4280fb5234" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4280fb5234)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=85855328e9" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=85855328e9)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='5e736304e046',busy=false;
+var BUILD='f1252e530cde',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -2288,16 +2288,17 @@ const Boss = (() => {
     const W = cv.width / DPR, H = cv.height / DPR;
     const line = LINES[S.index];
     const small = H < 520 || W < 760;
+    const f = small ? Math.max(.62, Math.min(1, H / 480)) : 1;   // 手机横屏：整个对话框按屏幕高度再缩一档
     const panelW = Math.min(W - (small ? 18 : 36), 1240);
-    const panelH = small ? 130 : 176;
+    const panelH = Math.round((small ? 130 : 176) * f);
     const px = (W - panelW) / 2;
-    const py = Math.max(14, Math.min(H * .075, H - panelH - 70)) + (1 - Math.min(1, S.t / .22)) * -12;
-    const avatar = line.portrait ? (small ? 88 : 142) : 0;
-    const left = px + (line.portrait ? avatar + (small ? 24 : 34) : (small ? 20 : 34));
+    const py = Math.max(10, Math.min(H * .05, H - panelH - 70)) + (1 - Math.min(1, S.t / .22)) * -12;
+    const avatar = line.portrait ? Math.round((small ? 88 : 142) * f) : 0;
+    const left = px + (line.portrait ? avatar + (small ? 24 : 34) * f : (small ? 20 : 34));
     const rightPad = small ? 16 : 28;
-    const nameY = py + (small ? 28 : 38);
-    const bodyY = py + (small ? 61 : 82);
-    const fontSize = small ? 17 : 22;
+    const nameY = py + (small ? 28 : 38) * f;
+    const bodyY = py + (small ? 61 : 82) * f;
+    const fontSize = Math.round((small ? 17 : 22) * f);
     const maxLines = small ? 3 : 2;
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -2319,14 +2320,14 @@ const Boss = (() => {
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,238,194,.38)'; rounded(ctx, px + 6, py + 6, panelW - 12, panelH - 12, 5); ctx.stroke();
 
     if (line.portrait) {
-      const ax = px + (small ? 10 : 12), ay = py + (small ? 10 : 12);
+      const ax = px + (small ? 10 : 12) * f, ay = py + (small ? 10 : 12) * f;
       ctx.fillStyle = '#b78b4d'; rounded(ctx, ax - 3, ay - 3, avatar + 6, avatar + 6, 6); ctx.fill();
       ctx.fillStyle = '#241912'; rounded(ctx, ax, ay, avatar, avatar, 4); ctx.fill();
       drawPortrait(ctx, line, ax, ay, avatar);
     }
 
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.font = `700 ${small ? 17 : 24}px "PingFang SC","Microsoft YaHei",sans-serif`;
+    ctx.font = `700 ${Math.round((small ? 17 : 24) * f)}px "PingFang SC","Microsoft YaHei",sans-serif`;
     ctx.fillStyle = '#f1cf75'; ctx.fillText(line.speaker, left, nameY);
     const nameW = ctx.measureText(line.speaker).width;
     ctx.fillStyle = 'rgba(211,165,83,.8)'; ctx.fillRect(left, nameY + 6, Math.min(nameW + 14, panelW * .26), 1.5);
@@ -2335,7 +2336,7 @@ const Boss = (() => {
     ctx.fillStyle = '#f7f0df';
     const shown = line.text.slice(0, S.chars);
     const lines = wrapText(ctx, shown, Math.max(80, panelW - (left - px) - rightPad)).slice(0, maxLines);
-    lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * (small ? 23 : 31)));
+    lines.forEach((text, i) => ctx.fillText(text, left, bodyY + i * Math.round((small ? 23 : 31) * f)));
 
     // 右下角两块并排的小圆牌：J/攻击快进，K/翻滚整段跳过。
     const labels = small ? ['攻击 快进', '翻滚 跳过'] : ['J 快进', 'K 跳过'];
@@ -2689,7 +2690,16 @@ const Boss = (() => {
     };
     let saved = false; try { saved = localStorage.getItem('wzb-dbg-collapsed') === '1'; } catch (e) {}
     setCollapsed(saved);
-    head.addEventListener('click', e => { e.stopPropagation(); setCollapsed(!panel.classList.contains('collapsed')); });
+    // 按住标题拖动面板（位置记住）；没拖动时才算点击收起/展开
+    let drag = null, dragged = false;
+    try { const p = JSON.parse(localStorage.getItem('wzb-dbg-pos') || 'null'); if (p) { panel.style.left = Math.min(p.x, innerWidth - 60) + 'px'; panel.style.top = Math.min(p.y, innerHeight - 30) + 'px'; panel.style.right = 'auto'; } } catch (e) {}
+    head.style.touchAction = 'none'; head.style.cursor = 'move'; head.addEventListener('touchmove', e => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
+    head.addEventListener('pointerdown', e => { const r = panel.getBoundingClientRect(); drag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY }; dragged = false; head.setPointerCapture(e.pointerId); e.stopPropagation(); });
+    head.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; if (Math.abs(e.clientX - drag.x0) + Math.abs(e.clientY - drag.y0) > 6) dragged = true; if (!dragged) return;
+      const x = Math.max(0, Math.min(innerWidth - 60, e.clientX - drag.dx)), y = Math.max(0, Math.min(innerHeight - 30, e.clientY - drag.dy));
+      panel.style.left = x + 'px'; panel.style.top = y + 'px'; panel.style.right = 'auto'; });
+    head.addEventListener('pointerup', e => { if (!drag) return; drag = null; if (dragged) { const r = panel.getBoundingClientRect(); try { localStorage.setItem('wzb-dbg-pos', JSON.stringify({ x: r.left, y: r.top })); } catch (_) {} } });
+    head.addEventListener('click', e => { e.stopPropagation(); if (dragged) { dragged = false; return; } setCollapsed(!panel.classList.contains('collapsed')); });
 
     const heroGroup = addGroup('hero', '主角');
     btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
@@ -5724,7 +5734,7 @@ const Boss = (() => {
   window.addEventListener('pagehide', () => WALLET.flush());
 })();
 
-// 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。拾取即生效，不占背包、不加按键。
+// 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。金创药捡到先存 1 瓶、半血自动喝；其余拾取即生效。
 // 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
@@ -5732,27 +5742,30 @@ const Boss = (() => {
     jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 30 },
     huoyou: { name: '火油罐', icon: 'sup_huoyou', tip: '按攻击扔出：爆炸 1.5 伤害并留下大火场', w: 30 },
   };
-  let ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
+  let stash = 0, ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
   const img = k => { const i = typeof IMG !== 'undefined' && IMG['ui_' + k]; return i && i.complete && i.naturalWidth ? i : null; };
   const maxHp = () => (typeof maxHeroHp === 'function' ? maxHeroHp() : 10);
   const pop = (txt, color, big) => { if (typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt, color, big }); };
-  function pick() { let r = Math.random() * 100; for (const k in KINDS) { r -= KINDS[k].w; if (r <= 0) return k; } return 'jinchuang'; }
+  function pick(noFire) { if (noFire) return Math.random() < .55 ? 'jinchuang' : 'jiu'; let r = Math.random() * 100; for (const k in KINDS) { r -= KINDS[k].w; if (r <= 0) return k; } return 'jinchuang'; }
   function drop(x, y, kind) { ground.push({ k: kind || pick(), x, y, z: 14, vz: 90, t: 0 }); }
-  function reset() { ground = []; regenT = 0; drunkT = 0; jar = null; flying = []; fx = []; bossDrop = new Set(); placed = {}; }
+  function reset() { stash = 0; ground = []; regenT = 0; drunkT = 0; jar = null; flying = []; fx = []; bossDrop = new Set(); placed = {}; }
   // 放补给箱：画在地上的道具（props），打碎后换成碎箱子并掉补给
-  function placeCrate(x) {
+  function placeCrate(x, wave) {
     const m = ASSETS.props.cao_crate; if (!m || typeof props === 'undefined') return;
     const y = Math.max(M.top + 14, Math.min(M.bot - 10, (M.top + M.bot) / 2 + (Math.random() - .5) * 40));
-    props.push({ g: 'cao_crate', x, y, w: m[1], h: m[2], sc: 1, hitT: 0, hp: 2, solid: true, broken: false, supply: true, chapter2: true });
+    props.push({ g: 'cao_crate', x, y, w: m[1], h: m[2], sc: 1, hitT: 0, hp: 2, solid: true, broken: false, supply: true, chapter2: true, wave });
   }
   function onCrateBreak(p) {
     const m = ASSETS.props.cao_crate_broken;
     p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; if (m) { p.w = m[1]; p.h = m[2]; }
-    drop(p.x, p.y);
+    // 火油罐只在第 2 波、场上敌人 4 个以上时才可能开出来；开局的箱子只出金创药/烈酒
+    const foes = zs.filter(z => !z.dead && !z.ally).length;
+    drop(p.x, p.y, pick(!(p.wave === 1 && foes >= 4)));
   }
-  function apply(k) {
+  function apply(k, useNow) {
     const K = KINDS[k];
     if (typeof sfx === 'function') sfx('food', hero.x);
+    if (k === 'jinchuang' && !stash && !useNow) { stash = 1; pop('金创药收好了 · 半血自动服用', '#8fe08a', true); return; }   // 金创药先存着（最多 1 瓶），血掉到一半自动喝
     if (k === 'jinchuang') { hero.hp = Math.min(maxHp(), hero.hp + 4); regenT = 5; pop('+4 金创药', '#8fe08a', true); for (let i = 0; i < 10; i++) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 18, y: hero.y - Math.random() * 20, t: -i * .03 }); }
     else if (k === 'jiu') { drunkT = 10; pop('痛快！', '#ff9a5a', true); fx.push({ k: 'drink', t: 0 }); }
     else if (k === 'huoyou') { jar = { t: 0 }; pop('按攻击扔出火油罐', '#ffb04a'); }
@@ -5781,8 +5794,9 @@ const Boss = (() => {
     // 第二章：每战开打、第 2 波各放一个补给箱（在主角前方）
     if (typeof chapter2Run !== 'undefined' && chapter2Run && chapter2Run.mode === 'fight' && chapter2Run.battle <= 5) {
       const key = chapter2Run.battle + ':' + chapter2Run.wave;
-      if (!placed[key] && (chapter2Run.wave === 0 || chapter2Run.wave === 1)) { placed[key] = true; placeCrate(hero.x + 170 + Math.random() * 60); }
+      if (!placed[key] && (chapter2Run.wave === 0 || chapter2Run.wave === 1)) { placed[key] = true; placeCrate(hero.x + 170 + Math.random() * 60, chapter2Run.wave); }
     }
+    if (stash && hero.hp > 0 && hero.hp <= maxHp() * .5 && !(typeof over !== 'undefined' && over)) { stash = 0; apply('jinchuang', true); }
     for (const g of ground) {
       g.t += dt; if (g.z > 0 || g.vz) { g.vz -= 500 * dt; g.z = Math.max(0, g.z + g.vz * dt); if (g.z === 0) g.vz = 0; }
       if (g.z < 6 && Math.abs(g.x - hero.x) < 15 && Math.abs(g.y - hero.y) < 14 && hero.st !== 'down') { g.got = true; apply(g.k); }
@@ -5832,10 +5846,10 @@ const Boss = (() => {
   // 屏幕左上角：持续中的补给效果和倒计时
   function hud(x, y) {
     if (typeof ctx === 'undefined') return;
-    const list = []; if (drunkT > 0) list.push(['sup_jiu', drunkT]); if (regenT > 0) list.push(['sup_jinchuang', regenT]); if (jar) list.push(['sup_huoyou', 20 - jar.t]);
-    list.forEach(([k, t], i) => { const im = img(k); ctx.save(); ctx.imageSmoothingEnabled = false; ctx.fillStyle = 'rgba(20,14,10,.65)'; ctx.fillRect(x + i * 46, y, 42, 22); if (im) ctx.drawImage(im, x + i * 46 + 3, y + 2, 18 * im.width / im.height, 18); ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(Math.ceil(t) + 's', x + i * 46 + 22, y + 16); ctx.restore(); });
+    const list = []; if (drunkT > 0) list.push(['sup_jiu', drunkT]); if (regenT > 0) list.push(['sup_jinchuang', regenT]); if (jar) list.push(['sup_huoyou', 20 - jar.t]); if (stash) list.push(['sup_jinchuang', '存']);
+    list.forEach(([k, t], i) => { const im = img(k); ctx.save(); ctx.imageSmoothingEnabled = false; ctx.fillStyle = 'rgba(20,14,10,.65)'; ctx.fillRect(x + i * 46, y, 42, 22); if (im) ctx.drawImage(im, x + i * 46 + 3, y + 2, 18 * im.width / im.height, 18); ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(typeof t === 'string' ? t : Math.ceil(t) + 's', x + i * 46 + 22, y + 16); ctx.restore(); });
   }
-  window.SUPPLY = { reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar };
+  window.SUPPLY = { reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar, stashed: () => stash };
 })();
 
 // 整军备战页「锦囊」按钮：新锦囊系统的卡表 + 锁定面板（锁定功能尚未接入局内，先能浏览）。
@@ -8826,7 +8840,7 @@ function startChapter2Battle(number, walkIn = false) {
   M.W = number === 6 ? Math.max(ALTAR_W, Math.ceil(viewW())) : 8000;   // 战一到战五在同一片营地里一路往右走；祭台战就一屏
   M.top = number === 6 ? 150 : 190;   // 祭台石坪更宽，能走的地面往上放宽，留出八卦阵的位置
   chapter2Run.battle = number; chapter2Run.wave = 0; chapter2Run.mode = 'fight';
-  if (number === 6) { hero.hp = maxHeroHp(); floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt: '养精蓄锐 · 血已回满', big: true, color: '#8fe08a' }); }   // 用户定：张角战开打前回满血
+  if (number === 6) { spawnDrop(hero.x + 40, hero.y - 8, 'pig'); spawnDrop(hero.x + 60, hero.y + 10, 'leg'); spawnDrop(hero.x + 80, hero.y - 2, 'bun'); drops.slice(-3).forEach(d => d.life = 60); }   // 张角战开打前不回满，地上摆食物（烤乳猪+鸡腿+包子，共 7 血）
   chapter2Run.nextAt = 0; chapter2Run.spawned = true; chapter2Run.nextBattle = null;
   enemySkillFx = []; zs.length = 0; shots.length = 0; eshots.length = 0; fires.length = 0; if (window.CH2B) CH2B.reset();
   if (!walkIn) { hero.st = 'idle'; hero.t = 0; hero.atk = null; hero.vx = 0; }
@@ -11670,6 +11684,7 @@ window.GAME_PAUSE = {
 };
 // 主循环：某一帧出错也不让整个游戏卡死（以前一处报错就会冻住画面、人物消失）；错误记下来给调试面板看
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
-function loop(t) { const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
+function loop(t) { if (t - last < 1000 / 62) { requestAnimationFrame(loop); return; }   // 60 帧上限：高刷屏不多算，省电
+  const dt = Math.min(.033, (t - last) / 1000); last = t; try { update(dt); } catch (e) { reportErr(e); } try { draw(); } catch (e) { reportErr(e); try { ctx.restore(); } catch (_) {} } requestAnimationFrame(loop); }
 if (window.ROGUE) ROGUE.reset(); reset(); ui(); requestAnimationFrame(loop);
 </script></body></html>

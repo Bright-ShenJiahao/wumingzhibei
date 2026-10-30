@@ -1,4 +1,4 @@
-// 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。拾取即生效，不占背包、不加按键。
+// 第二章战场补给（用户定）：金创药 / 烈酒坛 / 火油罐。金创药捡到先存 1 瓶、半血自动喝；其余拾取即生效。
 // 来源：每战开打和第 2 波各放一个「曹」字补给箱（打碎必出一个补给）。
 (() => {
   const KINDS = {
@@ -6,27 +6,30 @@
     jiu: { name: '烈酒坛', icon: 'sup_jiu', tip: '10 秒内伤害 +30%、攻速 +15%', w: 30 },
     huoyou: { name: '火油罐', icon: 'sup_huoyou', tip: '按攻击扔出：爆炸 1.5 伤害并留下大火场', w: 30 },
   };
-  let ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
+  let stash = 0, ground = [], regenT = 0, drunkT = 0, jar = null, flying = [], fx = [], bossDrop = new Set(), placed = {};
   const img = k => { const i = typeof IMG !== 'undefined' && IMG['ui_' + k]; return i && i.complete && i.naturalWidth ? i : null; };
   const maxHp = () => (typeof maxHeroHp === 'function' ? maxHeroHp() : 10);
   const pop = (txt, color, big) => { if (typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt, color, big }); };
-  function pick() { let r = Math.random() * 100; for (const k in KINDS) { r -= KINDS[k].w; if (r <= 0) return k; } return 'jinchuang'; }
+  function pick(noFire) { if (noFire) return Math.random() < .55 ? 'jinchuang' : 'jiu'; let r = Math.random() * 100; for (const k in KINDS) { r -= KINDS[k].w; if (r <= 0) return k; } return 'jinchuang'; }
   function drop(x, y, kind) { ground.push({ k: kind || pick(), x, y, z: 14, vz: 90, t: 0 }); }
-  function reset() { ground = []; regenT = 0; drunkT = 0; jar = null; flying = []; fx = []; bossDrop = new Set(); placed = {}; }
+  function reset() { stash = 0; ground = []; regenT = 0; drunkT = 0; jar = null; flying = []; fx = []; bossDrop = new Set(); placed = {}; }
   // 放补给箱：画在地上的道具（props），打碎后换成碎箱子并掉补给
-  function placeCrate(x) {
+  function placeCrate(x, wave) {
     const m = ASSETS.props.cao_crate; if (!m || typeof props === 'undefined') return;
     const y = Math.max(M.top + 14, Math.min(M.bot - 10, (M.top + M.bot) / 2 + (Math.random() - .5) * 40));
-    props.push({ g: 'cao_crate', x, y, w: m[1], h: m[2], sc: 1, hitT: 0, hp: 2, solid: true, broken: false, supply: true, chapter2: true });
+    props.push({ g: 'cao_crate', x, y, w: m[1], h: m[2], sc: 1, hitT: 0, hp: 2, solid: true, broken: false, supply: true, chapter2: true, wave });
   }
   function onCrateBreak(p) {
     const m = ASSETS.props.cao_crate_broken;
     p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; if (m) { p.w = m[1]; p.h = m[2]; }
-    drop(p.x, p.y);
+    // 火油罐只在第 2 波、场上敌人 4 个以上时才可能开出来；开局的箱子只出金创药/烈酒
+    const foes = zs.filter(z => !z.dead && !z.ally).length;
+    drop(p.x, p.y, pick(!(p.wave === 1 && foes >= 4)));
   }
-  function apply(k) {
+  function apply(k, useNow) {
     const K = KINDS[k];
     if (typeof sfx === 'function') sfx('food', hero.x);
+    if (k === 'jinchuang' && !stash && !useNow) { stash = 1; pop('金创药收好了 · 半血自动服用', '#8fe08a', true); return; }   // 金创药先存着（最多 1 瓶），血掉到一半自动喝
     if (k === 'jinchuang') { hero.hp = Math.min(maxHp(), hero.hp + 4); regenT = 5; pop('+4 金创药', '#8fe08a', true); for (let i = 0; i < 10; i++) fx.push({ k: 'heal', x: hero.x + (Math.random() - .5) * 18, y: hero.y - Math.random() * 20, t: -i * .03 }); }
     else if (k === 'jiu') { drunkT = 10; pop('痛快！', '#ff9a5a', true); fx.push({ k: 'drink', t: 0 }); }
     else if (k === 'huoyou') { jar = { t: 0 }; pop('按攻击扔出火油罐', '#ffb04a'); }
@@ -55,8 +58,9 @@
     // 第二章：每战开打、第 2 波各放一个补给箱（在主角前方）
     if (typeof chapter2Run !== 'undefined' && chapter2Run && chapter2Run.mode === 'fight' && chapter2Run.battle <= 5) {
       const key = chapter2Run.battle + ':' + chapter2Run.wave;
-      if (!placed[key] && (chapter2Run.wave === 0 || chapter2Run.wave === 1)) { placed[key] = true; placeCrate(hero.x + 170 + Math.random() * 60); }
+      if (!placed[key] && (chapter2Run.wave === 0 || chapter2Run.wave === 1)) { placed[key] = true; placeCrate(hero.x + 170 + Math.random() * 60, chapter2Run.wave); }
     }
+    if (stash && hero.hp > 0 && hero.hp <= maxHp() * .5 && !(typeof over !== 'undefined' && over)) { stash = 0; apply('jinchuang', true); }
     for (const g of ground) {
       g.t += dt; if (g.z > 0 || g.vz) { g.vz -= 500 * dt; g.z = Math.max(0, g.z + g.vz * dt); if (g.z === 0) g.vz = 0; }
       if (g.z < 6 && Math.abs(g.x - hero.x) < 15 && Math.abs(g.y - hero.y) < 14 && hero.st !== 'down') { g.got = true; apply(g.k); }
@@ -106,8 +110,8 @@
   // 屏幕左上角：持续中的补给效果和倒计时
   function hud(x, y) {
     if (typeof ctx === 'undefined') return;
-    const list = []; if (drunkT > 0) list.push(['sup_jiu', drunkT]); if (regenT > 0) list.push(['sup_jinchuang', regenT]); if (jar) list.push(['sup_huoyou', 20 - jar.t]);
-    list.forEach(([k, t], i) => { const im = img(k); ctx.save(); ctx.imageSmoothingEnabled = false; ctx.fillStyle = 'rgba(20,14,10,.65)'; ctx.fillRect(x + i * 46, y, 42, 22); if (im) ctx.drawImage(im, x + i * 46 + 3, y + 2, 18 * im.width / im.height, 18); ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(Math.ceil(t) + 's', x + i * 46 + 22, y + 16); ctx.restore(); });
+    const list = []; if (drunkT > 0) list.push(['sup_jiu', drunkT]); if (regenT > 0) list.push(['sup_jinchuang', regenT]); if (jar) list.push(['sup_huoyou', 20 - jar.t]); if (stash) list.push(['sup_jinchuang', '存']);
+    list.forEach(([k, t], i) => { const im = img(k); ctx.save(); ctx.imageSmoothingEnabled = false; ctx.fillStyle = 'rgba(20,14,10,.65)'; ctx.fillRect(x + i * 46, y, 42, 22); if (im) ctx.drawImage(im, x + i * 46 + 3, y + 2, 18 * im.width / im.height, 18); ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(typeof t === 'string' ? t : Math.ceil(t) + 's', x + i * 46 + 22, y + 16); ctx.restore(); });
   }
-  window.SUPPLY = { reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar };
+  window.SUPPLY = { reset, drop, onCrateBreak, throwJar, tick, drawWorld, hud, dmgMul, aspdMul, drunk, holding: () => !!jar, stashed: () => stash };
 })();

@@ -80,7 +80,16 @@
     };
     let saved = false; try { saved = localStorage.getItem('wzb-dbg-collapsed') === '1'; } catch (e) {}
     setCollapsed(saved);
-    head.addEventListener('click', e => { e.stopPropagation(); setCollapsed(!panel.classList.contains('collapsed')); });
+    // 按住标题拖动面板（位置记住）；没拖动时才算点击收起/展开
+    let drag = null, dragged = false;
+    try { const p = JSON.parse(localStorage.getItem('wzb-dbg-pos') || 'null'); if (p) { panel.style.left = Math.min(p.x, innerWidth - 60) + 'px'; panel.style.top = Math.min(p.y, innerHeight - 30) + 'px'; panel.style.right = 'auto'; } } catch (e) {}
+    head.style.touchAction = 'none'; head.style.cursor = 'move'; head.addEventListener('touchmove', e => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
+    head.addEventListener('pointerdown', e => { const r = panel.getBoundingClientRect(); drag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY }; dragged = false; head.setPointerCapture(e.pointerId); e.stopPropagation(); });
+    head.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; if (Math.abs(e.clientX - drag.x0) + Math.abs(e.clientY - drag.y0) > 6) dragged = true; if (!dragged) return;
+      const x = Math.max(0, Math.min(innerWidth - 60, e.clientX - drag.dx)), y = Math.max(0, Math.min(innerHeight - 30, e.clientY - drag.dy));
+      panel.style.left = x + 'px'; panel.style.top = y + 'px'; panel.style.right = 'auto'; });
+    head.addEventListener('pointerup', e => { if (!drag) return; drag = null; if (dragged) { const r = panel.getBoundingClientRect(); try { localStorage.setItem('wzb-dbg-pos', JSON.stringify({ x: r.left, y: r.top })); } catch (_) {} } });
+    head.addEventListener('click', e => { e.stopPropagation(); if (dragged) { dragged = false; return; } setCollapsed(!panel.classList.contains('collapsed')); });
 
     const heroGroup = addGroup('hero', '主角');
     btn(heroGroup, '回到主界面', 'alt', () => { if (typeof returnFromPausedGame === 'function') returnFromPausedGame(true); else if (window.TITLE && TITLE.show) TITLE.show(); });
