@@ -2065,7 +2065,9 @@ function updateChapter2Catapult(z, dt) {
     for (const o of zs) if (o.guard || o.siegeArcher) { o.guard = null; o.siegeArcher = false; o.alarmUntil = 0; } }
   if (z.lastHp != null && z.hp < z.lastHp) window.__cartHitAt = gameT; z.lastHp = z.hp;
   z.flash = Math.max(0, z.flash - dt); const attackDt=dt*(window.GEAR?GEAR.enemyAttack(z):1); z.t += attackDt; z.cd -= attackDt;
-  if (z.dead) { z.st = 'wreck'; return; }
+  if (!z.dead && z.hp <= 0) { z.dead = 1; kills++; }   // 保险：血打空就一定算拆掉
+  if (z.dead) { if (z.st !== 'wreck') { z.st = 'wreck'; z.t = 0; shake = Math.max(shake, .3); sfx('land', z.x); floaters.push({ x: z.x, y: z.y - 40, t: 0, txt: '拆了！', big: true, gold: true });
+      for (let i = 0; i < 18; i++) propFx.push({ x: z.x + rnd(-14, 14), y: z.y - rnd(4, 26), vx: rnd(-90, 90), vy: rnd(-150, -40), w: rnd(2, 4), h: rnd(2, 4), life: .6, max: .6, c: ['#6a4426', '#8a5a30', '#3a2414'][i % 3] }); } return; }   // 拆掉：木屑飞散、冒字，换成残骸
   if (z.st === 'wind' && z.t >= .72) {
     // 用户定：投石车集中砸主角一带，但不是同一点——按主角移动方向提前量，各车错开一点
     const lead = 1.15 * rnd(.6, 1.1), off = [[-22, -14], [0, 0], [22, 14], [-12, 16], [14, -16]][(z.catapultIndex || 0) % 5];
@@ -2411,7 +2413,7 @@ function update(dt) {
     if (!over) { waves(dt); if (window.ZJ) ZJ.update(dt); if (window.CH2OPEN) CH2OPEN.update(dt); if (window.BOWAMMO) BOWAMMO.tick(dt); zs.forEach(z => { const d = window.ROGUE && ROGUE.decoyFor ? ROGUE.decoyFor(z) : null; if (!d) { zUpdate(z, dt); return; } const real = hero; hero = d; try { zUpdate(z, dt); } finally { hero = real; } }); separateEnemies(dt); }   // 草木皆兵：被吸引的敌人把稻草人当成主角
     else zs.forEach(z => { if (z.dead) zUpdate(z, dt); else if (z.celebrating) z.celebrateT += dt; });
     if (window.GEAR && !over && !won) GEAR.tick(0);
-    for (const z of zs) if (z.dead && !z.air && !z.T.boss && z.st !== 'land' && z.st !== 'gone') { z.st = 'land'; z.t = 0; }   // 不会被击飞的（首领、力士）死了也要倒地后消失
+    for (const z of zs) if (z.dead && !z.air && !z.T.boss && !z.T.siege && z.st !== 'land' && z.st !== 'gone') { z.st = 'land'; z.t = 0; }   // 不会被击飞的（首领、力士）死了也要倒地后消失
     zs = zs.filter(z => !(z.st === 'gone' && z.t > .9));
   }
   const bz = zs.find(z => z.T && z.T.boss);
