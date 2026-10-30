@@ -59,12 +59,12 @@ function pub(x) {
   const zone = Number.isFinite(x.zone) ? x.zone : (x.win ? MAX_ZONE : 0);
   const win = !!x.win;
   const hits = Number.isFinite(x.hits) ? x.hits : 0;
-  const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 通过的区域数：死在 3 关 = 过了 2 关
+  const cleared = win ? MAX_ZONE : Math.max(0, zone - 1);   // 两章都按 6 个区域算   // 通过的区域数：死在 3 关 = 过了 2 关
   const diff = x.diff === 'easy' ? 'easy' : 'hard';     // 只用于显示：老记录当年的难度就是现在的困难
   const base = scoreOf(x.kills, x.t, cleared, win, hits, x.bonus);
   // 困难（旧普通）= 原分 ×1；简单模式 = 原分 ×0.8（困难 ≈ 简单的 1.25 倍）；老记录没有 diff → 按困难算，分数不动
   const rv = Number.isFinite(x.revives) ? x.revives : 0;
-  return { name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff, revives: rv,
+  return { ch: x.ch === 2 ? 2 : 1, name: x.name, kills: x.kills, t: x.t, zone, win, cleared, hits, at: x.at, diff, revives: rv,
     score: Math.round(base * (x.diff === 'easy' ? .8 : 1) * (rv >= 2 ? .5 : 1)) };   // 第 2 次复活起评分减半
 }
 
@@ -80,17 +80,19 @@ export default async function handler(req, context) {
         return json({ ok: true, rows: all.map(x => ({ key: x.key, name: x.name, kills: x.kills, t: x.t, zone: x.zone, win: !!x.win, hits: x.hits, at: x.at, ip: x.ip, cheat: x.cheat })) });
       }
       const clean = all.filter(x => !x.cheat).map(pub);
-      // 同一个名字只留最好的那一条（评分高的优先；同分比击杀，再比用时）
-      const best = new Map();
+      // 用户定：英雄榜只排「总积分」= 每一章各取自己最高的一局，再加起来（同一章刷多次不叠加）
+      const best = new Map();   // name -> { ch1, ch2, ... }
       for (const r of clean) {
-        const cur = best.get(r.name);
-        if (!cur || r.score > cur.score ||
-            (r.score === cur.score && (r.kills > cur.kills || (r.kills === cur.kills && r.t < cur.t)))) {
-          best.set(r.name, r);
-        }
+        const p = best.get(r.name) || { name: r.name, chs: {}, at: 0 };
+        const cur = p.chs[r.ch];
+        if (!cur || r.score > cur.score) p.chs[r.ch] = r;
+        p.at = Math.max(p.at, r.at); best.set(r.name, p);
       }
-      // 只按评分排；同分时击杀多者靠前，再同则用时短者靠前
-      const list = [...best.values()].sort((a, b) => b.score - a.score || b.kills - a.kills || a.t - b.t).slice(0, TOP_N);
+      const list = [...best.values()].map(p => {
+        const c1 = p.chs[1], c2 = p.chs[2];
+        return { name: p.name, at: p.at, score: (c1 ? c1.score : 0) + (c2 ? c2.score : 0), s1: c1 ? c1.score : null, s2: c2 ? c2.score : null,
+          kills: (c1 ? c1.kills : 0) + (c2 ? c2.kills : 0) };
+      }).sort((a, b) => b.score - a.score || b.kills - a.kills).slice(0, TOP_N);
       return json({ ok: true, season: SEASON, total: best.size, list });
     } catch (e) {
       return json({ ok: false, error: 'read failed' }, 500);
@@ -122,6 +124,7 @@ export default async function handler(req, context) {
   const bonus = Math.max(0, Math.min(200, Math.round(Number(body.bonus)) || 0));
   const diff = body.diff === 'hard' ? 'hard' : 'easy';
   const revives = Math.max(0, Math.min(20, Math.round(Number(body.revives)) || 0));
+  const ch = Number(body.ch) === 2 ? 2 : 1;
   if (!Number.isFinite(kills) || !Number.isFinite(t)) return json({ ok: false, error: 'bad numbers' }, 400);
   if (win && t < MIN_TIME) return json({ ok: false, error: 'too fast' }, 400);      // 通关不可能这么快
   if (!win && t < 10) return json({ ok: false, error: 'too fast' }, 400);
@@ -136,7 +139,7 @@ export default async function handler(req, context) {
     const recent = (await readAll(store)).filter(x => x.ip === ip && now - x.at < RATE_WINDOW * 1000);
     if (recent.length >= RATE_MAX) return json({ ok: false, error: 'too many' }, 429);
 
-    const rec = { name, kills, t, zone, win, hits, bonus, diff, revives, at: now, season: SEASON, ip, cheat: 0 };
+    const rec = { ch, name, kills, t, zone, win, hits, bonus, diff, revives, at: now, season: SEASON, ip, cheat: 0 };
     const key = 'run:' + now.toString(36) + Math.random().toString(36).slice(2, 8);
     await store.set(key, JSON.stringify(rec));
     return json({ ok: true, key });

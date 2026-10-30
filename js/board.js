@@ -55,9 +55,9 @@
     wrap.innerHTML = `
       <div class="panel">
         <div class="hd"><h2>英雄榜</h2><button class="x" type="button">关闭</button></div>
-        <div class="tabs"><button type="button" class="on" style="cursor:default">积分榜</button></div>
+        <div class="tabs"><button type="button" class="on" style="cursor:default">总积分榜</button></div>
         <div class="body"></div>
-        <div class="foot">评分 = 击杀×10 + 通关区域数×100 + 时间分 + 无伤分 · 共 6 个区域</div>
+        <div class="foot">总积分 = 每章最高一局之和 · 单局 = 击杀×10 + 通关区域×100 + 时间分 + 无伤分（简单模式 ×0.8）</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
@@ -76,23 +76,17 @@
       body.innerHTML = '<div class="empty">还没有人上榜<br>打一局就能留下名字</div>';
       return;
     }
-    const rows = list.map((r, i) => {
-      const cl = r.cleared == null ? '—' : String(r.cleared);
-      return `<tr class="${r.me ? 'me' : ''}">
+    const rows = list.map((r, i) => `<tr class="${r.me ? 'me' : ''}">
         <td style="width:26px;color:#b79c72">${i + 1}</td>
         <td class="rowName" title="${esc(r.name)}">${esc(r.name)}</td>
-        <td class="num" style="font-size:16px">${r.score == null ? '-' : r.score}</td>
-        <td class="num">${r.kills} 杀</td>
-        <td class="num">${cl}</td>
-        <td class="num">${fmtTime(r.t)}</td>
+        <td class="num" style="font-size:17px;color:#ffd86e">${r.score}</td>
+        <td class="num">${r.s1 == null ? '—' : r.s1}</td>
+        <td class="num">${r.s2 == null ? '—' : r.s2}</td>
         <td style="text-align:right;color:#8d7a5e;font-size:12px">${fmtDate(r.at)}</td>
-        <td style="text-align:right;font-size:12px;color:${r.diff === 'hard' ? '#e0703a' : '#8d7a5e'}">${r.diff === 'hard' ? '困难' : '简单'}</td>
-      </tr>`;
-    }).join('');
+      </tr>`).join('');
     body.innerHTML = `<table>
-      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">评分</th>
-      <th style="text-align:right">击杀</th><th style="text-align:right">通关区域数</th>
-      <th style="text-align:right">用时</th><th style="text-align:right">日期</th><th style="text-align:right">难度</th></tr></thead>
+      <thead><tr><th>#</th><th>玩家</th><th style="text-align:right">总积分</th>
+      <th style="text-align:right">第一章</th><th style="text-align:right">第二章</th><th style="text-align:right">日期</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 

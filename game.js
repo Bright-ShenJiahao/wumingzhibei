@@ -2436,11 +2436,11 @@ function update(dt) {
     if (won && !debugRun && window.TITLE && TITLE.markCleared) TITLE.markCleared(chapter2Run ? 2 : 1);
     if (won && chapter2Run && window.ARTIFACT && ARTIFACT.grant('feijian')) result.line = '张角遗下「太平飞剑」！已收入神器栏。';   // 第二章通关奖励（首次）   // 第二章通关记第二章，不再误记成第一章
     if (won && !debugRun && !noviceMode() && window.MERIDIAN && MERIDIAN.award(chapter2Run ? 'ch2' : 'ch1')) result.line += ' 困难首通，获得通脉丹 ×1（经脉）。';
-    if (!boardSent && !debugRun && !chapter2Run) {   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
+    if (!boardSent && !debugRun) {   // 用户定：两章都上报，榜上按总积分排   // 英雄榜目前只统计第一章；第二章成绩另行设计   // 通关或者阵亡都上报（失败不影响游戏）
       boardSent = true;
       if (window.BOARD) {
         const nm = (window.TITLE && TITLE.playerName && TITLE.playerName()) || '';
-        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy', revives });
+        BOARD.submit({ name: nm, kills, t: Math.round(endT), zone: chapter2Run ? [1, 1, 2, 3, 4, 4, 5][chapter2Run.battle || 1] : zoneNow, win: !!won, hits: hitsTaken, bonus: runBonus, diff: hardMode() ? 'hard' : 'easy', revives, ch: chapter2Run ? 2 : 1 });   // 第二章：战一~三 = 区域 1~3，张梁或张宝 = 4，张角 = 5，通关按 6 算
       }
     }
     uiBtns = [];
