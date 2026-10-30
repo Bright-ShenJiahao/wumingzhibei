@@ -3309,6 +3309,7 @@ function drawHalberdBleedDots(z, top) {
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
+  if (p.fadeAt != null) { const k = gameT - p.fadeAt; if (k > 2) { p.broken = true; return; } if (k > 1.4) { ctx.save(); ctx.globalAlpha = 1 - (k - 1.4) / .6; drawProp({ ...p, fadeAt: null }); ctx.restore(); return; } }   // 碎箱子等：留 1.4 秒后淡出消失
   const [, w0, h0] = ASSETS.props[p.g];
   if (p.vert) {
     // 竖放拒马（jumo_v / jumo_vs 及打坏版）：图本身就是上下排列，前端（图底）贴在 p.y

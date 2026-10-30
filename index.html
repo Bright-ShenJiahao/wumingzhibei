@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=3e63aeb488" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3e63aeb488)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=68829dd71b" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=68829dd71b)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='ec3d9165660f',busy=false;
+var BUILD='7ee15127a45e',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -5950,7 +5950,7 @@ const Boss = (() => {
   }
   function onCrateBreak(p) {
     const m = ASSETS.props.cao_crate_broken;
-    p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; if (m) { p.w = m[1]; p.h = m[2]; }
+    p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; p.fadeAt = gameT; if (m) { p.w = m[1]; p.h = m[2]; }
     // 火油罐只在第 2 波、场上敌人 4 个以上时才可能开出来；开局的箱子只出金创药/烈酒
     const foes = zs.filter(z => !z.dead && !z.ally).length;
     drop(p.x, p.y, pick(!(p.wave === 1 && foes >= 4)));
@@ -11628,6 +11628,7 @@ function drawHalberdBleedDots(z, top) {
 function stone(x, y) { ctx.fillStyle = '#2a2234'; ctx.fillRect(x - 2, y - 2, 4, 4); ctx.fillStyle = '#9a9ea8'; ctx.fillRect(x - 1, y - 1.5, 2, 2); }
 function drawProp(p) {
   if (p.broken) return;   // 打坏的草垛/推车不再画
+  if (p.fadeAt != null) { const k = gameT - p.fadeAt; if (k > 2) { p.broken = true; return; } if (k > 1.4) { ctx.save(); ctx.globalAlpha = 1 - (k - 1.4) / .6; drawProp({ ...p, fadeAt: null }); ctx.restore(); return; } }   // 碎箱子等：留 1.4 秒后淡出消失
   const [, w0, h0] = ASSETS.props[p.g];
   if (p.vert) {
     // 竖放拒马（jumo_v / jumo_vs 及打坏版）：图本身就是上下排列，前端（图底）贴在 p.y

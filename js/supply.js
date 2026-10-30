@@ -21,7 +21,7 @@
   }
   function onCrateBreak(p) {
     const m = ASSETS.props.cao_crate_broken;
-    p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; if (m) { p.w = m[1]; p.h = m[2]; }
+    p.g = 'cao_crate_broken'; p.solid = false; p.hp = 0; p.fadeAt = gameT; if (m) { p.w = m[1]; p.h = m[2]; }
     // 火油罐只在第 2 波、场上敌人 4 个以上时才可能开出来；开局的箱子只出金创药/烈酒
     const foes = zs.filter(z => !z.dead && !z.ally).length;
     drop(p.x, p.y, pick(!(p.wave === 1 && foes >= 4)));
