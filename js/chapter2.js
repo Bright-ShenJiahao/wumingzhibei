@@ -2,7 +2,7 @@
 (() => {
   const MAP = 'battlefield';
   const BOSS_MAP = 'altar';
-  const unlocked = false;                         // 正常关闭；仅 ?debug 开发者模式可进入
+  const unlocked = true;                          // 用户定（2026-10-30）：第二章正式开放
   const debugMode = /[?&]debug(?:=|&|$)/.test(location.search);
   let selectedRoute = null;
   const battles = Object.freeze([
