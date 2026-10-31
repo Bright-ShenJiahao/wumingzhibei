@@ -562,7 +562,7 @@ function waves(dt = 0) {
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
   if (lockR < Infinity && zs.some(z => !z.dead) && !zs.some(z => !z.dead && z.st !== 'sleep')) {
-    zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });
+    zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; z.hidden = false; sfx('wake', z.x); } });
   }
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
     const bossDone = WAVES[gateI] && WAVES[gateI].boss;
@@ -582,7 +582,7 @@ function waves(dt = 0) {
       if (alive <= (W.extraAt || 2)) {
         extraDone = true;
         W.extra.forEach((u2, i) => spawn(u2, lockR - rnd(8, 30) - i * 10, rnd(M.top + 6, M.bot - 6)));
-        zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });   // 尸体一起站起来
+        zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; z.hidden = false; sfx('wake', z.x); } });   // 尸体一起站起来
         if (W.extraSay) say(W.extraSay, 2.4);
         else say('又冲上来一队！', 2.2);
       }

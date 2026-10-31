@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=06fa7f3458" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=06fa7f3458)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=ec05ef9346" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ec05ef9346)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='28c806482f6a',busy=false;
+var BUILD='eefa1c270fb2',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -3926,6 +3926,9 @@ function zUpdate(z, dt) {
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
   if(ch2Skill(z,dt))return;
+  // 根因修复（柴业政/果汁/用户报「一个小兵打不死、闪白不掉血」）：草垛后的伏兵 hidden=true，受击直接跳过；
+  // 以前被「区域只剩伏兵 / 尸体一起站起来」叫醒时没清 hidden，它起来照样打人，却永远打不到
+  if (z.hidden && z.st !== 'sleep' && !z.T.chapterBoss) z.hidden = false;
   if (z.st === 'sleep') {
     if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); z.hidden = false; sfx('wake', z.x); }
     return;
@@ -12350,7 +12353,7 @@ function waves(dt = 0) {
   const vw = viewW();
   // 区域清空：没有活着的敌人就算（尸体还躺在地上也算），等 1.4 秒让倒地/击飞演完再放行
   if (lockR < Infinity && zs.some(z => !z.dead) && !zs.some(z => !z.dead && z.st !== 'sleep')) {
-    zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });
+    zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; z.hidden = false; sfx('wake', z.x); } });
   }
   if (lockR < Infinity && !zs.some(z => !z.dead)) {
     const bossDone = WAVES[gateI] && WAVES[gateI].boss;
@@ -12370,7 +12373,7 @@ function waves(dt = 0) {
       if (alive <= (W.extraAt || 2)) {
         extraDone = true;
         W.extra.forEach((u2, i) => spawn(u2, lockR - rnd(8, 30) - i * 10, rnd(M.top + 6, M.bot - 6)));
-        zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; sfx('wake', z.x); } });   // 尸体一起站起来
+        zs.forEach(z => { if (z.st === 'sleep') { set(z, 'wake'); z.t = 0; z.hidden = false; sfx('wake', z.x); } });   // 尸体一起站起来
         if (W.extraSay) say(W.extraSay, 2.4);
         else say('又冲上来一队！', 2.2);
       }

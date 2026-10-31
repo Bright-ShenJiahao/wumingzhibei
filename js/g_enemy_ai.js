@@ -219,6 +219,9 @@ function zUpdate(z, dt) {
   if (z.st === 'land') { if (z.t > .45) { if (z.dead) { z.st = 'gone'; z.t = 0; } else set(z, 'move'); } return; }
   if (z.dead) return;
   if(ch2Skill(z,dt))return;
+  // 根因修复（柴业政/果汁/用户报「一个小兵打不死、闪白不掉血」）：草垛后的伏兵 hidden=true，受击直接跳过；
+  // 以前被「区域只剩伏兵 / 尸体一起站起来」叫醒时没清 hidden，它起来照样打人，却永远打不到
+  if (z.hidden && z.st !== 'sleep' && !z.T.chapterBoss) z.hidden = false;
   if (z.st === 'sleep') {
     if (Math.hypot(hero.x - z.x, hero.y - z.y) < 72) { set(z, 'wake'); z.hidden = false; sfx('wake', z.x); }
     return;
