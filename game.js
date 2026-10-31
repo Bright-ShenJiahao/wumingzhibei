@@ -15,8 +15,10 @@ function ensureAssets(group, { silent = false, label = '' } = {}) {
   const list = LAZY[group] || [];
   if(!LAZY_DONE[group]) LAZY_DONE[group]=Promise.all(list.map(([img,src])=>new Promise(ok=>{
     if(img.complete&&img.naturalWidth){ok();return;}
-    img.addEventListener('load',ok,{once:true});img.addEventListener('error',ok,{once:true});
-    if(!img.src)img.src=src;
+    // 下载失败自动重试 3 次（手机网络抖动），还不行再放行，画面上用到时 drawImage 会继续重试
+    let n=0;const fail=()=>{if(n++<3)setTimeout(()=>{img.addEventListener('error',fail,{once:true});img.src=src+(src.includes('?')?'&':'?')+'retry='+n;},600);else ok();};
+    img.addEventListener('load',ok,{once:true});img.addEventListener('error',fail,{once:true});
+    if(!img.src)img.src=src;else if(img.complete&&!img.naturalWidth)fail();
   })));
   if(silent)return LAZY_DONE[group];
   let overlay=null,progress;
@@ -741,8 +743,14 @@ function safeArea() {   // 读 CSS 的 env(safe-area-inset-*)，每秒更新一�
   } catch (e) {}
   return _sa;
 }
+// 下载失败的图片（broken）一画就报错，会让这一帧后面的东西（包括主角）全部画不出来 → 统一拦下：不画，并自动重试下载
+{ const _di = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) { if (img instanceof HTMLImageElement && (!img.complete || !img.naturalWidth)) { if (img.src && img.complete && typeof retryImg === 'function') retryImg(img); return; } return _di.call(this, img, ...a); }; }
+function retryImg(img) { const now = performance.now(); if ((img._tries || 0) >= 8 || now - (img._at || 0) < 1500) return; img._at = now; img._tries = (img._tries || 0) + 1; const base = img.src.replace(/([?&])retry=\d+/, ''); img.src = base + (base.includes('?') ? '&' : '?') + 'retry=' + img._tries; }
 function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
-  const fr = CH[name] && CH[name][f]; if (!fr) return; if (!fr.img.src) { promoteLoad(fr.img); return; } if (!fr.img.complete) return;
+  let fr = CH[name] && CH[name][f]; if (!fr) return; if (!fr.img.src) { promoteLoad(fr.img); return; }
+  // 图片下载失败（手机/微信网络抖一下）以前就永远不显示，人物直接隐形：现在自动重试，主角这期间先用别的已下好的帧顶上
+  if (fr.img.complete && !fr.img.naturalWidth) { retryImg(fr.img); if (name !== 'hero') return; const alt = Object.values(CH.hero).find(o => o.img.complete && o.img.naturalWidth); if (!alt) return; fr = alt; }
+  if (!fr.img.complete) return;
   const sp = Math.max(.5, SC * PX) * sc;
   const sx = Math.round(x * SC + OXs), sy = Math.round(y * SC);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); if (flip) ctx.scale(-1, 1);
