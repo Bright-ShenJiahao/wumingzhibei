@@ -748,7 +748,9 @@ function safeArea() {   // 读 CSS 的 env(safe-area-inset-*)，每秒更新一�
 { const _di = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) { if (img instanceof HTMLImageElement && (!img.complete || !img.naturalWidth)) { if (img.src && img.complete && typeof retryImg === 'function') retryImg(img); return; } return _di.call(this, img, ...a); }; }
 function retryImg(img) { const now = performance.now(); if ((img._tries || 0) >= 8 || now - (img._at || 0) < 1500) return; img._at = now; img._tries = (img._tries || 0) + 1; const base = img.src.replace(/([?&])retry=\d+/, ''); img.src = base + (base.includes('?') ? '&' : '?') + 'retry=' + img._tries; }
 function drawChar(name, f, x, y, flip, alpha = 1, white = false, sc = 1, dark = false) {
-  let fr = CH[name] && CH[name][f]; if (!fr) return; if (!fr.img.src) { promoteLoad(fr.img); return; }
+  let fr = CH[name] && CH[name][f]; if (!fr) return;
+  // 时装换色后主角的帧是 canvas（没有 src）：以前这里当成「还没开始下载」直接跳过，买了时装颜色的玩家人物整个隐形（用户报 果汁、柴业政）
+  if (fr.img instanceof HTMLImageElement && !fr.img.src) { promoteLoad(fr.img); return; }
   // 图片下载失败（手机/微信网络抖一下）以前就永远不显示，人物直接隐形：现在自动重试，主角这期间先用别的已下好的帧顶上
   if (fr.img.complete && !fr.img.naturalWidth) { retryImg(fr.img); if (name !== 'hero') return; const alt = Object.values(CH.hero).find(o => o.img.complete && o.img.naturalWidth); if (!alt) return; fr = alt; }
   if (!fr.img.complete) return;

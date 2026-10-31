@@ -114,7 +114,7 @@
   // 通关后提交成绩；失败不打扰玩家
   function submit(rec) {
     const payload = { name: rec && rec.name, kills: rec && rec.kills, t: rec && rec.t,
-      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus, diff: rec && rec.diff, revives: rec && rec.revives };   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
+      zone: rec && rec.zone, win: !!(rec && rec.win), hits: rec && rec.hits, bonus: rec && rec.bonus, diff: rec && rec.diff, revives: rec && rec.revives, ch: rec && rec.ch };   // 用户报：第二章成绩没算进第二章——以前漏传 ch，服务器全当第一章   // 关卡/通关/受击都要传，否则服务端算不出一样的评分
     return fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
