@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=ec05ef9346" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ec05ef9346)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=9bb347fad0" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=9bb347fad0)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='eefa1c270fb2',busy=false;
+var BUILD='f5431a729245',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -12288,10 +12288,7 @@ function spawn(type, x, y, sleeping = false) {
     sc: T.scale || 1, dark: false });
   const z0 = zs[zs.length - 1];
   if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.decorate(z0);
-  if (sleeping) {
-    const h = props.find(p => p.g === 'hay' && !p.broken && Math.abs(p.x - x) < 70 && Math.abs(p.y - y) < 40);
-    if (h) { z0.hidden = true; z0.hx = h.x; }
-  }
+  // 用户定 2026-10-31：取消「草垛后的伏兵」（藏着不能被打，出过打不死的 bug），装死的兵就躺在路边睡觉，看得见、打得到
 }
 function startVillagers(edgeX) {
   if (villagersStarted) return;

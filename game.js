@@ -497,10 +497,7 @@ function spawn(type, x, y, sleeping = false) {
     sc: T.scale || 1, dark: false });
   const z0 = zs[zs.length - 1];
   if (window.XIAOCHANG && XIAOCHANG.active()) XIAOCHANG.decorate(z0);
-  if (sleeping) {
-    const h = props.find(p => p.g === 'hay' && !p.broken && Math.abs(p.x - x) < 70 && Math.abs(p.y - y) < 40);
-    if (h) { z0.hidden = true; z0.hx = h.x; }
-  }
+  // 用户定 2026-10-31：取消「草垛后的伏兵」（藏着不能被打，出过打不死的 bug），装死的兵就躺在路边睡觉，看得见、打得到
 }
 function startVillagers(edgeX) {
   if (villagersStarted) return;
