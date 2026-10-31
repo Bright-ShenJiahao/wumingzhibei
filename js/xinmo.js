@@ -123,7 +123,7 @@ window.XINMO = (() => {
     try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
     send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
   }
-  const MODES = { whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
+  const MODES = { ylane: '卡Y值', whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
   function risk(k) {   // 这种情形的挨打率 ÷ 平均挨打率（>1 = 比平时更容易挨打）
@@ -567,14 +567,19 @@ window.XINMO = (() => {
     // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
     if (!m.approachT && Math.random() < dt / 2 / risk('approach')) m.approachT = 1;
     if (m.approachT) { m.approachT = Math.max(0, m.approachT - dt); if (s.st === 'atk' || hero.inv > 0) m.approachT = 0; }
-    if (m.approachT > 0 && ready) { m.mode = 'approach'; if (adx < reach) { m.approachT = 0; startAtk(0); return; } moveTo(s.x - sd * (reach - 8), s.y, dt, 1); return; }
+    // 卡 Y 值（用户定 10/31）：斜着贴近，停在你上下判定刚好够不着的那条线上（你的 dy + 3），到了横向距离再一步对齐出手——反应比你快，先打到
+    if (m.approachT > 0 && ready) { m.mode = 'approach';
+      const hdy = (hw && hw.dy) || 14, mdy = w.dy || 14, side = m.y >= s.y ? 1 : -1, lane = Math.max(M.top, Math.min(M.bot, s.y + side * (hdy + 3)));
+      if (w.class !== 'ranged' && adx > reach - 2) { m.mode = 'ylane'; moveTo(s.x - sd * (reach - 8), lane, dt, 1); return; }
+      if (adx < reach && ady < mdy) { m.approachT = 0; m.f = sd; startAtk(0); return; }
+      moveTo(s.x - sd * (reach - 8), s.y, dt, 1); return; }
     // 6) 拉距离（SmashBot KeepDistance）：站在玩家够不着的外缘来回小步晃，玩家出招/无敌时再退 20；偶尔站住不动
     m.mode = 'neutral';
     let buf = edge + (s.st === 'atk' ? 20 : 0) + (hero.inv > 0 ? 20 : 0) + Math.max(0, Math.min(30, (risk('neutral') - 1) * 12));   // 学到「拉距离时常挨打」→ 站远一点
     if (gameT - (m.radT || 0) > 1) { m.radT = gameT; m.radius = Math.random() * 14; if (Math.random() < .12) m.menace = .6 + Math.random() * .6; }
     if (m.menace > 0 && s.st !== 'atk' && adx > edge - 4) { m.menace -= dt; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return; }
     const sway = Math.abs(Math.sin(gameT * 9)) * (m.radius || 0);   // 只往外晃，不晃进你的攻击范围
-    let tx = s.x - sd * (buf + sway), ty = s.y;
+    let tx = s.x - sd * (buf + sway), ty = w.class === 'ranged' ? s.y : s.y + (m.y >= s.y ? 1 : -1) * Math.min(((hw && hw.dy) || 14) + 3, Math.abs(m.y - s.y));   // 拉距离时也不站在你那条线上（卡 Y），够不着你也够不着我
     // 被逼到场边退不动：从你身边翻滚过去换边（或上下错开），不在角落挨打
     if ((tx < 30 || tx > 690) && adx < edge + 4) { if (m.rollCd === 0 && s.st !== 'atk') { m.mode = 'neutral'; roll(sd, m.y < (M.top + M.bot) / 2 ? .6 : -.6); m.punish = true; return; } ty = s.y + (m.y < s.y ? -40 : 40); }
     // 对手建模：玩家被打后爱往某个方向滚 → 提前站到那边
