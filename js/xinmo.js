@@ -38,13 +38,14 @@ window.XINMO = (() => {
     rec = { h: H0(), hurtAt: -9, wasHurt: false, lastSt: '', combo: 0, wake: -9 };
     hist = []; ended = false;
     const hp = Math.max(8, maxHeroHp());
-    window.spawn('grunt', hero.x < 360 ? 600 : 120, (M.top + M.bot) / 2);
+    hero.x = 240; hero.y = (M.top + M.bot) / 2; hero.f = 1;   // 开场位置镜像对称：场中 360 两侧各 120，面对面
+    window.spawn('grunt', 480, (M.top + M.bot) / 2);
     m = zs[zs.length - 1];
     m && 0; marks = []; mshots = []; hb = { n: 0, t: 0 }; Object.assign(m, { zg: 0, ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
     // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
     tape = []; tape.t0 = gameT; tapeT = 0; keys = []; hits = []; pv = null; joyPrev = null;
-    m.weapon = w; P = snap(); styleReset(); { const d0 = data(); d0.lessons ||= {}; L = JSON.parse(JSON.stringify(d0.lessons[w] || newL())); lastHits = []; } m.T.hp = P.hp; m.hp = m.T.hp; m.wait = 3; showCard();   // 血量 = 你的血量
+    m.weapon = w; P = snap(); styleReset(); m.spawnPos = [hero.x, hero.y]; m.f = -1; m.statT = 1; { const d0 = data(); d0.lessons ||= {}; L = JSON.parse(JSON.stringify(d0.lessons[w] || newL())); lastHits = []; } m.T.hp = P.hp; m.hp = m.T.hp; m.wait = 3; showCard();   // 血量 = 你的血量
     m.bossLabel = '心魔'; m.xiaochang = true;
     say(d.tries && Math.random() < .6 ? pick(LINES.introAgain).replace('{n}', d.wins) : pick(LINES.intro), 3);
     return m;
@@ -144,7 +145,7 @@ window.XINMO = (() => {
       take: r('take'), move: r('move'), aspd: r('aspd'), daze: r('daze'),
       roll: mx('roll', 1), getup: mx('getup', 1), knock: mx('knock', 1), unyield: mx('unyield', 0), zhenguan: mx('zhenguan', 0),
       gate: typeof chargeGateMs === 'function' ? chargeGateMs() / 1000 : .4, full: typeof chargeMaxMs === 'function' ? chargeMaxMs() / 1000 : 1.6,
-      range: window.GEAR && GEAR.range ? GEAR.range() : 1,
+      range: window.GEAR && GEAR.range ? GEAR.range() : 1, atkC: window.GEAR && GEAR.attackScale ? GEAR.attackScale(m, true) : 1,   // 蓄力专属增伤
       rollInv: (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) ? .45 : .4, touch: (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) ? .8 : 1,
     };
   }
@@ -152,11 +153,16 @@ window.XINMO = (() => {
     const crit = o.guaranteed || Math.random() < (o.chance != null ? o.chance : P.crit);
     const c = crit ? Math.min(o.cap || 2.5, P.critDmg) : 1;
     if (c > 1) floaters.push({ x: hero.x, y: hero.y - 34, t: 0, txt: '暴击！', big: true });
-    return P.atk * c * (hero.dazeT > 0 ? 1.5 : 1);   // 被晕的目标吃 1.5 倍（和敌人被晕一样）
+    return (o.charged ? (P.atkC || P.atk) : P.atk) * c;   // 被晕加伤在命中那一刻（dmgH）结算，和玩家一样
   }
   // 眩晕（用户定：只在心魔战）：和玩家打敌人同样的概率与时长；已经晕着的不续
   function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && !(gameT < (hero.dazeImm || 0)) && Math.random() < chance) { hero.dazeT = time; hero.dazeImm = gameT + time + 3; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
-  function dmgH(n, from, kind) { const hp0 = hero.hp; dmgHero(n, from, kind); if (hero.hp < hp0) { m.lastLandT = gameT; m.landed = true; return true; } return false; }   // 心魔所有伤害都走这里：记下“真打中了”
+  function dmgH(n, from, kind) { const hp0 = hero.hp; dmgHero(n * (hero.dazeT > 0 ? 1.5 : 1), from, kind);   /* 被晕的目标吃 1.5 倍：只在命中时算一次 */ if (hero.hp < hp0) { m.lastLandT = gameT; m.landed = true; return true; } return false; }   // 心魔所有伤害都走这里：记下“真打中了”
+  function heroExtra(n) {   // 附加伤害（裂伤、撕开、斩杀）：只扣血、不给无敌，但照样走不屈和死亡流程（和你打心魔的附加伤害一样）
+    if (over || hero.hp <= 0 || n <= 0) return;
+    hero.hp -= n * (hero.dazeT > 0 ? 1.5 : 1); floaters.push({ x: hero.x, y: hero.y - 34, t: 0, txt: (Math.round(n * 10) / 10).toString(), color: '#e05050' });
+    if (hero.hp <= 0) { if (window.MERIDIAN && MERIDIAN.tryUnyield()) return; hero.hp = 0; over = true; deathLandedAt = null; enemiesCelebrating = false; if (!hero.air) launch(hero, (Math.sign(hero.x - m.x) || 1) * 48, 145); hero.inv = 9; hero.deathArc = true; }
+  }
   function hitH(n, kind, dz) { const ok = dmgH(n, m, kind); if (dz && ok) dazeHero(dz[0], dz[1]); return ok; }
   const DZ = () => .8 * P.daze;   /* 棍晕 0.8 秒，和玩家一致 */
   const MV = () => P.move;
@@ -166,7 +172,7 @@ window.XINMO = (() => {
   function takeHit(z, dmg, dir, dz, basic) {
     if (z !== m || m.dead) return;
     // 流血等持续伤害、撕开/溅射等附加伤害：只扣血，不硬直、不给无敌、不晕（和你身上的裂伤一样）
-    if (dz === 'extra') { m.hp -= dmg; if (m.hp <= 0) { if (!m.unyield && MX('unyield', 0)) { m.unyield = true; m.hp = 1; } else { m.dead = 1; kills++; m.st = 'bounce'; m.t = 0; } } return; }
+    if (dz === 'extra') { m.hp -= dmg; if (m.hp <= 0) { if (!m.unyield && MX('unyield', 0)) { m.unyield = true; m.hp = 1; m.inv = 1.5; floaters.push({ x: m.x, y: m.y - 46, t: 0, txt: '不屈！', big: true }); } else { m.dead = 1; kills++; m.st = 'bounce'; m.t = 0; } } return; }
     if (m.inv > 0) return;
     if (basic && Math.random() < P.dodge) { floaters.push({ x: m.x, y: m.y - 28, t: 0, txt: '闪避' }); return; }   // 装备闪避：和你一样只对普通攻击
     let n = (m.dazeT > 0 ? 1.5 : 1) * dmg * P.take * (1 - P.reduce);
@@ -176,12 +182,12 @@ window.XINMO = (() => {
     if (n <= 0) return;
     learnHit(n); m.hp -= n; m.inv = .7; m.flash = .1; sfx('hurt', m.x); shake = Math.max(shake, .12);
     floaters.push({ x: m.x, y: m.y - 34, t: 0, txt: (Math.round(n * 10) / 10).toString() });
-    if (m.hp <= 0 && !m.unyield && MX('unyield', 0)) { m.unyield = true; m.hp = 1; floaters.push({ x: m.x, y: m.y - 46, t: 0, txt: '不屈！', big: true }); }
+    if (m.hp <= 0 && !m.unyield && MX('unyield', 0)) { m.unyield = true; m.hp = 1; m.inv = 1.5; floaters.push({ x: m.x, y: m.y - 46, t: 0, txt: '不屈！', big: true }); return; }   // 和玩家的不屈一样：留 1 血、1.5 秒无敌、这一下不进受击
     m.atk = null; m.ch = 0; m.plan = null; m.lock = false; m.dash = null; m.hurtN = (m.hurtN || 0) + 1; m.lastHurtT = gameT;
     if (m.hp <= 0) { m.dead = 1; kills++; m.st = 'bounce'; m.t = 0; return; }
     if (MX('zhenguan', 0) && ++m.zg >= 5) { m.zg = 0; shake = Math.max(shake, .35); if (Math.hypot(hero.x - m.x, (hero.y - m.y) * 2) < 70) { dmgH(.5, m, 'skill'); hero.vx = (Math.sign(hero.x - m.x) || 1) * 140; } m.hp = Math.min(m.T.hp, m.hp + 1); floaters.push({ x: m.x, y: m.y - 50, t: 0, txt: '镇关！+1', big: true, color: '#e2b23c' }); }   // 经脉·镇关
-    if (raw >= 2 * MX('knock', 1)) { launch(m, dir * 85, 120); m.inv = 9; }   // 重击：和玩家一样被打飞 → 落地 → 起身（全程无敌）
-    else { m.st = 'hurt'; m.t = 0; m.vx = dir * 40; }
+    if (raw >= 2 * MX('knock', 1)) { launch(m, dir * 85, 120); m.f = -dir; m.inv = 9; }   // 重击：和玩家一样被打飞 → 落地 → 起身（全程无敌）
+    else { m.st = 'hurt'; m.t = 0; m.vx = dir * 80; }   // 受击击退 80（和玩家一样）
     if (dz && dz[0] > 0 && !(m.dazeT > 0) && !(gameT < (m.dazeImm || 0)) && Math.random() < dz[0]) { m.dazeT = dz[1]; m.dazeImm = gameT + dz[1] + 3; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
   }
   // ---------- 局内分析（用户定 11/01）：开打 10～20 秒内认出你是哪种打法，换对应的打法 ----------
@@ -293,7 +299,7 @@ window.XINMO = (() => {
     const w = W(), C = w.combo[m.atk.c], fin = m.atk.c === w.combo.length - 1, f = m.f;
     if (w.proj) {   // 远程：和玩家 strike() 一样的弹道、数量、速度、射程和特效
       sfx('swing_stone', m.x);
-      const K = OUT(), base = { x: m.x + f * 16, y: m.y, z: 22, life: C.life || .8, traveled: 0 };
+      const moving = Math.hypot(m.mvx || 0, m.mvy || 0) > 14, K = OUT(), base = { x: m.x + f * 16, y: m.y + (moving ? (m.weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0),   /* 跑动中出手会偏（和玩家一样） */ z: 22, life: C.life || .8, traveled: 0 };
       if (m.weapon === 'bow' && fin) {   // 连珠箭：3~5 支 ±8° 小扇形，每支 0.5
         const n = 3 + Math.floor(Math.random() * 3), spread = 8 * Math.PI / 180;
         bowFx.push({ kind: 'volley', x: m.x + f * 20, y: m.y - 22, t: 0, T: .2, dir: f });
@@ -301,7 +307,7 @@ window.XINMO = (() => {
         return;
       }
       mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K, dz: C.dazeChance ? [C.dazeChance, C.dazeTime] : null });
-      if (m.weapon === 'stone' && fin) for (const a of [-.20944, .20944]) mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'stone', dmg: C.dmg * .3 * K });
+      if (m.weapon === 'stone' && fin) for (const a of [-.20944, .20944]) mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'stone', secondary: true, dmg: C.dmg * .3 * P.atk });   // 副弹不吃暴击（和玩家一样）
       return;
     }
     sfx('swing', m.x);
@@ -316,10 +322,10 @@ window.XINMO = (() => {
       if (m.weapon === 'halberd') {   // 长戟裂伤：和玩家一样每下 +1 层（最多 5），终段撕开 = 层数 × 0.3
         const K = OUT() * back; let d = (C.dmg || 1) * K; const n0 = Math.min(5, hb.n + 1);
         const hp0 = hero.hp; hitH(d, fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);
-        if (hero.hp < hp0) { if (fin) { if (hero.hp > 0) hero.hp -= n0 * .3 * K; hb.n = 0; bleedFx.push({ kind: 'rip', x: hero.x, y: hero.y - 12, t: 0, T: .2 }); } else { hb.n = n0; hb.t = 3; } bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); }   // 真打中才叠层（打在无敌上不叠）
+        if (true) { if (fin) { if (hero.hp < hp0) heroExtra(n0 * .3 * P.atk); hb.n = 0;   /* 和玩家一样：接触就叠层；撕开是独立附加伤害、不吃暴击 */ bleedFx.push({ kind: 'rip', x: hero.x, y: hero.y - 12, t: 0, T: .2 }); } else { hb.n = n0; hb.t = 3; } bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); }   // 真打中才叠层（打在无敌上不叠）
       }
       else hitH((C.dmg || 1) * back * OUT(fin && m.weapon === 'blade' ? { guaranteed: true, cap: 2 } : null), fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);   // 大刀终段必暴击（上限 200%）、棍的晕，和玩家一样
-      if (fin && m.weapon === 'blade' && m.lastLandT === gameT && hero.hp > 0 && hero.hp < maxHeroHp() * .15) {   /* 真打中才斩（打在无敌上不斩） */ hero.hp = 0; floaters.push({ x: hero.x, y: hero.y - 40, t: 0, txt: '斩！', big: true, gold: true }); if (!hero.air) launch(hero, f * 48, 145); }   // 和玩家一致：先砍，剩血低于 15% 直接斩
+      if (fin && m.weapon === 'blade' && m.lastLandT === gameT && hero.hp > 0 && hero.hp < maxHeroHp() * .15) { floaters.push({ x: hero.x, y: hero.y - 40, t: 0, txt: '斩！', big: true, gold: true }); heroExtra(hero.hp / (hero.dazeT > 0 ? 1.5 : 1) + .01); }   // 真打中才斩；走死亡流程
       sfx('hit_' + (w.snd || 'staff'), hero.x);
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
       m.hitC++;
@@ -350,12 +356,11 @@ window.XINMO = (() => {
   const tierOf = t => { const g = P.gate; return t >= fullT() ? 3 : t >= fullT() / 2 ? 2 : t >= g ? 1 : 0; };
   function startCharge(target) { m.st = 'charge'; m.t = 0; m.ch = 0; m.chTarget = Math.max(.42, Math.min(fullT(), target)); m.atk = null; sfx('charge', m.x); }
   function release() {
-    if (m.weapon === 'bow' && (m.ammo ?? 5) < 1) { m.st = 'idle'; m.t = 0; m.ch = 0; return; }   // 没蓄力箭：和玩家一样不出手、不进收招
     const w = W(), tier = tierOf(m.ch), power = Math.min(1, m.ch / fullT()), f = m.f = Math.sign(hero.x - m.x) || m.f;
     m.st = 'atk'; m.t = 0; m.atk = { c: w.combo.length - 1, fi: 0, t: 0, lg: 0, visual: true }; m.ch = 0;
     sfx('finisher', m.x); shake = Math.max(shake, .12 + .18 * power);
     chargeFx.push({ x: m.x, y: m.y, t: 0, T: .45, w: m.weapon, f, power, tier, _sty: true });   // 蓄力重击的冲击特效和玩家共用
-    const dxh = (hero.x - m.x) * f, dyh = hero.y - m.y, K = OUT();   // 心魔伤害 = 玩家同一招 × 玩家的出手倍率
+    const dxh = (hero.x - m.x) * f, dyh = hero.y - m.y, K = OUT({ charged: true });   // 心魔伤害 = 玩家同一招 × 玩家的出手倍率
     if (m.weapon === 'bow') {
       if ((m.ammo ?? 5) < 1) return; m.ammo = (m.ammo ?? 5) - 1;
       const d = tier === 3 ? { r: 45, dmg: 2.4 } : tier === 2 ? { r: 36, dmg: 1.9 } : { r: 28, dmg: 1.4 };
@@ -375,18 +380,18 @@ window.XINMO = (() => {
     if (m.weapon === 'hammer') {   // 千斤坠
       const d = tier === 3 ? { range: 80, dmg: 3.6, size: 90 } : tier === 2 ? { range: 65, dmg: 2.8, size: 75 } : { range: 50, dmg: 2.0, size: 60 };
       hammerFx.push({ kind: 'slam', x: m.x + f * 30, y: m.y, t: 0, T: .28, size: d.size });
-      if (dxh >= -12 && dxh <= d.range && Math.abs(dyh) <= Math.max(24, dxh * .7 + 14)) dmgH(d.dmg * K, m, 'skill');
+      if (dxh >= -12 && dxh <= d.range * (P.range || 1) + 16 && Math.abs(dyh) <= Math.max(24, dxh * .7 + 14)) dmgH(d.dmg * K, m, 'skill');
       return;
     }
     if (m.weapon === 'blade') {   // 半月斩：前方上下各 45
       const d = tier === 3 ? { dmg: 2.6, c: .8 } : tier === 2 ? { dmg: 2.0, c: .6 } : { dmg: 1.4, c: .4 };
       bladeFx.push({ kind: 'crescent', x: m.x + f * 30, y: m.y - 16, t: 0, T: .3, dir: f });
-      if (dxh >= -12 && dxh <= 45 && Math.abs(dyh) <= 45) dmgH(d.dmg * OUT({ chance: d.c, cap: 2, charged: true }), m, 'skill');
+      if (dxh >= -12 && dxh <= 45 + 16 && Math.abs(dyh) <= 45) dmgH(d.dmg * OUT({ chance: d.c, cap: 2, charged: true }), m, 'skill');
       return;
     }
     // 棍：蓄力横扫
     const force = .35 + .65 * power;
-    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', null);
+    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64 * (P.range || 1) + 16) hitH(1.6 * force * K, 'skill', null);
   }
   let marks = [], mshots = [], hb = { n: 0, t: 0 };
   // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------
@@ -407,29 +412,35 @@ window.XINMO = (() => {
     marks = marks.filter(k => k.t < k.T + .25);
     for (const p of mshots) {   // 心魔的箭/石子：和玩家同样飞，汉弓按飞行距离 ×1 / 1.15 / 1.3（远射）
       p.x += p.vx * dt; p.y += (p.vy || 0) * dt; p.life -= dt; p.traveled += Math.hypot(p.vx, p.vy || 0) * dt;
-      if (p.life > 0 && Math.abs(hero.x - p.x) < 10 + 16 && Math.abs(hero.y - p.y) < 10 && heroOpen()) {   // 和你的石子/箭打心魔的判定一样（左右 10+身宽、上下 10）
-        const mult = p.kind === 'arrow' && !p.volley ? bowRangeMult(p.traveled) : 1;
+      if (p.life > 0 && typeof props !== 'undefined') for (const q of props) { if (!canHitProp(q)) continue; if (Math.abs(propXAt(q, p.y) - p.x) < q.w / 2 + 3 && propDY(q, p.y) < 8) { hitProp(q, Math.sign(p.vx)); p.life = 0; break; } }   // 和玩家的弹一样会被道具挡住
+      if (p.life > 0 && Math.abs(hero.x - p.x) < 10 + 16 && Math.abs(hero.y - p.y) < 10 && !hero.air && !['down', 'bounce', 'getup'].includes(hero.st)) { heroOpen();   // 和玩家的弹一样：碰到就算接触（你无敌时也会被挡掉、不伤）   // 和你的石子/箭打心魔的判定一样（左右 10+身宽、上下 10）
+        const mult = p.kind === 'arrow' ? bowRangeMult(p.traveled) : 1;   // 连珠箭也吃远射（和玩家一样）
+        if (p.kind === 'arrow' && !p.secondary) m.ammo = Math.min(5, (m.ammo ?? 5) + .25);   // 回矢：和玩家一样接触就回 1/4 支
         sfx(p.kind === 'arrow' ? 'hurt' : 'hit_stone', p.x); const hp0 = hero.hp; const vh = p.volleyId && m.vHit === p.volleyId;   // 同一次蓄力打中你：第 2 颗起只吃 30%、不续晕（和玩家一样）
-        dmgH(p.dmg * mult * (vh ? .3 : 1) * (hero.dazeT > 0 ? 1.5 : 1), { x: p.x - p.vx, source: m }); if (hero.hp < hp0 && p.kind === 'arrow' && !p.volley) m.ammo = Math.min(5, (m.ammo ?? 5) + .25);   // 回矢：和玩家一样普通箭射中回 1/4 支
-        if (hero.hp < hp0) { if (p.volleyId) m.vHit = p.volleyId; if (p.dz && !vh) dazeHero(p.dz[0], p.dz[1]); } p.life = 0;
+        dmgH(p.dmg * mult * (vh ? .3 : 1), { x: p.x - p.vx, source: m }, p.charged || p.final ? 'skill' : 'basic');
+        if (p.volleyId) m.vHit = p.volleyId; if (hero.hp < hp0 && p.dz && !vh) dazeHero(p.dz[0], p.dz[1]); p.life = 0;   // 同组蓄力石子：第一次接触就登记
       }
     }
     mshots = mshots.filter(p => p.life > 0);
-    if (hb.n > 0) { hb.t -= dt; if (hb.t <= 0) hb.n = 0; else if (!over && hero.st !== 'down') hero.hp -= hb.n * .08 * P.atk * dt; }   // 裂伤流血（不打断）
-    if (m.weapon === 'bow') { m.ammoT = (m.ammoT || 0) + dt; if (m.ammoT >= 6) { m.ammoT = 0; m.ammo = Math.min(5, (m.ammo ?? 5) + 1); } }
+    if (hb.n > 0) { hb.t -= dt; hero.halberdBleed = hb.n; hero.halberdBleedUntil = gameT + Math.max(0, hb.t); if (hb.t <= 0) { hb.n = 0; hero.halberdBleed = 0; } else { hb.next = (hb.next ?? 1) - dt; if (hb.next <= 0) { hb.next += 1; heroExtra(hb.n * .08 * P.atk); } } } else hb.next = 1;   // 和玩家的裂伤一样：每秒结算一次、会减速   // 裂伤流血（不打断）
+    if (m.weapon === 'bow') { if ((m.ammo ?? 5) < 5) m.ammo = Math.min(5, (m.ammo ?? 5) + dt / 6); }   // 和玩家一样连续回复（满了不存进度）
     snapshot(); record(dt); rollLearn(); styleTick(dt);
+    if (dt > 0) { m.mvx = (m.mvx || 0) * .85 + (m.x - (m.px ?? m.x)) / dt * .15; m.mvy = (m.mvy || 0) * .85 + (m.y - (m.py ?? m.y)) / dt * .15; m.px = m.x; m.py = m.y; }   // 心魔速度（和玩家 hero.mvx 一样算）
+    m.statT -= dt; if (m.statT <= 0) { m.statT = 1; const p2 = snap(); P.atk = p2.atk; P.atkC = p2.atkC; P.aspd = p2.aspd; P.crit = p2.crit; P.critDmg = p2.critDmg; }   // 你局中熟练度升级等变化，心魔每秒同步（保持 1:1）
     m.inv = Math.max(0, m.inv - dt); m.rollCd = Math.max(0, m.rollCd - dt); m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt);
     m.y = Math.max(M.top, Math.min(M.bot, m.y));
     if (m.dead) return;
     if (over) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } return; }
-    if (m.wait > 0) { m.wait -= dt; m.inv = Math.max(m.inv, m.wait); hero.inv = Math.max(hero.inv, m.wait); m.f = Math.sign(hero.x - m.x) || m.f; return; }   // 对照表显示时双方都不能被打
+    if (m.wait > 0) { if (m.spawnPos) { hero.x = m.spawnPos[0]; hero.y = m.spawnPos[1]; hero.f = 1; if (charging || atkHeldSince) cancelCharge(); } m.wait -= dt;   // 对照表期间双方都不能动
+      m.inv = Math.max(m.inv, m.wait); hero.inv = Math.max(hero.inv, m.wait); m.f = Math.sign(hero.x - m.x) || m.f; return; }   // 对照表显示时双方都不能被打
     if (L) { const k = curMode(); L.time[k] = (L.time[k] || 0) + dt; }
     recordRow(dt); joyTick();
     const w = W(), lowHp = m.hp < m.T.hp * .35;
     // 挨打：和玩家完全一样——硬直 0.3 秒；重击倒地 0.3 秒 + 起身（经脉可加快），起身后 0.5 秒无敌
+    if (m.dazeT > 0 && m.air) m.dazeT -= dt;   // 和玩家一样：在空中晕也在计时
     if (m.air) { airStep(m, dt); return; }
     if (m.st === 'land' || m.st === 'air') { m.st = 'bounce'; m.t = 0; }
-    if (m.dazeT > 0) { m.dazeT -= dt; if (m.st !== 'bounce' && m.st !== 'getup') { if (m.st !== 'hurt') { m.st = 'hurt'; m.atk = null; m.ch = 0; m.plan = null; m.lock = false; } m.t = 0; return; } }
+    if (m.dazeT > 0) { m.dazeT -= dt; if (m.dazeT <= 0) { m.st = 'idle'; m.t = 0; } else if (m.st !== 'bounce' && m.st !== 'getup') { if (m.st !== 'hurt') { m.st = 'hurt'; m.atk = null; m.ch = 0; m.plan = null; m.lock = false; } m.t = 0; return; } }
     if (m.st === 'hurt') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3) { m.st = 'idle'; m.t = 0;
         // 挨了普攻、硬直一结束：你还在出招 / 贴着我 → 优先翻滚逃出连招（和玩家一样，硬直后可以滚）
         const hw1 = WEAP[weapon] || {}, near = Math.abs(hero.x - m.x) < (hw1.proj ? 200 : (hw1.reach || 28) + 30) && Math.abs(hero.y - m.y) < 24;
@@ -447,7 +458,7 @@ window.XINMO = (() => {
     if (m.dash) {   // 回马突冲刺
       const step = Math.min(m.dash.left, 260 * dt); moveEnt(m, m.f * step, 0); m.dash.left -= step;
       { const ddx = (hero.x - m.x) * m.f;   // 判定和玩家的回马突一样：身后 14、身前 18（再加身宽）、上下 dy+8；打中叠裂伤
-        if (!m.dash.hit && ddx > -14 - 16 && ddx < 18 + 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 8) { m.dash.hit = true; const hp0 = hero.hp; dmgH(m.dash.dmg, m, 'skill'); if (hero.hp < hp0) { hb.n = Math.min(5, hb.n + m.dash.stacks); hb.t = 3; bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); } } }
+        if (!m.dash.hit && ddx >= -14 - 16 && ddx <= 18 + 16 && Math.abs(hero.y - m.y) <= (w.dy || 14) + 8) { m.dash.hit = true; const hp0 = hero.hp; dmgH(m.dash.dmg, m, 'skill'); { hb.n = Math.min(5, hb.n + m.dash.stacks); hb.t = 3; bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); } } }
       if (m.dash.left <= 0) { m.dash = null; m.st = 'idle'; m.t = 0; }
       return;
     }
@@ -482,9 +493,9 @@ window.XINMO = (() => {
         const released = a.fi >= C.f.length - 1, adxA = Math.abs(hero.x - m.x);
         const vy = released ? (m.y >= hero.y ? 1 : -1) * (Math.abs(m.y - hero.y) < 22 ? 1 : 0) : Math.sign(hero.y - m.y) * (Math.abs(hero.y - m.y) > 2 ? 1 : 0);
         const vx = adxA < 120 ? -(Math.sign(hero.x - m.x) || 1) : adxA > 200 ? (Math.sign(hero.x - m.x) || 1) : 0;
-        { const l = Math.hypot(vx, vy) || 1, k = l > 1 ? 1 / l : 1; moveEnt(m, vx * k * 70 * P.move * w.move * dt, vy * k * 52 * P.move * w.move * dt); }   // 斜着走和玩家一样归一化 m.y = Math.max(M.top, Math.min(M.bot, m.y));
+        { const l = Math.hypot(vx, vy) || 1, k = l > 1 ? 1 / l : 1; moveEnt(m, vx * k * 70 * w.move * dt, vy * k * 52 * w.move * dt); }   /* 出手时移动不乘移速、斜走归一化（和玩家一样） */ m.y = Math.max(M.top, Math.min(M.bot, m.y));
       }
-      if (w.lunge && a.lg < w.lungeT && Math.abs(hero.x - m.x) > w.reach * .6) moveEnt(m, m.f * w.lunge * dt, 0);
+      if (w.lunge && a.lg < w.lungeT && !(Math.sign(hero.x - m.x) === m.f && Math.abs(hero.y - m.y) < w.dy + 8 && Math.abs(hero.x - m.x) - 8 < w.reach * .6)) moveEnt(m, m.f * w.lunge * dt, 0);   // 和玩家的 tooClose 一样
       if (a.t >= C.d[a.fi] * AS()) {
         a.t = 0; a.fi++;
         if (a.fi === C.f.length - 1 && !a.visual) strike();   // 蓄力出手的收招只是动画，不再额外打一下普攻终段（和玩家 visualOnly 一样）
@@ -492,7 +503,7 @@ window.XINMO = (() => {
           const next = a.c + 1 < w.combo.length ? a.c + 1 : -1;
           // 连招：打中了、玩家还在范围里、没在翻滚 → 接下一段；否则收手（高手不会打满空招）
           const inRange = Math.abs(hero.x - m.x) < reachOf() + 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 4;
-          if (next >= 0 && !a.visual && ((m.hitC > 0 || w.proj) && inRange && !(risk('attack') > 1.6 && a.c >= 1) && hero.st !== 'roll' && hero.inv <= w.combo.slice(next).reduce((acc, Cx, j, arr) => acc + (j < arr.length - 1 ? Cx.d.reduce((x, y) => x + y, 0) : Cx.d.slice(0, -1).reduce((x, y) => x + y, 0)), 0) * AS() + .03 || (m.forceN > 0 && hero.st !== 'roll'))) {   /* 打到终段时你的无敌已结束才接（中间段打进无敌也只是推进连段，和玩家一样） */   /* 下一段打到时你的受击无敌已经结束才接，不往无敌里打 */ m.hitC = 0; m.forceN = Math.max(0, (m.forceN || 0) - 1); startAtk(next); return; }
+          if (next >= 0 && !a.visual && ((m.hitC > 0 || (w.proj && gameT - (m.lastLandT ?? -9) < .7)) && inRange && !(risk('attack') > 1.6 && a.c >= 1) && hero.st !== 'roll' && hero.inv <= w.combo.slice(next).reduce((acc, Cx, j, arr) => acc + (j < arr.length - 1 ? Cx.d.reduce((x, y) => x + y, 0) : Cx.d.slice(0, -1).reduce((x, y) => x + y, 0)), 0) * AS() + .03)) {   /* 打到终段时你的无敌已结束才接（中间段打进无敌也只是推进连段，和玩家一样） */ m.hitC = 0; m.forceN = Math.max(0, (m.forceN || 0) - 1); startAtk(next); return; }
           m.atk = null; m.st = 'idle'; m.t = 0; m.hitC = 0;
           if (w.proj && !m.plan) { m.lane = -(m.lane || 1); m.sideStep = { dir: m.lane, t: .22 }; }   // 远程丢完立刻换一条线，不站着让你还手
           m.forceN = 0;
@@ -506,7 +517,7 @@ window.XINMO = (() => {
       }
       if (a.fi === 0 && !a.visual) {   // 出手前摇：边转向边往前跟一步（像玩家按着方向键出招）
         m.f = Math.sign(hero.x - m.x) || m.f;
-        if (!w.proj && Math.abs(hero.x - m.x) > (w.reach || 28)) { if (w.move == null) moveEnt(m, m.f * 15 * dt, 0); else if (w.move > 0) { const ux = 1, uy = Math.abs(hero.y - m.y) > 2 ? Math.sign(hero.y - m.y) : 0, l = Math.hypot(ux, uy); moveEnt(m, m.f * 70 * w.move * P.move * ux / l * dt, 52 * w.move * P.move * uy / l * dt); } }   // 和玩家出手时的移动一样（锤子 move=0 不能动）
+        if (!w.proj && Math.abs(hero.x - m.x) > (w.reach || 28)) { if (w.move == null) moveEnt(m, m.f * 15 * dt, 0); else if (w.move > 0) { const ux = 1, uy = Math.abs(hero.y - m.y) > 2 ? Math.sign(hero.y - m.y) : 0, l = Math.hypot(ux, uy); moveEnt(m, m.f * 70 * w.move * ux / l * dt, 52 * w.move * uy / l * dt); } }   // 和玩家出手时的移动一样（锤子 move=0 不能动）
       }
       return;
     }

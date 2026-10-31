@@ -394,7 +394,7 @@ function moveEnt(e, dx, dy) {
   const heroLike = e === hero || (e.T && e.T.mirror);   // 心魔和玩家一样：不吃敌人专用的减速、不会自动绕开道具
   if (window.GEAR && !heroLike) { const mult=GEAR.enemyMove(e); dx*=mult; dy*=mult; }
   if (window.ROGUE && !heroLike && ROGUE.enemyMove) { const m = ROGUE.enemyMove(e); dx *= m; dy *= m; }   // 水淹七军减速
-  if (!heroLike && e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速
+  if (e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速（玩家被心魔的戟叠了裂伤也一样减速）
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;

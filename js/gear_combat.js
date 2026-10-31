@@ -131,7 +131,7 @@
     fx.forEach(e=>e.life-=dt);fx=fx.filter(e=>e.life>0);
   }
   function draw(){for(const e of fx){ctx.save();ctx.globalAlpha=e.life/.28;ctx.strokeStyle='#d9e6f5';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.x-10,e.y-150);ctx.lineTo(e.x+5,e.y-85);ctx.lineTo(e.x-4,e.y-65);ctx.lineTo(e.x,e.y);ctx.stroke();ctx.strokeStyle='#a7a0d6';ctx.beginPath();ctx.ellipse(e.x,e.y,45,22,0,0,Math.PI*2);ctx.stroke();ctx.restore();}}
-  function attackScale(z){const s=sync();return z&&s?primaryBonus(s,z,{},{charged:false}):1;}   // 长戟裂伤等按主攻击结算的伤害用
+  function attackScale(z,charged){const s=sync();return z&&s?primaryBonus(s,z,{},{charged:!!charged}):1;}   // 长戟裂伤等按主攻击结算的伤害用
   // 心魔用：按玩家同一套暴击规则掷一次（概率、暴击伤害、上限）
   function critRoll(o={}){const t=attackToken(!!o.charged),s=t.s;const crit=o.guaranteed?true:o.chance!=null?chance(o.chance):t.crit;return crit?clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,o.cap==null?2.5:o.cap):1;}
   // 心魔快照用：玩家当前的暴击率/暴伤/闪避/减伤（不含完美闪避后的临时必暴击、锦囊）
