@@ -230,6 +230,25 @@ window.XINMO = (() => {
     if (Math.abs(m.rx) > .1) m.f = Math.sign(m.rx);
     sfx('roll', m.x);
   }
+  // 翻滚躲避学习（用户定 10/31）：每次翻滚记下往哪滚、滚完 0.7 秒内有没有挨打；下次按成功率挑方向（留一点随机试别的）
+  function smartRoll(why, prefer) {
+    if (m.rollCd > 0) return false;
+    const sd = Math.sign(hero.x - m.x) || 1, adx = Math.abs(hero.x - m.x), mid = (M.top + M.bot) / 2;
+    const cornered = (m.x < 50 && sd < 0) || (m.x > 670 && sd > 0), nearWallBack = (m.x < 70 && sd > 0) || (m.x > 650 && sd < 0);
+    const opts = { back: [-sd, (m.y < mid ? .3 : -.3)], through: [sd, (m.y < hero.y ? -.35 : .35)], up: [-sd * .3, -1], down: [-sd * .3, 1] };
+    if (adx > 75) delete opts.through;   // 离太远滚不到你背后
+    if (nearWallBack || cornered) delete opts.back;
+    if (m.y < M.top + 18) delete opts.up; if (m.y > M.bot - 18) delete opts.down;
+    const st = (L && (L.roll ||= {})) || {}, keys = Object.keys(opts); if (!keys.length) return false;
+    let best = null, bv = -9;
+    for (const k of keys) { const r = st[why + ':' + k] || [0, 0]; const v = (r[0] + 1) / (r[1] + 2) + (k === prefer ? .12 : 0) + Math.random() * .15; if (v > bv) { bv = v; best = k; } }
+    const [dx, dy] = opts[best]; roll(dx, dy); m.rollRec = { k: why + ':' + best, t: gameT, hp: m.hp }; if (best === 'through') m.punish = true;
+    return true;
+  }
+  function rollLearn() {
+    const r = m.rollRec; if (!r || gameT - r.t < .7) return; m.rollRec = null;
+    if (!L) return; const st = (L.roll ||= {}), v = (st[r.k] ||= [0, 0]); v[1]++; if (m.hp >= r.hp - .001) v[0]++;
+  }
   function strike() {
     const w = W(), C = w.combo[m.atk.c], fin = m.atk.c === w.combo.length - 1, f = m.f;
     if (w.proj) {   // 远程：和玩家 strike() 一样的弹道、数量、速度、射程和特效
@@ -355,7 +374,7 @@ window.XINMO = (() => {
     mshots = mshots.filter(p => p.life > 0);
     if (hb.n > 0) { hb.t -= dt; if (hb.t <= 0) hb.n = 0; else if (!over && hero.st !== 'down') hero.hp -= hb.n * .08 * P.atk * dt; }   // 裂伤流血（不打断）
     if (m.weapon === 'bow') { m.ammoT = (m.ammoT || 0) + dt; if (m.ammoT >= 6) { m.ammoT = 0; m.ammo = Math.min(5, (m.ammo ?? 5) + 1); } }
-    snapshot(); record(dt);
+    snapshot(); record(dt); rollLearn();
     m.inv = Math.max(0, m.inv - dt); m.rollCd = Math.max(0, m.rollCd - dt); m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt);
     m.y = Math.max(M.top, Math.min(M.bot, m.y));
     if (m.dead) return;
@@ -368,7 +387,11 @@ window.XINMO = (() => {
     if (m.air) { airStep(m, dt); return; }
     if (m.st === 'land' || m.st === 'air') { m.st = 'bounce'; m.t = 0; }
     if (m.dazeT > 0) { m.dazeT -= dt; if (m.st !== 'bounce' && m.st !== 'getup') { if (m.st !== 'hurt') { m.st = 'hurt'; m.atk = null; m.ch = 0; m.plan = null; m.lock = false; } m.t = 0; return; } }
-    if (m.st === 'hurt') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3) { m.st = 'idle'; m.t = 0; } return; }
+    if (m.st === 'hurt') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3) { m.st = 'idle'; m.t = 0;
+        // 挨了普攻、硬直一结束：你还在出招 / 贴着我 → 优先翻滚逃出连招（和玩家一样，硬直后可以滚）
+        const hw1 = WEAP[weapon] || {}, near = Math.abs(hero.x - m.x) < (hw1.proj ? 200 : (hw1.reach || 28) + 30) && Math.abs(hero.y - m.y) < 24;
+        if (near && (hero.st === 'atk' || charging) && smartRoll('combo', 'back')) return; }
+      return; }
     if (m.st === 'bounce') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3 && !m.dead) { m.st = 'getup'; m.t = 0; } return; }
     if (m.st === 'getup') { if (m.t > .35 * MX('getup', 1)) { m.st = 'idle'; m.t = 0; m.inv = .5; } return; }
     m.stun = 0; m.daze = 0;
@@ -490,6 +513,12 @@ window.XINMO = (() => {
         if (need > left - .03 && m.rollCd === 0) { roll(Math.cos(ang), Math.sin(ang)); return; }
         m.mode = 'sky'; moveTo(f.x + Math.cos(ang) * (r + 4), f.y + Math.sin(ang) * (r + 4) / 2, dt, 1); return; }
     }
+    // 你刚松开蓄力（出手第一下）：在你范围附近就立刻翻滚——戟的冲刺、穿云箭、蓄力石子都有飞行/前冲时间，滚得掉
+    if (hero.atk && hero.atk.visualOnly && hero.st === 'atk' && hero.atk.t < .08 && !m.relRolled) {
+      const T0 = hw && !hw.proj ? (s.hw === 'halberd' ? 130 : s.hw === 'hammer' ? 84 : s.hw === 'blade' ? 50 : 68) + 16 : 240;
+      if (adx < T0 + 30 && ady < 40) { m.relRolled = true; if (smartRoll('release', adx < 60 ? 'through' : 'back')) return; }
+    }
+    if (!(hero.atk && hero.atk.visualOnly)) m.relRolled = false;
     // 你蓄力放空了（满蓄出手的收招）：立刻冲上去，赶在你翻滚前贴身；你滚了就由「追翻滚」接
     if (hero.atk && hero.atk.visualOnly && hero.st === 'atk' && w.class !== 'ranged' && adx < 170) {
       if (adx < reach && ady < (w.dy || 14)) { m.mode = 'whiff'; m.f = sd; startAtk(0); m.think = .1; return; }
@@ -508,6 +537,9 @@ window.XINMO = (() => {
         m.mode = 'respect'; moveTo(s.x - sd * 60, lane, dt, 1); return;
       }
       if (w.class === 'ranged' && ady < 9 && adx < 220 && s.st !== 'roll') { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .15; return; }   // 远程：你站着蓄近战就射你（近战蓄力打不到这么远）
+      // 随时准备翻滚：你蓄着往我这边逼（离我不到 60，或我被逼到场边）→ 从你身边滚到你背后（棍/锤/刀蓄力只打前面）
+      const closing = Math.sign(hero.mvx || 0) === sd && Math.abs(hero.mvx || 0) > 8, wallBehind = (m.x < 60 && sd > 0) || (m.x > 660 && sd < 0);
+      if (!hw.proj && (adx < 60 || (wallBehind && adx < T + 20) || (closing && adx < T + 6)) && smartRoll('charge', adx < 75 ? 'through' : 'back')) return;
       if (inRange) {   // 在你的满蓄范围里：走得出去就走，走不出去就滚（不往你身上滚）
         const out = (T + 18 - adx) / (70 * P.move);
         if (out > .35 && m.rollCd === 0 && !((m.x < 40 && sd > 0) || (m.x > 680 && sd < 0))) { roll(-sd, (m.y < (M.top + M.bot) / 2 ? 1 : -1) * .3); return; }
@@ -764,6 +796,11 @@ window.XINMO = (() => {
     const out = [], ks = Object.keys(MODES).filter(k => (L.time[k] || 0) > .5 && (L.dmg[k] || 0) > 0).sort((a, b) => risk(b) - risk(a));
     for (const k of ks.slice(0, 2)) if (risk(k) > 1.2) out.push(`它在「${MODES[k]}」时最容易挨打（是平时的 ${risk(k).toFixed(1)} 倍）→ 以后少做`);
     const tc = topC(); if (tc) out.push(`你的${tc === 'charge' ? '蓄力' : tc === 'other' ? '其他招' : '第 ' + (+tc.slice(1) + 1) + ' 段'}打它最疼 → 以后见到就躲、提前退`);
+    if (L.roll) {   // 翻滚学到的：每种情形里最管用的方向
+      const WHY = { charge: '你蓄力逼近时', release: '你松开蓄力时', combo: '被你连招打中后' }, DIR = { back: '往后滚', through: '滚到你背后', up: '往上滚', down: '往下滚' }, best = {};
+      for (const [k, v] of Object.entries(L.roll)) { const [w, d] = k.split(':'); if (v[1] >= 2 && (!best[w] || v[0] / v[1] > best[w][1])) best[w] = [d, v[0] / v[1], v[1]]; }
+      for (const [w, b] of Object.entries(best)) if (WHY[w]) out.push(`${WHY[w]}：${DIR[b[0]]}最管用（${b[2]} 次里躲开 ${Math.round(b[1] * 100)}%）`);
+    }
     return out;
   }
   function insight() {   // 「心魔看穿了你」小结：用本局 + 历史习惯
