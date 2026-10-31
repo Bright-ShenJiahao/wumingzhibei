@@ -426,9 +426,13 @@ window.XINMO = (() => {
       for (const p of shots) {
         if (Math.sign(p.vx) !== Math.sign(m.x - p.x)) continue;
         const tt = Math.abs(m.x - p.x) / Math.max(60, Math.abs(p.vx)), py = p.y + (p.vy || 0) * tt;
+        if (tt < .45 && Math.abs(py - m.y) < 10 && !m.sideStep) {   // 来得及就上下走出弹道（省下翻滚），石子/箭上下判定只有约 9
+          const need = (11 - Math.abs(py - m.y)) / (52 * P.move); if (need < tt - .03) { m.sideStep = { dir: (m.y - py >= 0 ? 1 : -1) * (m.y > M.bot - 14 ? -1 : m.y < M.top + 14 ? -1 : 1), t: need + .08 }; break; }
+        }
         if (tt < .22 && Math.abs(py - m.y) < 10) { m.shotSeen = .25; if (Math.random() < dodgeP) { roll(w.class === 'ranged' ? -sd : 0, m.y < (M.top + M.bot) / 2 ? 1 : -1); return; } }
       }
     }
+    if (m.sideStep) { m.sideStep.t -= dt; moveEnt(m, 0, m.sideStep.dir * 52 * P.move * dt); if (m.st !== 'walk') { m.st = 'walk'; m.t = 0; } if (m.sideStep.t <= 0) m.sideStep = null; return; }
     // 2) 反打（SmashBot Punish.framesleft）：算玩家还要多久才能动，我走过去 + 出手前摇来得及才打
     const hw = WEAP[s.hw] || WEAP[weapon], my0 = w.combo[0].d[0] / (w.aspd || 1);
     const reach = (w.reach || 28) + 4, edge = (hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 8) : reach) + 10;
@@ -470,6 +474,9 @@ window.XINMO = (() => {
     // 远程（用户定）：站远，多用蓄力；你一靠近就翻滚风筝拉开
     if (w.class === 'ranged') {
       const far = m.weapon === 'bow' ? 180 : 130, close = m.weapon === 'bow' ? 120 : 80;
+      // 学果汁的打法（用户给的视频）：把石子心魔逼到场边一直丢，它退不动。→ 身后没地方时，从你身边斜着翻滚过去换到空的一边
+      const backRoom = sd > 0 ? m.x - 20 : 700 - m.x;
+      if (backRoom < 50 && adx < far + 30 && m.rollCd === 0) { m.mode = 'keep'; roll(sd, m.y < (M.top + M.bot) / 2 ? .75 : -.75); return; }
       if (adx < close && m.rollCd === 0 && s.st !== 'roll') {   // 风筝：往远离你、空间大的一边滚
         const back = (m.x < 80 && sd < 0) || (m.x > 640 && sd > 0) ? 0 : -sd;
         m.mode = 'keep'; roll(back, back ? (m.y < (M.top + M.bot) / 2 ? .5 : -.5) : (m.y < (M.top + M.bot) / 2 ? 1 : -1)); return;
@@ -478,12 +485,13 @@ window.XINMO = (() => {
       // 蓄力只在「你冲过来之前蓄得完」时（不然会被你打断）
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
       if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
-      if (ady < 9 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }
+      if (ady < 9 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
       m.mode = 'keep';
       // 远程对远程：平时站在你的弹道外（上下错开 22），出手前那一下才对齐（你的石子/箭上下只有约 9 的判定）
       const lane = m.lane || (m.lane = Math.random() < .5 ? -1 : 1), wantShoot = m.think <= .08;
       let ly = wantShoot ? s.y : s.y + lane * 22; if (ly < M.top + 4 || ly > M.bot - 4) { m.lane = -lane; ly = s.y - lane * 22; }
-      moveTo(Math.max(20, Math.min(700, s.x - sd * far)), Math.max(M.top, Math.min(M.bot, ly)), dt);
+      let kx = s.x - sd * far; if (kx < 30 || kx > 690) kx = s.x + sd * far > 30 && s.x + sd * far < 690 ? (backRoom < 90 ? kx : s.x + sd * far) : kx;   // 这一边没地方了就去另一边
+      moveTo(Math.max(20, Math.min(700, kx)), Math.max(M.top, Math.min(M.bot, ly)), dt);
       return;
     }
     const ready = !heroRolling && hero.inv < my0 + .03 && ady < (w.dy || 14) + 4;
