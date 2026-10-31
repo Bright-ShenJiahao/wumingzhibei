@@ -29,6 +29,7 @@ button.on{background:rgba(255,216,110,.85);color:#2a2234;text-shadow:none;border
 #bA.charged::after{animation:charge-pulse .65s ease-in-out infinite alternate}
 @keyframes charge-pulse{to{filter:drop-shadow(0 0 9px #8de5ff)}}
 #bR{right:calc(96px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));width:54px;height:54px;font-size:13px}
+#bDesp{right:calc(158px + env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));width:46px;height:46px;font-size:12px;background:rgba(200,150,40,.3);border-color:rgba(255,220,140,.75)}
 #bSkill{display:none;right:calc(18px + env(safe-area-inset-right));bottom:calc(98px + env(safe-area-inset-bottom));width:96px;height:44px;border-radius:18px;font-size:12px;background:rgba(174,126,45,.82);border-color:rgba(255,226,151,.85)}
 body.wzb-summon #bSkill{display:flex}
 #bCatapult{display:none;position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(146px + env(safe-area-inset-bottom));width:96px;height:42px;border-radius:16px;z-index:6;
@@ -47,7 +48,7 @@ body.wzb-rogue #bSkill,body.wzb-rogue #bCatapult{display:none!important}
   body.wzb-catapult:not(.wzb-summon) #bCatapult{bottom:calc(164px + env(safe-area-inset-bottom))}
   #bWeapon:active{transform:translateY(1px);background:#8a653b}
   #wp button.weapon-pending{outline:2px dashed #e4c779;outline-offset:1px}
-  #bA,#bR,#bSkill,#bCatapult,#bWeapon{touch-action:none;-webkit-user-select:none}
+  #bA,#bR,#bDesp,#bSkill,#bCatapult,#bWeapon{touch-action:none;-webkit-user-select:none}
 }
 body.wzb-pro #help{display:none}
 #rot{display:none;position:fixed;inset:0;z-index:2147483000;background:#1a1020;color:#ffd86e;font-size:20px;font-weight:800;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.8;padding:0 24px}
@@ -97,6 +98,6 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
 <div id="top"><b style="font-size:13px;color:#fff;text-shadow:0 1px 3px #000">无名之辈·序章 幻想三国录 · 黄巾流寇</b></div>
 <div id="wp"><button data-w="staff" type="button" aria-label="棍" title="棍"><img data-weapon-icon="w_staff" alt="棍"></button><button data-w="hammer" type="button" aria-label="锤子" title="锤子"><img data-weapon-icon="w_hammer" alt="锤子"></button><button data-w="stone" type="button" aria-label="石子" title="石子"><img data-weapon-icon="w_stone" alt="石子"></button><button id="bWeapon" type="button" aria-label="切换武器" title="切换到下一把已装备武器">换武</button><button id="bMute" type="button" aria-label="静音" title="静音">🔊</button></div>
 <div id="joy"><div id="base"><div id="knob"></div></div></div>
-<button class="big" id="bR">翻滚</button><button class="big" id="bCatapult" type="button">投石车</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">万箭齐发</button>
-<div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力 · K/空格 翻滚 · U 召唤 · I 法器（待开放） · 1/2/3 换武器 · R 重来</div>
+<button class="big" id="bR">翻滚</button><button class="big" id="bDesp" type="button">保险</button><button class="big" id="bCatapult" type="button">投石车</button><button class="big" id="bA">攻击</button><button class="big" id="bSkill" type="button">万箭齐发</button>
+<div id="help">电脑：WASD/方向键移动 · J 攻击/长按蓄力 · K/空格 翻滚 · L 保险技（扣血震开） · 贴身推向敌人 抓摔 · U 召唤 · I 法器（待开放） · 1/2/3 换武器 · R 重来</div>
 <script>const ASSETS=__ASSETS__;</script><script>const BG=__BG__;</script><script>__GAME__</script></body></html>

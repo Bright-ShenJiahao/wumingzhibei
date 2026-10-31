@@ -229,7 +229,7 @@ function reset() {
   if (window.GOODS) GOODS.reset();   // 商店带进来的消耗品：开打第一帧才扣
   if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) flushLoads();   // 进了战斗就不再限速下图
   if (window.SFX && SFX.preloadVoices) setTimeout(() => { if (!(window.TITLE && TITLE.blocks && TITLE.blocks())) { flushLoads(); SFX.preloadVoices(['intro', 'guanhai_']); } }, 300);   // 第一章语音开局后慢慢下   // 神器：每局重新踩上飞剑、打落次数清零
-  atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
+  if (window.BRAWL) BRAWL.reset(); atkHeldSince = 0; charging = false; chargeTier = 0; chargeTierFlash = 0; chargeFx = []; chargeHitFx = []; deathLandedAt = null; enemiesCelebrating = false;
   comboCount = 0; comboExpireAt = 0; comboNotices = [];
   arenaL = null; boardSent = false; runBonus = 0;
   hero = { x: 60, y: (M.top + M.bot) / 2, f: 1, hp: 10, st: 'idle', t: 0, inv: 0, rollCd: 0, atk: null, q: 0, combo: 0, comboWin: 0, lastHit: -9, lastHitC: -1, lastShotC: 0, vx: 0, ix: 0, iy: 0 };
@@ -295,6 +295,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyJ' && !key.KeyJ) atkPress();
   key[e.code] = 1;
   if (e.code === 'KeyK' || e.code === 'Space') pressRoll = true;
+  if (e.code === 'KeyL' && !e.repeat && window.BRAWL) BRAWL.press();   // 保险技（用户定 10/31）
   if (e.code === 'KeyU' && !e.repeat && !over && !won && !result && window.ROGUE) {
     useRogueSkill();
   }
@@ -334,6 +335,7 @@ window.addEventListener('pointerup', endAttackPointer);
 window.addEventListener('blur', () => { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { attackPointer=null; cancelCharge(); endJ(); for (const k in key) key[k]=0; } });
 document.getElementById('bR').addEventListener('pointerdown', e => { e.preventDefault(); pressRoll = true; });
+{ const bD = document.getElementById('bDesp'); if (bD) bD.addEventListener('pointerdown', e => { e.preventDefault(); if (window.BRAWL) BRAWL.press(); }); }
 // 将令（主动技能锦囊）：万箭齐发 / 霹雳飞石 / 雷霆万钧，共用一个按钮和 U 键
 function useRogueSkill() { const k = ROGUE.useSkill ? ROGUE.useSkill() : ''; if (k === 'wanjian') summonArchersVolley(); else if (k === 'toushi') catapultVolley(); }
 document.getElementById('bSkill').addEventListener('pointerdown', e => { e.preventDefault(); if (!over && !won && !result && window.ROGUE) useRogueSkill(); });

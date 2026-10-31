@@ -5,7 +5,7 @@
 const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const MINUTES = +arg('minutes', 60), BASE = arg('url', 'http://localhost:8765/index.html?debug'), ROOT = path.join(__dirname, '..', '..');
-const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane'];   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
+const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'push2', 'charger2'];   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
 const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3);
 
 // ---------- 页面里跑一局（同步推进 update，固定随机种子） ----------
@@ -19,6 +19,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
     if (!XIAOCHANG.start({ chapter: 1, xinmo: weapon })) return null;
     const c = document.getElementById('xmCard'); if (c) c.remove();
     const m = XINMO.mirror(); m.wait = 0; m.inv = 0; hero.inv = 0;
+    const boost = /2$/.test(bot) ? 2 : 1; bot = bot.replace(/2$/, ''); window.__xmBoost = boost; if (boost > 1) hero.hp = maxHeroHp() * boost; const heroMax0 = hero.hp;
     const R = WEAP[weapon].proj ? 170 : (WEAP[weapon].reach || 30) + 2;
     let think = 0, frames = Math.round(secs * 60), hold = 0, after = 0; const PN = performance.now; let now = PN.call(performance); performance.now = () => now;   // 蓄力按住时长用游戏时钟
     for (let i = 0; i < frames && !over && !m.dead; i++) {
@@ -28,7 +29,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         const dx = m.x - hero.x, dy = m.y - hero.y, adx = Math.abs(dx), ady = Math.abs(dy);
         hero.f = Math.sign(dx) || 1;
         if (bot === 'push') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
-        else if (bot === 'human') { if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
+        else if (bot === 'human') { if (hero.st === 'hurt' && Math.random() < .25) BRAWL.press(); else if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
         else if (bot === 'charger') {
           const T = { staff: 64, hammer: 80, blade: 45, halberd: 120, stone: 160, bow: 170 }[weapon];
           if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (after > .3) pressRoll = true; }
@@ -42,9 +43,9 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
       try { update(1 / 60); } catch (e) {}
     }
     performance.now = PN; if (atkHeldSince) { atkHeldSince = 0; charging = false; }
-    const out = { heroHp: Math.max(0, hero.hp), heroMax: maxHeroHp(), mirHp: Math.max(0, m.hp), mirMax: m.T.hp, win: m.dead ? -1 : over ? 1 : 0 };
+    const out = { heroHp: Math.max(0, hero.hp), heroMax: heroMax0, mirHp: Math.max(0, m.hp), mirMax: m.T.hp, win: m.dead ? -1 : over ? 1 : 0 };
     for (const k in key) delete key[k]; pressAtk = pressRoll = false;
-    XINMO.reset(); XIAOCHANG.leave();
+    window.__xmBoost = 1; XINMO.reset(); XIAOCHANG.leave();
     return out;
   } finally { Math.random = R0; }
 };`;
@@ -85,11 +86,11 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
     log.push(`| ${gen} | ${mean.toFixed(3)} | ${((MINUTES * 60e3 - (end - Date.now())) / 60e3).toFixed(1)} |`); console.log(`第 ${gen} 代 平均奖励 ${mean.toFixed(3)}（累计 ${episodes} 局）`);
   }
   // 测试：同一批没练过的种子，规则版 vs 网络
-  const test = Array.from({ length: 60 }, (_, i) => [WEAPONS[i % 6], BOTS[Math.floor(i / 6) % BOTS.length], 900000 + i * 31]);
+  const test = Array.from({ length: 84 }, (_, i) => [WEAPONS[i % 6], BOTS[Math.floor(i / 6) % BOTS.length], 900000 + i * 31]);
   const ruleR = await runSet(null, test), netR = await runSet(netOf(theta), test);
   const avg = a => a.reduce((s, o) => s + reward(o), 0) / a.length, wins = a => a.filter(o => o && o.win === 1).length;
   const rA = avg(ruleR), nA = avg(netR), ok = nA > rA + .05;
-  log.push('', `## 测试（60 局没练过的对局，武器 × 测试玩家全覆盖）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} 局`,
+  log.push('', `## 测试（84 局没练过的对局，武器 × 测试玩家全覆盖）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} 局`,
     ok ? '- **网络赢过规则版 → 上场（inGame: true）**' : '- 网络没有明显赢过规则版 → 不上场，游戏继续用规则版');
   for (const w of WEAPONS) { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); log.push(`  - ${w}：规则 ${(i.reduce((s, k) => s + reward(ruleR[k]), 0) / i.length).toFixed(2)} / 网络 ${(i.reduce((s, k) => s + reward(netR[k]), 0) / i.length).toFixed(2)}`); }
   const perW = WEAPONS.filter(w => { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); return i.reduce((s, k) => s + reward(netR[k]) - reward(ruleR[k]), 0) / i.length > 0; });

@@ -224,7 +224,7 @@
     const st = document.createElement('style');
     st.textContent = `
       body.wzb-title #top, body.wzb-title #help, body.wzb-title #joy,
-      body.wzb-title #bA, body.wzb-title #bR { display: none !important; }
+      body.wzb-title #bA, body.wzb-title #bR, body.wzb-title #bDesp { display: none !important; }
       body.wzb-title #wp button[data-w], body.wzb-title #bWeapon { display: none !important; }
       body.wzb-intro #wp, body.wzb-intro #bMute, body.wzb-intro #bWeapon { display: none !important; }
       #tStyle0 { display: none; }

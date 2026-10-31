@@ -16,6 +16,7 @@ function heroUpdate(dt) {
   if (joy) { ix = Math.abs(joy.dx) > .2 ? joy.dx : 0; iy = Math.abs(joy.dy) > .2 ? joy.dy : 0; }
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   h.ix = ix; h.iy = iy;   // 记下方向输入：跑动中扔石子会偏
+  if (window.BRAWL && BRAWL.heroStep(h, dt, ix, iy)) return;   // 保险技 / 抓摔（js/brawl.js）
   if (h.st === 'hurt') { if (h.t > .3) set(h, 'idle'); moveEnt(h, h.vx * dt, 0); h.vx *= .85; pressAtk = pressRoll = false; return; }
   // 按住攻击键 0.4 秒 → 进入蓄力（连招暂停接续）
   if (atkHeldSince && !charging && performance.now() - atkHeldSince >= chargeGateMs() && !h.air && h.st !== 'down' && h.st !== 'hurt') {

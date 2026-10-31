@@ -405,9 +405,9 @@
   const style = document.createElement('style');
   style.textContent = `
     body.wzb-room #top, body.wzb-room #wp button[data-w], body.wzb-room #bWeapon, body.wzb-room #bA,
-    body.wzb-room #bR, body.wzb-room #help { display: none !important; }
+    body.wzb-room #bR, body.wzb-room #bDesp, body.wzb-room #help { display: none !important; }
     body.wzb-wake #joy { display: none !important; }
-    body.wzb-wake #bA, body.wzb-wake #bR { display: none !important; }
+    body.wzb-wake #bA, body.wzb-wake #bR, body.wzb-wake #bDesp { display: none !important; }
   `;
   document.head.appendChild(style);
   roomImg = new Image();
