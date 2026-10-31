@@ -124,7 +124,7 @@ window.XINMO = (() => {
     try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
     send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
   }
-  const MODES = { baitroll: '等你滚完打空', net: '网络走位', oki: '起身压制', ylane: '卡Y值', whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
+  const MODES = { wake: '起身脱身', baitroll: '等你滚完打空', net: '网络走位', oki: '起身压制', ylane: '卡Y值', whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
   function risk(k) {   // 这种情形的挨打率 ÷ 平均挨打率（>1 = 比平时更容易挨打）
@@ -447,7 +447,7 @@ window.XINMO = (() => {
         if (near && (hero.st === 'atk' || charging) && smartRoll('combo', 'back')) return; }
       return; }
     if (m.st === 'bounce') { moveEnt(m, (m.vx || 0) * dt, 0); m.vx = (m.vx || 0) * .85; if (m.t > .3 && !m.dead) { m.st = 'getup'; m.t = 0; } return; }
-    if (m.st === 'getup') { if (m.t > .35 * MX('getup', 1)) { m.st = 'idle'; m.t = 0; m.inv = .5; } return; }
+    if (m.st === 'getup') { if (m.t > .35 * MX('getup', 1)) { m.st = 'idle'; m.t = 0; m.inv = .5; m.wakeUp = true; } return; }
     m.stun = 0; m.daze = 0;
     if (gameT - (m.lastHurtT || 0) > 1.2) m.hurtN = 0;
     if (m.st === 'roll') {
@@ -527,6 +527,10 @@ window.XINMO = (() => {
     const dodgeP = Math.min(.995, .97 + lvl * .003);
     const heroRolling = hero.st === 'roll' && hero.inv > .05;
     m.shotSeen = Math.max(0, (m.shotSeen || 0) - dt);
+    // 0) 起身（用户反馈：玩家打中一下就压起身压到死）：刚起身有 0.5 秒无敌，你贴在旁边等我 → 不站着等你压，立刻翻滚脱身（滚到你背后或往后，按翻滚学习挑方向）
+    if (m.wakeUp) { m.wakeUp = false;
+      const hw0 = WEAP[s.hw] || WEAP[weapon], near = hw0.proj ? (ady < 14 && adx < 200) : (adx < (hw0.reach || 28) + (hw0.lunge ? 24 : 8) + 16 + 24 && ady < 30);
+      if ((near || s.charging) && m.rollCd === 0 && smartRoll('wake', adx < 50 ? 'through' : 'back')) { m.mode = 'wake'; return; } }
     // 1) 飞行物：推算下一小段会不会打中自己，会才躲（SmashBot needsprojectiledefense）
     if (!m.shotSeen) {   // 翻滚冷却中也要走位躲（只有翻滚那一步要求冷却好）
       for (const p of shots) {
@@ -871,7 +875,7 @@ window.XINMO = (() => {
     for (const k of ks.slice(0, 2)) if (risk(k) > 1.2) out.push(`它在「${MODES[k]}」时最容易挨打（是平时的 ${risk(k).toFixed(1)} 倍）→ 以后少做`);
     const tc = topC(); if (tc) out.push(`你的${tc === 'charge' ? '蓄力' : tc === 'other' ? '其他招' : '第 ' + (+tc.slice(1) + 1) + ' 段'}打它最疼 → 以后见到就躲、提前退`);
     if (L.roll) {   // 翻滚学到的：每种情形里最管用的方向
-      const WHY = { charge: '你蓄力逼近时', release: '你松开蓄力时', combo: '被你连招打中后' }, DIR = { back: '往后滚', through: '滚到你背后', up: '往上滚', down: '往下滚' }, best = {};
+      const WHY = { charge: '你蓄力逼近时', release: '你松开蓄力时', combo: '被你连招打中后', wake: '起身被你压时', atk: '出招被你反打时' }, DIR = { back: '往后滚', through: '滚到你背后', up: '往上滚', down: '往下滚' }, best = {};
       for (const [k, v] of Object.entries(L.roll)) { const [w, d] = k.split(':'); if (v[1] >= 2 && (!best[w] || v[0] / v[1] > best[w][1])) best[w] = [d, v[0] / v[1], v[1]]; }
       for (const [w, b] of Object.entries(best)) if (WHY[w]) out.push(`${WHY[w]}：${DIR[b[0]]}最管用（${b[2]} 次里躲开 ${Math.round(b[1] * 100)}%）`);
     }
