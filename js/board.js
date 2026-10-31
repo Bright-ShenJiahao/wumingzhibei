@@ -55,25 +55,27 @@
     wrap.innerHTML = `
       <div class="panel">
         <div class="hd"><h2>英雄榜</h2><button class="x" type="button">关闭</button></div>
-        <div class="tabs"><button type="button" class="on" style="cursor:default">总积分榜</button></div>
+        <div class="tabs"><button type="button" class="on" data-k="score">总积分榜</button><button type="button" data-k="s1">第一章榜</button><button type="button" data-k="s2">第二章榜</button></div>
         <div class="body"></div>
         <div class="foot">总积分 = 每章最高一局之和 · 单局 = 击杀×10 + 通关区域×100 + 时间分 + 无伤分（简单模式 ×0.8）</div>
       </div>`;
     document.body.appendChild(wrap);
     body = wrap.querySelector('.body');
     wrap.querySelector('.x').addEventListener('click', close);
+    wrap.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { tabK = b.dataset.k; wrap.querySelectorAll('.tabs button').forEach(q => q.classList.toggle('on', q === b)); render(); }));   // 用户定 11/01：总积分 / 第一章 / 第二章 三个榜
     wrap.addEventListener('pointerdown', e => e.stopPropagation());
     wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
     addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
   }
 
+  let tabK = 'score';
   function render() {
     if (!body) return;
     if (loading) { body.innerHTML = '<div class="empty">正在读取榜单……</div>'; return; }
     if (err) { body.innerHTML = '<div class="empty">榜单暂时连不上<br><span style="font-size:12px">' + err + '</span></div>'; return; }
-    const list = (data && data.list) || [];
+    const all = (data && data.list) || [], list = tabK === 'score' ? all : all.filter(r => r[tabK] != null).slice().sort((a, b) => b[tabK] - a[tabK]);
     if (!list.length) {
-      body.innerHTML = '<div class="empty">还没有人上榜<br>打一局就能留下名字</div>';
+      body.innerHTML = '<div class="empty">' + (tabK === 'score' ? '还没有人上榜' : '这一章还没有人上榜') + '<br>打一局就能留下名字</div>';
       return;
     }
     const rows = list.map((r, i) => `<tr class="${r.me ? 'me' : ''}">
