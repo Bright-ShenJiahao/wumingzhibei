@@ -38,9 +38,9 @@
     return true;
   }
   function tryStun(z, traits) {
-    if (!isBoss(z) || z.dead || !traits || !traits.dazeChance) return false;
+    if (!isBoss(z) || z.dead || !traits || !traits.dazeChance || gameT < (z.dazeImm || 0)) return false;
     if (Math.random() >= traits.dazeChance) return false;
-    const time = traits.dazeTime || .6;
+    const time = traits.dazeTime || .6; z.dazeImm = gameT + time + 3;   /* 晕抗 */
     z.daze = Math.max(z.daze || 0, time);
     z.stun = Math.max(z.stun || 0, time);
     return true;

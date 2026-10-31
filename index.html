@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=ca6921832e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ca6921832e)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=3e11d50055" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3e11d50055)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='e20c19091bff',busy=false;
+var BUILD='0746f7421f30',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -1738,9 +1738,9 @@ const Boss = (() => {
     return true;
   }
   function tryStun(z, traits) {
-    if (!isBoss(z) || z.dead || !traits || !traits.dazeChance) return false;
+    if (!isBoss(z) || z.dead || !traits || !traits.dazeChance || gameT < (z.dazeImm || 0)) return false;
     if (Math.random() >= traits.dazeChance) return false;
-    const time = traits.dazeTime || .6;
+    const time = traits.dazeTime || .6; z.dazeImm = gameT + time + 3;   /* 晕抗 */
     z.daze = Math.max(z.daze || 0, time);
     z.stun = Math.max(z.stun || 0, time);
     return true;
@@ -3033,11 +3033,11 @@ const Boss = (() => {
 (() => {
   const fmt=n=>Number(n.toFixed(2)).toString();
   const MOVES = {
-    staff: ['四段连招：劈 → 扫 → 回身扫 → 戳', '终段攻击·戳：必定眩晕。', '蓄力攻击·横扫：身前大范围横扫，50%眩晕。'],
+    staff: ['四段连招：劈 → 扫 → 回身扫 → 戳', '终段攻击·戳：50% 眩晕 0.8 秒；回身扫可击倒。', '蓄力攻击·横扫：身前大范围横扫，全部击倒。'],
     halberd: ['四段连招：劈 → 扫 → 回身扫 → 撕开', '终段攻击·撕开：引爆裂伤造成额外伤害。', '蓄力攻击·回马突：向前冲刺穿刺，沿途叠裂伤。', '每次命中叠1层裂伤，最多5层，持续流血。'],
     hammer: ['三段连招：下砸 → 横抡 → 回旋锤', '终段攻击·回旋锤：环绕一圈，击倒身边所有敌人。', '蓄力攻击·千斤坠：举锤砸地，击倒前方一片敌人。'],
     blade: ['三段连招：斜劈 → 横砍 → 举刀重劈', '终段攻击·举刀重劈：必定暴击，斩杀残血敌人。', '蓄力攻击·半月斩：前方上下大范围横扫，高概率暴击。'],
-    stone: ['三段连招：左手掷 → 右手掷 → 全力投', '终段攻击·全力投：必定眩晕，附带左右散射。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗。'],
+    stone: ['三段连招：左手掷 → 右手掷 → 全力投', '终段攻击·全力投：50% 眩晕 0.5 秒，溅射旁边 1 人。', '蓄力攻击·连掷：按蓄力档位掷出3/4/5颗，满蓄 60% 眩晕。'],
     bow: ['三段连招：速射 → 速射 → 连珠箭', '终段攻击·连珠箭：随机射出3～5支箭。', '蓄力攻击·穿云箭：金箭从天而降，范围伤害并造成硬直，首领无法格挡。', '远射——箭飞得越远伤害越高，贴脸只有七成。'],
   };
   function node(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;}
@@ -3578,7 +3578,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   const dbg = { in: dmg, kb };   // 开发者面板「最近一击」逐步记下伤害怎么变的，用来查「打中不掉血」的根本原因
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
-  if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : 1.5 * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
+  if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : 1.5) * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
@@ -3644,10 +3644,10 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   }
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
-  const dazeTime = traits.dazeTime != null ? traits.dazeTime : (z.T.heavy ? 1 : 1.5) * R_('daze');
+  const dazeTime = traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : z.T.heavy ? 1 : 1.5) * R_('daze');   /* 用户定 10/31：棍晕 0.8 秒 */
   // 只有 traits 明确给出 dazeChance 的伤害（目前是石子）才能晕首领
-  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && Math.random() < dazeChance) {
-    z.daze = dazeTime;
+  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && !(gameT < (z.dazeImm || 0)) && Math.random() < dazeChance) {
+    z.daze = dazeTime; z.dazeImm = gameT + dazeTime + 3;   /* 晕抗（用户定 10/31）：晕醒后 3 秒内不会再被晕 */
     if (z.T.chapterBoss) z.stun = Math.max(z.stun || 0, dazeTime);
     z.st = 'move'; z.tok = false;
   }
@@ -4287,9 +4287,9 @@ function chargedAttack(power, tier = 1) {
   }
   if (weapon === 'stone') {                        // 石子蓄力：按档位 3/4/5 颗，0.12 夹角
     const stoneVolley = { hit: new Set() };   // 用户定：同一次蓄力打中同一个敌人，第 2 颗起只吃 30%、不续晕
-    const data = tier === 3 ? { n: 5, dmg: 1.6, chance: 1, time: 1 }
-      : tier === 2 ? { n: 4, dmg: 1.2, chance: .7, time: .8 }
-      : { n: 3, dmg: .8, chance: .4, time: .6 };
+    const data = tier === 3 ? { n: 5, dmg: 1.6, chance: .6, time: .7 }   /* 用户定 10/31：石子控制降低 */
+      : tier === 2 ? { n: 4, dmg: 1.2, chance: .4, time: .6 }
+      : { n: 3, dmg: .8, chance: .25, time: .5 };
     const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
     for (let i = 0; i < data.n; i++) {
       const ang = (i - (data.n - 1) / 2) * .12;
@@ -4345,7 +4345,7 @@ function chargedAttack(power, tier = 1) {
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
     if (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) {
       const dmg = 1.6 * force;
-      hit(z, dmg, 140 * force, h.f, true, .5, .35, false, false, { charged: true, dazeChance: .5 });
+      hit(z, dmg, 140 * force, h.f, true, 0, .35, false, false, { charged: true, dazeChance: 0 });   /* 用户定 10/31：棍蓄力只击倒，不再附带晕 */
       addChargeHitFx('staff', z.x, z.y - 15, h.f);
     }
   }
@@ -10893,9 +10893,9 @@ window.XINMO = (() => {
     return P.atk * c * (hero.dazeT > 0 ? 1.5 : 1);   // 被晕的目标吃 1.5 倍（和敌人被晕一样）
   }
   // 眩晕（用户定：只在心魔战）：和玩家打敌人同样的概率与时长；已经晕着的不续
-  function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && Math.random() < chance) { hero.dazeT = time; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
+  function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && !(gameT < (hero.dazeImm || 0)) && Math.random() < chance) { hero.dazeT = time; hero.dazeImm = gameT + time + 3; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
   function hitH(n, kind, dz) { const hp0 = hero.hp; dmgHero(n, m, kind); if (dz && hero.hp < hp0) dazeHero(dz[0], dz[1]); }
-  const DZ = () => 1.5 * P.daze;
+  const DZ = () => .8 * P.daze;   /* 棍晕 0.8 秒，和玩家一致 */
   const MV = () => P.move;
   const AS = () => P.aspd / (W().aspd || 1);
   const MX = (k, d) => P && P[k] != null ? P[k] : d;
@@ -10918,7 +10918,7 @@ window.XINMO = (() => {
     if (MX('zhenguan', 0) && ++m.zg >= 5) { m.zg = 0; shake = Math.max(shake, .35); if (Math.hypot(hero.x - m.x, (hero.y - m.y) * 2) < 70) { dmgHero(.5, m, 'skill'); hero.vx = (Math.sign(hero.x - m.x) || 1) * 140; } m.hp = Math.min(m.T.hp, m.hp + 1); floaters.push({ x: m.x, y: m.y - 50, t: 0, txt: '镇关！+1', big: true, color: '#e2b23c' }); }   // 经脉·镇关
     if (raw >= 2 * MX('knock', 1)) { launch(m, dir * 85, 120); m.inv = 9; }   // 重击：和玩家一样被打飞 → 落地 → 起身（全程无敌）
     else { m.st = 'hurt'; m.t = 0; m.vx = dir * 40; }
-    if (dz && dz[0] > 0 && !(m.dazeT > 0) && Math.random() < dz[0]) { m.dazeT = dz[1]; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
+    if (dz && dz[0] > 0 && !(m.dazeT > 0) && !(gameT < (m.dazeImm || 0)) && Math.random() < dz[0]) { m.dazeT = dz[1]; m.dazeImm = gameT + dz[1] + 3; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
   }
   const reachOf = () => { const w = W(); return w.class === 'ranged' ? 150 : (w.reach || 28) + 8; };
   function snapshot() {
@@ -11040,7 +11040,7 @@ window.XINMO = (() => {
       bowFx.push({ kind: 'sky', x: near ? hero.x : m.x + f * 150, y: near ? hero.y : m.y, t: 0, T: .6, dir: f, data, resolved: false, mirror: true }); return;
     }
     if (m.weapon === 'stone') {
-      const d = tier === 3 ? { n: 5, dmg: 1.6, ch: 1, tm: 1 } : tier === 2 ? { n: 4, dmg: 1.2, ch: .7, tm: .8 } : { n: 3, dmg: .8, ch: .4, tm: .6 };
+      const d = tier === 3 ? { n: 5, dmg: 1.6, ch: .6, tm: .7 } : tier === 2 ? { n: 4, dmg: 1.2, ch: .4, tm: .6 } : { n: 3, dmg: .8, ch: .25, tm: .5 };
       for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; mshots.push({ x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, kind: 'stone', charged: true, dmg: d.dmg * K, dz: [d.ch, d.tm], volleyId: m.volleyN = (m.volleyN || 0) + (i === 0 ? 1 : 0) }); }
       return;
     }
@@ -11062,7 +11062,7 @@ window.XINMO = (() => {
     }
     // 棍：蓄力横扫
     const force = .35 + .65 * power;
-    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', [.5, DZ()]);
+    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', null);
   }
   let marks = [], mshots = [], hb = { n: 0, t: 0 };
   // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------
@@ -12016,10 +12016,10 @@ const WEAP = {
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', class: 'long', reach: 40, dy: 12,   /* 用户定：长武器上下判定 16→12，不能斜站卡首领 */ move: .5, freeze: .062, aspd: 1.08, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .4 },                   // 劈：举棍过顶 → 砸下
-    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .55 },                  // 扫：低身搂扫
-    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
-    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: 1, thrust: true },          // 戳：必晕
+    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .15 },   /* 用户定 10/31：棍控制降低，晕 0.8 秒 */                   // 劈：举棍过顶 → 砸下
+    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .25 },                  // 扫：低身搂扫
+    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 0, multi: true, knock: true },   // 回身扫：只击倒，不再必晕（用户定 10/31）
+    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：50% 晕（用户定 10/31）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -12039,7 +12039,7 @@ const WEAP = {
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
     { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
     { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: .5, dazeTime: .5, daze: 1 },   // 全力投：命中即停、50% 晕 0.5 秒（用户定 10/31）
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
     { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.15, kb: 38, spd: 330, life: 1.05 },

@@ -84,10 +84,10 @@ const WEAP = {
   // 棍子 = 长距离控场。前四段按「劈 → 扫 → 回身扫 → 戳」组合：
   // 每段都缩短了前摇、拉长了命中帧，出手更干脆；击退加大，让敌人有明确的被打到感。
   staff: { name: '棍', class: 'long', reach: 40, dy: 12,   /* 用户定：长武器上下判定 16→12，不能斜站卡首领 */ move: .5, freeze: .062, aspd: 1.08, combo: [
-    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .4 },                   // 劈：举棍过顶 → 砸下
-    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .55 },                  // 扫：低身搂扫
-    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 1, multi: true, knock: true },   // 回身扫（必晕）
-    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: 1, thrust: true },          // 戳：必晕
+    { f: ['staff_1a', 'staff_1b'], d: [.13, .19], dmg: 1.0, kb: 52, daze: .15 },   /* 用户定 10/31：棍控制降低，晕 0.8 秒 */                   // 劈：举棍过顶 → 砸下
+    { f: ['staff_2a', 'staff_2b'], d: [.11, .19], dmg: 1.0, kb: 46, daze: .25 },                  // 扫：低身搂扫
+    { f: ['staff_3a', 'staff_3b'], d: [.16, .25], dmg: 1.2, kb: 150, daze: 0, multi: true, knock: true },   // 回身扫：只击倒，不再必晕（用户定 10/31）
+    { f: ['staffp_a', 'staffp_b'], d: [.10, .24], dmg: 2.0, kb: 90, daze: .5, thrust: true },          // 戳：50% 晕（用户定 10/31）
   ] },
   // lunge/lungeT：出手时朝面向方向前冲一小段（补足短距离）；interrupt：命中必打断敌人正在蓄力的攻击（含刀手）
   // 攻速：一轮 1.30 秒，比棍子的 1.12 秒慢——伤害是棍子的 1.6 倍，靠"慢"来付账
@@ -107,7 +107,7 @@ const WEAP = {
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
     { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
     { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: .5, dazeTime: .5, daze: 1 },   // 全力投：命中即停、50% 晕 0.5 秒（用户定 10/31）
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
     { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.15, kb: 38, spd: 330, life: 1.05 },

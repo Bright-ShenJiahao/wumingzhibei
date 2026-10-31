@@ -154,9 +154,9 @@ window.XINMO = (() => {
     return P.atk * c * (hero.dazeT > 0 ? 1.5 : 1);   // 被晕的目标吃 1.5 倍（和敌人被晕一样）
   }
   // 眩晕（用户定：只在心魔战）：和玩家打敌人同样的概率与时长；已经晕着的不续
-  function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && Math.random() < chance) { hero.dazeT = time; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
+  function dazeHero(chance, time) { if (hero.hp > 0 && !(hero.dazeT > 0) && !(gameT < (hero.dazeImm || 0)) && Math.random() < chance) { hero.dazeT = time; hero.dazeImm = gameT + time + 3; floaters.push({ x: hero.x, y: hero.y - 44, t: 0, txt: '晕！' }); } }
   function hitH(n, kind, dz) { const hp0 = hero.hp; dmgHero(n, m, kind); if (dz && hero.hp < hp0) dazeHero(dz[0], dz[1]); }
-  const DZ = () => 1.5 * P.daze;
+  const DZ = () => .8 * P.daze;   /* 棍晕 0.8 秒，和玩家一致 */
   const MV = () => P.move;
   const AS = () => P.aspd / (W().aspd || 1);
   const MX = (k, d) => P && P[k] != null ? P[k] : d;
@@ -179,7 +179,7 @@ window.XINMO = (() => {
     if (MX('zhenguan', 0) && ++m.zg >= 5) { m.zg = 0; shake = Math.max(shake, .35); if (Math.hypot(hero.x - m.x, (hero.y - m.y) * 2) < 70) { dmgHero(.5, m, 'skill'); hero.vx = (Math.sign(hero.x - m.x) || 1) * 140; } m.hp = Math.min(m.T.hp, m.hp + 1); floaters.push({ x: m.x, y: m.y - 50, t: 0, txt: '镇关！+1', big: true, color: '#e2b23c' }); }   // 经脉·镇关
     if (raw >= 2 * MX('knock', 1)) { launch(m, dir * 85, 120); m.inv = 9; }   // 重击：和玩家一样被打飞 → 落地 → 起身（全程无敌）
     else { m.st = 'hurt'; m.t = 0; m.vx = dir * 40; }
-    if (dz && dz[0] > 0 && !(m.dazeT > 0) && Math.random() < dz[0]) { m.dazeT = dz[1]; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
+    if (dz && dz[0] > 0 && !(m.dazeT > 0) && !(gameT < (m.dazeImm || 0)) && Math.random() < dz[0]) { m.dazeT = dz[1]; m.dazeImm = gameT + dz[1] + 3; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
   }
   const reachOf = () => { const w = W(); return w.class === 'ranged' ? 150 : (w.reach || 28) + 8; };
   function snapshot() {
@@ -301,7 +301,7 @@ window.XINMO = (() => {
       bowFx.push({ kind: 'sky', x: near ? hero.x : m.x + f * 150, y: near ? hero.y : m.y, t: 0, T: .6, dir: f, data, resolved: false, mirror: true }); return;
     }
     if (m.weapon === 'stone') {
-      const d = tier === 3 ? { n: 5, dmg: 1.6, ch: 1, tm: 1 } : tier === 2 ? { n: 4, dmg: 1.2, ch: .7, tm: .8 } : { n: 3, dmg: .8, ch: .4, tm: .6 };
+      const d = tier === 3 ? { n: 5, dmg: 1.6, ch: .6, tm: .7 } : tier === 2 ? { n: 4, dmg: 1.2, ch: .4, tm: .6 } : { n: 3, dmg: .8, ch: .25, tm: .5 };
       for (let i = 0; i < d.n; i++) { const a = (i - (d.n - 1) / 2) * .12; mshots.push({ x: m.x + f * 16, y: m.y, z: 24, vx: f * 310 * Math.cos(a), vy: 310 * Math.sin(a) * .5, life: .8, kind: 'stone', charged: true, dmg: d.dmg * K, dz: [d.ch, d.tm], volleyId: m.volleyN = (m.volleyN || 0) + (i === 0 ? 1 : 0) }); }
       return;
     }
@@ -323,7 +323,7 @@ window.XINMO = (() => {
     }
     // 棍：蓄力横扫
     const force = .35 + .65 * power;
-    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', [.5, DZ()]);
+    if (Math.abs(dyh) <= 26 && !(dxh < 0 && Math.abs(dyh) < -dxh * 1.732) && Math.hypot(dxh, dyh) < 64) hitH(1.6 * force * K, 'skill', null);
   }
   let marks = [], mshots = [], hb = { n: 0, t: 0 };
   // ---------- 连招链（SmashBot 的 Chain）：一串动作；lock = 不可打断，做完才重新思考 ----------

@@ -21,7 +21,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   const dbg = { in: dmg, kb };   // 开发者面板「最近一击」逐步记下伤害怎么变的，用来查「打中不掉血」的根本原因
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
-  if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : 1.5 * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
+  if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : 1.5) * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
@@ -87,10 +87,10 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   }
   const heavyDazeScale = z.T.heavy ? (weapon === 'staff' ? .7 : .5) : 1;
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
-  const dazeTime = traits.dazeTime != null ? traits.dazeTime : (z.T.heavy ? 1 : 1.5) * R_('daze');
+  const dazeTime = traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : z.T.heavy ? 1 : 1.5) * R_('daze');   /* 用户定 10/31：棍晕 0.8 秒 */
   // 只有 traits 明确给出 dazeChance 的伤害（目前是石子）才能晕首领
-  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && Math.random() < dazeChance) {
-    z.daze = dazeTime;
+  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && !(gameT < (z.dazeImm || 0)) && Math.random() < dazeChance) {
+    z.daze = dazeTime; z.dazeImm = gameT + dazeTime + 3;   /* 晕抗（用户定 10/31）：晕醒后 3 秒内不会再被晕 */
     if (z.T.chapterBoss) z.stun = Math.max(z.stun || 0, dazeTime);
     z.st = 'move'; z.tok = false;
   }

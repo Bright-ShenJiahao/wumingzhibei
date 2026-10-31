@@ -148,9 +148,9 @@ function chargedAttack(power, tier = 1) {
   }
   if (weapon === 'stone') {                        // 石子蓄力：按档位 3/4/5 颗，0.12 夹角
     const stoneVolley = { hit: new Set() };   // 用户定：同一次蓄力打中同一个敌人，第 2 颗起只吃 30%、不续晕
-    const data = tier === 3 ? { n: 5, dmg: 1.6, chance: 1, time: 1 }
-      : tier === 2 ? { n: 4, dmg: 1.2, chance: .7, time: .8 }
-      : { n: 3, dmg: .8, chance: .4, time: .6 };
+    const data = tier === 3 ? { n: 5, dmg: 1.6, chance: .6, time: .7 }   /* 用户定 10/31：石子控制降低 */
+      : tier === 2 ? { n: 4, dmg: 1.2, chance: .4, time: .6 }
+      : { n: 3, dmg: .8, chance: .25, time: .5 };
     const run2 = Math.hypot(h.ix || 0, h.iy || 0) > .2;
     for (let i = 0; i < data.n; i++) {
       const ang = (i - (data.n - 1) / 2) * .12;
@@ -206,7 +206,7 @@ function chargedAttack(power, tier = 1) {
     const rear = dx < 0 && Math.abs(dy) < -dx * 1.732;
     if (!rear && Math.hypot(dx, dy) < R + (z.T.w || 0)) {
       const dmg = 1.6 * force;
-      hit(z, dmg, 140 * force, h.f, true, .5, .35, false, false, { charged: true, dazeChance: .5 });
+      hit(z, dmg, 140 * force, h.f, true, 0, .35, false, false, { charged: true, dazeChance: 0 });   /* 用户定 10/31：棍蓄力只击倒，不再附带晕 */
       addChargeHitFx('staff', z.x, z.y - 15, h.f);
     }
   }
