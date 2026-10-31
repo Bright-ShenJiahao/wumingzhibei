@@ -123,7 +123,7 @@ window.XINMO = (() => {
     try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
     send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
   }
-  const MODES = { punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招' };
+  const MODES = { punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
   function risk(k) {   // 这种情形的挨打率 ÷ 平均挨打率（>1 = 比平时更容易挨打）
@@ -499,6 +499,7 @@ window.XINMO = (() => {
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
       if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
       if (pdy < 8 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
+      if (netMove(dt, s, sd, adx, ady, 0)) return;
       m.mode = 'keep';
       // 远程对远程：平时站在你的弹道外（上下错开 22），出手前那一下才对齐（你的石子/箭上下只有约 9 的判定）
       const lane = m.lane || (m.lane = Math.random() < .5 ? -1 : 1), wantShoot = m.think <= .08;
@@ -524,6 +525,7 @@ window.XINMO = (() => {
     }
     // 骗招：往前踏一小步马上退，引你出手打空，再由「反打」接上
     if (ready && s.st !== 'atk' && adx > reach && adx < edge + 20 && m.think <= 0 && Math.random() < dt * .5 / risk('feint')) { m.mode = 'feint'; plan([{ k: 'step', dx: 30, dur: .14 }, { k: 'step', dx: -40, dur: .22 }]); m.think = .5; runPlan(dt); return; }
+    if (netMove(dt, s, sd, adx, ady, reach)) return;
     // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
     if (!m.approachT && Math.random() < dt / 2 / risk('approach')) m.approachT = 1;
     if (m.approachT) { m.approachT = Math.max(0, m.approachT - dt); if (s.st === 'atk' || hero.inv > 0) m.approachT = 0; }
@@ -574,6 +576,41 @@ window.XINMO = (() => {
     const extra = (hw.lunge ? hw.lunge * (hw.lungeT || .1) : 0) + 70 * (hw.move || 0) * tt;
     const facing = C.multi || Math.sign(m.x - s.x) === s.f;
     return facing && adx < (hw.reach || 28) + 8 + extra && ady < (hw.dy || 14) + 2 ? Math.max(0, tt) : null;
+  }
+  // ---------- 神经网络（用玩家真实对局训练的「像真人」模型，tools/xinmo_train/train.py）----------
+  // 规则管保命（躲招、翻滚、算帧反打、被逼到墙角），网络管中立时怎么走、什么时候压上去出手；
+  // 模型从 GitHub 仓库 main 分支读最新版（每周自动训练更新），读不到就退回同站的那份，再不行就只用规则。
+  let NET = null;
+  (function loadNet() {
+    const urls = ['https://raw.githubusercontent.com/Bright-ShenJiahao/wumingzhibei/main/data/xinmo_model.json', 'data/xinmo_model.json'];
+    const tryAt = i => { if (i >= urls.length) return; fetch(urls[i], { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { if (j && j.heads && j.heads.human) { if (j.inGame) NET = j; } else tryAt(i + 1);   // 只有对打测试赢过规则版、标了 inGame 的模型才上场 }).catch(() => tryAt(i + 1)); };
+    try { tryAt(0); } catch (e) {}
+  })();
+  const GRP = { idle: 0, walk: 0, move: 0, atk: 1, roll: 2, hurt: 3, bounce: 4, getup: 4, land: 4, down: 4, air: 4, charge: 5 };
+  function oneHot(st) { const v = [0, 0, 0, 0, 0, 0]; v[GRP[st] ?? 0] = 1; return v; }
+  function netFeatures() {   // 和训练时「我方 = 心魔、对手 = 你」的特征一一对应
+    const dx = hero.x - m.x, dy = hero.y - m.y, near = shots.filter(p => p.life > 0).sort((a, b) => Math.abs(a.x - m.x) - Math.abs(b.x - m.x))[0];
+    const pdx = near ? near.x - m.x : 0, pdy = near ? near.y - m.y : 0;
+    return [dx / 100, dy / 50, Math.abs(dx) / 100, Math.abs(dy) / 50, ...oneHot(m.st), m.atk ? m.atk.c : -1, m.hp / m.T.hp, m.rollCd || 0, m.inv > 0 ? 1 : 0, m.ch || 0,
+      ...oneHot(hero.st), hero.atk ? hero.atk.c : -1, hero.hp / P.hp, hero.inv > 0 ? 1 : 0, leftOf(hero, weapon), pdx / 100, pdy / 50, near ? 1 : 0, W().class === 'ranged' ? 1 : 0];
+  }
+  function netAct() {
+    const h = NET.heads.human, x = netFeatures().map((v, i) => (v - h.mean[i]) / h.std[i]);
+    const lay = (a, W, b, relu) => b.map((bb, j) => { let z = bb; for (let i = 0; i < a.length; i++) z += a[i] * W[i][j]; return relu ? Math.max(0, z) : z; });
+    const o = lay(lay(lay(x, h.W1, h.b1, true), h.W2, h.b2, true), h.W3, h.b3, false);
+    let best = 0; for (let i = 1; i < o.length; i++) if (o[i] > o[best]) best = i; return best;   // 0不动 1靠近 2远离 3上下对齐 4上下拉开 5出招 6翻滚 7蓄力
+  }
+  function netMove(dt, s, sd, adx, ady, reach) {
+    if (!NET) return false;
+    m.netT = (m.netT || 0) - dt; if (m.netT <= 0) { m.netA = netAct(); m.netT = .12; }
+    const a = m.netA, w = W(); m.mode = 'net';
+    if (a === 5) { const ok = w.class === 'ranged' ? ady < 8 && adx < 230 : adx < reach && ady < (w.dy || 14); if (ok && hero.inv < .15) { m.f = sd; startAtk(0); m.think = .15; return true; } }
+    if (a === 6 && m.rollCd === 0 && s.st === 'atk') { roll(-sd * .3, m.y < (M.top + M.bot) / 2 ? 1 : -1); return true; }
+    if (a === 7 && w.class === 'ranged') { const ct = Math.min(fullT(), Math.max(0, (adx - 40) / (70 * P.move) - .1)); if (ct >= P.gate + .05) { m.f = sd; startCharge(ct); m.think = .4; return true; } }
+    const tx = a === 1 ? hero.x - sd * (w.class === 'ranged' ? 100 : reach - 6) : a === 2 ? m.x - sd * 40 : m.x;
+    const ty = a === 3 ? hero.y : a === 4 ? m.y + (m.y < hero.y ? -30 : 30) : m.y;
+    if (a === 0 || (Math.abs(tx - m.x) < 3 && Math.abs(ty - m.y) < 3)) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return true; }
+    moveTo(Math.max(14, Math.min(706, tx)), Math.max(M.top, Math.min(M.bot, ty)), dt, 1); return true;
   }
   function onHurt() { if (m) m.lastHurtT = gameT; }
   // 开打前对照表：左你、右心魔，同一份快照
