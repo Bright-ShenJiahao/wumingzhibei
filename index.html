@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=181dffd0b8" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=181dffd0b8)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=6d64f203cc" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=6d64f203cc)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='42f04c8ec0d4',busy=false;
+var BUILD='729846e8387f',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -11129,6 +11129,16 @@ window.XINMO = (() => {
       const s0 = seen(), hit0 = willHit(s0, WEAP[s0.hw] || WEAP[weapon]);
       // 蓄力中被威胁：和玩家一样可以翻滚取消
       if (hit0 != null && hit0 < .2 && m.rollCd === 0 && s0.aid !== m.lastAid) { m.lastAid = s0.aid; m.ch = 0; m.plan = null; m.lock = false; roll(-(Math.sign(hero.x - m.x) || 1) * .3, m.y < (M.top + M.bot) / 2 ? 1 : -1); return; }
+      // 用户实战：心魔蓄力时最容易挨打（4 倍）→ 你逼近到快够得着我、或你自己在蓄且我在你范围里：够一档就立刻放，不够就翻滚取消
+      { const hw0 = WEAP[s0.hw] || WEAP[weapon], adx0 = Math.abs(hero.x - m.x), ady0 = Math.abs(hero.y - m.y);
+        const hr = hw0.proj ? 0 : (hw0.reach || 28) + (hw0.lunge ? 24 : 8) + (m.T.w || 16) + 12 + (hero.st === 'roll' ? 60 : 0);
+        const hChg = atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0, hT = hw0.proj ? 0 : (s0.hw === 'halberd' ? 130 : s0.hw === 'hammer' ? 84 : s0.hw === 'blade' ? 50 : 68) + (m.T.w || 16);
+        const myR = W().proj ? 220 : m.weapon === 'halberd' ? 110 : m.weapon === 'hammer' ? 80 : m.weapon === 'blade' ? 50 : 70;
+        const danger = (!hw0.proj && adx0 < hr && ady0 < 30) || (hChg > .3 && adx0 < hT && ady0 < 30);
+        if (danger) {
+          if (m.ch >= P.gate && adx0 < myR && ady0 < 26) { release(); return; }
+          if (m.rollCd === 0) { m.ch = 0; m.plan = null; m.lock = false; roll(-(Math.sign(hero.x - m.x) || 1), m.y < (M.top + M.bot) / 2 ? .5 : -.5); return; }
+        } }
       const ty = hero.y; if (Math.abs(ty - m.y) > 3) moveEnt(m, 0, Math.sign(ty - m.y) * 52 * .2 * dt);
       if (m.ch >= m.chTarget) release();
       return;
@@ -11204,10 +11214,12 @@ window.XINMO = (() => {
     // 2.4) 起身择（拳皇 okizeme）：你被打倒 → 先站到你起身的位置旁边；你起身无敌快结束时出手，让招刚好压在你能被打的那一刻
     if (['bounce', 'getup', 'land'].includes(hero.st) || (hero.air && hero.inv > 1)) {
       m.mode = 'oki'; if (w.class === 'ranged') { moveTo(m.x, hero.y, dt, 1); return; }
-      moveTo(Math.max(14, Math.min(706, hero.x - sd * (reach - 6))), hero.y, dt, 1); return;
+      // 学到「起身压制常挨打」（你起身无敌时先出手）→ 站到你够不着的边缘等你出手打空，再由「反打」接；否则贴着你起身点
+      const okiD = risk('oki') > 1.3 ? edge + 6 : reach - 6;
+      moveTo(Math.max(14, Math.min(706, hero.x - sd * okiD)), hero.y, dt, 1); return;
     }
     if (hero.st !== 'roll' && hero.inv > 0 && hero.inv < .5 && m.st !== 'atk') {
-      if (w.class !== 'ranged' && adx < reach && ady < (w.dy || 14) && hero.inv <= my0 + .03) { m.mode = 'oki'; m.f = sd; startAtk(0); return; }
+      if (w.class !== 'ranged' && adx < reach && ady < (w.dy || 14) && hero.inv <= my0 + .03 && s.st !== 'atk') { m.mode = 'oki'; m.f = sd; startAtk(0); return; }
       if (w.class === 'ranged' && ady < 9 && hero.inv <= .25) { m.mode = 'oki'; m.f = sd; startAtk(0); return; }
     }
     // 2.5) 读蓄力（用户定 10/31：玩家蓄力刮一下就翻滚逃，心魔要懂蓄力）
@@ -11224,9 +11236,10 @@ window.XINMO = (() => {
       if (adx > reach + 24 && adx < reach + 90 && m.rollCd === 0) { m.mode = 'whiff'; roll(sd, Math.max(-1, Math.min(1, dy / 30))); m.punish = true; return; }   // 远了就滚进去（翻滚快、有无敌）
       m.mode = 'whiff'; moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return;
     }
-    if (s.charging && charging && hw) {
+    const chgHeld = atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0;
+    if (((s.charging && charging) || chgHeld > .25) && hw) {   // 你按住攻击超过 0.25 秒就当你在蓄（蓄力一过门槛就能随时放，放出来是瞬发的）
       // 你满蓄能打到多远：棍 64、锤 80、刀 45（上下 45）、戟冲 80+46；远程看弹道
-      const T = hw.proj ? 0 : s.hw === 'halberd' ? 130 : s.hw === 'hammer' ? 84 : s.hw === 'blade' ? 50 : 68, Ty = s.hw === 'blade' ? 46 : s.hw === 'hammer' ? Math.max(24, adx * .7 + 14) : 26;
+      const T = (hw.proj ? 0 : s.hw === 'halberd' ? 130 : s.hw === 'hammer' ? 84 : s.hw === 'blade' ? 50 : 68) + (hw.proj ? 0 : (m.T.w || 16)),   /* 加上心魔自己的身宽（判定按身体边缘算） */ Ty = s.hw === 'blade' ? 46 : s.hw === 'hammer' ? Math.max(24, adx * .7 + 14) : 26;
       const inRange = !hw.proj && adx < T + 10 && ady < Ty + 4;
       if (w.class !== 'ranged' && adx < reach && ady < (w.dy || 14)) { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .1; return; }   // 贴身：直接打断（蓄力中没有无敌）
       if (w.class === 'ranged' && hw.proj) {   // 你在远处蓄石子/箭（站着不动）：不站进你的扇形里对射——斜着贴到 60 以内，再一步对齐连丢打断你（近了扇形窄、你来不及放）
@@ -11247,11 +11260,9 @@ window.XINMO = (() => {
       }
       // 在满蓄范围外：贴着边缘等你放空，放空的收手由上面「反打」接（远程就对齐射你）
       if (w.class === 'ranged') { m.mode = 'respect'; moveTo(m.x, s.y, dt, 1); return; }
-      // 骗你放：在边缘里外晃（进到 T+4 再退到 T+26），你一放空就被上面接住；你憋太久（满蓄后 1 秒）就从侧面滚进去打
-      m.bait = (m.bait || 0) + dt; const held = atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0;
-      if (held > P.full + 1 && m.rollCd === 0 && adx < T + 40) { roll(sd, (m.y < s.y ? -1 : 1) * .9); m.punish = true; return; }
-      const inn = (m.bait % .9) < .35;
-      m.mode = 'respect'; moveTo(Math.max(14, Math.min(706, s.x - sd * (inn ? T + 4 : T + 26))), s.y + (m.y >= s.y ? 6 : -6), dt, 1); return;
+      // 用户实战：蓄力摸一下就翻滚跑。蓄力一放就是瞬发，进你范围就会被摸到 → 你蓄着的时候绝不进你的满蓄范围（不再踏进去骗招），
+      // 站在范围外一点等：你放空 → 上面「抓放空」冲上去；你翻滚跑 → 「追翻滚」跑到你落点；你松手不蓄了 → 正常打
+      m.mode = 'respect'; moveTo(Math.max(14, Math.min(706, s.x - sd * (T + 14))), s.y + (m.y >= s.y ? 6 : -6), dt, 1); return;
     }
     // 3) 防：玩家这一下站着不动会不会打中我（SmashBot Defend.in_range）——会打中才处理
     const hitIn = willHit(s, hw);
