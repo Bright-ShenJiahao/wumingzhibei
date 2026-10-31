@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=af5c4ddf2e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=af5c4ddf2e)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=73941f4ec9" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=73941f4ec9)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='3e014a7729f3',busy=false;
+var BUILD='16fe4b92fedc',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -11319,7 +11319,7 @@ window.XINMO = (() => {
   let NET = null;
   (function loadNet() {
     const urls = ['https://raw.githubusercontent.com/Bright-ShenJiahao/wumingzhibei/main/data/xinmo_model.json', 'data/xinmo_model.json'];
-    const tryAt = i => { if (i >= urls.length) return; fetch(urls[i], { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { if (j && j.heads && j.heads.human) { if (j.inGame) NET = j; } else tryAt(i + 1);   // 只有对打测试赢过规则版、标了 inGame 的模型才上场 }).catch(() => tryAt(i + 1)); };
+    const tryAt = i => { if (i >= urls.length) return; fetch(urls[i], { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { if (j && j.heads && j.heads.human) { if (j.inGame) NET = j; } else tryAt(i + 1); /* 只有对打测试赢过规则版、标了 inGame 的模型才上场 */ }).catch(() => tryAt(i + 1)); };
     try { tryAt(0); } catch (e) {}
   })();
   const GRP = { idle: 0, walk: 0, move: 0, atk: 1, roll: 2, hurt: 3, bounce: 4, getup: 4, land: 4, down: 4, air: 4, charge: 5 };
@@ -11402,7 +11402,7 @@ window.XINMO = (() => {
       L.fights++; for (const g of ['time', 'dmg', 'byC']) { let t = 0; for (const k in L[g]) t += L[g][k]; if (t > 300) for (const k in L[g]) L[g][k] *= .7; }   // 老经验慢慢淡掉
       d.lessons ||= {}; d.lessons[m.weapon] = L; m.lessonText = lessonText();
     }
-    save(d); upload(win);
+    if (!window.__xmTrain) { save(d); upload(win); }
     say(pick(win ? LINES.win : LINES.lose), 4);
     return d;
   }
@@ -11461,7 +11461,7 @@ window.XINMO = (() => {
     el.querySelector('[data-x]').onclick = () => el.remove();
     el.querySelector('[data-clr]').onclick = () => { const all = readAll(); delete all[name()]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} memory(); };
   }
-  return { memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
+  return { setNet(j) { NET = j; }, hasNet: () => !!NET, memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
 })();
 
 // 第二章战六「祭台决战」：张角。开场 → 阶段一（法台躲雷、打灯）→ 阶段二（召唤）→ 阶段三（下台决斗）

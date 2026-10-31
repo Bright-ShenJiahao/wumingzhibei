@@ -583,7 +583,7 @@ window.XINMO = (() => {
   let NET = null;
   (function loadNet() {
     const urls = ['https://raw.githubusercontent.com/Bright-ShenJiahao/wumingzhibei/main/data/xinmo_model.json', 'data/xinmo_model.json'];
-    const tryAt = i => { if (i >= urls.length) return; fetch(urls[i], { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { if (j && j.heads && j.heads.human) { if (j.inGame) NET = j; } else tryAt(i + 1);   // 只有对打测试赢过规则版、标了 inGame 的模型才上场 }).catch(() => tryAt(i + 1)); };
+    const tryAt = i => { if (i >= urls.length) return; fetch(urls[i], { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { if (j && j.heads && j.heads.human) { if (j.inGame) NET = j; } else tryAt(i + 1); /* 只有对打测试赢过规则版、标了 inGame 的模型才上场 */ }).catch(() => tryAt(i + 1)); };
     try { tryAt(0); } catch (e) {}
   })();
   const GRP = { idle: 0, walk: 0, move: 0, atk: 1, roll: 2, hurt: 3, bounce: 4, getup: 4, land: 4, down: 4, air: 4, charge: 5 };
@@ -666,7 +666,7 @@ window.XINMO = (() => {
       L.fights++; for (const g of ['time', 'dmg', 'byC']) { let t = 0; for (const k in L[g]) t += L[g][k]; if (t > 300) for (const k in L[g]) L[g][k] *= .7; }   // 老经验慢慢淡掉
       d.lessons ||= {}; d.lessons[m.weapon] = L; m.lessonText = lessonText();
     }
-    save(d); upload(win);
+    if (!window.__xmTrain) { save(d); upload(win); }
     say(pick(win ? LINES.win : LINES.lose), 4);
     return d;
   }
@@ -725,5 +725,5 @@ window.XINMO = (() => {
     el.querySelector('[data-x]').onclick = () => el.remove();
     el.querySelector('[data-clr]').onclick = () => { const all = readAll(); delete all[name()]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} memory(); };
   }
-  return { memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
+  return { setNet(j) { NET = j; }, hasNet: () => !!NET, memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
 })();
