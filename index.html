@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=be511accbe" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=be511accbe)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=181dffd0b8" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=181dffd0b8)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='728d4eb6c1b1',busy=false;
+var BUILD='42f04c8ec0d4',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -11169,6 +11169,12 @@ window.XINMO = (() => {
       for (const p of shots) {
         if (Math.sign(p.vx) !== Math.sign(m.x - p.x)) continue;
         const tt = Math.abs(m.x - p.x) / Math.max(60, Math.abs(p.vx)), py = p.y + (p.vy || 0) * tt;
+        if (p.charged && p.kind !== 'arrow' && tt < .5 && Math.abs(py - m.y) < 12) {   // 蓄力石子是 3~5 颗扇形：往扇形外侧（离中线远的一边）整段走出去，来不及就往外侧滚
+          const cy = hero.y, away = (m.y >= cy ? 1 : -1) * ((m.y > M.bot - 20 && m.y >= cy) || (m.y < M.top + 20 && m.y < cy) ? -1 : 1), half = Math.abs(m.x - p.x) * .125 + 12;
+          const need = Math.max(0, half - Math.abs(m.y - cy)) / (52 * P.move);
+          if (need < tt - .03 && !m.sideStep) { m.sideStep = { dir: away, t: need + .06 }; break; }
+          if (tt < .3) { m.shotSeen = .3; roll(0, away); return; }
+        }
         if (tt < .45 && Math.abs(py - m.y) < 10 && !m.sideStep) {   // 来得及就上下走出弹道（省下翻滚），石子/箭上下判定只有约 9
           const need = (11 - Math.abs(py - m.y)) / (52 * P.move); if (need < tt - .03) { m.sideStep = { dir: (m.y - py >= 0 ? 1 : -1) * (m.y > M.bot - 14 ? -1 : m.y < M.top + 14 ? -1 : 1), t: need + .08 }; break; }
         }
@@ -11185,7 +11191,8 @@ window.XINMO = (() => {
       if (Math.abs(ex - m.x) > reach - 4 || Math.abs(ey - m.y) > 6) { m.mode = 'chase'; moveTo(Math.max(14, Math.min(706, ex - sd * (reach - 8))), Math.max(M.top, Math.min(M.bot, ey)), dt, 1); return; }
     }
     const walk = w.class === 'ranged' ? 0 : Math.max(0, adx - reach) / 70 + Math.max(0, ady - (w.dy || 14) + 4) / 52;
-    const canHit = w.class === 'ranged' ? ady < 9 && adx < 220 && lag > my0 + adx / 300 : true;   // 远程只在箭/石子飞到之前你都动不了时才对齐反打（不和你对射）
+    const volleyIn = shots.some(p => p.charged && Math.sign(p.vx) === Math.sign(m.x - p.x) && p.life > 0);   // 你的蓄力石子/箭还在飞：先别对齐反打
+    const canHit = w.class === 'ranged' ? !volleyIn && ady < 9 && adx < 220 && lag > my0 + adx / 300 : true;   // 远程只在箭/石子飞到之前你都动不了时才对齐反打（不和你对射）
     if (lag > 0 && canHit && walk + my0 < lag + .04 - (risk('punish') > 1.5 ? .08 * risk('punish') : 0) && !heroRolling) {
       if (walk > 0) { moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return; }
       // SmashBot：破绽剩多少就蓄多久，正好在你能动之前放出（够蓄一档才蓄）
@@ -11222,14 +11229,19 @@ window.XINMO = (() => {
       const T = hw.proj ? 0 : s.hw === 'halberd' ? 130 : s.hw === 'hammer' ? 84 : s.hw === 'blade' ? 50 : 68, Ty = s.hw === 'blade' ? 46 : s.hw === 'hammer' ? Math.max(24, adx * .7 + 14) : 26;
       const inRange = !hw.proj && adx < T + 10 && ady < Ty + 4;
       if (w.class !== 'ranged' && adx < reach && ady < (w.dy || 14)) { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .1; return; }   // 贴身：直接打断（蓄力中没有无敌）
-      if (w.class === 'ranged' && ady < 9 && adx < 220 && s.st !== 'roll') { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .15; return; }   // 远程：你站着蓄就射你
+      if (w.class === 'ranged' && hw.proj) {   // 你在远处蓄石子/箭（站着不动）：不站进你的扇形里对射——斜着贴到 60 以内，再一步对齐连丢打断你（近了扇形窄、你来不及放）
+        const half = adx * .125 + 13, side = m.y >= s.y ? 1 : -1, lane = Math.max(M.top, Math.min(M.bot, s.y + side * half));
+        if (adx < 70) { if (ady < 9) { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .12; return; } m.mode = 'interrupt'; moveTo(m.x, s.y, dt, 1); return; }
+        m.mode = 'respect'; moveTo(s.x - sd * 60, lane, dt, 1); return;
+      }
+      if (w.class === 'ranged' && ady < 9 && adx < 220 && s.st !== 'roll') { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .15; return; }   // 远程：你站着蓄近战就射你（近战蓄力打不到这么远）
       if (inRange) {   // 在你的满蓄范围里：走得出去就走，走不出去就滚（不往你身上滚）
         const out = (T + 18 - adx) / (70 * P.move);
         if (out > .35 && m.rollCd === 0 && !((m.x < 40 && sd > 0) || (m.x > 680 && sd < 0))) { roll(-sd, (m.y < (M.top + M.bot) / 2 ? 1 : -1) * .3); return; }
         m.mode = 'respect'; moveTo(Math.max(14, Math.min(706, s.x - sd * (T + 18))), m.y, dt, 1); return;
       }
       if (hw.proj) {   // 你在蓄石子/箭：错开你的弹道线再逼近，到身边就打断
-        const off = Math.max(16, adx * .14), ty = s.y + (m.y >= s.y ? 1 : -1) * off;
+        const off = adx * .125 + 13, ty = s.y + (m.y >= s.y ? 1 : -1) * off;
         if (w.class !== 'ranged') { m.mode = 'respect'; moveTo(adx > reach + 20 ? s.x - sd * (reach + 10) : s.x - sd * (reach - 6), adx > reach + 20 ? Math.max(M.top, Math.min(M.bot, ty)) : s.y, dt, 1); return; }
         m.mode = 'respect'; moveTo(m.x, Math.max(M.top, Math.min(M.bot, ty)), dt, 1); return;
       }
