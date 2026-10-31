@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=c00b2d1bda" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=c00b2d1bda)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4af8b03172" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4af8b03172)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='12be7ddd476d',busy=false;
+var BUILD='a80bd9059359',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -10865,7 +10865,7 @@ window.XINMO = (() => {
     try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
     send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
   }
-  const MODES = { wake: '起身脱身', baitroll: '等你滚完打空', net: '网络走位', oki: '起身压制', ylane: '卡Y值', whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
+  const MODES = { seal: '场边蓄力封路', wake: '起身脱身', baitroll: '等你滚完打空', net: '网络走位', oki: '起身压制', ylane: '卡Y值', whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
   function risk(k) {   // 这种情形的挨打率 ÷ 平均挨打率（>1 = 比平时更容易挨打）
@@ -10948,6 +10948,13 @@ window.XINMO = (() => {
     if (S.prevSt !== 'roll' && hero.st === 'roll') S.rollToward = Math.sign(hero.rx || 0) === Math.sign(m.x - hero.x);
     if (S.prevSt === 'roll' && hero.st !== 'roll' && S.rollToward) S.rollP = { t: gameT, atk: false };
     if (S.rollP) { if (hero.st === 'atk' || charging) S.rollP.atk = true; if (gameT - S.rollP.t > .25) { S.rollAtk[1]++; if (S.rollP.atk) S.rollAtk[0]++; S.rollP = null; decay(S.rollAtk); } }
+    // 习惯：被打后往哪滚；蓄力看得见之后多久松手；起身后马上出手；残血被贴近时乱滚
+    if (S.prevSt === 'hurt' && hero.st === 'roll') { const d = Math.abs(hero.rx || 0) > Math.abs(hero.ry || 0) ? (Math.sign(hero.rx) === Math.sign(hero.x - m.x) ? 'back' : 'fwd') : ((hero.ry || 0) < 0 ? 'up' : 'down'); (S.hrd ||= { back: 0, fwd: 0, up: 0, down: 0, n: 0 })[d]++; S.hrd.n++; }
+    if (charging && !S.chgOn) { S.chgOn = true; S.chgAt = gameT; } if (!charging && S.chgOn) { S.chgOn = false; if (S.relP && gameT - S.relP.t < .1) (S.relHold ||= []).push(gameT - S.chgAt); if (S.relHold && S.relHold.length > 8) S.relHold.shift(); }
+    if (S.prevSt === 'getup' && hero.st !== 'getup') S.wakeP = { t: gameT, atk: false };
+    if (S.wakeP) { if (hero.st === 'atk' || charging) S.wakeP.atk = true; if (gameT - S.wakeP.t > .35) { (S.wakeAtk ||= [0, 0])[1]++; if (S.wakeP.atk) S.wakeAtk[0]++; S.wakeP = null; decay(S.wakeAtk); } }
+    if (hero.hp < P.hp * .3 && adx < 60 && !S.panicP && !S.panicCool) { S.panicP = { t: gameT, roll: false }; S.panicCool = true; } if (adx > 90) S.panicCool = false;
+    if (S.panicP) { if (hero.st === 'roll') S.panicP.roll = true; if (gameT - S.panicP.t > .5) { (S.panic ||= [0, 0])[1]++; if (S.panicP.roll) S.panic[0]++; S.panicP = null; } }
     S.prevSt = hero.st;
     // 事件：我的石子/箭本来会打中你（离你 60 时在你那条线上），你没滚、靠走位躲开；同一波散射只算一次
     for (const p of mshots) {
@@ -10968,6 +10975,10 @@ window.XINMO = (() => {
     if (c === S.cand) S.candN++; else { S.cand = c; S.candN = 1; }
     if (S.candN >= 2 && c !== S.cur && gameT > S.lockT) { S.cur = c; S.lockT = gameT + 3; S.evi = ev; }
     S.ex.rollAtk = S.rollAtk[1] >= 6 && rate(S.rollAtk) >= .75 ? rate(S.rollAtk) : 0;
+    if (S.hrd && S.hrd.n >= 4) { const k = ['back', 'fwd', 'up', 'down'].sort((a, b) => S.hrd[b] - S.hrd[a])[0]; S.ex.hurtRoll = S.hrd[k] / S.hrd.n >= .6 ? k : null; }
+    if (S.relHold && S.relHold.length >= 4) { const mu = S.relHold.reduce((a, b) => a + b, 0) / S.relHold.length, sd = Math.sqrt(S.relHold.reduce((a, b) => a + (b - mu) ** 2, 0) / S.relHold.length); S.ex.relAt = sd < .15 ? mu : 0; }
+    S.ex.wakeAtk = S.wakeAtk && S.wakeAtk[1] >= 3 && rate(S.wakeAtk) >= .7 ? rate(S.wakeAtk) : 0;
+    S.ex.panic = S.panic && S.panic[1] >= 3 && rate(S.panic) >= .7 ? rate(S.panic) : 0;
   }
   const sty = () => (m && m.sty && m.sty.cur) || 'neutral';
   const reachOf = () => { const w = W(); return w.class === 'ranged' ? 150 : (w.reach || 28) + 8; };
@@ -11275,7 +11286,7 @@ window.XINMO = (() => {
       if (m.sty) { m.sty.wakeN = (m.sty.wakeN || 0) + 1; if (near) m.sty.wakeNear = (m.sty.wakeNear || 0) + 1; }   // 局内：你压起身的次数
       if (near || s.charging) {
         // 起身选项也会学：翻滚（各方向）或趁起身无敌直接出手反打；按这几次哪种没挨打来挑
-        const st = (L && (L.roll ||= {})) || {}, sc = k => { const r = st['wake:' + k] || [0, 0]; return (r[0] + 1) / (r[1] + 2) + Math.random() * .15; };
+        const st = (L && (L.roll ||= {})) || {}, sc = k => { const r = st['wake:' + k] || [0, 0]; return (r[0] + (k === 'counter' ? .3 : 1)) / (r[1] + 2) + Math.random() * .15; };   // 反打风险大：先验低一点，真管用才多用
         const canCounter = w.class !== 'ranged' && adx < (w.reach || 28) + 4 && ady < (w.dy || 14) && s.st !== 'atk' && !s.charging;
         const rollBest = Math.max(sc('through'), sc('back'), sc('up'), sc('down'));
         if (canCounter && sc('counter') > rollBest) { m.mode = 'wake'; m.f = sd; startAtk(0); m.rollRec = { k: 'wake:counter', t: gameT, hp: m.hp }; return; }
@@ -11303,6 +11314,15 @@ window.XINMO = (() => {
     const hw = WEAP[s.hw] || WEAP[weapon], my0 = w.combo[0].d[0] / (w.aspd || 1);
     const reach = (w.reach || 28) + 4, edge = (hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 8) : reach) + 10;
     const lag = heroLag(s, hw);
+    const E = (m.sty && m.sty.ex) || {};
+    // 2.3) 长戟冲刺：往上或往下滚（冲刺是直线，往后滚会被追上）
+    if (hero.halberdDash && Math.sign(m.x - hero.x) === hero.f && adx < 130 && ady < 30 && m.rollCd === 0) { m.mode = 'sky'; roll(0, m.y < (M.top + M.bot) / 2 ? 1 : -1); m.rollRec = { k: 'dash:side', t: gameT, hp: m.hp }; return; }
+    // 2.31) 你被晕：走到你身边，等你受击无敌结束那一刻出手，吃满 1.5 倍
+    if (hero.dazeT > 0 && w.class !== 'ranged') { if (adx > reach - 2 || ady > (w.dy || 14) - 2) { m.mode = 'oki'; moveTo(Math.max(14, Math.min(706, s.x - sd * (reach - 8))), s.y, dt, 1); return; } if (hero.inv <= my0 + .03 && m.st !== 'atk') { m.mode = 'oki'; m.f = sd; startAtk(0); return; } m.mode = 'oki'; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } return; }
+    // 2.32) 你被打中后总往同一个方向滚（本局 4 次以上、60%）：你一硬直就先走到你翻滚的落点
+    if (E.hurtRoll && hero.st === 'hurt' && w.class !== 'ranged') { const away = Math.sign(hero.x - m.x) || 1, ex = E.hurtRoll === 'back' ? hero.x + away * 60 : E.hurtRoll === 'fwd' ? hero.x - away * 60 : hero.x, ey = E.hurtRoll === 'up' ? hero.y - 42 : E.hurtRoll === 'down' ? hero.y + 42 : hero.y; m.mode = 'chase'; moveTo(Math.max(14, Math.min(706, ex - Math.sign(ex - m.x || 1) * (reach - 6))), Math.max(M.top, Math.min(M.bot, ey)), dt, 1); return; }
+    // 2.33) 你残血被贴近就翻滚（本局 3 次以上、70%）：贴近后不急着出手，等你滚完追落点
+    if (E.panic && hero.hp < P.hp * .3 && adx < reach + 10 && hero.st !== 'roll' && (hero.rollCd || 0) < .1 && w.class !== 'ranged') { m.mode = 'baitroll'; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return; }
     // 2.35) 你「滚完必出手」（本局 6 次以上、75%）：你朝我滚过来时先退出你的出手范围，等你打空再反打
     if (m.sty && m.sty.ex.rollAtk && hero.st === 'roll' && Math.sign(hero.rx || 0) === Math.sign(m.x - hero.x) && adx < 110 && w.class !== 'ranged') { m.mode = 'baitroll'; moveTo(Math.max(14, Math.min(706, m.x + Math.sign(m.x - hero.x) * 40)), m.y, dt, 1); return; }
     if (s.st === 'roll' && hero.st === 'roll' && w.class !== 'ranged') {   // 追翻滚：跑到你翻滚的落点等你（SmashBot roll_end_position）
@@ -11324,7 +11344,7 @@ window.XINMO = (() => {
     if (['bounce', 'getup', 'land'].includes(hero.st) || (hero.air && hero.inv > 1)) {
       m.mode = 'oki'; if (w.class === 'ranged') { moveTo(m.x, hero.y, dt, 1); return; }
       // 学到「起身压制常挨打」（你起身无敌时先出手）→ 站到你够不着的边缘等你出手打空，再由「反打」接；否则贴着你起身点
-      const okiD = risk('oki') > 1.3 ? edge + 6 : reach - 6;
+      const okiD = risk('oki') > 1.3 || E.wakeAtk ? edge + 6 : reach - 6;
       moveTo(Math.max(14, Math.min(706, hero.x - sd * okiD)), hero.y, dt, 1); return;
     }
     if (hero.st !== 'roll' && hero.inv > 0 && hero.inv < .5 && m.st !== 'atk') {
@@ -11362,6 +11382,7 @@ window.XINMO = (() => {
         m.mode = 'respect'; moveTo(s.x - sd * 60, lane, dt, 1); return;
       }
       if (w.class === 'ranged' && ady < 9 && adx < 220 && s.st !== 'roll') { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .15; return; }   // 远程：你站着蓄近战就射你（近战蓄力打不到这么远）
+      if (E.relAt && m.sty.chgOn && gameT - m.sty.chgAt > E.relAt - .12 && !hw.proj && adx < T + 20 && ady < 30 && m.rollCd === 0 && smartRoll('release', adx < 60 ? 'through' : 'back')) return;   // 你松手时机很固定：在那之前先滚
       // 随时准备翻滚：你蓄着往我这边逼（离我不到 60，或我被逼到场边）→ 从你身边滚到你背后（棍/锤/刀蓄力只打前面）
       const closing = Math.sign(hero.mvx || 0) === sd && Math.abs(hero.mvx || 0) > 8, wallBehind = (m.x < 60 && sd > 0) || (m.x > 660 && sd < 0);
       if (!hw.proj && (adx < 60 || (wallBehind && adx < T + 20) || (closing && adx < T + 6)) && smartRoll('charge', adx < 75 ? 'through' : 'back')) return;
@@ -11426,8 +11447,9 @@ window.XINMO = (() => {
       const ammo = m.weapon !== 'bow' || (m.ammo ?? 5) >= 1;
       // 蓄力只在「你冲过来之前蓄得完」时（不然会被你打断）
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
-      if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
-      if (pdy < 8 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
+      if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && m.rollCd <= .15 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
+      const pinned = s.st === 'atk' || s.st === 'hurt' || (hero.rollCd || 0) > .3 || hero.dazeT > 0 || Math.abs(hero.mvy || 0) < 6;   // 你出招 / 硬直 / 刚滚过 / 被晕 / 没在上下走：躲不开才射
+      if (pinned && pdy < 8 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
       if (netMove(dt, s, sd, adx, ady, 0)) return;
       m.mode = 'keep';
       // 远程对远程：平时站在你的弹道外（上下错开 22），出手前那一下才对齐（你的石子/箭上下只有约 9 的判定）
@@ -11446,7 +11468,7 @@ window.XINMO = (() => {
       m.mode = 'halberd';
       // 只在「你走过来之前蓄得完」时蓄：先翻滚拉开，算你追到我要多久，再蓄能蓄的档位（冲刺 40/60/80 + 戟长 40 要够得到你）
       const hr = hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 6) : 40, after = adx + (adx < 70 ? 60 : 0);
-      const safe = Math.max(0, (after - hr) / (70 * P.move) - .1), t = Math.min(fullT(), safe), dist = t >= fullT() ? 80 : t >= fullT() / 2 ? 60 : 40;
+      const safe = (m.rollCd > .15 || (hero.rollCd || 0) < .2) ? 0 : Math.max(0, (after - hr) / ((s.charging ? 45.5 : 70) * P.move) - .1),   /* 翻滚冷却中 / 你能滚时不蓄；你蓄着走只有 45 */ t = Math.min(fullT(), safe), dist = t >= fullT() ? 80 : t >= fullT() / 2 ? 60 : 40;
       if (t < P.gate + .03 || after - 35 * t * P.move > dist + 45) { m.mode = 'neutral'; }   // 你蓄力时也会往前走，算上一半
       else plan(adx < 70 ? [{ k: 'roll', dir: 'back' }, { k: 'charge', time: t }, { k: 'roll', dir: 'back' }] : [{ k: 'charge', time: t }, { k: 'roll', dir: 'back' }], true);
       if (m.plan) { m.think = .6; runPlan(dt); return; }
@@ -11458,6 +11480,7 @@ window.XINMO = (() => {
     // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
     const cornered = hero.x < 70 || hero.x > 650, inner = cornered && Math.sign(hero.x - m.x) === (hero.x < 70 ? -1 : 1);   // 你在场边、我在你和场中间
     const stall = gameT - Math.max(m.lastHurtT || 0, rec.hurtAt || 0, (tape && tape.t0) || 0);   // 多久没人挨打（你在拖时间）
+    if (m.rollCd > .15) m.approachT = 0;   // 翻滚冷却中：不主动突进
     const press = (inner ? 2 : 1) * (stall > 5 ? 3 : 1) * (sty() === 'kite' ? 2 : 1);
     if (!m.approachT && Math.random() < dt / 2 * press / risk('approach')) m.approachT = 1;
     if (m.approachT) { m.approachT = Math.max(0, m.approachT - dt); if (s.st === 'atk' || hero.inv > 0) m.approachT = 0; }
@@ -11469,7 +11492,9 @@ window.XINMO = (() => {
       moveTo(s.x - sd * (reach - 8), s.y, dt, 1); return; }
     // 6) 拉距离（SmashBot KeepDistance）：站在玩家够不着的外缘来回小步晃，玩家出招/无敌时再退 20；偶尔站住不动
     m.mode = 'neutral';
-    let buf = (inner ? -8 : 0) + (sty() === 'poke' ? 12 : sty() === 'rush' ? -6 : 0) + edge + (s.st === 'atk' ? 20 : 0) + (hero.inv > 0 ? 20 : 0) + Math.max(0, Math.min(30, (risk('neutral') - 1) * 12));   // 学到「拉距离时常挨打」→ 站远一点
+    // 把你逼到场边：站在出口外，蓄满封路（你走进来就放，翻滚冷却好、你在蓄时不做）
+    if (inner && w.class !== 'ranged' && m.rollCd === 0 && !s.charging && (hero.rollCd || 0) > .2 && m.st !== 'charge' && Math.random() < dt * .8) { const cr = (m.weapon === 'halberd' ? 100 : m.weapon === 'hammer' ? 80 : m.weapon === 'blade' ? 50 : 70) - 6; if (Math.abs(adx - cr) < 14 && ady < 20) { m.mode = 'seal'; m.f = sd; startCharge(fullT()); return; } m.mode = 'seal'; moveTo(Math.max(14, Math.min(706, s.x - sd * cr)), s.y, dt, 1); return; }
+    let buf = (m.rollCd > .15 ? 14 : 0) + (inner ? -8 : 0) + (sty() === 'poke' ? 12 : sty() === 'rush' ? -6 : 0) + edge + (s.st === 'atk' ? 20 : 0) + (hero.inv > 0 ? 20 : 0) + Math.max(0, Math.min(30, (risk('neutral') - 1) * 12));   // 学到「拉距离时常挨打」→ 站远一点
     if (gameT - (m.radT || 0) > 1) { m.radT = gameT; m.radius = Math.random() * 14; if (Math.random() < .12) m.menace = .6 + Math.random() * .6; }
     if (m.menace > 0 && s.st !== 'atk' && adx > edge - 4) { m.menace -= dt; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return; }
     const sway = Math.abs(Math.sin(gameT * 9)) * (m.radius || 0);   // 只往外晃，不晃进你的攻击范围
@@ -11546,7 +11571,7 @@ window.XINMO = (() => {
     const a = m.netA, w = W(); m.mode = 'net';
     if (a === 5) { const ok = w.class === 'ranged' ? ady < 8 && adx < 230 : adx < reach && ady < (w.dy || 14); if (ok && hero.inv < .15) { m.f = sd; startAtk(0); m.think = .15; return true; } }
     if (a === 6 && m.rollCd === 0) { if (smartRoll('net', adx < 60 ? 'through' : 'back')) return true; }   // 网络要滚就滚（方向按翻滚学习挑）
-    if (a === 7) { const hw = WEAP[s.hw] || WEAP[weapon], hr = hw.proj ? 0 : (hw.reach || 28) + (hw.lunge ? 24 : 8) + 16; const ct = Math.min(fullT(), Math.max(0, (adx - Math.max(40, hr)) / (70 * P.move) - .1)); if (ct >= P.gate + .05 && !s.charging) { m.f = sd; startCharge(ct); m.think = .4; return true; } }   // 近战也能蓄（你走过来之前蓄得完才蓄）
+    if (a === 7) { const hw = WEAP[s.hw] || WEAP[weapon], hr = hw.proj ? 0 : (hw.reach || 28) + (hw.lunge ? 24 : 8) + 16; const ct = Math.min(fullT(), Math.max(0, (adx - Math.max(40, hr)) / ((s.charging ? 45.5 : 70) * P.move) - .1)); if (ct >= P.gate + .05 && !s.charging && m.rollCd <= .15 && (hw.proj || (hero.rollCd || 0) >= .2)) { m.f = sd; startCharge(ct); m.think = .4; return true; } }   // 近战也能蓄（你走过来之前蓄得完才蓄）
     const tx = a === 1 ? hero.x - sd * (w.class === 'ranged' ? 100 : reach - 6) : a === 2 ? m.x - sd * 40 : m.x;
     const ty = a === 3 ? hero.y : a === 4 ? m.y + (m.y < hero.y ? -30 : 30) : m.y;
     if (a === 0 || (Math.abs(tx - m.x) < 3 && Math.abs(ty - m.y) < 3)) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return true; }
@@ -11636,6 +11661,11 @@ window.XINMO = (() => {
     const all = JSON.parse(JSON.stringify(data().habit || {})); merge(all, rec ? rec.h : H0(), 1);
     const out = [], pct = v => Math.round(v * 100) + '%';
     if (m && m.sty && m.sty.cur !== 'neutral') out.push(`本局认出你是「${STYLE[m.sty.cur]}」（${m.sty.evi}）→ 已换打法`);
+    if (m && m.sty) { const E = m.sty.ex, DN = { back: '往后', fwd: '往前', up: '往上', down: '往下' };
+      if (E.hurtRoll) out.push(`你被打中后总是${DN[E.hurtRoll]}滚 → 它提前站到你翻滚的落点`);
+      if (E.relAt) out.push(`你蓄力看得见后约 ${E.relAt.toFixed(1)} 秒松手 → 它在那之前先滚开`);
+      if (E.wakeAtk) out.push(`你起身就出手（${pct(E.wakeAtk)}）→ 它不贴着压，站远等你打空`);
+      if (E.panic) out.push(`你残血被贴近就翻滚（${pct(E.panic)}）→ 它不急着出手，等你滚完`); }
     if (m && m.sty && m.sty.ex.rollAtk) out.push(`你朝它滚过去后 ${pct(m.sty.ex.rollAtk)} 会马上出手 → 你滚过来它就先退，等你打空`);
     const hr = rate(all.hurtRoll); if (hr != null) out.push(hr > .6 ? `你被打中后 ${pct(hr)} 会立刻翻滚` : `你被打中后很少马上翻滚（${pct(hr)}）`);
     const r = all.roll; if (r) { const tot = Object.values(r).reduce((a, b) => a + b, 0); if (tot >= 4) { const k = Object.keys(r).sort((a, b) => r[b] - r[a])[0]; out.push(`你翻滚最爱往${{ back: '后', fwd: '前（贴脸）', up: '上', down: '下' }[k]}（${pct(r[k] / tot)}）`); } }
