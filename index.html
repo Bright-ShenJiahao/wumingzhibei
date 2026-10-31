@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=a3b5f68999" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a3b5f68999)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=d4111ce6d1" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d4111ce6d1)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='de2ea86dfef4',busy=false;
+var BUILD='5c5dcc8e5176',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -11069,6 +11069,7 @@ window.XINMO = (() => {
     p.t = (p.t || 0) + dt;
     if (p.k === 'charge') { m.plan.shift(); startCharge(p.time); return true; }
     if (p.k === 'atk') { m.plan.shift(); m.forceN = p.n || 0; startAtk(0); return true; }
+    if (p.k === 'roll' && p.dir === 'fwd') { if (m.rollCd > 0) return true; m.plan.shift(); roll(Math.sign(hero.x - m.x) || 1, Math.max(-.6, Math.min(.6, (hero.y - m.y) / 40))); return true; }
     if (p.k === 'roll') { if (m.rollCd > 0) return true; m.plan.shift(); roll(p.dir === 'back' ? -(Math.sign(hero.x - m.x) || 1) : 0, p.dir === 'back' ? (Math.random() - .5) * .6 : (m.y < (M.top + M.bot) / 2 ? 1 : -1)); return true; }
     if (p.k === 'step') { const sd = Math.sign(hero.x - m.x) || 1; moveTo(m.x + sd * p.dx, hero.y, dt, 1); if (p.t >= p.dur) m.plan.shift(); return true; }
     m.plan.shift(); return false;
@@ -11139,6 +11140,7 @@ window.XINMO = (() => {
           const inRange = Math.abs(hero.x - m.x) < reachOf() + 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 4;
           if (next >= 0 && !a.visual && ((m.hitC > 0 || w.proj) && inRange && !(risk('attack') > 1.6 && a.c >= 1) && hero.st !== 'roll' && hero.inv < .25 || m.forceN > 0)) { m.hitC = 0; m.forceN = Math.max(0, (m.forceN || 0) - 1); startAtk(next); return; }
           m.atk = null; m.st = 'idle'; m.t = 0; m.hitC = 0;
+          if (w.proj && !m.plan) { m.lane = -(m.lane || 1); m.sideStep = { dir: m.lane, t: .22 }; }   // 远程丢完立刻换一条线，不站着让你还手
           m.forceN = 0;
           // 打一套就跑（SmashBot 的 hit-and-run）：终段打完一半概率翻滚撤走，否则后撤半步
           if (a.c === w.combo.length - 1 && !m.plan && m.rollCd === 0 && Math.random() < .5) roll(-(Math.sign(hero.x - m.x) || 1), (Math.random() - .5) * .8);
@@ -11217,15 +11219,26 @@ window.XINMO = (() => {
         const back = (m.x < 80 && sd < 0) || (m.x > 640 && sd > 0) ? 0 : -sd;
         m.mode = 'keep'; roll(back, back ? (m.y < (M.top + M.bot) / 2 ? .5 : -.5) : (m.y < (M.top + M.bot) / 2 ? 1 : -1)); return;
       }
+      // 预判：石子/箭要飞一会儿，瞄你「飞到时」会在的那条线（你正在上下走就往前提一点）
+      const fly = adx / ((w.combo[0].spd || 300) * 1) + my0, py = Math.max(M.top, Math.min(M.bot, s.y + (hero.mvy || 0) * fly)), pdy = Math.abs(py - m.y);
+      // 4) 抓你出手后的收手：你丢完那一下动不了，赶紧对齐出手（来得及走过去才去）
+      if (lag > my0 * .6 && adx < 190 && adx > 30 && !heroRolling) {
+        if (pdy < 8) { m.mode = 'punish'; m.f = sd; startAtk(0); m.think = .12; return; }
+        if ((pdy - 6) / (52 * P.move) < lag - my0 * .6) { m.mode = 'punish'; moveTo(m.x, py, dt, 1); return; }
+      }
+      // 3) 翻滚贴近连丢：你在硬直/收手里，滚到你身边丢两下（近距离你很难走出弹道）
+      if (lag > .22 && adx > 70 && adx < 200 && m.rollCd === 0 && Math.random() < dt * 4 / risk('approach')) { m.mode = 'approach'; plan([{ k: 'roll', dir: 'fwd' }, { k: 'atk', n: 1 }], true); runPlan(dt); return; }
+      // 2) 你在上下走位躲石子：蓄一档半散射（4 颗扇形），上下都封住
+      if (m.weapon === 'stone' && Math.abs(hero.mvy || 0) > 22 && adx > 60 && adx < 200 && s.st !== 'atk' && m.rollCd < .4 && Math.random() < dt * 3) { const t2 = Math.min(fullT() * .55, Math.max(P.gate + .05, (adx - 40) / (70 * P.move) - .1)); if (t2 >= P.gate + .05) { m.mode = 'shoot'; m.f = sd; startCharge(t2); m.think = .4; return; } }
       const ammo = m.weapon !== 'bow' || (m.ammo ?? 5) >= 1;
       // 蓄力只在「你冲过来之前蓄得完」时（不然会被你打断）
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
       if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
-      if (ady < 9 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
+      if (pdy < 8 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && !shots.some(p => Math.sign(p.vx) === Math.sign(m.x - p.x) && Math.abs(p.y - m.y) < 12 && Math.abs(p.x - m.x) < 160) && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }   // 你的石子正飞向这条线时不对齐
       m.mode = 'keep';
       // 远程对远程：平时站在你的弹道外（上下错开 22），出手前那一下才对齐（你的石子/箭上下只有约 9 的判定）
       const lane = m.lane || (m.lane = Math.random() < .5 ? -1 : 1), wantShoot = m.think <= .08;
-      let ly = wantShoot ? s.y : s.y + lane * 22; if (ly < M.top + 4 || ly > M.bot - 4) { m.lane = -lane; ly = s.y - lane * 22; }
+      let ly = wantShoot ? py : s.y + lane * 22; if (ly < M.top + 4 || ly > M.bot - 4) { m.lane = -lane; ly = s.y - lane * 22; }
       let kx = s.x - sd * far; if (kx < 30 || kx > 690) kx = s.x + sd * far > 30 && s.x + sd * far < 690 ? (backRoom < 90 ? kx : s.x + sd * far) : kx;   // 这一边没地方了就去另一边
       moveTo(Math.max(20, Math.min(700, kx)), Math.max(M.top, Math.min(M.bot, ly)), dt);
       return;
