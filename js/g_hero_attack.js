@@ -288,10 +288,10 @@ function strike() {
       let attackDmg = C.dmg * fin * mult;
 
       const hitDir = hammerFinisher ? (Math.sign(z.x - h.x) || h.f) : (C.both ? Math.sign(z.x - h.x) || h.f : h.f);
-      hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0 || bladeFinisher, ...(bladeFinisher ? { critCap: 2 } : {}), ...(weapon === 'staff' && isFinisher ? { dazeChance: 1 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
+      hit(z, attackDmg, C.kb, hitDir, C.knock, C.daze || 0, .35, W.interrupt, false, { finisher: isFinisher, guaranteedCrit: critT > 0 || bladeFinisher, ...(bladeFinisher ? { critCap: 2 } : {}), ...(hammerFinisher ? { noBossKnock: true, knockSiege: true } : {}) });
       const execLine = window.ROGUE && ROGUE.has('斩首') ? .25 : .15;   // 用户定：斩杀线 25%→15%（斩首 35%→25%）
       if (bladeFinisher && !z.dead && !z.T.boss && !z.T.chapterBoss && (z.T.elite || z.T.ch2Elite) && z.hp > 0 && z.hp < z.T.hp * execLine) hit(z, .66, 0, h.f, false, 0, 0, false, false, { secondary: true });   // 精英不被斩杀，改为补 30% 伤害
-      else if (bladeFinisher && !h.atk?.execDone && !z.dead && !z.T.boss && !z.T.chapterBoss && z.hp > 0 && z.hp < z.T.hp * execLine) {
+      else if (bladeFinisher && !h.atk?.execDone && !z.dead && !z.T.boss && !z.T.chapterBoss && !(z.T.mirror && z.lastHurtT !== gameT) && z.hp > 0 && z.hp < z.T.hp * execLine) {   /* 心魔：真打中才斩（打在无敌上不斩），和心魔斩你一样 */
         if (h.atk) h.atk.execDone = true;   // 一刀最多斩 1 个
         if (window.ROGUE && ROGUE.onExecute) ROGUE.onExecute();
         z.hp = 0; z.dead = 1; kills++; set(z, 'land');

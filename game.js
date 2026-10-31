@@ -391,14 +391,15 @@ function blocked(x, y) {
   return false;
 }
 function moveEnt(e, dx, dy) {
-  if (window.GEAR && e !== hero) { const mult=GEAR.enemyMove(e); dx*=mult; dy*=mult; }
-  if (window.ROGUE && e !== hero && ROGUE.enemyMove) { const m = ROGUE.enemyMove(e); dx *= m; dy *= m; }   // 水淹七军减速
-  if (e !== hero && e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速
+  const heroLike = e === hero || (e.T && e.T.mirror);   // 心魔和玩家一样：不吃敌人专用的减速、不会自动绕开道具
+  if (window.GEAR && !heroLike) { const mult=GEAR.enemyMove(e); dx*=mult; dy*=mult; }
+  if (window.ROGUE && !heroLike && ROGUE.enemyMove) { const m = ROGUE.enemyMove(e); dx *= m; dy *= m; }   // 水淹七军减速
+  if (!heroLike && e.halberdBleed > 0 && gameT < e.halberdBleedUntil) { dx *= .9; dy *= .9; }   // 裂伤减速
   e.bx = false;
   if (!blocked(e.x + dx, e.y)) e.x += dx; else e.bx = true;
   if (!blocked(e.x, e.y + dy)) e.y += dy;
-  // 被道具挡住时"先往旁边走、绕过道具边缘，再继续前进"（只对敌人；玩家仍会被挡住）
-  if (e !== hero) {
+  // 被道具挡住时"先往旁边走、绕过道具边缘，再继续前进"（只对敌人；玩家和心魔仍会被挡住）
+  if (!heroLike) {
     const dir = Math.sign(dx) || e.f || 1;
     const p = props.find(q => q.solid && !q.broken &&
       Math.abs(propXAt(q, e.y) - (e.x + dir * 16)) < q.w / 2 + 14 && propDY(q, e.y) < 20);

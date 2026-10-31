@@ -143,14 +143,14 @@ def main():
         tr = [(f, a) for k, s in per if k not in va_keys for f, a, w in s if w == who]; va = [(f, a) for k, s in per if k in va_keys for f, a, w in s if w == who]
         if len(tr) < MIN_ROWS // 2: log(f'\n## {title}\n样本太少（{len(tr)}），跳过'); continue
         Xtr = np.array([f for f, _ in tr], float); ytr = np.array([a for _, a in tr]); Xva = np.array([f for f, _ in va], float).reshape(-1, len(FEATS)); yva = np.array([a for _, a in va], int)
-        mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-6
+        mu, sd = Xtr.mean(0), np.maximum(Xtr.std(0), 1e-3)   # 训练、导出、推理用同一组标准化参数
         log(f'\n## {title}（训练 {len(ytr)} 条 / 验证 {len(yva)} 条，验证集是另外的 {nva} 局）')
         log('- 动作分布：' + '、'.join(f'{ACTIONS[k]} {int(c)}' for k, c in enumerate(np.bincount(ytr, minlength=len(ACTIONS)))))
         base = float((yva == np.bincount(ytr).argmax()).mean()) if len(yva) else float('nan')
         log(f'- 基线（永远猜最多那一类「{ACTIONS[int(np.bincount(ytr).argmax())]}」）：验证准确率 {base:.3f}；各动作平均准确率 {1 / len(ACTIONS):.3f}\n- 训练过程：')
         net, hist = train_head((Xtr - mu) / sd, ytr, (Xva - mu) / sd, yva, args.epochs, log)
         last = hist[-1]; log(f'- 结果：训练误差 {hist[0][1]:.4f} → {last[1]:.4f}；验证各动作平均准确率 {last[3]:.3f}（基线 {1 / len(ACTIONS):.3f}）')
-        model['heads'][who] = {'mean': mu.round(5).tolist(), 'std': np.maximum(sd, 1e-3).round(5).tolist(), **{k: np.round(v, 5).tolist() for k, v in net.p.items()},
+        model['heads'][who] = {'mean': mu.round(5).tolist(), 'std': sd.round(5).tolist(), **{k: np.round(v, 5).tolist() for k, v in net.p.items()},
                                'valAcc': last[2], 'valBalAcc': last[3], 'baseline': base, 'trainRows': int(len(ytr)), 'valRows': int(len(yva))}
     if not model['heads']:
         log('\n**两个头的样本都不够，不出模型、不删数据。**'); open(report, 'w').write('\n'.join(lines) + '\n'); return 0

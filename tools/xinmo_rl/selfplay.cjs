@@ -21,6 +21,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
     const m = XINMO.mirror(); m.wait = 0; m.inv = 0; hero.inv = 0;
     const boost = /2$/.test(bot) ? 2 : 1; bot = bot.replace(/2$/, ''); window.__xmBoost = boost; if (boost > 1) hero.hp = maxHeroHp() * boost; const heroMax0 = hero.hp;
     const R = WEAP[weapon].proj ? 170 : (WEAP[weapon].reach || 30) + 2;
+    window.__rollAtk = false; window.__swB = null;
     let think = 0, frames = Math.round(secs * 60), hold = 0, after = 0, fakeT = 9, errs = 0; const PN = performance.now; let now = PN.call(performance); performance.now = () => now;   // 蓄力按住时长用游戏时钟
     for (let i = 0; i < frames && !over && !m.dead; i++) {
       think -= 1 / 60;
@@ -28,11 +29,11 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         think = .18 + Math.random() * .08; for (const k in key) delete key[k];
         const dx = m.x - hero.x, dy = m.y - hero.y, adx = Math.abs(dx), ady = Math.abs(dy);
         hero.f = Math.sign(dx) || 1;
-        let B = bot; if (bot === 'switch') B = ['push', 'poke', 'kite'][Math.floor(i / 480) % 3];   // 局中换打法
+        let B = bot; if (bot === 'switch') { B = ['push', 'poke', 'kite'][Math.floor(i / 480) % 3]; if (B !== window.__swB) { window.__swB = B; if (atkHeldSince) atkRelease(); after = 0; } }   // 局中换打法（换时清掉上一种的按住/撤退状态）
         const ms = (XINMO.shots ? XINMO.shots() : []).filter(p => p.life > 0 && Math.sign(p.vx) === Math.sign(hero.x - p.x) && Math.abs(hero.x - p.x) < 140 && Math.abs(hero.y - p.y) < 14);
         if (B === 'walkdodge' && ms.length) { key[(hero.y > (M.top + M.bot) / 2 ? 'KeyW' : 'KeyS')] = true; }   // 有弹过来：只走上下躲，不滚
         else if (B === 'walkdodge') { const want = WEAP[weapon].proj ? 140 : R; if (adx > want + 15) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; else if (adx < want - 25) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (ady < 8 && adx < R + 10) pressAtk = true; }
-        else if (B === 'rollatk') { if (adx > 70 && adx < 125 && hero.rollCd === 0 && ady < 12) { key[dx > 0 ? 'KeyD' : 'KeyA'] = true; pressRoll = true; after = .45; } else if (after > 0) { after -= .2; if (after <= .25) pressAtk = true; } else { if (adx > 120) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; else if (adx < 60) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx < R && ady < 8) pressAtk = true; } }
+        else if (B === 'rollatk') { if (adx > 70 && adx < 125 && hero.rollCd === 0 && ady < 12 && hero.st !== 'roll') { key[dx > 0 ? 'KeyD' : 'KeyA'] = true; pressRoll = true; window.__rollAtk = true; } else if (window.__rollAtk) { /* 滚完那一帧在下面逐帧处理 */ } else { if (adx > 120) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; else if (adx < 60) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx < R && ady < 8) pressAtk = true; } }
         else if (B === 'fake') {   // 先点一下（不到蓄力门槛）骗心魔，再真蓄
           if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; }
           else if (!atkHeldSince && hero.st === 'idle') { atkPress(); hold = 0; fakeT = Math.random() < .5 ? .25 : 9; }
@@ -41,7 +42,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         else if (B === 'camp') {   // 站在约 107 蓄满，等心魔对上线再放
           const want = WEAP[weapon].proj ? 107 : 85;
           if (after > 0) { after -= .2; }
-          else if (!atkHeldSince && hero.st === 'idle') { if (adx < want - 15) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; else atkPress(); hold = 0; }
+          else if (!atkHeldSince && hero.st === 'idle') { if (adx < want - 15) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; else if (adx > want + 15) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; else atkPress(); hold = 0; }   // 先走到 107 附近再蓄
           else if (atkHeldSince) { if (hold >= chargeMaxMs() / 1000 && ady < 10 && adx < want + 40) { atkRelease(); after = .4; } else if (hold > 4) { atkRelease(); after = .3; } }
         }
         else if (B === 'push') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
@@ -65,7 +66,9 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         else { const want = WEAP[weapon].proj ? 140 : R * 1.3; if (adx < want - 20) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; else if (adx > want + 20) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (ady < 9 && adx < R + 20 && Math.random() < .7) pressAtk = true; if (Math.random() < .08) pressRoll = true; }
       }
       if (atkHeldSince) hold += 1 / 60; now += 1000 / 60;
-      try { update(1 / 60); } catch (e) { if (++errs === 1) window.__epErr = String(e && e.stack || e).slice(0, 300); }
+      if (bot === 'fake' && atkHeldSince && fakeT < 1 && hold >= fakeT) { atkRelease(); after = .2; }   // 假蓄力：逐帧检查，保证在门槛前松手
+      if (window.__rollAtk && hero.st !== 'roll' && hero.st !== 'hurt' && i > 0) { window.__rollAtk = false; pressAtk = true; }   // 滚完立刻出手
+      try { update(1 / 60); } catch (e) { errs++; window.__epErr = String(e && e.stack || e).slice(0, 300); break; }   // 出错立刻结束这一局
     }
     performance.now = PN; if (atkHeldSince) { atkHeldSince = 0; charging = false; }
     if (errs) { window.__errCount = (window.__errCount || 0) + 1; }
@@ -75,7 +78,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
     return out;
   } finally { Math.random = R0; }
 };`;
-const reward = o => !o || o.err ? -2 : o.win * 1 + .25 * ((1 - o.heroHp / o.heroMax) - (1 - o.mirHp / o.mirMax));   // 赢 +1 / 输 −1 为主，换血只算辅助（×0.25）；出错的对局 −2 并记数
+const reward = o => !o || o.err ? -2 : o.win * 1 + .25 * ((1 - o.heroHp / o.heroMax) - (1 - o.mirHp / o.mirMax)) - (o.win === 0 ? .1 : 0);   // 超时再扣 0.1：不鼓励拖时间   // 赢 +1 / 输 −1 为主，换血只算辅助（×0.25）；出错的对局 −2 并记数
 
 // ---------- 网络参数 ⇄ 扁平向量 ----------
 const KEYS = ['W1', 'b1', 'W2', 'b2', 'W3', 'b3'];
@@ -94,7 +97,8 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; TITLE.skip(); });   // 停掉画面循环，只用 update 同步推进
   const netOf = v => ({ heads: { human: unflat(v, head) }, inGame: true });
   const runSet = async (net, seeds) => p.evaluate(({ net, seeds }) => seeds.map(([w, bot, sd]) => __runEp(net, w, bot, sd, 30)), { net, seeds });
-  const COMBOS = WEAPONS.flatMap(w => BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
+  const HOLDOUT = ['camp', 'rollatk'], TRAIN_BOTS = BOTS.filter(b => !HOLDOUT.includes(b));   // 留出 2 种测试玩家只在评测里出现，检查有没有只会打练过的对手
+  const COMBOS = WEAPONS.flatMap(w => TRAIN_BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
   const score = COMBOS.map(() => 0);   // 每个组合最近的平均奖励（越差越常练：按对手优先采样）
   const pick = (g, i) => { const wts = score.map(v => 1 + Math.max(0, .5 - v) * 2), tot = wts.reduce((a, b) => a + b, 0); let r = (Math.sin(g * 9301 + i * 49297) * 233280 % 1 + 1) % 1 * tot, k = 0; while (r > wts[k] && k < wts.length - 1) { r -= wts[k]; k++; } return [COMBOS[k][0], COMBOS[k][1], 1000 + g * 97 + i * 13, k]; };
   // 测速
@@ -102,13 +106,14 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   const log = [`# 心魔强化学习报告 ${new Date().toISOString().slice(0, 16)} UTC`, '', `- 方法：进化策略（每代 ${POP} 组扰动 × ${EPS_PER} 局，σ=${SIGMA}，学习率 ${LR}），对手 ${BOTS.length} 种测试玩家 × 6 把武器，按“越打不过越常练”采样`, `- 奖励：赢 +1 / 输 −1；换血（打掉你的血% − 被打掉的血%）× 0.25 作辅助；一局最长 30 秒`, `- 网络输入 ${NF} 维（新增：你的翻滚冷却、你是否在蓄、你是否被晕、离左右墙、离中线、我上次打中你多久、我翻滚冷却）`, `- 一局约 ${per.toFixed(2)} 秒（不画画面加速跑）`, '', '| 代 | 平均奖励 | 用时(分) |', '|---|---|---|'];
   const end = Date.now() + MINUTES * 60e3; let gen = 0, episodes = 0;
   while (Date.now() < end) {
-    const seeds = Array.from({ length: EPS_PER }, (_, i) => pick(gen, i)), eps = [], rs = [];
+    const seeds = Array.from({ length: EPS_PER }, (_, i) => pick(gen, i)), eps = [], rs = [], acc = seeds.map(() => 0);
     for (let k = 0; k < POP; k++) {
       const e = theta.map(() => gauss()); eps.push(e);
       const plus = await runSet(netOf(theta.map((t, i) => t + SIGMA * e[i])), seeds), minus = await runSet(netOf(theta.map((t, i) => t - SIGMA * e[i])), seeds);
       rs.push([plus.reduce((a, o) => a + reward(o), 0) / EPS_PER, minus.reduce((a, o) => a + reward(o), 0) / EPS_PER]); episodes += EPS_PER * 2;
-      seeds.forEach((sd, j) => { const v = (reward(plus[j]) + reward(minus[j])) / 2; score[sd[3]] = score[sd[3]] * .8 + v * .2; });
+      seeds.forEach((sd, j) => { acc[j] += (reward(plus[j]) + reward(minus[j])) / 2 / POP; });
     }
+    seeds.forEach((sd, j) => { score[sd[3]] = score[sd[3]] * .8 + acc[j] * .2; });   // 每代只更新一次
     // 对偶采样 + 排名归一化
     const all = rs.flat(), sorted = [...all].sort((a, b) => a - b), rank = v => sorted.indexOf(v) / (all.length - 1) - .5;
     const g = theta.map(() => 0); rs.forEach(([a, bb], k) => { const w = rank(a) - rank(bb); eps[k].forEach((e, i) => g[i] += w * e); });
@@ -123,17 +128,23 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   const avg = a => a.reduce((s, o) => s + reward(o), 0) / a.length, wins = a => a.filter(o => o && o.win === 1).length, errN = a => a.filter(o => !o || o.err).length;
   const rA = avg(ruleR), nA = avg(netR);
   log.push('', `## 测试（每把武器 ${EVAL_N} 局没练过的对局，${BOTS.length} 种测试玩家轮换，成对比较）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} / ${test.length} 局，出错 ${errN(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} / ${test.length} 局，出错 ${errN(netR)} 局`);
-  const perW = [];
+  const perW = [], STRESS = b => /2$/.test(b);
+  const errAny = errN(ruleR) + errN(netR);
   for (const w of WEAPONS) {
-    const ix = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0), d = ix.map(k => reward(netR[k]) - reward(ruleR[k]));
-    const mu = d.reduce((a, b) => a + b, 0) / d.length, sd = Math.sqrt(d.reduce((a, b) => a + (b - mu) ** 2, 0) / Math.max(1, d.length - 1)), lo = mu - 1.645 * sd / Math.sqrt(d.length);
-    const ok = lo > 0; if (ok) perW.push(w);
-    log.push(`  - ${w}：规则 ${(ix.reduce((s, k) => s + reward(ruleR[k]), 0) / ix.length).toFixed(2)}（赢 ${ix.filter(k => ruleR[k] && ruleR[k].win === 1).length}）/ 网络 ${(ix.reduce((s, k) => s + reward(netR[k]), 0) / ix.length).toFixed(2)}（赢 ${ix.filter(k => netR[k] && netR[k].win === 1).length}），提升 ${mu.toFixed(2)}，下界 ${lo.toFixed(2)} → ${ok ? '**用网络**' : '用规则版'}`);
+    const ix = test.map((t, k) => t[0] === w && !STRESS(t[1]) ? k : -1).filter(k => k >= 0), d = ix.map(k => reward(netR[k]) - reward(ruleR[k]));   // 上线判定只看正常镜像对手；2 倍强敌另列
+    const mu = d.reduce((a, b) => a + b, 0) / d.length, sd = Math.sqrt(d.reduce((a, b) => a + (b - mu) ** 2, 0) / Math.max(1, d.length - 1)), lo = mu - 2.13 * sd / Math.sqrt(d.length);   // 6 把武器一起判：Bonferroni 校正后的单侧 95%
+    const wr = ix.filter(k => ruleR[k] && ruleR[k].win === 1).length, wn = ix.filter(k => netR[k] && netR[k].win === 1).length, ln = ix.filter(k => netR[k] && netR[k].win === -1).length, lr = ix.filter(k => ruleR[k] && ruleR[k].win === -1).length;
+    const ho = test.map((t, k) => t[0] === w && HOLDOUT.includes(t[1]) ? k : -1).filter(k => k >= 0), hoD = ho.length ? ho.reduce((a, k) => a + reward(netR[k]) - reward(ruleR[k]), 0) / ho.length : 0;
+    const st = test.map((t, k) => t[0] === w && STRESS(t[1]) ? k : -1).filter(k => k >= 0), stN = st.filter(k => netR[k] && netR[k].win === 1).length, stR = st.filter(k => ruleR[k] && ruleR[k].win === 1).length;
+    const ok = !errAny && lo > 0 && wn - ln >= wr - lr && hoD > -.1;   // 置信下界 > 0、胜负差不比规则版差、留出对手不明显退步、没有出错对局
+    if (ok) perW.push(w);
+    log.push(`  - ${w}：规则 胜${wr}负${lr} / 网络 胜${wn}负${ln}（${ix.length} 局正常对手），奖励提升 ${mu.toFixed(2)}，下界 ${lo.toFixed(2)}，留出对手提升 ${hoD.toFixed(2)}；2 倍强敌 规则胜${stR} / 网络胜${stN} → ${ok ? '**用网络**' : '用规则版'}`);
   }
   const ok = perW.length > 0;
+  if (errAny) log.push(`- **有 ${errAny} 局出错，本次不上线**（看下面的出错示例）`);
   log.push(ok ? `- **网络上场，只用在：${perW.join('、')}**` : '- 网络没有在任何武器上稳定赢过规则版 → 不上场');
   const bad = await p.evaluate(() => window.__epErr || ''); if (bad) log.push('', '出错示例：', '```', bad, '```');
-  const model = { ...init, weapons: perW, version: new Date().toISOString().slice(0, 16), heads: { ...init.heads, human: unflat(theta, head) }, inGame: ok, nf: NF, rl: { generations: gen, episodes, ruleReward: rA, netReward: nA, evalPerWeapon: EVAL_N } };
+  const model = { ...init, weapons: perW, version: new Date().toISOString().slice(0, 16), heads: { ...init.heads, human: ok || nA > rA ? unflat(theta, head) : init.heads.human }, inGame: ok,   /* 没变好就保留旧权重，下次不从更差的地方开始 */ nf: NF, rl: { generations: gen, episodes, ruleReward: rA, netReward: nA, evalPerWeapon: EVAL_N } };
   fs.writeFileSync(path.join(ROOT, 'data', 'xinmo_model.json'), JSON.stringify(model));
   fs.mkdirSync(path.join(ROOT, 'docs', 'xinmo_train'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'docs', 'xinmo_train', new Date().toISOString().slice(0, 13).replace('T', '_') + '-rl.md'), log.join('\n') + '\n');
