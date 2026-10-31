@@ -581,11 +581,17 @@ window.XINMO = (() => {
     const aw = rate(all.attackOnWake); if (aw != null && aw > .5) out.push(`你爬起来第一件事就是出手（${pct(aw)}）`);
     return out.slice(0, 5);
   }
-  function reward(z) {   // 战胜必掉：极品武器（同类型）+ 金币
+  // 战胜奖励（用户定）：相当校场第3层首领——品质按第3层首领表（普通15/优良40/精致30/极品15），
+  // 数量 1～5 把（35/30/20/10/5%），六种武器都可能掉；另给 150 金币
+  function reward(z) {
     if (!z) return;
-    const type = z.weapon, item = AFFIX_DATA.generate(type, 'boss', '', 3);
-    drops.push({ k: 'weapon', weapon: type, item, x: z.x, y: z.y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
-    if (window.WALLET && WALLET.bonus) WALLET.bonus(500);
+    const r = Math.random(), n = r < .35 ? 1 : r < .65 ? 2 : r < .85 ? 3 : r < .95 ? 4 : 5, all = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'];
+    const w3 = window.XIAOCHANG && XIAOCHANG.CONFIG ? XIAOCHANG.CONFIG[1].drops.boss[2] : [15, 40, 30, 15, 0];
+    for (let i = 0; i < n; i++) {
+      const type = all[Math.floor(Math.random() * all.length)], item = AFFIX_DATA.generate(type, 'boss', '', undefined, w3);
+      drops.push({ k: 'weapon', weapon: type, item, x: Math.max(16, Math.min(704, z.x + (i - (n - 1) / 2) * 18)), y: z.y, z: 10, vy: 130, t: 0, life: Infinity, got: 0 });
+    }
+    if (window.WALLET && WALLET.bonus) WALLET.bonus(150);
   }
   // 开发者面板「心魔记忆」：列出每把武器它学到的东西
   function memory() {
