@@ -19,10 +19,7 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   return outcome;
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
-  // 保险：伤害或击退算出 NaN（存档里某个数坏了）时，敌人会「闪白但不掉血、不后退、永远打不死」→ 退回基础值并记下来
-  if (!Number.isFinite(dmg)) { window.__badHit = (window.__badHit || 0) + 1; dmg = 1; }
-  if (!Number.isFinite(kb)) kb = 40;
-  if (z && !Number.isFinite(z.hp)) z.hp = 1;
+  const dbg = { in: dmg, kb };   // 开发者面板「最近一击」逐步记下伤害怎么变的，用来查「打中不掉血」的根本原因
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
   if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : 1.5 * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
@@ -46,7 +43,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
     }
   }
   if (ranged && z.T.chapterBoss && window.BOSS_BLOCK && BOSS_BLOCK.isBlocking(z, dir)) { BOSS_BLOCK.effect(z); return 'blocked'; }
-  if (window.XIAOCHANG && XIAOCHANG.active()) dmg = XIAOCHANG.enemyDamage(z, dmg);
+  if (window.XIAOCHANG && XIAOCHANG.active()) { dmg = XIAOCHANG.enemyDamage(z, dmg); dbg.xc = dmg; }
   if (ranged && z.T.rangedResist && !(ch2Troops() && z.type === 'yellow-shield')) dmg *= window.MERIDIAN && MERIDIAN.x('shield') ? 1 - (1 - z.T.rangedResist) * .75 : z.T.rangedResist;   // 破盾：远程减伤降四分之一
   if (z.T.boss) {
     const hp0 = z.hp;
@@ -77,8 +74,9 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
       sfx('crack', z.x);
       for (let i = 0; i < 6; i++) propFx.push({ x: z.x + rnd(-6, 6), y: z.y - 18 + rnd(-6, 4), w: 2, h: 2, life: .35, max: .35, c: '#3a2410' });
     }
-  if (window.ROGUE && ROGUE.onHit) dmg = ROGUE.onHit(z, dmg, traits, ranged);   // 震慑破绽加伤、避实眩晕回血
-  z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  if (window.ROGUE && ROGUE.onHit) { dmg = ROGUE.onHit(z, dmg, traits, ranged); dbg.rogue = dmg; }   // 震慑破绽加伤、避实眩晕回血
+  dbg.hp0 = z.hp; z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
+  if (!traits.secondary) window.__hitTrace = Object.assign(dbg, { out: dmg, hp1: z.hp, st: z.st, type: z.type, xcActive: !!(window.XIAOCHANG && XIAOCHANG.active()), xcRun: !!(window.XIAOCHANG && XIAOCHANG.state()) });
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
   if (z.T.chapterBoss) {   // 用户定：第二章首领沿用管亥的「韧性」——挨打累积，满了才踉跄；出招中不被打断；平时只被推一点
     const POISE = { zhang_liang: 8, zhang_bao: 6, zhang_jiao: 10 }[z.type] || 8;

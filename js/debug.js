@@ -217,7 +217,7 @@
         // 排查「人物不见」用：主角坐标/状态、镜头、第二章状态、最近的报错
         (typeof hero !== 'undefined' ? `主角 ${Math.round(hero.x)},${Math.round(hero.y)} ${hero.st}${hero.air ? ' 空中' : ''} 镜头 ${Math.round(cam.x)}` : '') +
         (typeof chapter2Run !== 'undefined' && chapter2Run ? ` · 战${chapter2Run.battle} ${chapter2Run.mode} 波${chapter2Run.wave}` : '') +
-        (window.__lastHit ? `\n最近一击：${window.__lastHit}` : '') +
+        (window.__lastHit ? `\n最近一击：${window.__lastHit}` : '') + (window.__hitTrace ? (() => { const h = window.__hitTrace, g = window.__gearTrace || {}, f = v => v == null ? '-' : typeof v === 'number' ? v.toFixed(2) : String(v); return `\n伤害链：基础${f(g.raw)}×加成${f(g.bonus)}${g.crit ? '暴击' : ''}→进入${f(h.in)}${h.xc != null ? '→校场' + f(h.xc) : ''}${h.rogue != null ? '→锦囊' + f(h.rogue) : ''}→实扣${f(h.out)} 血${f(h.hp0)}→${f(h.hp1)} 击退${f(h.kb)} 状态${h.st}${h.xcActive ? ' 校场开着！' : ''}`; })() : '') +
         ((window.WZB_ERR || lastErr) ? `\n报错：${window.WZB_ERR || lastErr}` : '');
     }, 300);
   }

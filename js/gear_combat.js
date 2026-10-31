@@ -42,7 +42,7 @@
     const token=traits.gearToken||hero?.atk?.gearToken||attackToken(!!traits.charged),s=token.s;
     if(traits.guaranteedCrit)token.crit=true;
     else if(traits.critChance!=null)token.crit=chance(traits.critChance);
-    const base=damage*primaryBonus(s,z,{...traits,ranged},token);let dmg=base;
+    const pb=primaryBonus(s,z,{...traits,ranged},token),base=damage*pb;let dmg=base;window.__gearTrace={raw:damage,bonus:pb,q:s.q,type:s.type,crit:!!token.crit,kb};
     if(token.crit){dmg*=clamp(1.5+stat(s,'severity')+stat(s,'weakcrit')+(D.qualities[s.q]?.critDmg||0),1,traits.critCap==null?2.5:traits.critCap);floaters.push({x:z.x,y:z.y-34,t:0,txt:'暴击！',big:true});}
     kb*=Math.max(0,1+stat(s,'soft'));if(chance(stat(s,'push'))&&!z.T.boss&&!z.T.chapterBoss)kb+=40;
     const hp=z.hp;const result=rawHit(z,dmg,kb,dir,knock,daze,stun,interrupt,ranged,{...traits,scaled:true});

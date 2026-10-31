@@ -17,7 +17,7 @@ function ensureAssets(group, { silent = false, label = '' } = {}) {
   if(!LAZY_DONE[group]) LAZY_DONE[group]=Promise.all(list.map(([img,src])=>new Promise(ok=>{
     if(img.complete&&img.naturalWidth){ok();return;}
     // 下载失败自动重试 3 次（手机网络抖动），还不行再放行，画面上用到时 drawImage 会继续重试
-    let n=0;const fail=()=>{if(n++<3||img._must)setTimeout(()=>{img.addEventListener('error',fail,{once:true});img.src=src+(src.includes('?')?'&':'?')+'retry='+n;},n>3?1500:600);else ok();};   // 主角的图（_must）一直重试，下好才放进战斗
+    let n=0;const fail=()=>{if(n++<3||(img._must&&n<10))setTimeout(()=>{img.addEventListener('error',fail,{once:true});img.src=src+(src.includes('?')?'&':'?')+'retry='+n;},n>3?1500:600);else ok();};   // 主角的图（_must）多试几次（约 15 秒）；真下不来也放行，画面上缺的帧用已下好的顶上，不会卡在载入页
     img.addEventListener('load',ok,{once:true});img.addEventListener('error',fail,{once:true});
     if(!img.src)img.src=src;else if(img.complete&&!img.naturalWidth)fail();
   })));
