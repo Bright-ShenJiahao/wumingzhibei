@@ -150,7 +150,7 @@ def main():
         log(f'- 基线（永远猜最多那一类「{ACTIONS[int(np.bincount(ytr).argmax())]}」）：验证准确率 {base:.3f}；各动作平均准确率 {1 / len(ACTIONS):.3f}\n- 训练过程：')
         net, hist = train_head((Xtr - mu) / sd, ytr, (Xva - mu) / sd, yva, args.epochs, log)
         last = hist[-1]; log(f'- 结果：训练误差 {hist[0][1]:.4f} → {last[1]:.4f}；验证各动作平均准确率 {last[3]:.3f}（基线 {1 / len(ACTIONS):.3f}）')
-        model['heads'][who] = {'mean': mu.round(5).tolist(), 'std': sd.round(5).tolist(), **{k: np.round(v, 5).tolist() for k, v in net.p.items()},
+        model['heads'][who] = {'mean': mu.round(5).tolist(), 'std': np.maximum(sd, 1e-3).round(5).tolist(), **{k: np.round(v, 5).tolist() for k, v in net.p.items()},
                                'valAcc': last[2], 'valBalAcc': last[3], 'baseline': base, 'trainRows': int(len(ytr)), 'valRows': int(len(yva))}
     if not model['heads']:
         log('\n**两个头的样本都不够，不出模型、不删数据。**'); open(report, 'w').write('\n'.join(lines) + '\n'); return 0

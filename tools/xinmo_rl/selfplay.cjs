@@ -38,10 +38,10 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         }
         else if (bot === 'poke') {
           const T = { staff: 80, hammer: 96, blade: 60, halberd: 140, stone: 150, bow: 200 }[weapon];
-          if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (after > .45) pressRoll = true; }   // 放完马上往后滚，再退一小段
+          if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; }   // 滚完再退一小段
           else if (!atkHeldSince && hero.st === 'idle') { atkPress(); hold = 0; }
           else if (atkHeldSince) {
-            if (hold >= .45 && adx < T && ady < 22) { atkRelease(); after = .65; }   // 过了蓄力门槛、够得着就放（不等满蓄）
+            if (hold >= .45 && adx < T && ady < 22) { atkRelease(); after = .6; pressRoll = true; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; }   // 放完当场往后滚   // 过了蓄力门槛、够得着就放（不等满蓄）
             else { key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (hold > 5) { atkRelease(); after = .65; } }   // 蓄着往前逼
           }
         }
@@ -74,7 +74,8 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; TITLE.skip(); });   // 停掉画面循环，只用 update 同步推进
   const netOf = v => ({ heads: { human: unflat(v, head) }, inGame: true });
   const runSet = async (net, seeds) => p.evaluate(({ net, seeds }) => seeds.map(([w, bot, sd]) => __runEp(net, w, bot, sd, 25)), { net, seeds });
-  const pick = (g, i) => [WEAPONS[(g * 7 + i) % WEAPONS.length], BOTS[(g + i) % BOTS.length], 1000 + g * 97 + i * 13];
+  const COMBOS = WEAPONS.flatMap(w => BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
+  const pick = (g, i) => { const c = COMBOS[(g * EPS_PER + i) % COMBOS.length]; return [c[0], c[1], 1000 + g * 97 + i * 13]; };
   // 测速
   let t0 = Date.now(); await runSet(null, [pick(0, 0)]); const per = (Date.now() - t0) / 1000; console.log(`一局约 ${per.toFixed(2)} 秒`);
   const log = [`# 心魔强化学习报告 ${new Date().toISOString().slice(0, 16)} UTC`, '', `- 方法：进化策略（每代 ${POP} 组扰动 × ${EPS_PER} 局，σ=${SIGMA}，学习率 ${LR}），对手是 3 种测试玩家（压进连打 / 像人 / 拉距离）× 6 把武器`, `- 奖励：打掉玩家的血% − 自己被打掉的血% ± 胜负 0.5`, `- 一局约 ${per.toFixed(2)} 秒（不画画面加速跑）`, '', '| 代 | 平均奖励 | 用时(分) |', '|---|---|---|'];
