@@ -5,7 +5,7 @@ import { getStore } from '@netlify/blobs';
 export const config = { path: '/api/scores' };
 
 const STORE = 'wumingzhibei-board';
-const SEASON = 's1';        // 换赛季只改这里（旧数据自动被忽略）
+const SEASON = 's2';   // 用户定 2026-10-31：旧纪录（含第二章被误记成第一章的）不要了，从 s2 重新计        // 换赛季只改这里（旧数据自动被忽略）
 const NAME_MAX = 8;
 const MIN_TIME = 90;        // 用时低于 90 秒视为异常（正常通关要几分钟）
 const MAX_KILLS = 200;

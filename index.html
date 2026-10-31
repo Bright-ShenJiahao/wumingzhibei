@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=542f4acefa" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=542f4acefa)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=d7a70e8110" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=d7a70e8110)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='2d96e718fe6e',busy=false;
+var BUILD='727d7523d11d',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -10923,7 +10923,7 @@ window.XINMO = (() => {
     while (hist.length && gameT - hist[0].t > 1) hist.shift();
   }
   function seen() {   // 反应延迟：0.08 秒，玩家每赢一次快 2 毫秒，最快 0.06 秒
-    const delay = .08 - lvl * .002;
+    const delay = .06 - lvl * .0015;   // 用户：都太弱了 → 反应 0.08→0.06 秒
     for (let i = hist.length - 1; i >= 0; i--) if (gameT - hist[i].t >= delay) return hist[i];
     return hist[0];
   }
@@ -11154,7 +11154,7 @@ window.XINMO = (() => {
     if (m.lock && m.plan && m.plan.length && runPlan(dt)) return;
     // ---------- 思考（参考 SmashBot 的决策顺序：保命 → 防飞行物 → 反打 → 防真会打中的招 → 随机突进 → 拉距离）----------
     const s = seen(), dx = s.x - m.x, dy = s.y - m.y, adx = Math.abs(dx), ady = Math.abs(dy), sd = Math.sign(dx || 1);
-    const dodgeP = Math.min(.99, .93 + lvl * .006);
+    const dodgeP = Math.min(.995, .97 + lvl * .003);
     const heroRolling = hero.st === 'roll' && hero.inv > .05;
     m.shotSeen = Math.max(0, (m.shotSeen || 0) - dt);
     // 1) 飞行物：推算下一小段会不会打中自己，会才躲（SmashBot needsprojectiledefense）
@@ -11174,14 +11174,14 @@ window.XINMO = (() => {
       if (Math.abs(ex - m.x) > reach - 4 || Math.abs(ey - m.y) > 6) { m.mode = 'chase'; moveTo(Math.max(14, Math.min(706, ex - sd * (reach - 8))), Math.max(M.top, Math.min(M.bot, ey)), dt, 1); return; }
     }
     const walk = w.class === 'ranged' ? 0 : Math.max(0, adx - reach) / 70 + Math.max(0, ady - (w.dy || 14) + 4) / 52;
-    const canHit = w.class === 'ranged' ? ady < 9 && adx < 220 : true;
+    const canHit = w.class === 'ranged' ? ady < 9 && adx < 220 && lag > my0 + adx / 300 : true;   // 远程只在箭/石子飞到之前你都动不了时才对齐反打（不和你对射）
     if (lag > 0 && canHit && walk + my0 < lag + .04 - (risk('punish') > 1.5 ? .08 * risk('punish') : 0) && !heroRolling) {
       if (walk > 0) { moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return; }
       // SmashBot：破绽剩多少就蓄多久，正好在你能动之前放出（够蓄一档才蓄）
       const spare = lag - my0 - .05;
       // 学到「反打时蓄力常挨打」→ 要更长的破绽才敢蓄
       if (spare >= .42 * risk('charge') && m.weapon !== 'halberd') { m.mode = 'punish'; startCharge(spare); return; }
-      m.mode = 'punish'; m.think = .25 + Math.random() * .2; startAtk(0); return;
+      m.mode = 'punish'; m.think = .12 + Math.random() * .1; startAtk(0); return;
     }
     // 3) 防：玩家这一下站着不动会不会打中我（SmashBot Defend.in_range）——会打中才处理
     const hitIn = willHit(s, hw);
@@ -11191,10 +11191,12 @@ window.XINMO = (() => {
       m.lastAid = s.aid;
       // 来得及走出范围就后撤（省下翻滚），否则翻滚；远程武器直接往后滚拉开
       const needOut = (edge - adx) / 70;
-      if (w.class !== 'ranged' && needOut < hitIn - .02) { m.backOff = Math.max(m.backOff || 0, hitIn + .1); }
+      const cornered = (m.x < 40 && sd > 0) || (m.x > 680 && sd < 0);
+      if (w.class !== 'ranged' && !cornered && needOut < hitIn - .02) { m.backOff = Math.max(m.backOff || 0, hitIn + .1); }
       else if (m.rollCd === 0 && (Math.random() < dodgeP || topC() === 'c' + s.c)) {   // 学到「你这一招最伤它」→ 这招必躲
         const room = m.y < (M.top + M.bot) / 2 ? 1 : -1;
-        if (w.class === 'ranged') roll(-sd, room * .4); else roll(-sd * .3, ady > 4 ? -Math.sign(dy) || room : room);
+        if (w.class === 'ranged') roll(-sd, room * .4); else if (adx < 45 && Math.random() < .5) { roll(sd, (Math.random() - .5) * .4); m.punish = true; }   // 高手招：贴身时从你身边滚过去绕到背后，落地就打
+        else roll(-sd * .3, ady > 4 ? -Math.sign(dy) || room : room);
         return;
       }
     }
@@ -11211,10 +11213,13 @@ window.XINMO = (() => {
       const ammo = m.weapon !== 'bow' || (m.ammo ?? 5) >= 1;
       // 蓄力只在「你冲过来之前蓄得完」时（不然会被你打断）
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
-      if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 2.5 : 1.2)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
+      if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
       if (ady < 9 && adx < 230 && adx > close - 20 && !heroRolling && m.think <= 0 && Math.random() < 1 / risk('shoot')) { m.mode = 'shoot'; m.f = sd; startAtk(0); m.think = .15; return; }
       m.mode = 'keep';
-      moveTo(Math.max(20, Math.min(700, s.x - sd * far)), s.y, dt);
+      // 远程对远程：平时站在你的弹道外（上下错开 22），出手前那一下才对齐（你的石子/箭上下只有约 9 的判定）
+      const lane = m.lane || (m.lane = Math.random() < .5 ? -1 : 1), wantShoot = m.think <= .08;
+      let ly = wantShoot ? s.y : s.y + lane * 22; if (ly < M.top + 4 || ly > M.bot - 4) { m.lane = -lane; ly = s.y - lane * 22; }
+      moveTo(Math.max(20, Math.min(700, s.x - sd * far)), Math.max(M.top, Math.min(M.bot, ly)), dt);
       return;
     }
     const ready = !heroRolling && hero.inv < my0 + .03 && ady < (w.dy || 14) + 4;
@@ -11243,8 +11248,10 @@ window.XINMO = (() => {
     let buf = edge + (s.st === 'atk' ? 20 : 0) + (hero.inv > 0 ? 20 : 0) + Math.max(0, Math.min(30, (risk('neutral') - 1) * 12));   // 学到「拉距离时常挨打」→ 站远一点
     if (gameT - (m.radT || 0) > 1) { m.radT = gameT; m.radius = Math.random() * 14; if (Math.random() < .12) m.menace = .6 + Math.random() * .6; }
     if (m.menace > 0 && s.st !== 'atk' && adx > edge - 4) { m.menace -= dt; if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return; }
-    const sway = Math.sin(gameT * 9) * (m.radius || 0);
+    const sway = Math.abs(Math.sin(gameT * 9)) * (m.radius || 0);   // 只往外晃，不晃进你的攻击范围
     let tx = s.x - sd * (buf + sway), ty = s.y;
+    // 被逼到场边退不动：从你身边翻滚过去换边（或上下错开），不在角落挨打
+    if ((tx < 30 || tx > 690) && adx < edge + 4) { if (m.rollCd === 0 && s.st !== 'atk') { m.mode = 'neutral'; roll(sd, m.y < (M.top + M.bot) / 2 ? .6 : -.6); m.punish = true; return; } ty = s.y + (m.y < s.y ? -40 : 40); }
     // 对手建模：玩家被打后爱往某个方向滚 → 提前站到那边
     const fav = favRoll();
     if (fav && (s.st === 'hurt' || gameT - rec.hurtAt < .5)) {
