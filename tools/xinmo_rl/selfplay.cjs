@@ -5,7 +5,7 @@
 const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const MINUTES = +arg('minutes', 60), BASE = arg('url', 'http://localhost:8765/index.html?debug'), ROOT = path.join(__dirname, '..', '..');
-const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'push2', 'charger2'];   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
+const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'push2', 'charger2'];   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
 const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3);
 
 // ---------- 页面里跑一局（同步推进 update，固定随机种子） ----------
@@ -35,6 +35,15 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
           if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (after > .3) pressRoll = true; }
           else if (!atkHeldSince && hero.st === 'idle') { atkPress(); hold = 0; }
           else if (atkHeldSince) { if (hold >= chargeMaxMs() / 1000 && adx < T && ady < 22) { atkRelease(); after = .7; } else if (hold > 3.5) { atkRelease(); after = .5; } else if (ady > 6) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; }
+        }
+        else if (bot === 'poke') {
+          const T = { staff: 80, hammer: 96, blade: 60, halberd: 140, stone: 150, bow: 200 }[weapon];
+          if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (after > .45) pressRoll = true; }   // 放完马上往后滚，再退一小段
+          else if (!atkHeldSince && hero.st === 'idle') { atkPress(); hold = 0; }
+          else if (atkHeldSince) {
+            if (hold >= .45 && adx < T && ady < 22) { atkRelease(); after = .65; }   // 过了蓄力门槛、够得着就放（不等满蓄）
+            else { key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (hold > 5) { atkRelease(); after = .65; } }   // 蓄着往前逼
+          }
         }
         else if (bot === 'ylane') { const dyW = WEAP[weapon].dy || 14; if (adx > R * .9) { key[dx > 0 ? 'KeyD' : 'KeyA'] = true; key[dy > 0 ? 'KeyW' : 'KeyS'] = ady < dyW + 3; } else if (ady > dyW - 3) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; else pressAtk = true; if (Math.random() < .06) pressRoll = true; }
         else { const want = WEAP[weapon].proj ? 140 : R * 1.3; if (adx < want - 20) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; else if (adx > want + 20) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (ady < 9 && adx < R + 20 && Math.random() < .7) pressAtk = true; if (Math.random() < .08) pressRoll = true; }
@@ -86,11 +95,11 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
     log.push(`| ${gen} | ${mean.toFixed(3)} | ${((MINUTES * 60e3 - (end - Date.now())) / 60e3).toFixed(1)} |`); console.log(`第 ${gen} 代 平均奖励 ${mean.toFixed(3)}（累计 ${episodes} 局）`);
   }
   // 测试：同一批没练过的种子，规则版 vs 网络
-  const test = Array.from({ length: 84 }, (_, i) => [WEAPONS[i % 6], BOTS[Math.floor(i / 6) % BOTS.length], 900000 + i * 31]);
+  const test = Array.from({ length: 96 }, (_, i) => [WEAPONS[i % 6], BOTS[Math.floor(i / 6) % BOTS.length], 900000 + i * 31]);
   const ruleR = await runSet(null, test), netR = await runSet(netOf(theta), test);
   const avg = a => a.reduce((s, o) => s + reward(o), 0) / a.length, wins = a => a.filter(o => o && o.win === 1).length;
   const rA = avg(ruleR), nA = avg(netR), ok = nA > rA + .05;
-  log.push('', `## 测试（84 局没练过的对局，武器 × 测试玩家全覆盖）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} 局`,
+  log.push('', `## 测试（96 局没练过的对局，武器 × 测试玩家全覆盖）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} 局`,
     ok ? '- **网络赢过规则版 → 上场（inGame: true）**' : '- 网络没有明显赢过规则版 → 不上场，游戏继续用规则版');
   for (const w of WEAPONS) { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); log.push(`  - ${w}：规则 ${(i.reduce((s, k) => s + reward(ruleR[k]), 0) / i.length).toFixed(2)} / 网络 ${(i.reduce((s, k) => s + reward(netR[k]), 0) / i.length).toFixed(2)}`); }
   const perW = WEAPONS.filter(w => { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); return i.reduce((s, k) => s + reward(netR[k]) - reward(ruleR[k]), 0) / i.length > 0; });
