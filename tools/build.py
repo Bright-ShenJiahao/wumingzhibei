@@ -7,6 +7,14 @@
 - index.html 本身只剩代码（约 0.5MB），每次发布玩家重新拿到的也只有这些。
 """
 import base64, hashlib, io, json, os, re, glob
+import shutil, subprocess, sys
+# 打包前先查语法（2026-10-31 出过事故：行内注释吞掉代码，整个游戏打不开）。装了 node 才查。
+if shutil.which('node'):
+    _root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+    _bad = [f for f in sorted(glob.glob(os.path.join(_root, 'js', '*.js'))) + [os.path.join(_root, 'game.js')]
+            if subprocess.run(['node', '--check', f], capture_output=True).returncode]
+    if _bad:
+        sys.exit('语法错误，停止打包：' + '、'.join(os.path.basename(f) for f in _bad))
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P = lambda *p: os.path.join(R, *p)

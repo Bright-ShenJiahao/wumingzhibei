@@ -1,6 +1,6 @@
 // 首领共用：连续远程命中后的格挡架势、格挡判定、架势结束冲刺与外观。
 (() => {
-  const WINDOW = 2, NEED = 3, STANCE = 1.05, COOLDOWN = 8;   // 用户定：格挡减弱 30%（架势 1.5→1.05 秒，冷却 6→8 秒）
+  const WINDOW = 2, NEED = 3, STANCE = 1.05, COOLDOWN = 18.95;   /* 用户定 10/31：首领格挡 20 秒最多一次 */   // 用户定：格挡减弱 30%（架势 1.5→1.05 秒，冷却 6→8 秒）
   const isBoss = z => !!(z && (z.T.boss || z.T.chapterBoss));
   const front = (z, dir) => Math.sign(dir || 1) * Math.sign(z.f || 1) < 0;
   const canEnter = z => {

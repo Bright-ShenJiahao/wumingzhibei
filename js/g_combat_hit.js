@@ -25,12 +25,12 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
-    const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
+    const front=dir*z.f<0&&!(type==='hammer'&&Math.random()<.5),   /* 用户定 10/31：锤子 ×1.00，50% 无视盾牌 */cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
     // 用户定：正面打盾兵按武器分——远程 ×0.5、长杆 ×0.75、短兵（大刀）×1.15 且格挡概率减半；锤子照旧无视盾；从背后打不受影响。
     // 蓄力 / 终段（含弓的第三段）不再无视盾：不会被整下挡掉，但倍率照算。
-    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='ranged'?.5:cls==='long'?.75:1.05;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
-    const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb*(cls==='short'?.5:1);   // 正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
-    if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb*(cls==='short'?.5:1)){
+    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='short'?1:.75;dmg*=1-(1-m)*(sb<1?.5:1);}   /* 用户定 10/31：远程和长兵 ×0.75、大刀 ×1.00 */
+    const roll=Math.random(),fullP=(z.T.ch2Elite?.3:.2)*sb;   /* 用户定 10/31：近战远程一样，正面普攻 20% 整下挡掉（精英 30%），另 50% 只吃一半 */
+    if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
       for(let i=0;i<4;i++)propFx.push({x:z.x+z.f*8,y:z.y-18+rnd(-6,6),vx:rnd(-40,40)+z.f*30,vy:rnd(-80,-20),w:1.5,h:1.5,life:.2,max:.2,c:'#d88a4a'});
     }

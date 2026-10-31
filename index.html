@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=73941f4ec9" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=73941f4ec9)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=4767224f01" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=4767224f01)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='16fe4b92fedc',busy=false;
+var BUILD='9a3a3b5d31c1',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -1700,7 +1700,7 @@ const Boss = (() => {
 
 // 首领共用：连续远程命中后的格挡架势、格挡判定、架势结束冲刺与外观。
 (() => {
-  const WINDOW = 2, NEED = 3, STANCE = 1.05, COOLDOWN = 8;   // 用户定：格挡减弱 30%（架势 1.5→1.05 秒，冷却 6→8 秒）
+  const WINDOW = 2, NEED = 3, STANCE = 1.05, COOLDOWN = 18.95;   /* 用户定 10/31：首领格挡 20 秒最多一次 */   // 用户定：格挡减弱 30%（架势 1.5→1.05 秒，冷却 6→8 秒）
   const isBoss = z => !!(z && (z.T.boss || z.T.chapterBoss));
   const front = (z, dir) => Math.sign(dir || 1) * Math.sign(z.f || 1) < 0;
   const canEnter = z => {
@@ -3582,12 +3582,12 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
-    const front=dir*z.f<0&&type!=='hammer',cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
+    const front=dir*z.f<0&&!(type==='hammer'&&Math.random()<.5),   /* 用户定 10/31：锤子 ×1.00，50% 无视盾牌 */cls=(type==='bow'||type==='stone')?'ranged':(type==='staff'||type==='halberd')?'long':'short';
     // 用户定：正面打盾兵按武器分——远程 ×0.5、长杆 ×0.75、短兵（大刀）×1.15 且格挡概率减半；锤子照旧无视盾；从背后打不受影响。
     // 蓄力 / 终段（含弓的第三段）不再无视盾：不会被整下挡掉，但倍率照算。
-    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='ranged'?.5:cls==='long'?.75:1.05;dmg*=m<1?1-(1-m)*(sb<1?(cls==='ranged'?.75:.5):1):m;}
-    const roll=Math.random(),fullP=(z.T.ch2Elite?.2:.1)*sb*(cls==='short'?.5:1);   // 正面普攻 10% 整下挡掉、50% 只吃一半、其余吃满（精英 20% / 50%）
-    if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb*(cls==='short'?.5:1)){
+    if(front&&!traits.skyArrow&&!traits.siegeShot){const m=cls==='short'?1:.75;dmg*=1-(1-m)*(sb<1?.5:1);}   /* 用户定 10/31：远程和长兵 ×0.75、大刀 ×1.00 */
+    const roll=Math.random(),fullP=(z.T.ch2Elite?.3:.2)*sb;   /* 用户定 10/31：近战远程一样，正面普攻 20% 整下挡掉（精英 30%），另 50% 只吃一半 */
+    if(!charged&&!traits.finisher&&front&&roll>=fullP&&roll<fullP+.5*sb){
       dmg*=.5;stun=0;kb*=.3;daze=0;interrupt=false;   // 盾卸了一半力：照样掉血，但不硬直
       for(let i=0;i<4;i++)propFx.push({x:z.x+z.f*8,y:z.y-18+rnd(-6,6),vx:rnd(-40,40)+z.f*30,vy:rnd(-80,-20),w:1.5,h:1.5,life:.2,max:.2,c:'#d88a4a'});
     }
@@ -11428,7 +11428,7 @@ window.XINMO = (() => {
   // 战胜奖励（用户定）：相当校场第3层首领——品质按第3层首领表（普通15/优良40/精致30/极品15），
   // 数量 1～5 把（35/30/20/10/5%），六种武器都可能掉；另给 150 金币
   function reward(z) {
-    if (!z) return;
+    if (!z || window.__xmTrain) return;   // 训练对打不发奖励（不然仓库满 50 把就开不了局）
     const r = Math.random(), n = r < .35 ? 1 : r < .65 ? 2 : r < .85 ? 3 : r < .95 ? 4 : 5, all = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'];
     const w3 = window.XIAOCHANG && XIAOCHANG.CONFIG ? XIAOCHANG.CONFIG[1].drops.boss[2] : [15, 40, 30, 15, 0];
     for (let i = 0; i < n; i++) {

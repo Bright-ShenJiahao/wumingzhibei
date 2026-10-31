@@ -72,6 +72,7 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
     const g = theta.map(() => 0); rs.forEach(([a, bb], k) => { const w = rank(a) - rank(bb); eps[k].forEach((e, i) => g[i] += w * e); });
     theta = theta.map((t, i) => t + LR / (POP * SIGMA) * g[i]);
     const mean = all.reduce((a, v) => a + v, 0) / all.length; gen++;
+    if (all.every(v => v === -2)) { console.log('对局开不起来（全部失败），停止训练'); break; }
     log.push(`| ${gen} | ${mean.toFixed(3)} | ${((MINUTES * 60e3 - (end - Date.now())) / 60e3).toFixed(1)} |`); console.log(`第 ${gen} 代 平均奖励 ${mean.toFixed(3)}（累计 ${episodes} 局）`);
   }
   // 测试：同一批没练过的种子，规则版 vs 网络

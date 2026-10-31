@@ -692,7 +692,7 @@ window.XINMO = (() => {
   // 战胜奖励（用户定）：相当校场第3层首领——品质按第3层首领表（普通15/优良40/精致30/极品15），
   // 数量 1～5 把（35/30/20/10/5%），六种武器都可能掉；另给 150 金币
   function reward(z) {
-    if (!z) return;
+    if (!z || window.__xmTrain) return;   // 训练对打不发奖励（不然仓库满 50 把就开不了局）
     const r = Math.random(), n = r < .35 ? 1 : r < .65 ? 2 : r < .85 ? 3 : r < .95 ? 4 : 5, all = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'];
     const w3 = window.XIAOCHANG && XIAOCHANG.CONFIG ? XIAOCHANG.CONFIG[1].drops.boss[2] : [15, 40, 30, 15, 0];
     for (let i = 0; i < n; i++) {
