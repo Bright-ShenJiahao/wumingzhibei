@@ -614,14 +614,24 @@ window.XINMO = (() => {
   }
   function onHurt() { if (m) m.lastHurtT = gameT; }
   // 开打前对照表：左你、右心魔，同一份快照
+  // 开场核对（用户定：心魔必须和玩家完全一致）：现场重新读一遍玩家属性，和心魔的快照逐项比；有不一致就以玩家为准重新同步
+  function rowsOf(o, w, hp) { return [['武器', WEAP[w].name + ' · 白板'], ['血量', hp.toFixed(1)], ['攻击倍率', '×' + o.atk.toFixed(2)], ['暴击率', Math.round(o.crit * 100) + '%'], ['暴击伤害', Math.round(o.critDmg * 100) + '%'],
+      ['闪避', Math.round(o.dodge * 100) + '%'], ['减伤', Math.round(o.reduce * 100) + '%'], ['受伤', '×' + o.take.toFixed(2)], ['移速', '×' + o.move.toFixed(2)], ['攻速', '×' + (1 / o.aspd).toFixed(2)], ['眩晕', '×' + o.daze.toFixed(2)],
+      ['翻滚', '×' + o.roll.toFixed(2) + ' · 无敌 ' + o.rollInv + 's'], ['起身', '×' + (1 / o.getup).toFixed(2)], ['击倒', '×' + o.knock.toFixed(2)], ['蓄力门槛', o.gate.toFixed(2) + 's'], ['蓄满', o.full.toFixed(2) + 's'], ['不屈', o.unyield ? '有' : '无'], ['镇关', o.zhenguan ? '有' : '无']]; }
+  function verify() {
+    const me = rowsOf(snap(), weapon, maxHeroHp()), mm = rowsOf(P, m.weapon, m.T.hp), bad = me.filter((r, i) => r[1] !== mm[i][1]).map(r => r[0]);
+    if (bad.length) { P = snap(); m.T.hp = m.hp = P.hp; }   // 以玩家为准重新复刻
+    m.check = { n: me.length, bad, t: Date.now() };
+    return { me, mm, bad };
+  }
   function showCard() {
     const old = document.getElementById('xmCard'); if (old) old.remove();
-    const rows = [['血量', P.hp.toFixed(1)], ['攻击倍率', '×' + P.atk.toFixed(2)], ['暴击率', Math.round(P.crit * 100) + '%'], ['暴击伤害', Math.round(P.critDmg * 100) + '%'],
-      ['闪避', Math.round(P.dodge * 100) + '%'], ['减伤', Math.round(P.reduce * 100) + '%'], ['移速', '×' + P.move.toFixed(2)], ['攻速', '×' + (1 / P.aspd).toFixed(2)],
-      ['翻滚', '×' + P.roll.toFixed(2) + ' · 无敌 ' + P.rollInv + 's'], ['起身', '×' + (1 / P.getup).toFixed(2)], ['蓄满', P.full.toFixed(2) + 's'], ['不屈', P.unyield ? '有' : '无'], ['镇关', P.zhenguan ? '有' : '无']];
+    const { me, mm, bad } = verify();
     const el = document.createElement('div'); el.id = 'xmCard';
-    el.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;background:#1d1410ee;border:1px solid #8a5ab0;border-radius:8px;padding:10px 14px;color:#ecdcbc;font:13px/1.6 sans-serif;pointer-events:auto;min-width:min(330px,88vw)';
-    el.innerHTML = `<div style="text-align:center;color:#e2c4ff;font-weight:700;margin-bottom:4px">心魔 · 1:1 复刻（${WEAP[m.weapon].name} · 白板）</div><table style="width:100%;border-collapse:collapse"><tr style="color:#cdb68b"><th></th><th>你</th><th>心魔</th></tr>${rows.map(([k, v]) => `<tr><td style="color:#a89070">${k}</td><td style="text-align:center">${v}</td><td style="text-align:center;color:#e2c4ff">${v}</td></tr>`).join('')}</table><div style="text-align:center;color:#9b8a6c;font-size:11px;margin-top:4px">点一下关闭 · 3 秒后开打</div>`;
+    el.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;background:#1d1410ee;border:1px solid #8a5ab0;border-radius:8px;padding:10px 14px;color:#ecdcbc;font:13px/1.5 sans-serif;pointer-events:auto;min-width:min(330px,88vw);max-height:90vh;overflow:auto';
+    const tr = (r, i) => `<tr><td style="color:#a89070">${r[0]}</td><td style="text-align:center">${r[1]}</td><td style="text-align:center;color:#e2c4ff">${mm[i][1]}</td><td>${r[1] === mm[i][1] ? '<span style="color:#7fd07f">✓</span>' : '<span style="color:#e0533a">✗</span>'}</td></tr>`;
+    const res = bad.length ? `<div style="text-align:center;color:#f0b060">发现 ${bad.length} 项不一致（${bad.join('、')}），已按你的属性重新复刻</div>` : `<div style="text-align:center;color:#7fd07f">核对完成：${me.length} 项全部一致 ✓</div>`;
+    el.innerHTML = `<div style="text-align:center;color:#e2c4ff;font-weight:700;margin-bottom:4px">心魔 · 1:1 复刻核对</div><table style="width:100%;border-collapse:collapse"><tr style="color:#cdb68b"><th></th><th>你</th><th>心魔</th><th></th></tr>${me.map(tr).join('')}</table>${res}<div style="text-align:center;color:#9b8a6c;font-size:11px;margin-top:4px">点一下关闭 · 3 秒后开打</div>`;
     el.onclick = () => { el.remove(); if (m) m.wait = Math.min(m.wait, .3); };
     document.body.append(el); setTimeout(() => el.remove(), 3000);
   }
