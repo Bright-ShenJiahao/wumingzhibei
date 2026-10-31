@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=16d2f9135f" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=16d2f9135f)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=dbd066faf5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=dbd066faf5)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='ad7b3150f3f7',busy=false;
+var BUILD='7ab9ee3a21f4',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -11721,7 +11721,8 @@ const LOADQ = []; let loadingN = 0;
 function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LOADQ.shift(); if (i.src) continue; loadingN++; const done = () => { loadingN--; pumpLoad(); }; i.addEventListener('load', done, { once: true }); i.addEventListener('error', done, { once: true }); i.src = src; } }
 function promoteLoad(img) { if (img.src) return; const i = LOADQ.findIndex(q => q[0] === img); if (i > 0) LOADQ.unshift(LOADQ.splice(i, 1)[0]); }   // 画面上要用到但还在排队的图：插到队首
 function flushLoads() { while (LOADQ.length) { const [i, src] = LOADQ.shift(); if (!i.src) i.src = src; } }   // 开打了：剩下的图全部开始下（不再限速）
-function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } LOADQ.push([i, src]); LAZY.core.push([i, src]); pumpLoad(); return i; }
+function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } const pri = k.startsWith('hero_') ? 2 : k.startsWith('grunt_') || k.startsWith('blade_') || k.startsWith('slinger_') || k.startsWith('archer_') || k.startsWith('elite_') || k.startsWith('priest_') ? 1 : 0; i._pri = pri; i._must = pri === 2;   // 排队优先级：主角 > 第一章敌人 > 其他
+  { let at = LOADQ.findIndex(q => (q[0]._pri || 0) < pri); if (at < 0) at = LOADQ.length; LOADQ.splice(at, 0, [i, src]); } LAZY.core.push([i, src]); pumpLoad(); return i; }
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [], core: [] }, LAZY_DONE = {};   // core：打开就要的图（第一章等），进战斗前必须全部下完
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };
@@ -11731,7 +11732,7 @@ function ensureAssets(group, { silent = false, label = '' } = {}) {
   if(!LAZY_DONE[group]) LAZY_DONE[group]=Promise.all(list.map(([img,src])=>new Promise(ok=>{
     if(img.complete&&img.naturalWidth){ok();return;}
     // 下载失败自动重试 3 次（手机网络抖动），还不行再放行，画面上用到时 drawImage 会继续重试
-    let n=0;const fail=()=>{if(n++<3)setTimeout(()=>{img.addEventListener('error',fail,{once:true});img.src=src+(src.includes('?')?'&':'?')+'retry='+n;},600);else ok();};
+    let n=0;const fail=()=>{if(n++<3||img._must)setTimeout(()=>{img.addEventListener('error',fail,{once:true});img.src=src+(src.includes('?')?'&':'?')+'retry='+n;},n>3?1500:600);else ok();};   // 主角的图（_must）一直重试，下好才放进战斗
     img.addEventListener('load',ok,{once:true});img.addEventListener('error',fail,{once:true});
     if(!img.src)img.src=src;else if(img.complete&&!img.naturalWidth)fail();
   })));
