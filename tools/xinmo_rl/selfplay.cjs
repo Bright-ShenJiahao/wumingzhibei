@@ -29,7 +29,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
         const dx = m.x - hero.x, dy = m.y - hero.y, adx = Math.abs(dx), ady = Math.abs(dy);
         hero.f = Math.sign(dx) || 1;
         if (bot === 'push') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
-        else if (bot === 'human') { if (hero.st === 'hurt' && Math.random() < .25) BRAWL.press(); else if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
+        else if (bot === 'human') { if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
         else if (bot === 'charger') {
           const T = { staff: 64, hammer: 80, blade: 45, halberd: 120, stone: 160, bow: 170 }[weapon];
           if (after > 0) { after -= .2; key[dx > 0 ? 'KeyA' : 'KeyD'] = true; if (after > .3) pressRoll = true; }

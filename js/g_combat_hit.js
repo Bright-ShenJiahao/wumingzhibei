@@ -78,8 +78,6 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   dbg.hp0 = z.hp; z.hp -= dmg * (z.daze > 0 ? 1.5 : 1);   // 被打晕的目标吃 1.5 倍伤害
   if (!traits.secondary) window.__hitTrace = Object.assign(dbg, { out: dmg, hp1: z.hp, st: z.st, type: z.type, xcActive: !!(window.XIAOCHANG && XIAOCHANG.active()), xcRun: !!(window.XIAOCHANG && XIAOCHANG.state()) });
   z.flash = .1; z.stun = z.T.siege ? 0 : (z.T.heavy && z.st === 'wind' && !interrupt ? 0 : stun); z.vx = z.T.siege ? 0 : kb * dir * (z.T.heavy ? .6 : 1);
-  const chainArmor = window.BRAWL && BRAWL.armored(z);   // 连击保护：被连续打 3 秒以上挣脱 1.2 秒
-  if (chainArmor) { z.stun = 0; z.vx *= .3; knock = false; daze = 0; interrupt = false; }
   if (z.T.chapterBoss) {   // 用户定：第二章首领沿用管亥的「韧性」——挨打累积，满了才踉跄；出招中不被打断；平时只被推一点
     const POISE = { zhang_liang: 8, zhang_bao: 6, zhang_jiao: 10 }[z.type] || 8;
     z.poise = (z.poise || 0) + dmg; (z.hitLog ||= []).push(gameT); z.hitLog = z.hitLog.filter(t => gameT - t < 2);
@@ -91,7 +89,7 @@ function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false,
   const dazeChance = traits.dazeChance != null ? traits.dazeChance : daze * heavyDazeScale;
   const dazeTime = traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : z.T.heavy ? 1 : 1.5) * R_('daze');   /* 用户定 10/31：棍晕 0.8 秒 */
   // 只有 traits 明确给出 dazeChance 的伤害（目前是石子）才能晕首领
-  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !chainArmor && !z.daze && !(gameT < (z.dazeImm || 0)) && Math.random() < dazeChance) {
+  if ((!z.T.boss && !z.T.chapterBoss || traits.dazeChance != null) && dazeChance && !z.daze && !(gameT < (z.dazeImm || 0)) && Math.random() < dazeChance) {
     z.daze = dazeTime; z.dazeImm = gameT + dazeTime + 3;   /* 晕抗（用户定 10/31）：晕醒后 3 秒内不会再被晕 */
     if (z.T.chapterBoss) z.stun = Math.max(z.stun || 0, dazeTime);
     z.st = 'move'; z.tok = false;
