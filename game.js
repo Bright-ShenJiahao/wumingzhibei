@@ -110,8 +110,8 @@ const WEAP = {
     { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: .5, dazeTime: .5, daze: 1 },   // 全力投：命中即停、50% 晕 0.5 秒（用户定 10/31）
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
-    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.15, kb: 38, spd: 330, life: 1.05 },
-    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: 1.15, kb: 38, spd: 340, life: 1.08 },
+    { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.3,   /* 用户定 11/01：汉弓普攻 1.15→1.3 */ kb: 38, spd: 330, life: 1.05 },
+    { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: 1.3, kb: 38, spd: 340, life: 1.08 },
     { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .75, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
