@@ -163,7 +163,7 @@ function fitChapter2Wave() {
         for(const [y,d] of segs)props.push({g:'jumo_v',x,y,d,vert:true,w:18,h:meta[2],sc:1,hp:3,hitT:0,solid:true,broken:false,chapter2:true,siegeWall:true});});
       zs.filter(z=>!z.dead&&z.type==='yellow-shield').forEach((z,i)=>{z.x=right-90-30;z.y=M.top+(M.bot-M.top)*(i+1)/3;z.guard={x:z.x,y:z.y};});
       zs.filter(z=>!z.dead&&z.type==='yellow-heavy').forEach((z,i)=>{z.x=right-90-55;z.y=M.top+(M.bot-M.top)*(i?.85:.15);z.guard={x:z.x,y:z.y};});   // 2 盾 2 刀固定守在拒马墙前
-      if(!zs.some(z=>z.siegeArcher))for(let i=0;i<3;i++){spawn('archer',right+18,M.top+(M.bot-M.top)*(i+1)/4);const a=zs[zs.length-1];a.siegeArcher=true;a.f=-1;a.guard={x:a.x,y:a.y};}   // 用户定：拒马墙后 3 个弓箭手守着投石车
+      if(!zs.some(z=>z.siegeArcher))for(let i=1;i<2;i++){spawn('archer',right+18,M.top+(M.bot-M.top)*(i+1)/4);const a=zs[zs.length-1];a.siegeArcher=true;a.f=-1;a.guard={x:a.x,y:a.y};}   // 用户定：拒马墙后 1 个弓箭手守着（原 3 个，删掉 2 个，留中间那个）投石车
     }
   }
 }
