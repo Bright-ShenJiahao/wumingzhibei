@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=cca84877a5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=cca84877a5)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=fb14f47c8f" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=fb14f47c8f)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='0d98a984dd82',busy=false;
+var BUILD='997a629f69a3',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -10711,7 +10711,7 @@ window.XINMO = (() => {
     m && 0; marks = []; mshots = []; hb = { n: 0, t: 0 }; Object.assign(m, { zg: 0, ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
     // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
-    tape = []; tape.t0 = gameT; tapeT = 0;
+    tape = []; tape.t0 = gameT; tapeT = 0; keys = []; hits = []; pv = null; joyPrev = null;
     m.weapon = w; P = snap(); { const d0 = data(); d0.lessons ||= {}; L = JSON.parse(JSON.stringify(d0.lessons[w] || newL())); lastHits = []; } m.T.hp = P.hp; m.hp = m.T.hp; m.wait = 3; showCard();   // 血量 = 你的血量
     m.bossLabel = '心魔'; m.xiaochang = true;
     say(d.tries && Math.random() < .6 ? pick(LINES.introAgain).replace('{n}', d.wins) : pick(LINES.intro), 3);
@@ -10729,18 +10729,61 @@ window.XINMO = (() => {
   let L = null, lastHits = [];
   // ---------- 对局录像（为以后训练神经网络攒数据）：每 0.1 秒一行，打完上传 /api/xinmo ----------
   const ST = ['idle', 'walk', 'atk', 'roll', 'hurt', 'bounce', 'getup', 'charge', 'air', 'land', 'down'], MODE_IDS = ['neutral', 'punish', 'charge', 'attack', 'challenge', 'halberd', 'feint', 'approach', 'backoff', 'chase', 'shoot', 'keep', 'roll', 'recover'];
-  const COLS = ['t', 'dx', 'dy', 'h_st', 'h_c', 'h_fi', 'h_inv', 'h_hp', 'h_chg', 'h_daze', 'h_ix', 'h_iy', 'h_f', 'm_st', 'm_c', 'm_fi', 'm_inv', 'm_hp', 'm_chg', 'm_daze', 'm_mode', 'm_f', 'm_rollcd', 'h_rollcd', 'shots_in', 'mshots_in', 'm_ammo', 'm_x', 'h_x'];
-  let tape = null, tapeT = 0;
-  function recordRow(dt) {
-    if (!tape || tape.length >= 6000) return; tapeT += dt; if (tapeT < .1) return; tapeT = 0;
-    const r = v => Math.round(v * 100) / 100, sti = x => Math.max(0, ST.indexOf(x));
-    tape.push([r(gameT - tape.t0), r(hero.x - m.x), r(hero.y - m.y), sti(hero.st), hero.atk ? hero.atk.c : -1, hero.atk ? hero.atk.fi : -1, hero.inv > 0 ? 1 : 0, r(hero.hp), charging ? 1 : 0, hero.dazeT > 0 ? 1 : 0, r(hero.ix || 0), r(hero.iy || 0), hero.f,
-      sti(m.st), m.atk ? m.atk.c : -1, m.atk ? m.atk.fi : -1, m.inv > 0 ? 1 : 0, r(m.hp), r(m.ch || 0), m.dazeT > 0 ? 1 : 0, Math.max(0, MODE_IDS.indexOf(curMode())), m.f, r(m.rollCd), r(hero.rollCd || 0),
-      shots.filter(p => Math.abs(p.x - m.x) < 150).length, mshots.filter(p => Math.abs(p.x - hero.x) < 150).length, r(m.ammo ?? 5), r(m.x), r(hero.x)]);
+  // 字段照 FightingICE（CharacterData/AttackData）和 slippi-ai（Player/Controller）补齐：每秒 20 行状态 + 按键事件 + 命中事件
+  const SIDE = ['x', 'y', 'vx', 'vy', 'f', 'st', 'c', 'fi', 'left', 'act', 'inv', 'hp', 'chg', 'daze', 'rollcd', 'ix', 'iy', 'atk', 'roll'];
+  const COLS = ['t', 'dx', 'dy', ...SIDE.map(k => 'h_' + k), ...SIDE.map(k => 'm_' + k), 'm_mode', 'm_ammo', 'h_ammo',
+    ...[0, 1, 2].flatMap(i => ['hs' + i + '_dx', 'hs' + i + '_dy', 'hs' + i + '_vx', 'hs' + i + '_vy']), ...[0, 1, 2].flatMap(i => ['ms' + i + '_dx', 'ms' + i + '_dy', 'ms' + i + '_vx', 'ms' + i + '_vy'])];
+  let tape = null, tapeT = 0, keys = null, hits = null, pv = null, kin = null;
+  const R2 = v => Math.round(v * 100) / 100;
+  // 当前动作还剩多久（FightingICE remaining_frame）、现在能不能操作（control）
+  function leftOf(e, w) {
+    if (e.st === 'atk' && e.atk && WEAP[w]) { const C = WEAP[w].combo[e.atk.c]; if (!C) return 0; let t = -e.atk.t; for (let i = e.atk.fi; i < C.f.length; i++) t += C.d[i]; return Math.max(0, t); }
+    if (e.st === 'roll') return Math.max(0, .4 - e.t); if (e.st === 'hurt') return Math.max(0, .3 - e.t); if (e.st === 'bounce') return Math.max(0, .3 - e.t); if (e.st === 'getup') return Math.max(0, .35 - e.t);
+    return 0;
   }
+  function side(e, w, isHero, vx, vy) {
+    const sti = Math.max(0, ST.indexOf(e === m && e.st === 'charge' ? 'charge' : e.st)), act = ['idle', 'walk'].includes(e.st) ? 1 : 0;
+    const chg = isHero ? (charging && atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0) : (e.ch || 0);
+    const ix = isHero ? (e.ix || 0) : (kin ? kin.mix : 0), iy = isHero ? (e.iy || 0) : (kin ? kin.miy : 0);
+    const atk = isHero ? (atkHeldSince || pressAtk ? 1 : 0) : (e.st === 'atk' || e.st === 'charge' ? 1 : 0), rl = e.st === 'roll' ? 1 : 0;
+    return [R2(e.x), R2(e.y), R2(vx), R2(vy), e.f, sti, e.atk ? e.atk.c : -1, e.atk ? e.atk.fi : -1, R2(leftOf(e, w)), act, e.inv > 0 ? 1 : 0, R2(e.hp), R2(chg), e.dazeT > 0 ? 1 : 0, R2(e.rollCd || 0), R2(ix), R2(iy), atk, rl];
+  }
+  function near3(list, to) {   // 最近 3 个飞行物，相对接收者的位置和速度
+    const a = list.filter(p => p.life > 0).sort((p, q) => Math.abs(p.x - to.x) - Math.abs(q.x - to.x)).slice(0, 3), out = [];
+    for (let i = 0; i < 3; i++) { const p = a[i]; out.push(...(p ? [R2(p.x - to.x), R2(p.y - to.y), R2(p.vx || 0), R2(p.vy || 0)] : [0, 0, 0, 0])); }
+    return out;
+  }
+  function recordRow(dt) {
+    if (!tape) return;
+    const t = R2(gameT - tape.t0);
+    // 心魔的「手柄」：按它实际的移动方向和动作记，和玩家的按键对得上
+    const mvx = pv ? (m.x - pv.mx) / Math.max(dt, 1e-3) : 0, mvy = pv ? (m.y - pv.my) / Math.max(dt, 1e-3) : 0;
+    kin = { mix: Math.abs(mvx) > 5 ? Math.sign(mvx) : 0, miy: Math.abs(mvy) > 5 ? Math.sign(mvy) : 0 };
+    // 命中事件：谁打中谁、多少伤害、有没有晕（slippi 的 percent 变化 / FightingICE 的 hit_confirm）
+    if (pv) {
+      if (hero.hp < pv.hhp - .001) hits.push([t, 1, R2(pv.hhp - hero.hp), hero.dazeT > 0 && !pv.hdz ? 1 : 0]);
+      if (m.hp < pv.mhp - .001) hits.push([t, 0, R2(pv.mhp - m.hp), m.dazeT > 0 && !pv.mdz ? 1 : 0]);
+      // 心魔的「按键」事件：出招、翻滚、蓄力开始/放出、走动方向变化
+      const ev = (k, v) => keys.push([t, 1, k, v]);
+      if (m.st !== pv.mst) { if (m.st === 'atk') ev('atk', m.atk ? m.atk.c : 0); if (m.st === 'roll') ev('roll', 1); if (m.st === 'charge') ev('charge', 1); if (pv.mst === 'charge') ev('charge', 0); }
+      if (kin.mix !== pv.mix) ev('x', kin.mix); if (kin.miy !== pv.miy) ev('y', kin.miy);
+    }
+    pv = { hhp: hero.hp, mhp: m.hp, hdz: hero.dazeT > 0, mdz: m.dazeT > 0, mst: m.st, mx: m.x, my: m.y, mix: kin.mix, miy: kin.miy };
+    if (tape.length >= 4000) return; tapeT += dt; if (tapeT < .05) return; tapeT = 0;   // 每秒 20 行
+    tape.push([t, R2(hero.x - m.x), R2(hero.y - m.y), ...side(hero, weapon, true, hero.mvx || 0, hero.mvy || 0), ...side(m, m.weapon, false, mvx, mvy),
+      Math.max(0, MODE_IDS.indexOf(curMode())), R2(m.ammo ?? 5), window.BOWAMMO && BOWAMMO.count ? R2(BOWAMMO.count()) : 5, ...near3(shots, m), ...near3(mshots, hero)]);
+  }
+  // 玩家真实按键（slippi 的 Controller / FightingICE 的 Key）：键盘、手机按钮、摇杆，精确到毫秒
+  const KEYMAP = { KeyJ: 'atk', KeyK: 'roll', KeyL: 'roll', Space: 'roll', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down' };
+  function onKey(e) { if (!tape || !KEYMAP[e.code] || e.repeat) return; keys.push([R2(gameT - tape.t0), 0, KEYMAP[e.code], e.type === 'keydown' ? 1 : 0]); }
+  function onBtn(e) { if (!tape) return; const id = e.target && e.target.closest && e.target.closest('#bA,#bR'); if (!id) return; keys.push([R2(gameT - tape.t0), 0, id.id === 'bA' ? 'atk' : 'roll', e.type === 'pointerdown' || e.type === 'touchstart' ? 1 : 0]); }
+  let joyPrev = null;
+  function joyTick() { if (!tape) return; const j = typeof joy !== 'undefined' && joy ? [Math.round(joy.dx * 4) / 4, Math.round(joy.dy * 4) / 4] : [0, 0]; if (!joyPrev || j[0] !== joyPrev[0] || j[1] !== joyPrev[1]) { if (joyPrev || j[0] || j[1]) keys.push([R2(gameT - tape.t0), 0, 'stick', j[0], j[1]]); joyPrev = j; } }
+  for (const ty of ['keydown', 'keyup']) addEventListener(ty, onKey, true);
+  for (const ty of ['pointerdown', 'pointerup', 'touchstart', 'touchend']) addEventListener(ty, onBtn, true);
   function upload(win) {
     if (!tape || tape.length < 20) return;
-    const body = JSON.stringify({ name: name(), weapon: m.weapon, win, lvl, dt: .1, cols: COLS, rows: tape }); tape = null;
+    const body = JSON.stringify({ name: name(), weapon: m.weapon, win, lvl, dt: .05, cols: COLS, rows: tape, keys, hits, touch: typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 1 : 0, snap: P }); tape = null;
     const KQ = 'wzb-xinmo-upq', q = (() => { try { return JSON.parse(localStorage.getItem(KQ) || '[]'); } catch (e) { return []; } })(); q.push(body);
     const send = () => { const left = []; let chain = Promise.resolve();
       for (const b of q.slice(-5)) chain = chain.then(() => fetch('/api/xinmo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: b }).then(r => { if (!r.ok) left.push(b); }).catch(() => left.push(b)));
@@ -10985,7 +11028,7 @@ window.XINMO = (() => {
     if (over) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } return; }
     if (m.wait > 0) { m.wait -= dt; m.inv = Math.max(m.inv, m.wait); hero.inv = Math.max(hero.inv, m.wait); m.f = Math.sign(hero.x - m.x) || m.f; return; }   // 对照表显示时双方都不能被打
     if (L) { const k = curMode(); L.time[k] = (L.time[k] || 0) + dt; }
-    recordRow(dt);
+    recordRow(dt); joyTick();
     const w = W(), lowHp = m.hp < m.T.hp * .35;
     // 挨打：和玩家完全一样——硬直 0.3 秒；重击倒地 0.3 秒 + 起身（经脉可加快），起身后 0.5 秒无敌
     if (m.air) { airStep(m, dt); return; }
