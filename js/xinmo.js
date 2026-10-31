@@ -601,7 +601,7 @@ window.XINMO = (() => {
     let best = 0; for (let i = 1; i < o.length; i++) if (o[i] > o[best]) best = i; return best;   // 0不动 1靠近 2远离 3上下对齐 4上下拉开 5出招 6翻滚 7蓄力
   }
   function netMove(dt, s, sd, adx, ady, reach) {
-    if (!NET) return false;
+    if (!NET || (NET.weapons && !NET.weapons.includes(m.weapon))) return false;   /* 只在测试赢过规则版的武器上用网络 */
     m.netT = (m.netT || 0) - dt; if (m.netT <= 0) { m.netA = netAct(); m.netT = .12; }
     const a = m.netA, w = W(); m.mode = 'net';
     if (a === 5) { const ok = w.class === 'ranged' ? ady < 8 && adx < 230 : adx < reach && ady < (w.dy || 14); if (ok && hero.inv < .15) { m.f = sd; startAtk(0); m.think = .15; return true; } }

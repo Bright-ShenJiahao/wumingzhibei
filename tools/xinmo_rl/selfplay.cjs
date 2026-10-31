@@ -83,7 +83,9 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   log.push('', `## 测试（36 局没练过的对局，武器 × 测试玩家全覆盖）`, `- 累计训练 ${episodes} 局，${gen} 代`, `- 规则版心魔：平均奖励 ${rA.toFixed(3)}，赢 ${wins(ruleR)} 局`, `- 网络心魔：平均奖励 ${nA.toFixed(3)}，赢 ${wins(netR)} 局`,
     ok ? '- **网络赢过规则版 → 上场（inGame: true）**' : '- 网络没有明显赢过规则版 → 不上场，游戏继续用规则版');
   for (const w of WEAPONS) { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); log.push(`  - ${w}：规则 ${(i.reduce((s, k) => s + reward(ruleR[k]), 0) / i.length).toFixed(2)} / 网络 ${(i.reduce((s, k) => s + reward(netR[k]), 0) / i.length).toFixed(2)}`); }
-  const model = { ...init, version: new Date().toISOString().slice(0, 16), heads: { ...init.heads, human: unflat(theta, head) }, inGame: ok, rl: { generations: gen, episodes, ruleReward: rA, netReward: nA } };
+  const perW = WEAPONS.filter(w => { const i = test.map((t, k) => t[0] === w ? k : -1).filter(k => k >= 0); return i.reduce((s, k) => s + reward(netR[k]) - reward(ruleR[k]), 0) / i.length > 0; });
+  log.push(`- 网络只用在：${perW.join('、') || '无'}（其余武器继续用规则版）`);
+  const model = { ...init, weapons: perW, version: new Date().toISOString().slice(0, 16), heads: { ...init.heads, human: unflat(theta, head) }, inGame: ok, rl: { generations: gen, episodes, ruleReward: rA, netReward: nA } };
   fs.writeFileSync(path.join(ROOT, 'data', 'xinmo_model.json'), JSON.stringify(model));
   fs.mkdirSync(path.join(ROOT, 'docs', 'xinmo_train'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'docs', 'xinmo_train', new Date().toISOString().slice(0, 13).replace('T', '_') + '-rl.md'), log.join('\n') + '\n');
