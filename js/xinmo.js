@@ -269,14 +269,16 @@ window.XINMO = (() => {
     if (fin && m.weapon === 'blade') bladeFx.push({ kind: 'slash', x: m.x + f * 30, y: m.y - 16, t: 0, T: .24, dir: f });
     const dx = hero.x - m.x, reach = (w.reach || 28) + 6;
     if ((C.multi || Math.sign(dx) === f) && Math.abs(dx) < reach && Math.abs(hero.y - m.y) < (w.dy || 14) + 1) {
+      const back = Math.sign(m.x - hero.x) !== hero.f ? 1.5 : 1;   // 背击 ×1.5：和玩家打敌人一样（你背对心魔时挨打）
+      if (back > 1) floaters.push({ x: hero.x, y: hero.y - 26, t: 0, txt: '背击！', big: true });
       if (m.weapon === 'halberd') {   // 长戟裂伤：和玩家一样每下 +1 层（最多 5），终段撕开 = 层数 × 0.3
         hb.n = Math.min(5, hb.n + 1); hb.t = 3;
-        const K = OUT(); let d = (C.dmg || 1) * K;
+        const K = OUT() * back; let d = (C.dmg || 1) * K;
         if (fin) { d += hb.n * .3 * K; hb.n = 0; bleedFx.push({ kind: 'rip', x: hero.x, y: hero.y - 12, t: 0, T: .2 }); }
         bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 });
         hitH(d, fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);
       }
-      else hitH((C.dmg || 1) * OUT(fin && m.weapon === 'blade' ? { guaranteed: true, cap: 2 } : null), fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);   // 大刀终段必暴击（上限 200%）、棍的晕，和玩家一样
+      else hitH((C.dmg || 1) * back * OUT(fin && m.weapon === 'blade' ? { guaranteed: true, cap: 2 } : null), fin ? 'skill' : 'basic', C.daze ? [C.daze, DZ()] : null);   // 大刀终段必暴击（上限 200%）、棍的晕，和玩家一样
       if (fin && m.weapon === 'blade' && hero.hp > 0 && hero.hp < maxHeroHp() * .15) { hero.hp = 0; floaters.push({ x: hero.x, y: hero.y - 40, t: 0, txt: '斩！', big: true, gold: true }); if (!hero.air) launch(hero, f * 48, 145); }   // 和玩家一致：先砍，剩血低于 15% 直接斩
       sfx('hit_' + (w.snd || 'staff'), hero.x);
       if (fin && C.knock && hero.st !== 'roll') hero.vx = f * 60;
@@ -327,7 +329,7 @@ window.XINMO = (() => {
     }
     if (m.weapon === 'halberd') {   // 回马突：往前冲，途中无敌
       const d = tier === 3 ? { dist: 80, dmg: 2.8 } : tier === 2 ? { dist: 60, dmg: 2.2 } : { dist: 40, dmg: 1.6 };
-      m.dash = { left: d.dist, dmg: d.dmg * K, hit: false }; m.inv = Math.max(m.inv, d.dist / 260 + .05); return;
+      m.dash = { left: d.dist, dmg: d.dmg * K, hit: false, stacks: tier === 3 ? 4 : tier === 2 ? 3 : 2 }; m.inv = Math.max(m.inv, d.dist / 260 + .05); return;
     }
     if (m.weapon === 'hammer') {   // 千斤坠
       const d = tier === 3 ? { range: 80, dmg: 3.6, size: 90 } : tier === 2 ? { range: 65, dmg: 2.8, size: 75 } : { range: 50, dmg: 2.0, size: 60 };
@@ -403,7 +405,8 @@ window.XINMO = (() => {
     }
     if (m.dash) {   // 回马突冲刺
       const step = Math.min(m.dash.left, 260 * dt); moveEnt(m, m.f * step, 0); m.dash.left -= step;
-      if (!m.dash.hit && Math.abs(hero.x - m.x) < 16 && Math.abs(hero.y - m.y) < (w.dy || 14) + 8) { m.dash.hit = true; dmgHero(m.dash.dmg, m, 'skill'); }
+      { const ddx = (hero.x - m.x) * m.f;   // 判定和玩家的回马突一样：身后 14、身前 18（再加身宽）、上下 dy+8；打中叠裂伤
+        if (!m.dash.hit && ddx > -14 - 8 && ddx < 18 + 8 && Math.abs(hero.y - m.y) < (w.dy || 14) + 8) { m.dash.hit = true; const hp0 = hero.hp; dmgHero(m.dash.dmg, m, 'skill'); if (hero.hp < hp0) { hb.n = Math.min(5, hb.n + m.dash.stacks); hb.t = 3; bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); } } }
       if (m.dash.left <= 0) { m.dash = null; m.st = 'idle'; m.t = 0; }
       return;
     }
@@ -428,10 +431,22 @@ window.XINMO = (() => {
     }
     if (m.st === 'atk') {
       const a = m.atk, C = w.combo[a.c]; a.t += dt; a.lg += dt;
+      // 出招中也能翻滚取消（玩家可以，心魔也要能）：你这一下真要打中我、或你蓄着我在你范围里 → 滚掉
+      { const s1 = seen(), hw1 = WEAP[s1.hw] || WEAP[weapon], hit1 = willHit(s1, hw1), chg1 = atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0;
+        const T1 = hw1.proj ? 0 : (s1.hw === 'halberd' ? 130 : s1.hw === 'hammer' ? 84 : s1.hw === 'blade' ? 50 : 68) + 16;
+        const danger = (hit1 != null && hit1 < .15 && s1.aid !== m.lastAid) || (chg1 > .4 && !hw1.proj && Math.abs(hero.x - m.x) < T1 && Math.abs(hero.y - m.y) < 30 && !(a.fi === C.f.length - 1 && !a.visual));
+        if (danger && m.rollCd === 0 && Math.random() < .9) { if (hit1 != null) m.lastAid = s1.aid; m.atk = null; if (smartRoll('atk', 'back')) return; } }
+      // 走 A（石子/汉弓出手能全速移动，和玩家一样）：出手前对齐你的线，石子/箭离手后马上错开你的线，太近就边打边退
+      if (w.proj && (w.move || 0) > 0) {
+        const released = a.fi >= C.f.length - 1, adxA = Math.abs(hero.x - m.x);
+        const vy = released ? (m.y >= hero.y ? 1 : -1) * (Math.abs(m.y - hero.y) < 22 ? 1 : 0) : Math.sign(hero.y - m.y) * (Math.abs(hero.y - m.y) > 2 ? 1 : 0);
+        const vx = adxA < 120 ? -(Math.sign(hero.x - m.x) || 1) : adxA > 200 ? (Math.sign(hero.x - m.x) || 1) : 0;
+        moveEnt(m, vx * 70 * P.move * w.move * dt, vy * 52 * P.move * w.move * dt); m.y = Math.max(M.top, Math.min(M.bot, m.y));
+      }
       if (w.lunge && a.lg < w.lungeT && Math.abs(hero.x - m.x) > w.reach * .6) moveEnt(m, m.f * w.lunge * dt, 0);
       if (a.t >= C.d[a.fi] * AS()) {
         a.t = 0; a.fi++;
-        if (a.fi === C.f.length - 1) strike();
+        if (a.fi === C.f.length - 1 && !a.visual) strike();   // 蓄力出手的收招只是动画，不再额外打一下普攻终段（和玩家 visualOnly 一样）
         if (a.fi >= C.f.length) {
           const next = a.c + 1 < w.combo.length ? a.c + 1 : -1;
           // 连招：打中了、玩家还在范围里、没在翻滚 → 接下一段；否则收手（高手不会打满空招）

@@ -21,7 +21,8 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
   const dbg = { in: dmg, kb };   // 开发者面板「最近一击」逐步记下伤害怎么变的，用来查「打中不掉血」的根本原因
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
-  if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : 1.5) * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
+  if (z.T.mirror) { if (!(traits.dot || traits.secondary)) { hero.lastHit = gameT; hero.lastHitC = hero.atk ? hero.atk.c : hero.lastShotC; }   /* 打中心魔也算打中，可以接连段（和打普通敌人一样；之前漏了，你对心魔只能一直打第 1 段） */
+    if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : (weapon === 'staff' ? .8 : 1.5) * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
     const type=traits.gearToken?.s.type||weapon,charged=traits.charged||traits.halberdCharge||traits.skyArrow||traits.gearToken?.charged;
     const sb=window.MERIDIAN&&MERIDIAN.x('shield')?.5:1;   // 经脉·破盾：盾的挡/卸概率减半、减伤也打折
