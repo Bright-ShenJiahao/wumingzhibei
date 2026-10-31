@@ -11,7 +11,7 @@
   const maxHp = () => (typeof maxHeroHp === 'function' ? maxHeroHp() : 10);
   const pop = (txt, color, big) => { if (typeof floaters !== 'undefined') floaters.push({ x: hero.x, y: hero.y - 50, t: 0, txt, color, big }); };
   function pick(noFire) { if (noFire) return Math.random() < .55 ? 'jinchuang' : 'jiu'; let r = Math.random() * 100; for (const k in KINDS) { r -= KINDS[k].w; if (r <= 0) return k; } return 'jinchuang'; }
-  function drop(x, y, kind) { ground.push({ k: kind || pick(), x, y, z: 14, vz: 90, t: 0 }); }
+  function drop(x, y, kind) { if (window.XINMO && XINMO.active && XINMO.active()) return;   /* 心魔战不掉补给 */ ground.push({ k: kind || pick(), x, y, z: 14, vz: 90, t: 0 }); }
   function reset() { stash = 0; ground = []; regenT = 0; drunkT = 0; jar = null; flying = []; fx = []; bossDrop = new Set(); placed = {}; }
   // 放补给箱：画在地上的道具（props），打碎后换成碎箱子并掉补给
   function placeCrate(x, wave) {

@@ -123,7 +123,7 @@ window.XINMO = (() => {
     try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
     send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
   }
-  const MODES = { punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
+  const MODES = { whiff: '抓蓄力放空', interrupt: '打断蓄力', respect: '避让蓄力', sky: '躲穿云箭', punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招', net: '学玩家走位' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
   function risk(k) {   // 这种情形的挨打率 ÷ 平均挨打率（>1 = 比平时更容易挨打）
@@ -453,6 +453,44 @@ window.XINMO = (() => {
       if (spare >= .42 * risk('charge') && m.weapon !== 'halberd') { m.mode = 'punish'; startCharge(spare); return; }
       m.mode = 'punish'; m.think = .12 + Math.random() * .1; startAtk(0); return;
     }
+    // 2.5) 读蓄力（用户定 10/31：玩家蓄力刮一下就翻滚逃，心魔要懂蓄力）
+    // 穿云箭落点：在圈里就走出去，来不及就滚
+    for (const f of bowFx) if (f.kind === 'sky' && !f.mirror && !f.resolved) {
+      const r = f.data.radius + 8, d = Math.hypot(m.x - f.x, (m.y - f.y) * 2);
+      if (d < r) { const left = .5 - f.t, ang = Math.atan2((m.y - f.y) * 2, m.x - f.x || 1), need = (r - d) / (70 * P.move);
+        if (need > left - .03 && m.rollCd === 0) { roll(Math.cos(ang), Math.sin(ang)); return; }
+        m.mode = 'sky'; moveTo(f.x + Math.cos(ang) * (r + 4), f.y + Math.sin(ang) * (r + 4) / 2, dt, 1); return; }
+    }
+    // 你蓄力放空了（满蓄出手的收招）：立刻冲上去，赶在你翻滚前贴身；你滚了就由「追翻滚」接
+    if (hero.atk && hero.atk.visualOnly && hero.st === 'atk' && w.class !== 'ranged' && adx < 170) {
+      if (adx < reach && ady < (w.dy || 14)) { m.mode = 'whiff'; m.f = sd; startAtk(0); m.think = .1; return; }
+      if (adx > reach + 24 && adx < reach + 90 && m.rollCd === 0) { m.mode = 'whiff'; roll(sd, Math.max(-1, Math.min(1, dy / 30))); m.punish = true; return; }   // 远了就滚进去（翻滚快、有无敌）
+      m.mode = 'whiff'; moveTo(s.x - sd * (reach - 6), s.y, dt, 1); return;
+    }
+    if (s.charging && charging && hw) {
+      // 你满蓄能打到多远：棍 64、锤 80、刀 45（上下 45）、戟冲 80+46；远程看弹道
+      const T = hw.proj ? 0 : s.hw === 'halberd' ? 130 : s.hw === 'hammer' ? 84 : s.hw === 'blade' ? 50 : 68, Ty = s.hw === 'blade' ? 46 : s.hw === 'hammer' ? Math.max(24, adx * .7 + 14) : 26;
+      const inRange = !hw.proj && adx < T + 10 && ady < Ty + 4;
+      if (w.class !== 'ranged' && adx < reach && ady < (w.dy || 14)) { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .1; return; }   // 贴身：直接打断（蓄力中没有无敌）
+      if (w.class === 'ranged' && ady < 9 && adx < 220 && s.st !== 'roll') { m.mode = 'interrupt'; m.f = sd; startAtk(0); m.think = .15; return; }   // 远程：你站着蓄就射你
+      if (inRange) {   // 在你的满蓄范围里：走得出去就走，走不出去就滚（不往你身上滚）
+        const out = (T + 18 - adx) / (70 * P.move);
+        if (out > .35 && m.rollCd === 0 && !((m.x < 40 && sd > 0) || (m.x > 680 && sd < 0))) { roll(-sd, (m.y < (M.top + M.bot) / 2 ? 1 : -1) * .3); return; }
+        m.mode = 'respect'; moveTo(Math.max(14, Math.min(706, s.x - sd * (T + 18))), m.y, dt, 1); return;
+      }
+      if (hw.proj) {   // 你在蓄石子/箭：错开你的弹道线再逼近，到身边就打断
+        const off = Math.max(16, adx * .14), ty = s.y + (m.y >= s.y ? 1 : -1) * off;
+        if (w.class !== 'ranged') { m.mode = 'respect'; moveTo(adx > reach + 20 ? s.x - sd * (reach + 10) : s.x - sd * (reach - 6), adx > reach + 20 ? Math.max(M.top, Math.min(M.bot, ty)) : s.y, dt, 1); return; }
+        m.mode = 'respect'; moveTo(m.x, Math.max(M.top, Math.min(M.bot, ty)), dt, 1); return;
+      }
+      // 在满蓄范围外：贴着边缘等你放空，放空的收手由上面「反打」接（远程就对齐射你）
+      if (w.class === 'ranged') { m.mode = 'respect'; moveTo(m.x, s.y, dt, 1); return; }
+      // 骗你放：在边缘里外晃（进到 T+4 再退到 T+26），你一放空就被上面接住；你憋太久（满蓄后 1 秒）就从侧面滚进去打
+      m.bait = (m.bait || 0) + dt; const held = atkHeldSince ? (performance.now() - atkHeldSince) / 1000 : 0;
+      if (held > P.full + 1 && m.rollCd === 0 && adx < T + 40) { roll(sd, (m.y < s.y ? -1 : 1) * .9); m.punish = true; return; }
+      const inn = (m.bait % .9) < .35;
+      m.mode = 'respect'; moveTo(Math.max(14, Math.min(706, s.x - sd * (inn ? T + 4 : T + 26))), s.y + (m.y >= s.y ? 6 : -6), dt, 1); return;
+    }
     // 3) 防：玩家这一下站着不动会不会打中我（SmashBot Defend.in_range）——会打中才处理
     const hitIn = willHit(s, hw);
     // 学到你哪一段最伤它：你出到它的前一段时就提前退出范围
@@ -735,5 +773,5 @@ window.XINMO = (() => {
     el.querySelector('[data-x]').onclick = () => el.remove();
     el.querySelector('[data-clr]').onclick = () => { const all = readAll(); delete all[name()]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} memory(); };
   }
-  return { setNet(j) { NET = j; }, hasNet: () => !!NET, memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
+  return { active: () => !!(m && !m.dead && !ended), setNet(j) { NET = j; }, hasNet: () => !!NET, memory, lessons: () => (m && m.lessonText) || [], takeHit, spawn, update, draw, end, insight, reward, onHurt, stats: () => { const d = data(); return { wins: d.wins, tries: d.tries }; }, level, mirror: () => m, reset: () => { const c = document.getElementById('xmCard'); if (c) c.remove(); m = null; ended = false; } };
 })();

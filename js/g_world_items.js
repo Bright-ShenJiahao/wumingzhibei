@@ -6,6 +6,7 @@ const FOOD = [
   { k: 'pig', heal: 4, w: 6 },    // 烤乳猪：稀有，回 4（10→6）
 ];
 function spawnDrop(x, y, forceK) {
+  if (window.XINMO && XINMO.active && XINMO.active()) return;   // 心魔战不掉回血道具（用户定 10/31）
   let pick;
   if (forceK) pick = FOOD.find(f => f.k === forceK) || FOOD[0];
   else {
