@@ -191,7 +191,7 @@ window.XINMO = (() => {
     if (dz && dz[0] > 0 && !(m.dazeT > 0) && !(gameT < (m.dazeImm || 0)) && Math.random() < dz[0]) { m.dazeT = dz[1]; m.dazeImm = gameT + dz[1] + 3; floaters.push({ x: m.x, y: m.y - 44, t: 0, txt: '晕！' }); }   // 你打晕心魔，和心魔打晕你一样
   }
   // ---------- 局内分析（用户定 11/01）：开打 10～20 秒内认出你是哪种打法，换对应的打法 ----------
-  const STYLE = { neutral: '还没看出来', poke: '蓄力摸一下就跑型', rush: '贴身猛攻型', kite: '拉远风筝型', walkdodge: '走位躲弹型', camp: '站桩蓄力型' };
+  const STYLE = { oki: '打倒就压起身型', neutral: '还没看出来', poke: '蓄力摸一下就跑型', rush: '贴身猛攻型', kite: '拉远风筝型', walkdodge: '走位躲弹型', camp: '站桩蓄力型' };
   function styleReset() { m.sty = { n: 0, chg: 0, close: 0, atkNear: 0, dist: 100, still: [0, 0], rel: [0, 0], relN: 0, relP: null, rollAtk: [0, 0], rollP: null, walk: [0, 0], walkT: -9, cur: 'neutral', cand: null, candN: 0, lockT: 0, evalT: 1, evi: '', ex: {}, prevSt: '', fxN: 0 }; }
   const decay = a => { if (a[1] > 12) { a[0] *= .75; a[1] *= .75; } };   // 计数超过 12 次就打折：旧习惯慢慢失效，局中换打法能重新认出来
   function styleTick(dt) {
@@ -218,7 +218,8 @@ window.XINMO = (() => {
     S.evalT -= dt; if (S.evalT > 0 || S.n < 8) return; S.evalT = 1;
     const rate = a => a[1] ? a[0] / a[1] : 0, pct = v => Math.round(v * 100) + '%', hw = WEAP[weapon] || {}, still = S.still[1] > 1 ? S.still[0] / S.still[1] : 0;
     let c = 'neutral', ev = '';
-    if (S.close > .5 && S.dist < 65 && S.atkNear > .2) { c = 'rush'; ev = `${pct(S.close)} 的时间贴着打`; }
+    if ((S.wakeN || 0) >= 3 && (S.wakeNear || 0) / S.wakeN >= .7) { c = 'oki'; ev = `${S.wakeN} 次起身里 ${pct(S.wakeNear / S.wakeN)} 你都贴在旁边等着压`; }
+    else if (S.close > .5 && S.dist < 65 && S.atkNear > .2) { c = 'rush'; ev = `${pct(S.close)} 的时间贴着打`; }
     else if (S.relN >= 3 && S.chg > .25 && rate(S.rel) > .6) { c = 'poke'; ev = `蓄力时间占 ${pct(S.chg)}，放完 ${pct(rate(S.rel))} 马上往后撤`; }
     else if (hw.proj && S.relN >= 3 && still > .7 && S.dist > 85 && S.dist < 140) { c = 'camp'; ev = `蓄力时 ${pct(still)} 站着不动，常在 ${Math.round(S.dist)} 的距离`; }
     else if (S.walk[1] >= 4 && rate(S.walk) > .7) { c = 'walkdodge'; ev = `本来会中的 ${Math.round(S.walk[1])} 次里 ${pct(rate(S.walk))} 靠走位躲开`; }
@@ -530,7 +531,15 @@ window.XINMO = (() => {
     // 0) 起身（用户反馈：玩家打中一下就压起身压到死）：刚起身有 0.5 秒无敌，你贴在旁边等我 → 不站着等你压，立刻翻滚脱身（滚到你背后或往后，按翻滚学习挑方向）
     if (m.wakeUp) { m.wakeUp = false;
       const hw0 = WEAP[s.hw] || WEAP[weapon], near = hw0.proj ? (ady < 14 && adx < 200) : (adx < (hw0.reach || 28) + (hw0.lunge ? 24 : 8) + 16 + 24 && ady < 30);
-      if ((near || s.charging) && m.rollCd === 0 && smartRoll('wake', adx < 50 ? 'through' : 'back')) { m.mode = 'wake'; return; } }
+      if (m.sty) { m.sty.wakeN = (m.sty.wakeN || 0) + 1; if (near) m.sty.wakeNear = (m.sty.wakeNear || 0) + 1; }   // 局内：你压起身的次数
+      if (near || s.charging) {
+        // 起身选项也会学：翻滚（各方向）或趁起身无敌直接出手反打；按这几次哪种没挨打来挑
+        const st = (L && (L.roll ||= {})) || {}, sc = k => { const r = st['wake:' + k] || [0, 0]; return (r[0] + 1) / (r[1] + 2) + Math.random() * .15; };
+        const canCounter = w.class !== 'ranged' && adx < (w.reach || 28) + 4 && ady < (w.dy || 14) && s.st !== 'atk' && !s.charging;
+        const rollBest = Math.max(sc('through'), sc('back'), sc('up'), sc('down'));
+        if (canCounter && sc('counter') > rollBest) { m.mode = 'wake'; m.f = sd; startAtk(0); m.rollRec = { k: 'wake:counter', t: gameT, hp: m.hp }; return; }
+        if (m.rollCd === 0 && smartRoll('wake', adx < 50 ? 'through' : 'back')) { m.mode = 'wake'; return; }
+      } }
     // 1) 飞行物：推算下一小段会不会打中自己，会才躲（SmashBot needsprojectiledefense）
     if (!m.shotSeen) {   // 翻滚冷却中也要走位躲（只有翻滚那一步要求冷却好）
       for (const p of shots) {
@@ -635,6 +644,7 @@ window.XINMO = (() => {
     const hitIn = willHit(s, hw);
     // 学到你哪一段最伤它：你出到它的前一段时就提前退出范围
     { const tc = topC(); if (tc && tc[0] === 'c' && s.st === 'atk' && s.c === +tc.slice(1) - 1 && adx < edge + 6 && !m.backOff) m.backOff = .35; }
+    if (sty() === 'oki' && s.st === 'atk' && s.c >= 1 && adx < edge + 6 && !m.backOff) m.backOff = .35;   // 你爱压起身：别吃会把我打倒的后段，第 2 段起就退
     if (hitIn != null && s.aid !== m.lastAid) {
       m.lastAid = s.aid;
       // 来得及走出范围就后撤（省下翻滚），否则翻滚；远程武器直接往后滚拉开

@@ -5,7 +5,7 @@
 const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const MINUTES = +arg('minutes', 60), BASE = arg('url', 'http://localhost:8765/index.html?debug'), ROOT = path.join(__dirname, '..', '..');
-const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'fake', 'walkdodge', 'rollatk', 'camp', 'switch', 'push2', 'charger2'];   // fake 假蓄力骗；walkdodge 只走位躲弹不滚；rollatk 滚过来马上打；camp 站桩蓄满等对齐；switch 每 8 秒换打法   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
+const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'oki', 'fake', 'walkdodge', 'rollatk', 'camp', 'switch', 'push2', 'charger2'];   // oki：打倒就压起身（真人柴业政的打法）   // fake 假蓄力骗；walkdodge 只走位躲弹不滚；rollatk 滚过来马上打；camp 站桩蓄满等对齐；switch 每 8 秒换打法   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
 const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3), EVAL_N = +arg('evaln', 39), NF = 37;   // NF：网络输入维度（29 基础 + 8 新增）
 
 // ---------- 页面里跑一局（同步推进 update，固定随机种子） ----------
@@ -45,7 +45,12 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
           else if (!atkHeldSince && hero.st === 'idle') { if (adx < want - 15) key[dx > 0 ? 'KeyA' : 'KeyD'] = true; else if (adx > want + 15) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; else atkPress(); hold = 0; }   // 先走到 107 附近再蓄
           else if (atkHeldSince) { if (hold >= chargeMaxMs() / 1000 && ady < 10 && adx < want + 40) { atkRelease(); after = .4; } else if (hold > 4) { atkRelease(); after = .3; } }
         }
-        else if (B === 'push') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
+        else if (B === 'oki' && (m.air || ['bounce', 'getup', 'land'].includes(m.st) || (m.st === 'idle' && m.inv > 0 && m.inv < .6))) {   // 心魔倒地：站到它起身的位置旁边，等无敌快结束就出手
+          const side = Math.sign(hero.x - m.x) || -1, tx = m.x + side * (R - 6);
+          if (Math.abs(hero.x - tx) > 4) key[hero.x < tx ? 'KeyD' : 'KeyA'] = true; if (ady > 3) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; hero.f = -side;
+          if ((m.st === 'getup' && m.t > .22) || (m.st === 'idle' && m.inv < .2)) pressAtk = true;
+        }
+        else if (B === 'push' || B === 'oki') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
         else if (B === 'human') { if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
         else if (B === 'charger') {
           const T = { staff: 64, hammer: 80, blade: 45, halberd: 120, stone: 160, bow: 170 }[weapon];
