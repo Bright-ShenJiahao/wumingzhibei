@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=a68f1b55a5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=a68f1b55a5)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=ca6921832e" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=ca6921832e)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='63f2ca3fad0f',busy=false;
+var BUILD='e20c19091bff',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -4377,7 +4377,7 @@ function strike() {
       bowFx.push({ kind: 'volley', x: h.x + h.f * 20, y: h.y - 22, t: 0, T: .2, dir: h.f });
       for (let i = 0; i < n; i++) {
         const ang = n === 1 ? 0 : (i - (n - 1) / 2) * (spread * 2 / (n - 1));
-        const C2 = { ...C, dmg: .5, pierce: false, noPierce: true };
+        const C2 = { ...C, pierce: false, noPierce: true };   /* 连珠箭每支 = 第三段 dmg（用户定 10/31：0.75） */
         shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C: C2, c, hitSet: [], gearToken: h.atk.gearToken, kind: 'arrow', volley: true, final: true });
       }
       return;
@@ -4385,7 +4385,7 @@ function strike() {
     const mainC = C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? (weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0;   // 跑动中弹道偏：石子 ±6、汉弓 ±3，站定不偏
-    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher, bowPierce: weapon === 'bow' && !finisher && Math.random() < .3 });   /* 用户定 10/31：汉弓普攻 30% 穿透 1 人 */
     if (window.ROGUE && ROGUE.onShoot) ROGUE.onShoot(C, c, finisher, sOff);   // 飞蝗散弹、矢如连珠副弹
     if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
       const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;
@@ -4640,8 +4640,11 @@ function updateShots(dt) {
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
       if (s.statCard && window.ROGUE && ROGUE.stat) ROGUE.stat(s.statCard, pdmg, 0);
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      if (s.final && s.kind !== 'arrow' && !s.secondary && !s.charged && !s.splashed) { s.splashed = true;   /* 用户定 10/31：石子全力投溅射旁边 1 人，50% 伤害 */
+        const o = zs.filter(e => e !== z && !e.dead && !e.air && !e.hidden && Math.hypot(e.x - z.x, (e.y - z.y) * 1.6) < 40).sort((a, b) => Math.hypot(a.x - z.x, a.y - z.y) - Math.hypot(b.x - z.x, b.y - z.y))[0];
+        if (o) { hit(o, pdmg * .5, 30, Math.sign(o.x - z.x) || Math.sign(s.vx), false, 0, .1, false, true, { secondary: true }); stoneHits.push({ x: o.x, y: o.y - 6, t: 0, T: .2 }); } }
       if (s.gearReturn && !s.spun) { s.spun = true; s.gearReturn = false; gearSpins.push({ x: z.x, y: z.y - 12, t: 0, T: .42, dmg: pdmg * .45, kind: s.kind, dir: Math.sign(s.vx) || 1, done: false }); }   // 回旋（用户定）：打中后绕着中箭处转一小圈，再扫到最多 2 人，每人 45%   // 标记已命中，避免同一颗石子反复打同一个敌人
-      if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
+      if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && ((!s.gearPierce && !s.bowPierce) || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
     }
   }
   shots = shots.filter(s => s.life > 0);
@@ -10973,7 +10976,7 @@ window.XINMO = (() => {
       if (m.weapon === 'bow' && fin) {   // 连珠箭：3~5 支 ±8° 小扇形，每支 0.5
         const n = 3 + Math.floor(Math.random() * 3), spread = 8 * Math.PI / 180;
         bowFx.push({ kind: 'volley', x: m.x + f * 20, y: m.y - 22, t: 0, T: .2, dir: f });
-        for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: .5 * K }); }
+        for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: C.dmg * K }); }
         return;
       }
       mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K, dz: C.dazeChance ? [C.dazeChance, C.dazeTime] : null });
@@ -12034,14 +12037,14 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .72, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .72, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.4, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
+    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
     { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.15, kb: 38, spd: 330, life: 1.05 },
     { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: 1.15, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .6, kb: 75, spd: 390, life: 1.15 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .75, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
 // 长戟使用白衣专用帧。

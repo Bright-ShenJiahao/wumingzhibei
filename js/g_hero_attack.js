@@ -238,7 +238,7 @@ function strike() {
       bowFx.push({ kind: 'volley', x: h.x + h.f * 20, y: h.y - 22, t: 0, T: .2, dir: h.f });
       for (let i = 0; i < n; i++) {
         const ang = n === 1 ? 0 : (i - (n - 1) / 2) * (spread * 2 / (n - 1));
-        const C2 = { ...C, dmg: .5, pierce: false, noPierce: true };
+        const C2 = { ...C, pierce: false, noPierce: true };   /* 连珠箭每支 = 第三段 dmg（用户定 10/31：0.75） */
         shots.push({ x: h.x + h.f * 16, y: h.y, z: 22, vx: h.f * C.spd * Math.cos(ang), vy: C.spd * Math.sin(ang) * .5, life: C.life, C: C2, c, hitSet: [], gearToken: h.atk.gearToken, kind: 'arrow', volley: true, final: true });
       }
       return;
@@ -246,7 +246,7 @@ function strike() {
     const mainC = C;
     const running = Math.hypot(h.ix || 0, h.iy || 0) > .2;   // 有方向输入 = 跑动中投掷
     const sOff = running ? (weapon === 'bow' ? rnd(-3, 3) : rnd(-6, 6)) : 0;   // 跑动中弹道偏：石子 ±6、汉弓 ±3，站定不偏
-    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher });
+    shots.push({ x: h.x + h.f * 16, y: h.y + sOff, z: 22, vx: h.f * C.spd * (window.Boss && Boss.wxProj ? Boss.wxProj() : 1), life: C.life || (C.pierce ? 1.1 : .8), C: mainC, c, hitSet: [], gearToken:h.atk.gearToken, kind: weapon === 'bow' ? 'arrow' : undefined, final: finisher, bowPierce: weapon === 'bow' && !finisher && Math.random() < .3 });   /* 用户定 10/31：汉弓普攻 30% 穿透 1 人 */
     if (window.ROGUE && ROGUE.onShoot) ROGUE.onShoot(C, c, finisher, sOff);   // 飞蝗散弹、矢如连珠副弹
     if (weapon === 'stone' && finisher) {                     // 全力投自带左右两颗30%副弹
       const sideToken = h.atk.gearToken ? { ...h.atk.gearToken, crit: false, projectileExtrasChecked: true } : null;

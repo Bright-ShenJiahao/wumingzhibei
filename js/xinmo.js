@@ -237,7 +237,7 @@ window.XINMO = (() => {
       if (m.weapon === 'bow' && fin) {   // 连珠箭：3~5 支 ±8° 小扇形，每支 0.5
         const n = 3 + Math.floor(Math.random() * 3), spread = 8 * Math.PI / 180;
         bowFx.push({ kind: 'volley', x: m.x + f * 20, y: m.y - 22, t: 0, T: .2, dir: f });
-        for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: .5 * K }); }
+        for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * (spread * 2 / (n - 1)); mshots.push({ ...base, vx: f * C.spd * Math.cos(a), vy: C.spd * Math.sin(a) * .5, kind: 'arrow', volley: true, final: true, dmg: C.dmg * K }); }
         return;
       }
       mshots.push({ ...base, vx: f * C.spd, kind: m.weapon === 'bow' ? 'arrow' : 'stone', final: fin, dmg: (C.dmg || 1) * K, dz: C.dazeChance ? [C.dazeChance, C.dazeTime] : null });

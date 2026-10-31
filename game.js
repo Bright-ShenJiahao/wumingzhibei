@@ -105,14 +105,14 @@ const WEAP = {
   // move：出手期间的移动倍率（0 = 定住，1 = 全速）；石子边走边扔所以是 1
   // 射程：普通投约 149（和投石手的 150 打平），弓箭手 190 仍然比你远，还是得往前压
   stone: { name: '石子', class: 'ranged', proj: true, move: 1, combo: [
-    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .72, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
-    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .72, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
-    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.4, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
+    { f: ['stone_1a', 'stone_1b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 左手扔（射程约 179）
+    { f: ['stone_2a', 'stone_2b'], d: [.0945, .2205], dmg: .9, kb: 40, spd: 230, life: .78 },      // 右手扔（射程约 179）
+    { f: ['stone_3a', 'stone_3b', 'stone_3c'], d: [.189, .0735, .294], dmg: 1.6, kb: 70, spd: 310, life: .8, noPierce: true, dazeChance: 1, dazeTime: .6, daze: 1 },   // 全力投：命中即停、必晕0.6秒
   ] },
   bow: { name: '汉弓', class: 'ranged', proj: true, move: 1, snd: 'staff', combo: [
     { f: ['bow_1a', 'bow_1b'], d: [.20, .26], dmg: 1.15, kb: 38, spd: 330, life: 1.05 },
     { f: ['bow_2a', 'bow_2b'], d: [.18, .26], dmg: 1.15, kb: 38, spd: 340, life: 1.08 },
-    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .6, kb: 75, spd: 390, life: 1.15 },
+    { f: ['bow_3a', 'bow_3b'], d: [.22, .30], dmg: .75, kb: 75, spd: 390, life: 1.15 },
   ] },
 };
 // 长戟使用白衣专用帧。

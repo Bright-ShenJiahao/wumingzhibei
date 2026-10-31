@@ -36,8 +36,11 @@ function updateShots(dt) {
       else if (s.kind !== 'arrow') stoneHits.push({ x: s.x, y: s.y - 6, t: 0, T: .2 });
       if (s.statCard && window.ROGUE && ROGUE.stat) ROGUE.stat(s.statCard, pdmg, 0);
       if (!s.secondary) hero.lastHitC = s.c; sfx('hit_stone', s.x); s.hitSet.push(z);
+      if (s.final && s.kind !== 'arrow' && !s.secondary && !s.charged && !s.splashed) { s.splashed = true;   /* 用户定 10/31：石子全力投溅射旁边 1 人，50% 伤害 */
+        const o = zs.filter(e => e !== z && !e.dead && !e.air && !e.hidden && Math.hypot(e.x - z.x, (e.y - z.y) * 1.6) < 40).sort((a, b) => Math.hypot(a.x - z.x, a.y - z.y) - Math.hypot(b.x - z.x, b.y - z.y))[0];
+        if (o) { hit(o, pdmg * .5, 30, Math.sign(o.x - z.x) || Math.sign(s.vx), false, 0, .1, false, true, { secondary: true }); stoneHits.push({ x: o.x, y: o.y - 6, t: 0, T: .2 }); } }
       if (s.gearReturn && !s.spun) { s.spun = true; s.gearReturn = false; gearSpins.push({ x: z.x, y: z.y - 12, t: 0, T: .42, dmg: pdmg * .45, kind: s.kind, dir: Math.sign(s.vx) || 1, done: false }); }   // 回旋（用户定）：打中后绕着中箭处转一小圈，再扫到最多 2 人，每人 45%   // 标记已命中，避免同一颗石子反复打同一个敌人
-      if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && (!s.gearPierce || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
+      if (s.C.noPierce || z.T.blocksPierce || (!s.C.pierce && ((!s.gearPierce && !s.bowPierce) || s.hitSet.length >= 2))) { s.life = 0; s.gearReturn=false; }
     }
   }
   shots = shots.filter(s => s.life > 0);
