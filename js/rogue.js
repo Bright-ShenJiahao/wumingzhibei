@@ -251,14 +251,23 @@
     if (killCritUntil > now()) { ctx.globalAlpha = .6 + .4 * Math.sin(T * 14); ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 4; i++) ctx.fillRect(hero.x + hero.f * (10 + i * 3), hero.y - 20 - i * 2, 2, 2); ctx.globalAlpha = 1; }
     if (cunjin && has['寸劲'] && typeof charging !== 'undefined' && charging) { ctx.strokeStyle = '#ffd25a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(hero.x, hero.y, 15, 5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // 回马残影
-    for (const g of ghosts) {   // 回马：只画一道武器残影（淡青），朝身后扫过去
-      const W = WEAP[g.w] || {}, reach = (W.reach || 30) + 10, u = Math.min(1, g.t / .18), a = .7 * (1 - g.t / .45);
-      ctx.save(); ctx.globalAlpha = Math.max(0, a); ctx.strokeStyle = '#bff4ff'; ctx.shadowColor = '#6fe0ff'; ctx.shadowBlur = 8; ctx.lineCap = 'round';
-      const cx = g.x, cy = g.y - 18;
-      if (W.class === 'ranged') { const x = cx + g.f * reach * 2 * u; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - g.f * 14, cy); ctx.lineTo(x, cy); ctx.stroke(); }
-      else { const a0 = -1.1, a1 = 1.0, ang = a0 + (a1 - a0) * u; ctx.lineWidth = g.w === 'hammer' ? 5 : 3;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + g.f * Math.cos(ang) * reach, cy + Math.sin(ang) * reach * .55); ctx.stroke();
-        ctx.globalAlpha *= .45; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(cx, cy, reach, reach * .55, 0, g.f > 0 ? a0 : Math.PI - ang, g.f > 0 ? ang : Math.PI - a0); ctx.stroke(); }
+    for (const g of ghosts) {   // 回马（用户定）：用这把武器自己的图做淡青色影子，朝身后扫一道弧，后面拖 3 道渐淡的残影；戟是戟、锤是锤
+      const W = WEAP[g.w] || {}, reach = (W.reach || 30) + 10, u = Math.min(1, g.t / .18), a = .9 * (1 - g.t / .45), im = ghostImg(g.w);
+      const cx = g.x, cy = g.y - 16;
+      ctx.save();
+      if (W.class === 'ranged') {   // 石子 / 弓：武器影子朝身后飞出去
+        for (let k = 3; k >= 0; k--) { const uu = Math.max(0, u - k * .12), x = cx + g.f * reach * 2 * uu; ctx.globalAlpha = Math.max(0, a * (k ? .25 * (4 - k) / 3 : 1));
+          if (im) { const w = g.w === 'bow' ? 30 : 12, h = w * im.height / im.width; ctx.save(); ctx.translate(x, cy); ctx.scale(g.f, 1); ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); } }
+      } else {
+        const a0 = -1.25, a1 = .95, len = g.w === 'hammer' ? reach * 1.5 : reach * 1.6;
+        for (let k = 3; k >= 0; k--) {   // k=0 是本体，1~3 是拖在后面的残影
+          const ang = a0 + (a1 - a0) * Math.max(0, u - k * .09); ctx.globalAlpha = Math.max(0, a * (k ? .3 * (4 - k) / 3 : 1));
+          ctx.save(); ctx.translate(cx, cy); ctx.scale(g.f, 1); ctx.rotate(ang);
+          if (im) { const w = len, h = Math.max(6, w * im.height / im.width); ctx.drawImage(im, 0, -h / 2, w, h); }   // 握把在身边，武器头朝外
+          else { ctx.strokeStyle = '#bff4ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke(); }
+          ctx.restore();
+        }
+      }
       ctx.restore();
     }
     if (lowHp()) { for (let i = 0; i < 3; i++) { ctx.globalAlpha = .35; ctx.fillStyle = '#ff3a2a'; ctx.beginPath(); ctx.ellipse(hero.x + Math.sin(T * 5 + i * 2) * 7, hero.y - 10 - ((T * 30 + i * 11) % 30), 2.5, 5, 0, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; }
@@ -382,6 +391,18 @@
       if (n) { stat('飞蝗'); fx.push({ k: 'bounce', x0: z.x, y0: z.y - 10, z: n, t: 0, T: .15, dmg: (dmg || 1) * .6 }); }
     }
     if (has['震慑'] && !z.dead && (z.daze > 0 || knocked || z.air) && !(z.flawUntil > t)) { z.flawUntil = t + 4; stat('震慑', 0); pop(z.x, z.y - 40, '破绽', '#ff7a5a'); }
+  }
+  // 回马残影用的武器图：把 w_* 武器图标染成淡青色并横放（武器头朝右），每种武器只做一次
+  const ghostCache = {};
+  function ghostImg(w) {
+    if (ghostCache[w]) return ghostCache[w];
+    const src = typeof IMG !== 'undefined' && IMG['ui_w_' + w]; if (!src || !src.complete || !src.naturalWidth) return null;
+    const c = document.createElement('canvas'), g = c.getContext('2d'), W0 = src.naturalWidth, H0 = src.naturalHeight, rot = W0 < H0 * 1.3 ? -Math.PI / 4 : 0;   // 斜放的图标转平
+    const D = Math.ceil(Math.hypot(W0, H0)); c.width = D; c.height = rot ? Math.ceil(D * .35) : H0;
+    g.translate(D / 2, c.height / 2); g.rotate(rot); g.drawImage(src, -W0 / 2, -H0 / 2);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(150,235,255,.55)'; g.fillRect(0, 0, c.width, c.height);
+    c.naturalWidth = c.width; c.complete = true;
+    return ghostCache[w] = c;
   }
   function shockwave(x, y, r, dmg, knock, name) {
     fx.push({ k: 'ring', x, y, r, t: 0, T: .3 });

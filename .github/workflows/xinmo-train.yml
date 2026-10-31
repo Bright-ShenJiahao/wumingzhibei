@@ -1,0 +1,30 @@
+# 心魔 AI 自动训练（用户定 2026-10-31）：每周一次，也可以在 GitHub「Actions → 心魔训练 → Run workflow」手动跑。
+# 下载线上对局（公开接口，不用密钥）→ 训练 → 把模型、训练报告、用过的对局编号提交进仓库（只改 data/ 和 docs/，Netlify 不会因此重新部署）
+# → 服务器读到 data/xinmo_trained.json 后自动删除这些原始对局。每次运行的完整日志在 Actions 页面可查。
+name: 心魔训练
+on:
+  schedule: [{ cron: '0 19 * * 0' }]   # 每周一 04:00（日本时间）
+  workflow_dispatch: {}
+permissions: { contents: write }
+concurrency: { group: xinmo-train, cancel-in-progress: false }
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install numpy==2.1.3
+      - name: 下载对局
+        run: python3 tools/xinmo_fetch.py
+      - name: 训练
+        run: python3 tools/xinmo_train/train.py --epochs 40
+      - name: 提交模型和训练报告
+        run: |
+          git config user.name "xinmo-train-bot"
+          git config user.email "xinmo-train-bot@users.noreply.github.com"
+          git add data/xinmo_model.json data/xinmo_trained.json docs/xinmo_train || true
+          if git diff --cached --quiet; then echo "没有新结果"; exit 0; fi
+          git commit -m "心魔训练 $(date -u +%Y-%m-%d)：模型与训练报告（自动）"
+          git pull --rebase origin main && git push origin HEAD:main

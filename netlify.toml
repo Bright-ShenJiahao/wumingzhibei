@@ -1,7 +1,8 @@
 [build]
   publish = "."
   # 只有 main 分支才部署；preview 分支是给用户本地试玩用的（raw.githack 读取），不消耗 Netlify 构建时间
-  ignore = "test \"$BRANCH\" != \"main\""
+  # 训练任务只改 data/、docs/：这种提交不重新部署（省构建时间）
+  ignore = "test \"$BRANCH\" != \"main\" || git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)data' ':(exclude)docs'"
 
 [build.environment]
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"

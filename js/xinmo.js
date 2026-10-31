@@ -115,7 +115,7 @@ window.XINMO = (() => {
   for (const ty of ['pointerdown', 'pointerup', 'touchstart', 'touchend']) addEventListener(ty, onBtn, true);
   function upload(win) {
     if (!tape || tape.length < 20) return;
-    const body = JSON.stringify({ name: name(), weapon: m.weapon, win, lvl, dt: .05, cols: COLS, rows: tape, keys, hits, touch: typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 1 : 0, snap: P }); tape = null;
+    const body = JSON.stringify({ kind: 'xinmo', name: name(), weapon: m.weapon, win, lvl, dt: .05, cols: COLS, rows: tape, keys, hits, touch: typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 1 : 0, snap: P }); tape = null;
     const KQ = 'wzb-xinmo-upq', q = (() => { try { return JSON.parse(localStorage.getItem(KQ) || '[]'); } catch (e) { return []; } })(); q.push(body);
     const send = () => { const left = []; let chain = Promise.resolve();
       for (const b of q.slice(-5)) chain = chain.then(() => fetch('/api/xinmo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: b }).then(r => { if (!r.ok) left.push(b); }).catch(() => left.push(b)));
