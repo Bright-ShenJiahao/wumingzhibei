@@ -192,7 +192,7 @@ function drawFloaters() {
 }
 // 能打碎的道具：第一章草垛/推车/石碾，第二章全部道具和旗子
 const BREAKABLE_PROPS = new Set(['hay', 'cart', 'mill', 'sacks', 'crate', 'rack', 'jumo', 'jumo_v', 'jumo_vs', 'debris', 'stones', 'brazier', 'flag_y', 'flag_ren', 'flag_di', 'flag_tian', 'flag_cang', 'flag_huang', 'fudeng', 'cao_crate', 'zb_wall']);   // cao_crate：第二章曹军补给箱（打碎变 'cao_crate_broken' 并掉补给，见 js/supply.js）
-const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g);
+const canHitProp = p => !p.broken && BREAKABLE_PROPS.has(p.g) && !(IMG['p_' + p.g] && IMG['p_' + p.g].complete && !IMG['p_' + p.g].naturalWidth);   // 图片下载失败、玩家看不见的道具，不挡飞行物（防「石子打不到人」）
 function hitProp(p, dir) {
   if (!canHitProp(p)) return;
   p.hp--; p.hitT = .15;   // 左右抖 0.15 秒
