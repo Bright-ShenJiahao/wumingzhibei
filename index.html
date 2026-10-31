@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=dbd066faf5" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=dbd066faf5)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=2cbf60de64" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=2cbf60de64)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='7ab9ee3a21f4',busy=false;
+var BUILD='a3bfc9046a62',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -10712,6 +10712,7 @@ window.XINMO = (() => {
     m && 0; marks = []; mshots = []; hb = { n: 0, t: 0 }; Object.assign(m, { zg: 0, ammo: 5, plan: null, lock: false, ch: 0, dash: null, type: 'xinmo', sprite: 'hero', st: 'idle', t: 0, f: hero.x < m.x ? -1 : 1, cd: 1.2, rollCd: 0, inv: 0, atk: null, q: 0, think: 0, hitC: 0, sc: 1 });
     // 血量：按主角伤害来定，玩家大约要打中 30 下（心魔打中玩家大约 6～8 下），各自承受得住几轮连招
     m.T = { name: '心魔', mirror: true, hp: 0, spd: 70, w: 16, noLaunch: true, xinmoHp: hp };
+    tape = []; tape.t0 = gameT; tapeT = 0;
     m.weapon = w; P = snap(); { const d0 = data(); d0.lessons ||= {}; L = JSON.parse(JSON.stringify(d0.lessons[w] || newL())); lastHits = []; } m.T.hp = P.hp; m.hp = m.T.hp; m.wait = 3; showCard();   // 血量 = 你的血量
     m.bossLabel = '心魔'; m.xiaochang = true;
     say(d.tries && Math.random() < .6 ? pick(LINES.introAgain).replace('{n}', d.wins) : pick(LINES.intro), 3);
@@ -10727,6 +10728,27 @@ window.XINMO = (() => {
   // ---------- 复盘学习（用户定）：记下心魔在什么情况下挨打、被你哪一招打，下次少做那种事、专门防那一招 ----------
   // 存在 d.lessons[武器]：time[情形] = 处在这种情形的总秒数，dmg[情形] = 这种情形下挨的伤害，byC[你的招] = 那一招打了它多少
   let L = null, lastHits = [];
+  // ---------- 对局录像（为以后训练神经网络攒数据）：每 0.1 秒一行，打完上传 /api/xinmo ----------
+  const ST = ['idle', 'walk', 'atk', 'roll', 'hurt', 'bounce', 'getup', 'charge', 'air', 'land', 'down'], MODE_IDS = ['neutral', 'punish', 'charge', 'attack', 'challenge', 'halberd', 'feint', 'approach', 'backoff', 'chase', 'shoot', 'keep', 'roll', 'recover'];
+  const COLS = ['t', 'dx', 'dy', 'h_st', 'h_c', 'h_fi', 'h_inv', 'h_hp', 'h_chg', 'h_daze', 'h_ix', 'h_iy', 'h_f', 'm_st', 'm_c', 'm_fi', 'm_inv', 'm_hp', 'm_chg', 'm_daze', 'm_mode', 'm_f', 'm_rollcd', 'h_rollcd', 'shots_in', 'mshots_in', 'm_ammo', 'm_x', 'h_x'];
+  let tape = null, tapeT = 0;
+  function recordRow(dt) {
+    if (!tape || tape.length >= 6000) return; tapeT += dt; if (tapeT < .1) return; tapeT = 0;
+    const r = v => Math.round(v * 100) / 100, sti = x => Math.max(0, ST.indexOf(x));
+    tape.push([r(gameT - tape.t0), r(hero.x - m.x), r(hero.y - m.y), sti(hero.st), hero.atk ? hero.atk.c : -1, hero.atk ? hero.atk.fi : -1, hero.inv > 0 ? 1 : 0, r(hero.hp), charging ? 1 : 0, hero.dazeT > 0 ? 1 : 0, r(hero.ix || 0), r(hero.iy || 0), hero.f,
+      sti(m.st), m.atk ? m.atk.c : -1, m.atk ? m.atk.fi : -1, m.inv > 0 ? 1 : 0, r(m.hp), r(m.ch || 0), m.dazeT > 0 ? 1 : 0, Math.max(0, MODE_IDS.indexOf(curMode())), m.f, r(m.rollCd), r(hero.rollCd || 0),
+      shots.filter(p => Math.abs(p.x - m.x) < 150).length, mshots.filter(p => Math.abs(p.x - hero.x) < 150).length, r(m.ammo ?? 5), r(m.x), r(hero.x)]);
+  }
+  function upload(win) {
+    if (!tape || tape.length < 20) return;
+    const body = JSON.stringify({ name: name(), weapon: m.weapon, win, lvl, dt: .1, cols: COLS, rows: tape }); tape = null;
+    const KQ = 'wzb-xinmo-upq', q = (() => { try { return JSON.parse(localStorage.getItem(KQ) || '[]'); } catch (e) { return []; } })(); q.push(body);
+    const send = () => { const left = []; let chain = Promise.resolve();
+      for (const b of q.slice(-5)) chain = chain.then(() => fetch('/api/xinmo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: b }).then(r => { if (!r.ok) left.push(b); }).catch(() => left.push(b)));
+      chain.then(() => { try { localStorage.setItem(KQ, JSON.stringify(left.slice(-5))); } catch (e) {} }); };
+    try { localStorage.setItem(KQ, JSON.stringify(q.slice(-5))); } catch (e) {}
+    send();   // 上传失败（比如测试网址没有后端）先存本机，下次打完一起补传，最多留 5 局
+  }
   const MODES = { punish: '反打', charge: '蓄力', attack: '主动出手', challenge: '迎击', halberd: '回马突', feint: '骗招', approach: '突进', neutral: '拉距离', backoff: '后撤', chase: '追翻滚', shoot: '远程射击', keep: '远程拉距离', roll: '翻滚', recover: '收招' };
   function newL() { return { time: {}, dmg: {}, byC: {}, fights: 0 }; }
   function curMode() { return m.st === 'charge' ? 'charge' : m.st === 'roll' ? 'roll' : m.st === 'atk' ? (m.atkMode || 'attack') : (m.mode || 'neutral'); }
@@ -10964,6 +10986,7 @@ window.XINMO = (() => {
     if (over) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } return; }
     if (m.wait > 0) { m.wait -= dt; m.inv = Math.max(m.inv, m.wait); hero.inv = Math.max(hero.inv, m.wait); m.f = Math.sign(hero.x - m.x) || m.f; return; }   // 对照表显示时双方都不能被打
     if (L) { const k = curMode(); L.time[k] = (L.time[k] || 0) + dt; }
+    recordRow(dt);
     const w = W(), lowHp = m.hp < m.T.hp * .35;
     // 挨打：和玩家完全一样——硬直 0.3 秒；重击倒地 0.3 秒 + 起身（经脉可加快），起身后 0.5 秒无敌
     if (m.air) { airStep(m, dt); return; }
@@ -11204,7 +11227,7 @@ window.XINMO = (() => {
       L.fights++; for (const g of ['time', 'dmg', 'byC']) { let t = 0; for (const k in L[g]) t += L[g][k]; if (t > 300) for (const k in L[g]) L[g][k] *= .7; }   // 老经验慢慢淡掉
       d.lessons ||= {}; d.lessons[m.weapon] = L; m.lessonText = lessonText();
     }
-    save(d);
+    save(d); upload(win);
     say(pick(win ? LINES.win : LINES.lose), 4);
     return d;
   }
