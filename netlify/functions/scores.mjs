@@ -42,7 +42,8 @@ async function readAll(store) {
       } catch (e) { return null; }
     })
   );
-  return items.filter(x => x && x.season === SEASON && Number.isFinite(x.kills) && Number.isFinite(x.t));
+  // 用户定 11/01：恢复旧赛季的成绩，一律按第一章算（旧版本没记章节）；新赛季照常按 ch 分章
+  return items.filter(x => x && Number.isFinite(x.kills) && Number.isFinite(x.t)).map(x => x.season === SEASON ? x : { ...x, ch: 1 });
 }
 
 // 评分 = 击杀 x10 + 通关数 x100 + 通关时间分（最多 +240）+ 无伤分（最多 +200）
