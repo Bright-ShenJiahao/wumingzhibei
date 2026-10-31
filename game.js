@@ -7,7 +7,7 @@ function pumpLoad() { while (loadingN < 4 && LOADQ.length) { const [i, src] = LO
 function promoteLoad(img) { if (img.src) return; const i = LOADQ.findIndex(q => q[0] === img); if (i > 0) LOADQ.unshift(LOADQ.splice(i, 1)[0]); }   // 画面上要用到但还在排队的图：插到队首
 function flushLoads() { while (LOADQ.length) { const [i, src] = LOADQ.shift(); if (!i.src) i.src = src; } }   // 开打了：剩下的图全部开始下（不再限速）
 function load(k, src) { const i = new Image(); IMG[k] = i; if (!src || String(src).startsWith('data:')) { i.src = src; return i; } const pri = k.startsWith('hero_') ? 2 : k.startsWith('grunt_') || k.startsWith('blade_') || k.startsWith('slinger_') || k.startsWith('archer_') || k.startsWith('elite_') || k.startsWith('priest_') ? 1 : 0; i._pri = pri; i._must = pri === 2;   // 排队优先级：主角 > 第一章敌人 > 其他
-  { let at = LOADQ.findIndex(q => (q[0]._pri || 0) < pri); if (at < 0) at = LOADQ.length; LOADQ.splice(at, 0, [i, src]); } LAZY.core.push([i, src]); pumpLoad(); return i; }
+  i.src = src; LAZY.core.push([i, src]); return i; }   // 用户定 2026-10-31：取消分批下载，打开就全部开始下（失败会自动重试）
 // 按需加载：第二章、校场的图片先不下载，进入（或整备页预取）时才开始，首次打开少下载约2MB。
 const LAZY = { chapter2: [], xiaochang: [], core: [] }, LAZY_DONE = {};   // core：打开就要的图（第一章等），进战斗前必须全部下完
 const LAZY_CHARS = { yellow_heavy: 'chapter2', yellow_shield: 'chapter2', yellow_spear: 'chapter2', yellow_catapult: 'chapter2', zhang_liang: 'chapter2', zhang_bao: 'chapter2', yellow_golem: 'chapter2', zhang_jiao: 'chapter2' };

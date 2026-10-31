@@ -19,6 +19,10 @@ function hit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ra
   return outcome;
 }
 function rawHit(z, dmg, kb, dir, knock, daze = 0, stun = .35, interrupt = false, ranged = false, traits = {}) {
+  // 保险：伤害或击退算出 NaN（存档里某个数坏了）时，敌人会「闪白但不掉血、不后退、永远打不死」→ 退回基础值并记下来
+  if (!Number.isFinite(dmg)) { window.__badHit = (window.__badHit || 0) + 1; dmg = 1; }
+  if (!Number.isFinite(kb)) kb = 40;
+  if (z && !Number.isFinite(z.hp)) z.hp = 1;
   if (!z || z.dead || (z.air && !traits.dot) || z.hidden) return;
   if (z.T.mirror) { if (window.XINMO) XINMO.takeHit(z, dmg, dir, (traits.dot || traits.secondary) && !traits.zg ? 'extra' : traits.skyArrow ? [1, stun] : [traits.dazeChance != null ? traits.dazeChance : daze, traits.dazeTime != null ? traits.dazeTime : 1.5 * R_('daze')], !(traits.finisher || traits.charged || traits.skyArrow || traits.halberdCharge)); return; }   // 心魔：和玩家对称的受伤规则
   if(ch2Troops()&&z.type==='yellow-shield'&&!traits.dot&&!traits.secondary){
