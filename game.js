@@ -1256,7 +1256,7 @@ if (window.visualViewport) visualViewport.addEventListener('resize', fit);
 fit();
 // 手机：禁止双击放大、双指缩放、页面拖动
 ['gesturestart', 'gesturechange', 'dblclick'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
-document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', e => { if (e.target && e.target.closest && e.target.closest('#xResult article')) return; e.preventDefault(); }, { passive: false });   // 结算卷轴里允许手指上下滑
 let lastTouchEnd = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 let last = performance.now();
