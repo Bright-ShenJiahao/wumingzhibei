@@ -301,7 +301,7 @@ window.XINMO = (() => {
   function roll(dx, dy, why) {
     const th = threatInfo(), S = m.sty, lim = S && S.ex && S.ex.landHunt ? 1 : 2;
     m.rollTs = (m.rollTs || []).filter(t => gameT - t < 3);
-    if (!th.imminent && (!th.any || m.rollTs.length >= lim)) return false;   // 没威胁不滚；不急的滚 3 秒内有次数限制
+    if (why === 'corner' ? m.rollTs.length >= 2 : (!th.imminent && (!th.any || m.rollTs.length >= lim))) return false;   // 回中间的翻滚：没威胁也能滚，但 3 秒最多 2 次   // 没威胁不滚；不急的滚 3 秒内有次数限制
     rawRoll(dx, dy); m.rollTs.push(gameT); if (!m.rollRec) m.rollRec = { k: (why || 'other') + ':raw', t: gameT, thr: th.any }; return true;
   }
   function rawRoll(dx, dy) {
@@ -316,7 +316,8 @@ window.XINMO = (() => {
     const th = threatInfo();
     // 能走开就不滚：普攻还要过一会才打到，或者自己还有剩余无敌够走出去 → 走
     const exit = th.hw.proj ? 0 : Math.max(0, (th.hw.reach || 28) + (th.hw.lunge ? 24 : 8) + 16 + 6 - Math.abs(hero.x - m.x)), walkT = exit / (70 * P.move);
-    if (!th.s.charging && ((th.hit != null && walkT < th.hit - .03) || (m.inv > .1 && walkT < m.inv - .05)) && exit > 0) { m.backOff = Math.max(m.backOff || 0, walkT + .1); return true; }
+    const roomBack = Math.sign(hero.x - m.x) > 0 ? m.x - 14 : 706 - m.x;   // 11/01 修：贴墙时「往后走开」会撞墙原地挨打
+    if (why !== 'corner' && roomBack > exit + 10 && !th.s.charging && ((th.hit != null && walkT < th.hit - .03) || (m.inv > .1 && walkT < m.inv - .05)) && exit > 0) { m.backOff = Math.max(m.backOff || 0, walkT + .1); return true; }
     const sd = Math.sign(hero.x - m.x) || 1, adx = Math.abs(hero.x - m.x), mid = (M.top + M.bot) / 2;
     const cornered = (m.x < 50 && sd < 0) || (m.x > 670 && sd > 0), nearWallBack = (m.x < 70 && sd > 0) || (m.x > 650 && sd < 0);
     const opts = { back: [-sd, (m.y < mid ? .3 : -.3)], through: [sd, (m.y < hero.y ? -.35 : .35)], up: [-sd * .3, -1], down: [-sd * .3, 1] };
@@ -327,7 +328,8 @@ window.XINMO = (() => {
     const sc = {};
     for (const k of keys) {
       const r = st[why + ':' + k] || [0, 0], [dx, dy] = opts[k], l = Math.hypot(dx, dy), lx = m.x + dx / l * 60 * P.roll, ly = m.y + dy / l * 42 * P.roll;
-      let v = (r[0] + 1) / (r[1] + 2) + (k === prefer ? .12 : 0) - (k === m.lastRollDir ? .15 : 0);   // 连续同一方向降权，别让你猜到
+      let v = (r[0] + 1) / (r[1] + 2) + (k === prefer ? .12 : 0) - (k === m.lastRollDir ? .15 : 0);
+      v += (Math.abs(m.x - 360) - Math.abs(lx - 360)) / 240 - (lx < 50 || lx > 670 ? .3 : 0);   // 11/01 用户定：躲招顺便回场中间，别往墙角滚   // 连续同一方向降权，别让你猜到
       // 落点还在你满蓄的范围里（你在蓄）→ 重罚；落到你背后（蓄力只打前面）不算
       if (th.s.charging && !th.hw.proj && Math.abs(lx - hero.x) < th.T + 10 && Math.abs(ly - hero.y) < 30 && Math.sign(lx - hero.x) === (hero.f || 1)) v -= 1;
       sc[k] = v;
@@ -736,8 +738,14 @@ window.XINMO = (() => {
       }
     }
     if (m.plan && runPlan(dt)) return;
+    if (m.backOff > 0 && (sd > 0 ? m.x - 14 : 706 - m.x) < 12) m.backOff = 0;   // 身后是墙：不再往后退
     if (m.backOff > 0) { m.mode = 'backoff'; m.backOff -= dt; moveTo(m.x - sd * 40, m.y, dt, 1); return; }
     m.think -= dt;
+    { // 11/01 用户定：被逼到墙角很危险 → 躲完招就回场中间（中间四面都有路）。你被我逼在墙边时不跑
+      const toC = Math.sign(360 - m.x) || 1, wallD = Math.min(m.x - 14, 706 - m.x), between = Math.sign(hero.x - m.x) === toC;
+      if (between && wallD < 75 && adx < 75 && ady < 40 && !heroRolling && m.rollCd === 0 && smartRoll('corner', 'through')) return;   // 贴墙、你就在面前：从你身边滚过去
+      if (between && wallD < 120 && adx >= 75 && s.st !== 'atk' && !s.charging) { m.mode = 'center'; moveTo(m.x + toC * 24, hero.y > (M.top + M.bot) / 2 ? M.top + 6 : M.bot - 6, dt, 1); return; }   // 还有距离：斜着从你另一侧绕回中间
+    }
     // 远程（用户定）：站远，多用蓄力；你一靠近就翻滚风筝拉开
     if (w.class === 'ranged') {
       const far = m.weapon === 'bow' ? 180 : 130, close = m.weapon === 'bow' ? 120 : 80;

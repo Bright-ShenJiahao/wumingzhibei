@@ -5,7 +5,7 @@
 const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const MINUTES = +arg('minutes', 60), BASE = arg('url', 'http://localhost:8765/index.html?debug'), ROOT = path.join(__dirname, '..', '..');
-const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'oki', 'fake', 'walkdodge', 'rollatk', 'camp', 'switch', 'push2', 'charger2'];   // oki：打倒就压起身（真人柴业政的打法）   // fake 假蓄力骗；walkdodge 只走位躲弹不滚；rollatk 滚过来马上打；camp 站桩蓄满等对齐；switch 每 8 秒换打法   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
+const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'oki', 'fake', 'walkdodge', 'rollatk', 'camp', 'switch', 'push2', 'charger2', 'pin'];   // oki：打倒就压起身（真人柴业政的打法）   // fake 假蓄力骗；walkdodge 只走位躲弹不滚；rollatk 滚过来马上打；camp 站桩蓄满等对齐；switch 每 8 秒换打法   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
 const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3), EVAL_N = +arg('evaln', 39), NF = 43;   // NF：网络输入维度（29 基础 + 8 新增 + 6 武器种类）
 
 // ---------- 页面里跑一局（同步推进 update，固定随机种子） ----------
@@ -50,6 +50,8 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
           if (Math.abs(hero.x - tx) > 4) key[hero.x < tx ? 'KeyD' : 'KeyA'] = true; if (ady > 3) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; hero.f = -side;
           if ((m.st === 'getup' && m.t > .22) || (m.st === 'idle' && m.inv < .2)) pressAtk = true;
         }
+        else if (B === 'pin') {   // 11/01 真人打法：站在心魔靠场中那一侧，把它压到墙角，一直平 A
+          const side = m.x < 360 ? 1 : -1, tx = m.x + side * R * .75; if (Math.abs(hero.x - tx) > 6) key[hero.x < tx ? 'KeyD' : 'KeyA'] = true; else if ((dx > 0) !== (hero.f > 0)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady > 4) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
         else if (B === 'push' || B === 'oki') { if (Math.random() < .05) pressRoll = true; if (ady > 5) key[dy > 0 ? 'KeyS' : 'KeyW'] = true; if (adx > (WEAP[weapon].proj ? 110 : R * .8)) key[dx > 0 ? 'KeyD' : 'KeyA'] = true; if (ady < 9 && adx < R + 10) pressAtk = true; }
         else if (B === 'human') { if (Math.random() < .12) pressRoll = true; else if (adx < R && ady < 8) pressAtk = true; else { key[dx > 0 ? 'KeyD' : 'KeyA'] = adx > R * .8; key[dy > 0 ? 'KeyS' : 'KeyW'] = ady > 3; } }
         else if (B === 'charger') {
@@ -130,7 +132,8 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
     log.push(`| ${gen} | ${mean.toFixed(3)} | ${((MINUTES * 60e3 - (end - Date.now())) / 60e3).toFixed(1)} |`); console.log(`第 ${gen} 代 平均奖励 ${mean.toFixed(3)}（累计 ${episodes} 局）`);
   }
   // 测试：每把武器 EVAL_N 局（轮换全部测试玩家），规则版和网络用同一批种子成对比较；网络在这把武器上的提升，单侧 95% 置信下界 > 0 才启用
-  const test = WEAPONS.flatMap((w, wi) => Array.from({ length: EVAL_N }, (_, k) => [w, BOTS[k % BOTS.length], 900000 + wi * 1000 + k * 31]));
+  const EB = arg('evalbots', '') ? arg('evalbots', '').split(',') : BOTS;   // 只评测指定测试玩家（本地快速核对用）
+  const test = WEAPONS.flatMap((w, wi) => Array.from({ length: EVAL_N }, (_, k) => [w, EB[k % EB.length], 900000 + wi * 1000 + k * 31]));
   const ruleR = await runSet(null, test), netR = await runSet(netOf(theta), test);
   const avg = a => a.reduce((s, o) => s + reward(o), 0) / a.length, wins = a => a.filter(o => o && o.win === 1).length, errN = a => a.filter(o => !o || o.err).length;
   const rA = avg(ruleR), nA = avg(netR);
