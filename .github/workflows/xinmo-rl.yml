@@ -27,7 +27,7 @@ jobs:
         run: |
           python3 -m http.server 8765 >/dev/null 2>&1 &
           sleep 2
-          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4 --weapons "${{ github.event.inputs.weapons }}" --focus "${{ github.event.inputs.focus }}"
+          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4 --evaln 150 --weapons "${{ github.event.inputs.weapons }}" --focus "${{ github.event.inputs.focus }}"
       - name: 提交模型和训练报告
         run: |
           git config user.name "xinmo-train-bot"

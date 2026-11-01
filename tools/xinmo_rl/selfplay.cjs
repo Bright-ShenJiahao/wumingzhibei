@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const MINUTES = +arg('minutes', 60), BASE = arg('url', 'http://localhost:8765/index.html?debug'), ROOT = path.join(__dirname, '..', '..');
 const WEAPONS = ['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'], BOTS = ['push', 'human', 'kite', 'charger', 'ylane', 'poke', 'oki', 'fake', 'walkdodge', 'rollatk', 'camp', 'switch', 'push2', 'charger2'];   // oki：打倒就压起身（真人柴业政的打法）   // fake 假蓄力骗；walkdodge 只走位躲弹不滚；rollatk 滚过来马上打；camp 站桩蓄满等对齐；switch 每 8 秒换打法   // poke：蓄着往前逼，蓄力一碰到就立刻往后滚拉开，循环（用户实战打法）   // …2 = 血量和伤害都是心魔 2 倍的强敌，逼心魔找办法赢   // charger：蓄满等你靠近放、放完翻滚跑；ylane：站在你判定外的斜线上再一步对齐打
-const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3), EVAL_N = +arg('evaln', 39), NF = 37;   // NF：网络输入维度（29 基础 + 8 新增）
+const POP = +arg('pop', 16), SIGMA = +arg('sigma', .05), LR = +arg('lr', .03), EPS_PER = +arg('eps', 3), EVAL_N = +arg('evaln', 39), NF = 43;   // NF：网络输入维度（29 基础 + 8 新增 + 6 武器种类）
 
 // ---------- 页面里跑一局（同步推进 update，固定随机种子） ----------
 const PAGE_FN = `
@@ -83,7 +83,7 @@ window.__runEp = (net, weapon, bot, seed, secs) => {
     return out;
   } finally { Math.random = R0; }
 };`;
-const reward = o => !o || o.err ? -2 : o.win * 1 + .25 * ((1 - o.heroHp / o.heroMax) - (1 - o.mirHp / o.mirMax)) - (o.win === 0 ? .1 : 0);   // 超时再扣 0.1：不鼓励拖时间   // 赢 +1 / 输 −1 为主，换血只算辅助（×0.25）；出错的对局 −2 并记数
+const reward = o => !o || o.err ? -2 : o.win * 1 + .25 * ((1 - o.heroHp / o.heroMax) - (1 - o.mirHp / o.mirMax)) - (o.win === 0 ? .3 : 0);   // 超时再扣 0.3（11/01 加大）：不鼓励拖时间   // 赢 +1 / 输 −1 为主，换血只算辅助（×0.25）；出错的对局 −2 并记数
 
 // ---------- 网络参数 ⇄ 扁平向量 ----------
 const KEYS = ['W1', 'b1', 'W2', 'b2', 'W3', 'b3'];

@@ -510,7 +510,7 @@ window.XINMO = (() => {
       const step = Math.min(m.dash.left, 260 * dt); moveEnt(m, m.f * step, 0); m.dash.left -= step;
       { const ddx = (hero.x - m.x) * m.f;   // 判定和玩家的回马突一样：身后 14、身前 18（再加身宽）、上下 dy+8；打中叠裂伤
         if (!m.dash.hit && ddx >= -14 - 16 && ddx <= 18 + 16 && Math.abs(hero.y - m.y) <= (w.dy || 14) + 8) { m.dash.hit = true; const hp0 = hero.hp; dmgH(m.dash.dmg, m, 'skill'); { hb.n = Math.min(5, hb.n + m.dash.stacks); hb.t = 3; bleedFx.push({ kind: 'splash', x: hero.x, y: hero.y - 12, t: 0, T: .15 }); } } }
-      if (m.dash.left <= 0) { m.dash = null; m.st = 'idle'; m.t = 0; }
+      if (m.dash.left <= 0) { const missed = !m.dash.hit; m.dash = null; m.st = 'idle'; m.t = 0; if (missed && Math.abs(hero.x - m.x) < 70 && m.rollCd === 0) smartRoll('dash', 'back'); }   // 冲空了别站你面前
       return;
     }
     if (m.st === 'charge') {
@@ -686,6 +686,20 @@ window.XINMO = (() => {
       if (E.relAt && m.sty.chgOn && m.relPredAt !== m.sty.chgAt && gameT - m.sty.chgAt > E.relAt - .12 && (m.relPredAt = m.sty.chgAt) && !hw.proj && adx < T + 20 && ady < 30 && m.rollCd === 0 && smartRoll('release', adx < 60 ? 'through' : 'back')) return;   // 你松手时机很固定：在那之前先滚
       // 随时准备翻滚：你蓄着往我这边逼（离我不到 60，或我被逼到场边）→ 从你身边滚到你背后（棍/锤/刀蓄力只打前面）
       const closing = Math.sign(hero.mvx || 0) === sd && Math.abs(hero.mvx || 0) > 8, wallBehind = (m.x < 60 && sd > 0) || (m.x > 660 && sd < 0);
+      { /* 11/01 用户+DS+GPT：你蓄着逼我，别只会退 */
+        const backRoom = sd > 0 ? m.x - 20 : 700 - m.x;
+        if (w.class === 'ranged' && !hw.proj) {   // 远程：被逼到场边就从你侧面斜滚换边；汉弓平时保持约 185，不站着等
+          if (backRoom < 60 && adx < T + 40 && m.rollCd === 0) { m.mode = 'keep'; roll(sd, m.y < (M.top + M.bot) / 2 ? .75 : -.75); return; }
+          if (m.weapon === 'bow' && adx < 175 && !(ady < 9 && adx < 220)) { m.mode = 'respect'; moveTo(Math.max(20, Math.min(700, s.x - sd * 185)), s.y, dt, 1); return; }
+        } else if (!hw.proj && m.st !== 'charge' && m.rollCd <= .15 && adx > T + 6 && adx < T + 45 && ady < 30) {
+          // 一起蓄力：站在你满蓄范围外蓄住，你一踏进我的范围我就先放；不是固定套路——你刚滚过 / 我被逼到墙边 / 长戟 时更常用
+          const k = ((hero.rollCd || 0) > .3 ? 3 : 1) * (backRoom < 150 ? 3 : 1) * (m.weapon === 'halberd' ? 2 : 1);
+          if (Math.random() < dt * .8 * k) { m.mode = 'counter'; m.f = sd; startCharge(fullT()); m.think = .3; return; }
+        }
+        if (w.class !== 'ranged' && !hw.proj && backRoom < 150 && !inRange && adx > T + 6) {   // 离墙近：不再往后退，侧着往场中间挪（不进你的范围）
+          m.mode = 'respect'; moveTo(m.x, m.y < (M.top + M.bot) / 2 ? Math.min(M.bot, m.y + 20) : Math.max(M.top, m.y - 20), dt, 1); return;
+        }
+      }
       if (!hw.proj && (adx < 60 || (wallBehind && adx < T + 20) || (closing && adx < T + 6)) && smartRoll('charge', adx < 75 ? 'through' : 'back')) return;
       if (inRange) {   // 在你的满蓄范围里：走得出去就走，走不出去就滚（不往你身上滚）
         const out = (T + 18 - adx) / (70 * P.move);
@@ -769,7 +783,7 @@ window.XINMO = (() => {
       m.mode = 'halberd';
       // 只在「你走过来之前蓄得完」时蓄：先翻滚拉开，算你追到我要多久，再蓄能蓄的档位（冲刺 40/60/80 + 戟长 40 要够得到你）
       const hr = hw && !hw.proj ? (hw.reach || 28) + (hw.lunge ? 24 : 6) : 40, after = adx + (adx < 70 ? 60 : 0);
-      const safe = (m.rollCd > .15 || (hero.rollCd || 0) < .2) ? 0 : Math.max(0, (after - hr) / ((s.charging ? 45.5 : 70) * P.move) - .1),   /* 翻滚冷却中 / 你能滚时不蓄；你蓄着走只有 45 */ t = Math.min(fullT(), safe), dist = t >= fullT() ? 80 : t >= fullT() / 2 ? 60 : 40;
+      const safe = m.rollCd > .15 ? 0 :   /* 11/01 DS+GPT：去掉「你刚滚完才蓄」，否则招牌技几乎不出 */ Math.max(0, (after - hr) / ((s.charging ? 45.5 : 70) * P.move) - .1),   /* 翻滚冷却中 / 你能滚时不蓄；你蓄着走只有 45 */ t = Math.min(fullT(), safe), dist = t >= fullT() ? 80 : t >= fullT() / 2 ? 60 : 40;
       if (t < P.gate + .03 || after - 35 * t * P.move > dist + 45) { m.mode = 'neutral'; }   // 你蓄力时也会往前走，算上一半
       else plan(adx < 70 ? [{ k: 'roll', dir: 'back' }, { k: 'charge', time: t }, { k: 'roll', dir: 'back' }] : [{ k: 'charge', time: t }, { k: 'roll', dir: 'back' }], true);
       if (m.plan) { m.think = .6; runPlan(dt); return; }
@@ -857,7 +871,8 @@ window.XINMO = (() => {
     return [dx / 100, dy / 50, Math.abs(dx) / 100, Math.abs(dy) / 50, ...oneHot(m.st), m.atk ? m.atk.c : -1, m.hp / m.T.hp, m.rollCd || 0, m.inv > 0 ? 1 : 0, m.ch || 0,
       ...oneHot(hero.st), hero.atk ? hero.atk.c : -1, hero.hp / P.hp, hero.inv > 0 ? 1 : 0, leftOf(hero, weapon), pdx / 100, pdy / 50, near ? 1 : 0, W().class === 'ranged' ? 1 : 0,
       // 新增 8 维（强化学习用；模仿学习的旧模型只读前 29 维）
-      (hero.rollCd || 0) / .75, seen().charging ? 1 : 0, hero.dazeT > 0 ? 1 : 0, m.x / 720, (720 - m.x) / 720, (m.y - (M.top + M.bot) / 2) / 35, Math.min(2, gameT - (m.lastLandT ?? -9)) / 2, (m.rollCd || 0) / .75];
+      (hero.rollCd || 0) / .75, seen().charging ? 1 : 0, hero.dazeT > 0 ? 1 : 0, m.x / 720, (720 - m.x) / 720, (m.y - (M.top + M.bot) / 2) / 35, Math.min(2, gameT - (m.lastLandT ?? -9)) / 2, (m.rollCd || 0) / .75,
+      ...['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'].map(k => m.weapon === k ? 1 : 0)];   // 11/01：6 维武器种类（之前网络分不清戟/棍、弓/石）
   }
   function netAct() {
     const h = NET.heads.human, x = netFeatures().slice(0, h.W1.length).map((v, i) => (v - h.mean[i]) / (h.std[i] > 1e-6 ? h.std[i] : 1));   // 标准差为 0 的维度按 1（之前除以 0 → NaN → 网络永远输出动作 0）
@@ -873,7 +888,7 @@ window.XINMO = (() => {
     if (a === 5) { const ok = w.class === 'ranged' ? ady < 8 && adx < 230 : adx < reach && ady < (w.dy || 14); if (ok && hero.inv < .15) { m.f = sd; startAtk(0); m.think = .15; return true; } }
     if (a === 6 && m.rollCd === 0) { if (smartRoll('net', adx < 60 ? 'through' : 'back')) return true; }   // 网络要滚就滚（方向按翻滚学习挑）
     if (a === 7) { const hw = WEAP[s.hw] || WEAP[weapon], hr = hw.proj ? 0 : (hw.reach || 28) + (hw.lunge ? 24 : 8) + 16; const ct = Math.min(fullT(), Math.max(0, (adx - Math.max(40, hr)) / ((s.charging ? 45.5 : 70) * P.move) - .1)); if (ct >= P.gate + .05 && !s.charging && m.rollCd <= .15 && (hw.proj || (hero.rollCd || 0) >= .2)) { m.f = sd; startCharge(ct); m.think = .4; return true; } }   // 近战也能蓄（你走过来之前蓄得完才蓄）
-    const tx = a === 1 ? hero.x - sd * (w.class === 'ranged' ? 100 : reach - 6) : a === 2 ? m.x - sd * 40 : m.x;
+    const tx = a === 1 ? hero.x - sd * (w.class === 'ranged' ? (m.weapon === 'bow' ? 180 : 130) : reach - 6) : a === 2 ? m.x - sd * 40 : m.x;
     const ty = a === 3 ? hero.y : a === 4 ? m.y + (m.y < hero.y ? -30 : 30) : m.y;
     if (a === 0 || (Math.abs(tx - m.x) < 3 && Math.abs(ty - m.y) < 3)) { if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; } m.f = sd; return true; }
     moveTo(Math.max(14, Math.min(706, tx)), Math.max(M.top, Math.min(M.bot, ty)), dt, 1); return true;
