@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       minutes: { description: '训练多少分钟', default: '120' }
+      focus: { description: '重点练哪几把（抽到的机会是其他武器的 3 倍）', default: 'halberd,bow,blade' }
       weapons: { description: '只练哪几把（逗号隔开，留空=全部）：staff,hammer,stone,halberd,blade,bow', default: '' }
 permissions: { contents: write }
 concurrency: { group: xinmo-train, cancel-in-progress: false }
@@ -26,7 +27,7 @@ jobs:
         run: |
           python3 -m http.server 8765 >/dev/null 2>&1 &
           sleep 2
-          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4 --weapons "${{ github.event.inputs.weapons }}"
+          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4 --weapons "${{ github.event.inputs.weapons }}" --focus "${{ github.event.inputs.focus }}"
       - name: 提交模型和训练报告
         run: |
           git config user.name "xinmo-train-bot"

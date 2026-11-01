@@ -104,9 +104,10 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   const runSet = async (net, seeds) => p.evaluate(({ net, seeds }) => seeds.map(([w, bot, sd]) => __runEp(net, w, bot, sd, 30)), { net, seeds });
   const HOLDOUT = ['camp', 'rollatk'], TRAIN_BOTS = BOTS.filter(b => !HOLDOUT.includes(b));   // 留出 2 种测试玩家只在评测里出现，检查有没有只会打练过的对手
   const TRAIN_W = arg('weapons', '') ? arg('weapons', '').split(',').filter(w => WEAPONS.includes(w)) : WEAPONS;   // 只练指定武器（评测仍然 6 把都测）
+  const FOCUS = (arg('focus', '') || '').split(',').filter(w => TRAIN_W.includes(w)), FW = +arg('focusw', 3);   // 重点练的武器：抽到的机会是其他武器的 FW 倍
   const COMBOS = TRAIN_W.flatMap(w => TRAIN_BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
   const score = COMBOS.map(() => 0);   // 每个组合最近的平均奖励（越差越常练：按对手优先采样）
-  const pick = (g, i) => { const wts = score.map(v => 1 + Math.max(0, .5 - v) * 2), tot = wts.reduce((a, b) => a + b, 0); let r = (Math.sin(g * 9301 + i * 49297) * 233280 % 1 + 1) % 1 * tot, k = 0; while (r > wts[k] && k < wts.length - 1) { r -= wts[k]; k++; } return [COMBOS[k][0], COMBOS[k][1], 1000 + g * 97 + i * 13, k]; };
+  const pick = (g, i) => { const wts = score.map((v, j) => (1 + Math.max(0, .5 - v) * 2) * (FOCUS.includes(COMBOS[j][0]) ? FW : 1)), tot = wts.reduce((a, b) => a + b, 0); let r = (Math.sin(g * 9301 + i * 49297) * 233280 % 1 + 1) % 1 * tot, k = 0; while (r > wts[k] && k < wts.length - 1) { r -= wts[k]; k++; } return [COMBOS[k][0], COMBOS[k][1], 1000 + g * 97 + i * 13, k]; };
   // 测速
   let t0 = Date.now(); await runSet(null, [pick(0, 0)]); const per = (Date.now() - t0) / 1000; console.log(`一局约 ${per.toFixed(2)} 秒`);
   const log = [`# 心魔强化学习报告 ${new Date().toISOString().slice(0, 16)} UTC`, '', `- 方法：进化策略（每代 ${POP} 组扰动 × ${EPS_PER} 局，σ=${SIGMA}，学习率 ${LR}），对手 ${BOTS.length} 种测试玩家 × 6 把武器，按“越打不过越常练”采样`, `- 奖励：赢 +1 / 输 −1；换血（打掉你的血% − 被打掉的血%）× 0.25 作辅助；一局最长 30 秒`, `- 网络输入 ${NF} 维（新增：你的翻滚冷却、你是否在蓄、你是否被晕、离左右墙、离中线、我上次打中你多久、我翻滚冷却）`, `- 一局约 ${per.toFixed(2)} 秒（不画画面加速跑）`, '', '| 代 | 平均奖励 | 用时(分) |', '|---|---|---|'];
