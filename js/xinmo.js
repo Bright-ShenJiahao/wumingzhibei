@@ -891,7 +891,7 @@ window.XINMO = (() => {
       ...oneHot(hero.st), hero.atk ? hero.atk.c : -1, hero.hp / P.hp, hero.inv > 0 ? 1 : 0, leftOf(hero, weapon), pdx / 100, pdy / 50, near ? 1 : 0, W().class === 'ranged' ? 1 : 0,
       // 新增 8 维（强化学习用；模仿学习的旧模型只读前 29 维）
       (hero.rollCd || 0) / .75, seen().charging ? 1 : 0, hero.dazeT > 0 ? 1 : 0, m.x / 720, (720 - m.x) / 720, (m.y - (M.top + M.bot) / 2) / 35, Math.min(2, gameT - (m.lastLandT ?? -9)) / 2, (m.rollCd || 0) / .75,
-      ...['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'].map(k => m.weapon === k ? 1 : 0)];   // 11/01：6 维武器种类（之前网络分不清戟/棍、弓/石）
+      ...['staff', 'hammer', 'stone', 'halberd', 'blade', 'bow'].map(k => ((window.__netAlias && window.__netAlias[m.weapon]) || m.weapon) === k ? 1 : 0)];   // __netAlias：让某把武器借用另一把的网络身份（实验）   // 11/01：6 维武器种类（之前网络分不清戟/棍、弓/石）
   }
   function netAct() {
     const h = NET.heads.human, x = netFeatures().slice(0, h.W1.length).map((v, i) => (v - h.mean[i]) / (h.std[i] > 1e-6 ? h.std[i] : 1));   // 标准差为 0 的维度按 1（之前除以 0 → NaN → 网络永远输出动作 0）

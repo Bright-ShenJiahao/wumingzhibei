@@ -100,7 +100,7 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   head.std = head.std.map(v => v > 1e-6 ? v : 1);
   let theta = flat(head);
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 640, height: 360 } });
-  await p.goto(BASE); await p.waitForTimeout(5000); await p.addScriptTag({ content: PAGE_FN });
+  await p.goto(BASE); await p.waitForTimeout(5000); await p.addScriptTag({ content: PAGE_FN }); if (arg('alias', '')) await p.evaluate(a => { window.__netAlias = Object.fromEntries(a.split(',').map(x => x.split(':'))); }, arg('alias', ''));
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; TITLE.skip(); });   // 停掉画面循环，只用 update 同步推进
   const netOf = v => ({ heads: { human: unflat(v, head) }, inGame: true });
   const runSet = async (net, seeds) => p.evaluate(({ net, seeds }) => seeds.map(([w, bot, sd]) => __runEp(net, w, bot, sd, 30)), { net, seeds });
