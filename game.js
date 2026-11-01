@@ -1304,12 +1304,8 @@ window.GAME_PAUSE = {
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
 // 用户定：手机跑不动就自动转低配——战斗中统计 150 帧，平均低于约 40 帧就降到 30 帧、1 倍清晰度、减少粒子
 let perfN = 0, perfSum = 0;
-try { if (localStorage.getItem('wzb-lowfx') === '1') window.LOWFX = true; } catch (e) {}
-function perfCheck(gap) {
-  if (window.LOWFX || perfN >= 150 || !hero || (window.TITLE && TITLE.blocks && TITLE.blocks()) || result || gap > 250) return;
-  perfN++; perfSum += gap;
-  if (perfN === 150 && perfSum / 150 > 25) { window.LOWFX = true; try { localStorage.setItem('wzb-lowfx', '1'); } catch (e) {} fit(); toastMsg = '已自动切换到流畅模式'; toastT = 3; }
-}
+try { localStorage.removeItem('wzb-lowfx'); } catch (e) {}   // 用户定 11/01：彻底取消流畅模式，清掉旧玩家手机里存的开关
+function perfCheck(gap) {}   // 用户定 11/01：不再自动切换流畅模式（手机画面会变糊）
 function loop(t) { if (t - last < 1000 / (window.LOWFX ? 31 : 62)) { requestAnimationFrame(loop); return; }   // 60 帧上限（低配 30）：高刷屏不多算，省电
   perfCheck(t - last);
   if (window.LOWFX && propFx.length > 120) propFx.splice(0, propFx.length - 120);

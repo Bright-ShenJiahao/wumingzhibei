@@ -63,7 +63,7 @@ body.wzb-pro #help{display:none}
 .x-back{min-height:34px!important}
 }
 #rot small{display:block;margin-top:10px;font-size:14px;font-weight:600;color:#c9b691;line-height:1.6}
-</style><link rel="preload" href="pack/fonts/result.woff2?v=3ad05cb371" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=3ad05cb371)format("woff2");font-display:swap}</style></head><body>
+</style><link rel="preload" href="pack/fonts/result.woff2?v=f992cbb209" as="font" type="font/woff2" crossorigin><style>@font-face{font-family:"MaShanZheng";src:url(pack/fonts/result.woff2?v=f992cbb209)format("woff2");font-display:swap}</style></head><body>
 <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;background:#1a1020;color:#f1d59a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:18px system-ui,sans-serif;text-align:center;padding:24px">
 <strong id="bootText">正在加载…</strong><button id="bootRefresh" hidden onclick="location.reload()" style="font:16px system-ui,sans-serif;padding:12px;color:#ffe0a0;background:#583b28;border:1px solid #ba9158;border-radius:6px">网络较慢，点此刷新</button><small id="bootError" style="overflow-wrap:anywhere;max-width:90vw"></small></div>
 <script>
@@ -77,7 +77,7 @@ if(location.protocol==='https:'&&!/[?&]debug(?:=|&|$)/.test(location.search)&&'s
 })();
 // 自动更新：打开游戏、或从后台切回来时，查一下线上有没有新版本；有就在标题/整备页自动刷新（战斗中不打扰）
 (function(){
-var BUILD='7182413b51e7',busy=false;
+var BUILD='d4de22ee1b34',busy=false;
 if(location.protocol!=='https:'||/[?&]debug(?:=|&|$)/.test(location.search))return;
 function check(){
   if(busy)return;
@@ -13520,12 +13520,8 @@ window.GAME_PAUSE = {
 function reportErr(e) { const s = String(e && e.stack || e).split('\n'); window.WZB_ERR = (s[0] + ' ' + (s[1] || '').trim()).slice(0, 160); if (!reportErr.n) { reportErr.n = 1; console.error(e); } }
 // 用户定：手机跑不动就自动转低配——战斗中统计 150 帧，平均低于约 40 帧就降到 30 帧、1 倍清晰度、减少粒子
 let perfN = 0, perfSum = 0;
-try { if (localStorage.getItem('wzb-lowfx') === '1') window.LOWFX = true; } catch (e) {}
-function perfCheck(gap) {
-  if (window.LOWFX || perfN >= 150 || !hero || (window.TITLE && TITLE.blocks && TITLE.blocks()) || result || gap > 250) return;
-  perfN++; perfSum += gap;
-  if (perfN === 150 && perfSum / 150 > 25) { window.LOWFX = true; try { localStorage.setItem('wzb-lowfx', '1'); } catch (e) {} fit(); toastMsg = '已自动切换到流畅模式'; toastT = 3; }
-}
+try { localStorage.removeItem('wzb-lowfx'); } catch (e) {}   // 用户定 11/01：彻底取消流畅模式，清掉旧玩家手机里存的开关
+function perfCheck(gap) {}   // 用户定 11/01：不再自动切换流畅模式（手机画面会变糊）
 function loop(t) { if (t - last < 1000 / (window.LOWFX ? 31 : 62)) { requestAnimationFrame(loop); return; }   // 60 帧上限（低配 30）：高刷屏不多算，省电
   perfCheck(t - last);
   if (window.LOWFX && propFx.length > 120) propFx.splice(0, propFx.length - 120);
