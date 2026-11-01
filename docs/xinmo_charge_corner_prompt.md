@@ -79,6 +79,8 @@
 ## 只需要看这些代码
 仓库 https://github.com/Bright-ShenJiahao/wumingzhibei ，**`preview` 分支**：
 - `js/xinmo.js`：`smartRoll()`、`threatInfo()`、`roll()`；`update()` 里 `s.charging && hw` 那段；长戟 `m.dash` 和回马突计划（`m.weapon === 'halberd'`）；汉弓射击条件（`pinned`、`ready`、`lane`）
+- `js/xinmo.js` 的 `netFeatures()`、`netAct()`、`netMove()`：网络看什么、能做什么
+- `tools/xinmo_rl/selfplay.cjs`：训练流程、奖励、测试玩家、评测
 - `js/g_hero_update.js` 第 20～35 行：玩家翻滚、蓄力
 - `js/g_hero_attack.js` 的 `chargedAttack()`：各武器蓄力判定
 
