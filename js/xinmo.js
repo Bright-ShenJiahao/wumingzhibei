@@ -799,6 +799,17 @@ window.XINMO = (() => {
     }
     // 骗招：往前踏一小步马上退，引你出手打空，再由「反打」接上
     if (sty() !== 'poke' && ready && s.st !== 'atk' && adx > reach && adx < edge + 20 && m.think <= 0 && Math.random() < dt * .5 / risk('feint')) { m.mode = 'feint'; plan([{ k: 'step', dx: 30, dur: .14 }, { k: 'step', dx: -40, dur: .22 }]); m.think = .5; runPlan(dt); return; }
+    { // 11/01 用户实战：你原地不停平 A、卡上下位置，心魔不能站着发呆 → 绕到你背后（你的平 A 只打前面），落地就打
+      if (s.st === 'atk') m.heroAtkT = gameT;
+      if (w.class !== 'ranged' && !heroRolling && gameT - (m.heroAtkT ?? -9) < .4 && !s.charging) {
+        const back = -(hero.f || 1), behind = Math.sign(m.x - hero.x) === back, dyR = (WEAP[s.hw] || WEAP[weapon]).dy || 15;
+        if (behind && adx < reach && ady < (w.dy || 14)) { m.mode = 'backstab'; m.f = sd; startAtk(0); m.think = .15; return; }
+        if (!behind && adx < 75 && ady < 30 && m.rollCd === 0 && smartRoll('spam', 'through')) return;   // 就在你面前：从你身边滚到背后
+        const bx = Math.max(14, Math.min(706, hero.x + back * (reach - 4))), side = Math.sign(m.y - hero.y) || 1;
+        const by = behind || Math.abs(m.x - bx) < 10 ? hero.y : Math.max(M.top, Math.min(M.bot, hero.y + side * (dyR + 14)));   // 从你正前方绕开：先错开上下，到你背后再对齐
+        m.mode = 'flank'; moveTo(bx, by, dt, 1); return;
+      }
+    }
     if (netMove(dt, s, sd, adx, ady, reach)) return;
     // 5) 随机突进（SmashBot Bait.approach）：平均每 2 秒一次、持续 1 秒；玩家在出招或无敌时不冲
     const cornered = hero.x < 70 || hero.x > 650, inner = cornered && Math.sign(hero.x - m.x) === (hero.x < 70 ? -1 : 1);   // 你在场边、我在你和场中间
