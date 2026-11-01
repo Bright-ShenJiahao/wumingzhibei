@@ -131,10 +131,9 @@ function chargedAttack(power, tier = 1) {
   const force = .35 + .65 * power;
   const R = 64 * (window.GEAR ? GEAR.range() : 1);
   if (weapon === 'bow') {                         // 穿云箭：先标记落点，再从右上方落下
-    if (window.BOWAMMO && !BOWAMMO.use()) { floaters.push({ x: h.x, y: h.y - 50, t: 0, txt: '蓄力箭不足' }); sfx('roll', h.x); return; }   // 蓄力箭用完
-    const data = tier === 3 ? { radius: 45, dmg: 2.4, stun: 1 }   // 用户反馈太强、范围太大：伤害和半径都下调
-      : tier === 2 ? { radius: 36, dmg: 1.9, stun: .8 }
-      : { radius: 28, dmg: 1.4, stun: .6 };
+    const data = tier === 3 ? { radius: 45, dmg: 1.9, stun: .8 }   /* 用户定 11/01：取消蓄力箭数量限制，伤害约 ×0.8、晕缩短 */   // 用户反馈太强、范围太大：伤害和半径都下调
+      : tier === 2 ? { radius: 36, dmg: 1.5, stun: .65 }
+      : { radius: 28, dmg: 1.1, stun: .5 };
     let target = null, best = Infinity;
     for (const z of zs) {
       if (z.dead) continue;

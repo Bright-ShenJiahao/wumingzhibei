@@ -5,7 +5,7 @@
   const reset = () => { n = MAX; };
   const tick = dt => { if (n < MAX) n = Math.min(MAX, n + dt / REGEN); };
   const onHit = () => { if (n < MAX) n = Math.min(MAX, n + PER_HIT); };
-  function use() { if (n >= 1) { n -= 1; return true; } return false; }
+  function use() { return true; }
   // 显示：屏幕右下角「翻滚」键左边的小箭袋（深色底金边），5 支竖箭；用掉变暗影，回复中的从下往上亮起来
   const ARROW = '<svg viewBox="0 0 10 30" width="9" height="27"><path d="M5 1 L8.5 8 L6 8 L6 23 L5 23 L4 23 L4 8 L1.5 8 Z" fill="#2a1a10"/><path d="M5 2.5 L7.3 7.2 L2.7 7.2 Z" fill="#e8e2cf"/><rect x="4.4" y="7.2" width="1.2" height="16" fill="#c8a46a"/><path d="M4.2 21 L1.6 28 L4.2 26.5 Z M5.8 21 L8.4 28 L5.8 26.5 Z" fill="#b8452a" stroke="#2a1a10" stroke-width=".5"/></svg>';
   let box = null, cells = [], last = '';
@@ -19,7 +19,7 @@
     for (let i = 0; i < MAX; i++) { const c = document.createElement('div'); c.className = 'c'; c.innerHTML = '<div class="off">' + ARROW + '</div><div class="on">' + ARROW + '</div>'; box.appendChild(c); cells.push(c.querySelector('.on')); }
     document.body.appendChild(box); return box;
   }
-  function draw() {
+  function draw() { if (box) box.style.display = 'none'; return;   // 用户定 11/01：取消蓄力箭数量，不再显示箭袋
     const show = typeof weapon !== 'undefined' && weapon === 'bow' && !(window.TITLE && TITLE.active && TITLE.active());
     const b = ensureBox();
     if (!show) { if (b.style.display !== 'none') b.style.display = 'none'; return; }

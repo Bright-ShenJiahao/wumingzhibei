@@ -414,9 +414,8 @@ window.XINMO = (() => {
     chargeFx.push({ x: m.x, y: m.y, t: 0, T: .45, w: m.weapon, f, power, tier, _sty: true });   // 蓄力重击的冲击特效和玩家共用
     const dxh = (hero.x - m.x) * f, dyh = hero.y - m.y, K = OUT({ charged: true });   // 心魔伤害 = 玩家同一招 × 玩家的出手倍率
     if (m.weapon === 'bow') {
-      if ((m.ammo ?? 5) < 1) return; m.ammo = (m.ammo ?? 5) - 1;
-      const d = tier === 3 ? { r: 45, dmg: 2.4 } : tier === 2 ? { r: 36, dmg: 1.9 } : { r: 28, dmg: 1.4 };
-      const data = tier === 3 ? { radius: 45, dmg: 2.4 * K, stun: 1 } : tier === 2 ? { radius: 36, dmg: 1.9 * K, stun: .8 } : { radius: 28, dmg: 1.4 * K, stun: .6 };
+      const d = tier === 3 ? { r: 45, dmg: 1.9 } : tier === 2 ? { r: 36, dmg: 1.5 } : { r: 28, dmg: 1.1 };
+      const data = tier === 3 ? { radius: 45, dmg: 1.9 * K, stun: .8 } : tier === 2 ? { radius: 36, dmg: 1.5 * K, stun: .65 } : { radius: 28, dmg: 1.1 * K, stun: .5 };
       const near = Math.abs(hero.x - m.x) <= 250 && Math.sign(hero.x - m.x) === f;   // 和玩家一样：前方 250 内瞄人，否则落在前方 150
       bowFx.push({ kind: 'sky', x: near ? hero.x : m.x + f * 150, y: near ? hero.y : m.y, t: 0, T: .6, dir: f, data, resolved: false, mirror: true }); return;
     }
@@ -746,7 +745,7 @@ window.XINMO = (() => {
       if (sty() !== 'poke' && lag > .22 && adx > 70 && adx < 200 && m.rollCd === 0 && Math.random() < dt * 4 / risk('approach')) { m.mode = 'approach'; plan([{ k: 'roll', dir: 'fwd' }, { k: 'atk', n: 1 }], true); runPlan(dt); return; }
       // 2) 你在上下走位躲石子：蓄一档半散射（4 颗扇形），上下都封住
       if (m.weapon === 'stone' && (Math.abs(hero.mvy || 0) > 22 || sty() === 'walkdodge') && adx > 60 && adx < 200 && s.st !== 'atk' && m.rollCd < .4 && Math.random() < dt * 3) { const t2 = Math.min(fullT() * .55, Math.max(P.gate + .05, (adx - 40) / (70 * P.move) - .1)); if (t2 >= P.gate + .05) { m.mode = 'shoot'; m.f = sd; startCharge(t2); m.think = .4; return; } }
-      const ammo = m.weapon !== 'bow' || (m.ammo ?? 5) >= 1;
+      const ammo = true;   // 取消蓄力箭数量（和玩家一致）
       // 蓄力只在「你冲过来之前蓄得完」时（不然会被你打断）
       const safe = Math.max(0, (adx - 40) / (70 * P.move) - .1), ct = Math.min(fullT(), safe);
       if (m.think <= 0 && ammo && s.st !== 'atk' && ct >= P.gate + .05 && m.rollCd <= .15 && Math.random() < dt * (m.weapon === 'bow' ? 4 : 1.5)) { m.mode = 'shoot'; m.f = sd; startCharge(ct); m.think = .5; return; }
