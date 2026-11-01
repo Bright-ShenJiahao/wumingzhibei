@@ -103,7 +103,8 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v)
   const netOf = v => ({ heads: { human: unflat(v, head) }, inGame: true });
   const runSet = async (net, seeds) => p.evaluate(({ net, seeds }) => seeds.map(([w, bot, sd]) => __runEp(net, w, bot, sd, 30)), { net, seeds });
   const HOLDOUT = ['camp', 'rollatk'], TRAIN_BOTS = BOTS.filter(b => !HOLDOUT.includes(b));   // 留出 2 种测试玩家只在评测里出现，检查有没有只会打练过的对手
-  const COMBOS = WEAPONS.flatMap(w => TRAIN_BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
+  const TRAIN_W = arg('weapons', '') ? arg('weapons', '').split(',').filter(w => WEAPONS.includes(w)) : WEAPONS;   // 只练指定武器（评测仍然 6 把都测）
+  const COMBOS = TRAIN_W.flatMap(w => TRAIN_BOTS.map(b => [w, b]));   // 武器 × 测试玩家全覆盖（之前索引绑在一起，只练到一半组合）
   const score = COMBOS.map(() => 0);   // 每个组合最近的平均奖励（越差越常练：按对手优先采样）
   const pick = (g, i) => { const wts = score.map(v => 1 + Math.max(0, .5 - v) * 2), tot = wts.reduce((a, b) => a + b, 0); let r = (Math.sin(g * 9301 + i * 49297) * 233280 % 1 + 1) % 1 * tot, k = 0; while (r > wts[k] && k < wts.length - 1) { r -= wts[k]; k++; } return [COMBOS[k][0], COMBOS[k][1], 1000 + g * 97 + i * 13, k]; };
   // 测速

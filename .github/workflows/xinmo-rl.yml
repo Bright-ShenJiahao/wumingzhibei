@@ -1,12 +1,12 @@
 # 心魔强化学习（用户定 2026-10-31）：不画画面加速跑「心魔 vs 测试玩家」几万局，进化策略训练心魔走位网络。
-# 每周自动跑一次（在模仿学习之后），也可以在 Actions 页面手动跑；对打测试赢过规则版才把 inGame 标成 true 上场。
+# 用户定 11/01：只手动跑（Actions 页面 Run workflow，分支选 preview）；结果推到 preview，不碰正式站。
 # 公开仓库的 GitHub Actions 免费、不限分钟；单次最长 6 小时。
 name: 心魔强化学习
 on:
-  schedule: [{ cron: '0 21 * * 0' }]   # 每周一 06:00（日本时间），比模仿学习晚 2 小时
   workflow_dispatch:
     inputs:
       minutes: { description: '训练多少分钟', default: '120' }
+      weapons: { description: '只练哪几把（逗号隔开，留空=全部）：staff,hammer,stone,halberd,blade,bow', default: '' }
 permissions: { contents: write }
 concurrency: { group: xinmo-train, cancel-in-progress: false }
 jobs:
@@ -26,7 +26,7 @@ jobs:
         run: |
           python3 -m http.server 8765 >/dev/null 2>&1 &
           sleep 2
-          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4
+          node tools/xinmo_rl/selfplay.cjs --minutes ${{ github.event.inputs.minutes || '120' }} --pop 16 --eps 4 --weapons "${{ github.event.inputs.weapons }}"
       - name: 提交模型和训练报告
         run: |
           git config user.name "xinmo-train-bot"
@@ -35,4 +35,4 @@ jobs:
           if git diff --cached --quiet; then echo "没有新结果"; exit 0; fi
           git commit -m "心魔强化学习 $(date -u +%Y-%m-%d)：模型与训练报告（自动）"
           git checkout -- . && git clean -fdq -e node_modules
-          git pull --rebase origin main && git push origin HEAD:main
+          git pull --rebase origin preview && git push origin HEAD:preview

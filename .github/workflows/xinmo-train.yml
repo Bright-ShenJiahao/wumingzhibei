@@ -3,7 +3,6 @@
 # → 服务器读到 data/xinmo_trained.json 后自动删除这些原始对局。每次运行的完整日志在 Actions 页面可查。
 name: 心魔训练
 on:
-  schedule: [{ cron: '0 19 * * 0' }]   # 每周一 04:00（日本时间）
   workflow_dispatch: {}
 permissions: { contents: write }
 concurrency: { group: xinmo-train, cancel-in-progress: false }
@@ -27,4 +26,4 @@ jobs:
           git add data/xinmo_model.json data/xinmo_trained.json docs/xinmo_train || true
           if git diff --cached --quiet; then echo "没有新结果"; exit 0; fi
           git commit -m "心魔训练 $(date -u +%Y-%m-%d)：模型与训练报告（自动）"
-          git pull --rebase origin main && git push origin HEAD:main
+          git pull --rebase origin preview && git push origin HEAD:preview
