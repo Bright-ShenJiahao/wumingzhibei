@@ -20,7 +20,7 @@
   #wzbBoard .tabs button{flex:1;padding:8px 6px;border-radius:9px 9px 0 0;border:1px solid #4a3722;border-bottom:none;
     background:#2b1f16;color:#c9b691;font-size:15px;cursor:pointer}
   #wzbBoard .tabs button.on{background:#3a2a1c;color:#ffd86e;font-weight:700}
-  #wzbBoard .body{overflow:auto;padding:10px 14px 14px}
+  #wzbBoard .body{overflow:auto;min-height:0;flex:1 1 auto;overscroll-behavior:contain;padding:10px 14px 14px}
   #wzbBoard table{width:100%;border-collapse:collapse;font-size:14px}
   #wzbBoard th,#wzbBoard td{padding:6px 4px;text-align:left;border-bottom:1px dashed #3a2a1c}
   #wzbBoard th{color:#b79c72;font-weight:600;font-size:13px}
@@ -29,6 +29,16 @@
   #wzbBoard .empty{padding:26px 6px;text-align:center;color:#a08d70;line-height:1.7}
   #wzbBoard .foot{padding:8px 14px 12px;color:#8d7a5e;font-size:12px;text-align:center}
   #wzbBoard .rowName{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media (max-height:520px){   /* 手机横屏：压缩表头和行高，多露几行 */
+    #wzbBoard .panel{max-height:96vh}
+    #wzbBoard .hd{padding:6px 12px}
+    #wzbBoard .hd h2{font-size:16px}
+    #wzbBoard .tabs{padding:6px 12px 0}
+    #wzbBoard .tabs button{padding:5px 6px;font-size:13px}
+    #wzbBoard .body{padding:4px 12px 6px}
+    #wzbBoard th,#wzbBoard td{padding:3px 4px}
+    #wzbBoard .foot{padding:4px 12px 6px;font-size:11px}
+  }
   @media (max-width:520px){
     #wzbBoard .panel{width:96vw}
     #wzbBoard table{font-size:13px}
@@ -64,6 +74,8 @@
     wrap.querySelector('.x').addEventListener('click', close);
     wrap.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { tabK = b.dataset.k; wrap.querySelectorAll('.tabs button').forEach(q => q.classList.toggle('on', q === b)); render(); }));   // 用户定 11/01：总积分 / 第一章 / 第二章 三个榜
     wrap.addEventListener('pointerdown', e => e.stopPropagation());
+    { let sy = 0, st = 0; body.addEventListener('touchstart', e => { sy = e.touches[0].clientY; st = body.scrollTop; }, { passive: true });
+      body.addEventListener('touchmove', e => { e.stopPropagation(); e.preventDefault(); body.scrollTop = st + (sy - e.touches[0].clientY); }, { passive: false }); }   // 手机：手指拖动榜单（全局禁了 touchmove，和结算卷轴同一做法）
     wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
     addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
   }
