@@ -224,6 +224,7 @@ function reset() {
   ui();
   if (window.ROGUE) ROGUE.reset();
   if (window.ARTIFACT) ARTIFACT.startRun();
+  if (window.AUTOSKILL) AUTOSKILL.startRun();   // 自动招式 DEMO（&auto）
   if (window.SUPPLY) SUPPLY.reset();
   if (window.MERIDIAN) MERIDIAN.startRun();   // 经脉：不屈每局一次
   if (window.GOODS) GOODS.reset();   // 商店带进来的消耗品：开打第一帧才扣
@@ -648,6 +649,7 @@ function update(dt) {
   if (window.ROGUE && ROGUE.blocks()) { ROGUE.update(dt); return; }   // 选锦囊时冻结战斗
   if (window.ROGUE && ROGUE.tick && !over && !won) ROGUE.tick(dt);
   if (window.ARTIFACT && !over && !won) ARTIFACT.tick(dt);
+  if (window.AUTOSKILL && !over && !won && !(freeze > 0)) AUTOSKILL.tick(dt);
   if (window.SUPPLY && !over && !won) SUPPLY.tick(dt);
   if (window.MERIDIAN && !over && !won) MERIDIAN.tick();   // 经脉·回气
   if (window.GOODS && !over && !won) GOODS.tick();
@@ -1006,6 +1008,7 @@ function draw() {
   if (window.CH2B && ch2Troops()) CH2B.draw();
   if (window.ROGUE && ROGUE.drawWorld) ROGUE.drawWorld();
   if (window.ARTIFACT) ARTIFACT.drawWorld();
+  if (window.AUTOSKILL) AUTOSKILL.drawWorld();
   if (window.SUPPLY) SUPPLY.drawWorld();
   if (window.BOWAMMO) BOWAMMO.draw();
   // 按 y 排序绘制
@@ -1096,6 +1099,7 @@ function draw() {
   }
   if (window.SUPPLY && !result) SUPPLY.hud(14, 140);   // 补给效果倒计时
   drawCombo(HW);
+  if (window.AUTOSKILL && !result) AUTOSKILL.hud(HW);
   if (msgT > 0) {
     const lines = String(msg).split('|'); ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
     const tw = Math.max(...lines.map(line => ctx.measureText(line).width)), bh = lines.length * 23 + 10, by = 108 - (bh - 32) / 2;
